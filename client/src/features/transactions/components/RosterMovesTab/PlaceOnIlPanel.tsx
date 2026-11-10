@@ -184,14 +184,14 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
 
   return (
     <div className="space-y-4">
-      <p className="text-[11px] text-[var(--lg-text-muted)]">
+      <p className="text-xs text-[var(--lg-text-muted)]">
         Move an injured player into an IL slot, then choose a replacement for the vacated active slot.
         Confirm unlocks only after the full roster can resolve legally.
       </p>
 
       {/* Stash player picker */}
       <div>
-        <label className="block text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-1">
+        <label className="block text-xs font-semibold uppercase text-[var(--lg-text-muted)] mb-1">
           Player to place on IL
         </label>
         <select
@@ -210,7 +210,7 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
       </div>
 
       <div
-        className={`rounded border p-2 text-[11px] ${
+        className={`rounded border p-2 text-xs ${
           rosterRulesSatisfied
             ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-200"
             : "border-[var(--lg-border-faint)] bg-[var(--lg-tint)]/50 text-[var(--lg-text-muted)]"
@@ -224,14 +224,14 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
       </div>
 
       {stashPlayer && !mlbStatusOk && (
-        <div className="rounded border border-amber-500/40 bg-amber-500/10 p-2 text-[11px] text-amber-200">
+        <div className="rounded border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-200">
           MLB status is "{stashPlayer.mlbStatus}". The player must have an active Injured-List designation.
         </div>
       )}
 
       {/* Free-agent replacement */}
       <div>
-        <label className="block text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-1">
+        <label className="block text-xs font-semibold uppercase text-[var(--lg-text-muted)] mb-1">
           Replacement (free agents)
           {stashPlayer && (
             <span className="text-[var(--lg-text-muted)]">
@@ -249,7 +249,7 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
         />
         <div className="max-h-60 overflow-y-auto rounded border border-[var(--lg-border-faint)]">
           {freeAgents.length === 0 ? (
-            <div className="p-3 text-[11px] text-[var(--lg-text-muted)]">
+            <div className="p-3 text-xs text-[var(--lg-text-muted)]">
               No matching free agents.
             </div>
           ) : (
@@ -264,12 +264,12 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
                   key={mid}
                   type="button"
                   onClick={() => setAddMlbId(mid)}
-                  className={`w-full text-left px-3 py-1.5 text-[11px] flex items-center justify-between border-b border-[var(--lg-border-faint)] ${
+                  className={`w-full text-left px-3 py-1.5 text-xs flex items-center justify-between border-b border-[var(--lg-border-faint)] ${
                     isSelected ? "bg-[var(--lg-accent)]/15 text-[var(--lg-text-primary)]" : "hover:bg-[var(--lg-tint)]"
                   }`}
                 >
                   <span>{p.player_name || p.name}</span>
-                  <span className="flex items-center gap-2 text-[10px] text-[var(--lg-text-muted)]">
+                  <span className="flex items-center gap-2 text-xs text-[var(--lg-text-muted)]">
                     <span>{p.positions || p.posPrimary || "—"}</span>
                     {stashPlayer && (
                       <span className={direct ? "text-emerald-400" : "text-amber-300"}>
@@ -285,12 +285,12 @@ export default function PlaceOnIlPanel({ leagueId, teamId, players, onComplete, 
       </div>
 
       {selectedAdd && stashPlayer && !addEligibleForStashSlot && !needsServerPreview && (
-        <div className="rounded border border-amber-500/40 bg-amber-500/10 p-2 text-[11px] text-amber-200">
+        <div className="rounded border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-200">
           {selectedAdd.player_name || selectedAdd.name} is not eligible for the {stashSlot} slot. Pick a different replacement.
         </div>
       )}
       {error && (
-        <div className="rounded border border-red-500/40 bg-red-500/10 p-2 text-[11px] text-red-300">
+        <div className="rounded border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-300">
           {error}
         </div>
       )}

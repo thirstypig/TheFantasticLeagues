@@ -179,7 +179,9 @@ describe("ACCOUNT_LINKS", () => {
   });
   it("adds Admin for admins", () => {
     const links = ACCOUNT_LINKS(true);
-    expect(links.map((l) => l.to)).toEqual(["/profile", "/guide", "/about", "/admin"]);
+    expect(links.map((l) => l.to)).toEqual(["/profile", "/guide", "/about", "/admin", "/admin/style-bible"]);
+    expect(links).toContainEqual({ to: "/admin/style-bible", label: "Style Bible" });
+    expect(ACCOUNT_LINKS(false).some((l) => l.to === "/admin/style-bible")).toBe(false);
     expect(links[1].label).toBe("Help & Guide");
   });
 });

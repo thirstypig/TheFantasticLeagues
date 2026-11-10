@@ -134,7 +134,7 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
         </button>
 
         {/* League / season label (switching lives in the account popover) */}
-        <div style={{ margin: "14px 4px 0", fontSize: 12, color: "var(--am-text-muted)" }}>
+        <div style={{ margin: "14px 4px 0", fontSize: 13, color: "var(--am-text-muted)" }}>
           {leagueName}
           {currentSeason ? ` · ${currentSeason}` : ""}
         </div>
@@ -155,7 +155,7 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
                   alignItems: "center",
                   padding: "10px 12px",
                   borderRadius: 4,
-                  fontSize: 16,
+                  fontSize: 17,
                   fontWeight: 600,
                   color: active ? "var(--am-text)" : "var(--am-text-muted)",
                   background: active ? "var(--am-chip)" : "transparent",
@@ -185,7 +185,7 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
               border: "1px solid var(--am-border)",
               borderRadius: 4,
               cursor: "pointer",
-              fontSize: 16,
+              fontSize: 17,
               fontWeight: 600,
               color: "var(--am-text)",
               fontFamily: "inherit",

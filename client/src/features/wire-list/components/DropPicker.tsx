@@ -102,7 +102,7 @@ export default function DropPicker({ periodId, teamId, excludePlayerIds, onAdded
       </div>
       {error && (
         <div style={{
-          marginTop: 8, padding: "6px 10px", borderRadius: 6, fontSize: 12,
+          marginTop: 8, padding: "6px 10px", borderRadius: 6, fontSize: 13,
           background: "color-mix(in srgb, var(--am-negative) 12%, transparent)",
           border: "1px solid color-mix(in srgb, var(--am-negative) 40%, transparent)",
           color: "var(--am-text)",
@@ -112,9 +112,9 @@ export default function DropPicker({ periodId, teamId, excludePlayerIds, onAdded
       )}
       <div style={{ marginTop: 8, maxHeight: 280, overflowY: "auto" }}>
         {loading ? (
-          <div style={{ padding: 12, fontSize: 12, color: "var(--am-text-muted)" }}>Loading roster…</div>
+          <div style={{ padding: 12, fontSize: 13, color: "var(--am-text-muted)" }}>Loading roster…</div>
         ) : filtered.length === 0 ? (
-          <div style={{ padding: 12, fontSize: 12, color: "var(--am-text-muted)" }}>
+          <div style={{ padding: 12, fontSize: 13, color: "var(--am-text-muted)" }}>
             {query ? "No matches." : "No roster players available."}
           </div>
         ) : (
@@ -136,7 +136,7 @@ export default function DropPicker({ periodId, teamId, excludePlayerIds, onAdded
             >
               <span style={posPillStyle}>{r.posPrimary || "—"}</span>
               <span style={{ flex: 1, minWidth: 0 }}>{r.name}</span>
-              <span style={{ fontSize: 10, color: "var(--am-text-muted)" }}>{r.mlbTeam ?? "—"}</span>
+              <span style={{ fontSize: 13, color: "var(--am-text-muted)" }}>{r.mlbTeam ?? "—"}</span>
             </button>
           ))
         )}
@@ -146,7 +146,7 @@ export default function DropPicker({ periodId, teamId, excludePlayerIds, onAdded
 }
 
 const smallBtn: React.CSSProperties = {
-  padding: "4px 10px", fontSize: 12, borderRadius: 6,
+  padding: "4px 10px", fontSize: 13, borderRadius: 6,
   background: "var(--am-chip)", color: "var(--am-text)",
   border: "1px solid var(--am-border)", cursor: "pointer",
 };
@@ -155,6 +155,6 @@ const posPillStyle: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", justifyContent: "center",
   minWidth: 28, padding: "1px 6px", borderRadius: 4,
   background: "var(--am-chip-strong)", color: "var(--am-text)",
-  fontFamily: "var(--am-mono)", fontSize: 10, fontWeight: 600,
+  fontFamily: "var(--am-mono)", fontSize: 13, fontWeight: 600,
   border: "1px solid var(--am-border)",
 };

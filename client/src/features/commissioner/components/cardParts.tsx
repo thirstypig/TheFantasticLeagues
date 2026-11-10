@@ -30,7 +30,7 @@ export const ROW: React.CSSProperties = {
   borderBottom: "1px solid var(--am-border)",
   color: "var(--am-text)",
   textDecoration: "none",
-  fontSize: 16,
+  fontSize: 17,
 };
 
 /** Full-width primary action button for the guided job pages. */
@@ -42,7 +42,7 @@ export const PRIMARY: React.CSSProperties = {
   border: "1px solid var(--am-accent)",
   background: "var(--am-accent)",
   color: "var(--am-on-accent)",
-  fontSize: 16,
+  fontSize: 17,
   fontWeight: 600,
   cursor: "pointer",
 };
@@ -59,11 +59,11 @@ export const LINK: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   minHeight: 44,
-  fontSize: 16,
+  fontSize: 17,
   color: "var(--am-accent)",
 };
 
-export const MUTED: React.CSSProperties = { fontSize: 16, color: "var(--am-text-muted)" };
+export const MUTED: React.CSSProperties = { fontSize: 17, color: "var(--am-text-muted)" };
 
 export function Skeleton() {
   return (
@@ -76,5 +76,5 @@ export function Skeleton() {
 }
 
 export function CardError({ children }: { children: React.ReactNode }) {
-  return <p style={{ padding: 16, margin: 0, fontSize: 16, color: "var(--am-negative)" }}>{children}</p>;
+  return <p style={{ padding: 16, margin: 0, fontSize: 17, color: "var(--am-negative)" }}>{children}</p>;
 }

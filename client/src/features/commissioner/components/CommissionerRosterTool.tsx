@@ -342,7 +342,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
     padding: '8px 12px',
     background: 'var(--am-surface-alt)',
     borderBottom: '1px solid var(--am-border)',
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: 700,
     textTransform: 'uppercase',
     letterSpacing: '0.06em',
@@ -382,7 +382,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
             <input type="date" className="cm-input" value={effectiveDate} onChange={e => setEffectiveDate(e.target.value)} style={{ width: 148 }} />
             {effectiveDate
               ? <button type="button" className="cm-btn ghost sm" onClick={() => setEffectiveDate('')}>clear</button>
-              : <span className="cm-muted" style={{ fontSize: 11 }}>empty = tomorrow</span>}
+              : <span className="cm-muted" style={{ fontSize: 13 }}>empty = tomorrow</span>}
           </div>
         </div>
       </div>
@@ -399,7 +399,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
           </div>
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {teamRoster.length === 0 && !loading ? (
-              <div style={{ padding: '20px 14px', fontSize: 12, color: 'var(--am-text-muted)' }}>No roster found.</div>
+              <div style={{ padding: '20px 14px', fontSize: 13, color: 'var(--am-text-muted)' }}>No roster found.</div>
             ) : (
               <table className="cm-table dense">
                 <thead>
@@ -420,7 +420,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                       <tr key={r.id}>
                         <td><span className="cm-chip">{slotLabel(r.assignedPosition)}</span></td>
                         <td style={{ fontWeight: 600 }}>{r.player.name}</td>
-                        <td style={{ color: 'var(--am-text-muted)', fontSize: 12 }}>{r.player.posPrimary}</td>
+                        <td style={{ color: 'var(--am-text-muted)', fontSize: 13 }}>{r.player.posPrimary}</td>
                         <td>
                           {isGhostIl
                             ? <span className="cm-chip neg">Activate Needed</span>
@@ -474,7 +474,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
           <div id="add-drop-panel" style={{ borderBottom: '1px solid var(--am-border)', display: 'flex', flexDirection: 'column' }}>
             <div className="cm-section-head" style={{ borderRadius: 0 }}>
               <span className="cm-h2">Add / Drop</span>
-              {adError && <span style={{ fontSize: 11, color: 'var(--am-negative)', marginLeft: 12 }}>{adError}</span>}
+              {adError && <span style={{ fontSize: 13, color: 'var(--am-negative)', marginLeft: 12 }}>{adError}</span>}
             </div>
             <div style={{ display: 'flex', flex: 1 }}>
               {/* Col 1: Add (free agent) */}
@@ -483,7 +483,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                   <div className="cm-row" style={{ gap: 6, marginBottom: 6 }}>
                     <input
                       className="cm-input"
-                      style={{ flex: 1, fontSize: 11 }}
+                      style={{ flex: 1, fontSize: 13 }}
                       placeholder="Search by name…"
                       value={adQuery}
                       onChange={e => setAdQuery(e.target.value)}
@@ -495,7 +495,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                         key={f}
                         type="button"
                         className={`cm-btn sm ${adPosFilter === f ? 'primary' : 'ghost'}`}
-                        style={{ padding: '2px 6px', fontSize: 10, minWidth: 0 }}
+                        style={{ padding: '2px 6px', fontSize: 13, minWidth: 0 }}
                         onClick={() => setAdPosFilter(f)}
                       >
                         {f}
@@ -505,7 +505,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                 </div>
                 <div style={colBody}>
                   {filteredFAs.length === 0 ? (
-                    <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--am-text-muted)' }}>No free agents match.</div>
+                    <div style={{ padding: '16px 12px', fontSize: 13, color: 'var(--am-text-muted)' }}>No free agents match.</div>
                   ) : filteredFAs.map((p: any) => (
                     <div
                       key={p.id || p.mlb_id}
@@ -513,8 +513,8 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                       onClick={() => { setAdAddId(p.id); setAdAddMlbId(p.mlb_id ?? p.mlbId ?? null); }}
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerName(p)}</div>
-                        <div style={{ fontSize: 10, color: 'var(--am-text-muted)' }}>{playerPos(p)} · {p.mlbTeam || p.mlb_team || '—'}</div>
+                        <div style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerName(p)}</div>
+                        <div style={{ fontSize: 13, color: 'var(--am-text-muted)' }}>{playerPos(p)} · {p.mlbTeam || p.mlb_team || '—'}</div>
                       </div>
                     </div>
                   ))}
@@ -526,7 +526,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                 <div style={{ ...colHead, display: 'flex', alignItems: 'center' }}>Drop from roster</div>
                 <div style={colBody}>
                   {teamRoster.length === 0 ? (
-                    <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--am-text-muted)' }}>No roster loaded.</div>
+                    <div style={{ padding: '16px 12px', fontSize: 13, color: 'var(--am-text-muted)' }}>No roster loaded.</div>
                   ) : teamRoster.filter(r => r.assignedPosition !== 'IL').map(r => (
                     <div
                       key={r.id}
@@ -534,8 +534,8 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                       onClick={() => setAdDropId(r.player.id)}
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: 12 }}>{r.player.name}</div>
-                        <div style={{ fontSize: 10, color: 'var(--am-text-muted)' }}>{r.player.posPrimary} · {slotLabel(r.assignedPosition)}</div>
+                        <div style={{ fontWeight: 600, fontSize: 13 }}>{r.player.name}</div>
+                        <div style={{ fontSize: 13, color: 'var(--am-text-muted)' }}>{r.player.posPrimary} · {slotLabel(r.assignedPosition)}</div>
                       </div>
                     </div>
                   ))}
@@ -546,13 +546,13 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
               <div style={colLast}>
                 <div style={colHead}>Confirm</div>
                 <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto', maxHeight: 400 }}>
-                  <div style={{ fontSize: 12 }}>
+                  <div style={{ fontSize: 13 }}>
                     <div className="cm-cap" style={{ marginBottom: 4 }}>Adding</div>
                     {selectedAddPlayer
                       ? <div style={{ fontWeight: 600 }}>{playerName(selectedAddPlayer)}<span style={{ fontWeight: 400, color: 'var(--am-text-muted)', marginLeft: 6 }}>{playerPos(selectedAddPlayer)}</span></div>
                       : <div style={{ color: 'var(--am-text-faint)' }}>— select from left</div>}
                   </div>
-                  <div style={{ fontSize: 12 }}>
+                  <div style={{ fontSize: 13 }}>
                     <div className="cm-cap" style={{ marginBottom: 4 }}>Dropping</div>
                     {selectedDropRosterItem
                       ? <div style={{ fontWeight: 600 }}>{selectedDropRosterItem.player.name}<span style={{ fontWeight: 400, color: 'var(--am-text-muted)', marginLeft: 6 }}>{selectedDropRosterItem.player.posPrimary}</span></div>
@@ -571,17 +571,17 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                         <div className="cm-cap" style={{ marginBottom: 6 }}>
                           Adjust slots (optional)
                           {changedCount > 0 && (
-                            <span style={{ marginLeft: 8, background: 'color-mix(in srgb, var(--am-accent) 14%, var(--am-surface))', color: 'var(--am-accent)', border: '1px solid color-mix(in srgb, var(--am-accent) 35%, var(--am-border))', borderRadius: 4, padding: '1px 6px', fontSize: 10, fontWeight: 700 }}>
+                            <span style={{ marginLeft: 8, background: 'color-mix(in srgb, var(--am-accent) 14%, var(--am-surface))', color: 'var(--am-accent)', border: '1px solid color-mix(in srgb, var(--am-accent) 35%, var(--am-border))', borderRadius: 4, padding: '1px 6px', fontSize: 13, fontWeight: 700 }}>
                               {changedCount} moved
                             </span>
                           )}
                         </div>
-                        <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
+                        <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
                           <thead>
                             <tr>
-                              <th style={{ textAlign: 'left', fontWeight: 600, fontSize: 10, color: 'var(--am-text-faint)', paddingBottom: 4 }}>Player</th>
-                              <th style={{ textAlign: 'left', fontWeight: 600, fontSize: 10, color: 'var(--am-text-faint)', paddingBottom: 4 }}>Now</th>
-                              <th style={{ textAlign: 'left', fontWeight: 600, fontSize: 10, color: 'var(--am-text-faint)', paddingBottom: 4 }}>Move to</th>
+                              <th style={{ textAlign: 'left', fontWeight: 600, fontSize: 13, color: 'var(--am-text-faint)', paddingBottom: 4 }}>Player</th>
+                              <th style={{ textAlign: 'left', fontWeight: 600, fontSize: 13, color: 'var(--am-text-faint)', paddingBottom: 4 }}>Now</th>
+                              <th style={{ textAlign: 'left', fontWeight: 600, fontSize: 13, color: 'var(--am-text-faint)', paddingBottom: 4 }}>Move to</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -598,15 +598,15 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                                 <tr key={pid} style={{ background: changed ? 'color-mix(in srgb, var(--am-accent) 7%, transparent)' : 'transparent' }}>
                                   <td style={{ padding: '3px 4px 3px 0', fontWeight: 600, color: 'var(--am-text)' }}>
                                     {r.player.name}
-                                    {changed && <span style={{ marginLeft: 4, fontSize: 9, color: 'var(--am-accent)' }}>✓</span>}
+                                    {changed && <span style={{ marginLeft: 4, fontSize: 13, color: 'var(--am-accent)' }}>✓</span>}
                                   </td>
-                                  <td style={{ padding: '3px 6px 3px 0', color: changed ? 'var(--am-text-faint)' : 'var(--am-text-muted)', textDecoration: changed ? 'line-through' : 'none', fontSize: 11, fontFamily: 'ui-monospace, monospace' }}>
+                                  <td style={{ padding: '3px 6px 3px 0', color: changed ? 'var(--am-text-faint)' : 'var(--am-text-muted)', textDecoration: changed ? 'line-through' : 'none', fontSize: 13, fontFamily: 'ui-monospace, monospace' }}>
                                     {currentSlot}
                                   </td>
                                   <td style={{ padding: '3px 0' }}>
                                     <select
                                       className="cm-select"
-                                      style={{ fontSize: 11, padding: '2px 6px' }}
+                                      style={{ fontSize: 13, padding: '2px 6px' }}
                                       value={selectedSlot}
                                       onChange={e => {
                                         const next = slotChanges.filter(c => c.playerId !== pid);
@@ -623,7 +623,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                           </tbody>
                         </table>
                         {changedCount > 0 && (
-                          <button type="button" style={{ marginTop: 4, fontSize: 10, color: 'var(--am-text-faint)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }} onClick={() => setSlotChanges([])}>
+                          <button type="button" style={{ marginTop: 4, fontSize: 13, color: 'var(--am-text-faint)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }} onClick={() => setSlotChanges([])}>
                             Reset
                           </button>
                         )}
@@ -657,7 +657,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                     </button>
                   </div>
                   {slotChanges.length > 0 && (
-                    <div style={{ fontSize: 10, color: 'var(--am-text-muted)' }}>
+                    <div style={{ fontSize: 13, color: 'var(--am-text-muted)' }}>
                       {slotChanges.length} slot adjustment{slotChanges.length !== 1 ? 's' : ''} will be applied before the claim.
                     </div>
                   )}
@@ -690,8 +690,8 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                   Activate from IL
                 </button>
               </div>
-              {ilMode === 'stash' && ilError && <span style={{ fontSize: 11, color: 'var(--am-negative)' }}>{ilError}</span>}
-              {ilMode === 'activate' && ilActError && <span style={{ fontSize: 11, color: 'var(--am-negative)' }}>{ilActError}</span>}
+              {ilMode === 'stash' && ilError && <span style={{ fontSize: 13, color: 'var(--am-negative)' }}>{ilError}</span>}
+              {ilMode === 'activate' && ilActError && <span style={{ fontSize: 13, color: 'var(--am-negative)' }}>{ilActError}</span>}
             </div>
             <div style={{ display: ilMode === 'stash' ? 'flex' : 'none', flex: 1 }}>
               {/* Col 1: Stash player */}
@@ -699,7 +699,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                 <div style={colHead}>Stash a player</div>
                 <div style={colBody}>
                   {teamRoster.filter(r => r.assignedPosition !== 'IL').length === 0 ? (
-                    <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--am-text-muted)' }}>No active players.</div>
+                    <div style={{ padding: '16px 12px', fontSize: 13, color: 'var(--am-text-muted)' }}>No active players.</div>
                   ) : teamRoster.filter(r => r.assignedPosition !== 'IL').map(r => {
                     const mlbStatus = mlbStatusByPlayerId.get(r.player.id);
                     const eligible = isMlbIlStatus(mlbStatus);
@@ -714,8 +714,8 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                         onClick={() => eligible && setIlStashId(r.player.id)}
                       >
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, fontSize: 12 }}>{r.player.name}</div>
-                          <div style={{ fontSize: 10, color: eligible ? 'var(--am-warning)' : 'var(--am-text-faint)' }}>
+                          <div style={{ fontWeight: 600, fontSize: 13 }}>{r.player.name}</div>
+                          <div style={{ fontSize: 13, color: eligible ? 'var(--am-warning)' : 'var(--am-text-faint)' }}>
                             {eligible ? `MLB IL · ${mlbStatus}` : r.player.posPrimary}
                           </div>
                         </div>
@@ -730,7 +730,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                 <div style={colHead}>
                   <input
                     className="cm-input"
-                    style={{ width: '100%', fontSize: 11, marginBottom: 0 }}
+                    style={{ width: '100%', fontSize: 13, marginBottom: 0 }}
                     placeholder="Search replacement…"
                     value={ilReplQuery}
                     onChange={e => setIlReplQuery(e.target.value)}
@@ -738,7 +738,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                 </div>
                 <div style={colBody}>
                   {filteredIlFAs.length === 0 ? (
-                    <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--am-text-muted)' }}>No free agents match.</div>
+                    <div style={{ padding: '16px 12px', fontSize: 13, color: 'var(--am-text-muted)' }}>No free agents match.</div>
                   ) : filteredIlFAs.map((p: any) => (
                     <div
                       key={p.id || p.mlb_id}
@@ -746,8 +746,8 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                       onClick={() => { setIlReplId(p.id); setIlReplMlbId(p.mlb_id ?? p.mlbId ?? null); }}
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerName(p)}</div>
-                        <div style={{ fontSize: 10, color: 'var(--am-text-muted)' }}>{playerPos(p)} · {p.mlbTeam || p.mlb_team || '—'}</div>
+                        <div style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{playerName(p)}</div>
+                        <div style={{ fontSize: 13, color: 'var(--am-text-muted)' }}>{playerPos(p)} · {p.mlbTeam || p.mlb_team || '—'}</div>
                       </div>
                     </div>
                   ))}
@@ -758,13 +758,13 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
               <div style={colLast}>
                 <div style={colHead}>Confirm</div>
                 <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ fontSize: 12 }}>
+                  <div style={{ fontSize: 13 }}>
                     <div className="cm-cap" style={{ marginBottom: 4 }}>Stashing</div>
                     {selectedStashItem
                       ? <div style={{ fontWeight: 600 }}>{selectedStashItem.player.name}<span style={{ fontWeight: 400, color: 'var(--am-text-muted)', marginLeft: 6 }}>{selectedStashItem.player.posPrimary}</span></div>
                       : <div style={{ color: 'var(--am-text-faint)' }}>— select from left</div>}
                   </div>
-                  <div style={{ fontSize: 12 }}>
+                  <div style={{ fontSize: 13 }}>
                     <div className="cm-cap" style={{ marginBottom: 4 }}>Replacement</div>
                     {selectedIlReplPlayer
                       ? <div style={{ fontWeight: 600 }}>{playerName(selectedIlReplPlayer)}<span style={{ fontWeight: 400, color: 'var(--am-text-muted)', marginLeft: 6 }}>{playerPos(selectedIlReplPlayer)}</span></div>
@@ -810,7 +810,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                 <div style={colHead}>Bring back from IL</div>
                 <div style={colBody}>
                   {teamRoster.filter(r => r.assignedPosition === 'IL').length === 0 ? (
-                    <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--am-text-muted)' }}>No players currently on IL.</div>
+                    <div style={{ padding: '16px 12px', fontSize: 13, color: 'var(--am-text-muted)' }}>No players currently on IL.</div>
                   ) : teamRoster.filter(r => r.assignedPosition === 'IL').map(r => (
                     <div
                       key={r.id}
@@ -818,8 +818,8 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                       onClick={() => { setIlActId(r.player.id); setIlActDropId(''); }}
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: 12 }}>{r.player.name}</div>
-                        <div style={{ fontSize: 10, color: 'var(--am-text-muted)' }}>
+                        <div style={{ fontWeight: 600, fontSize: 13 }}>{r.player.name}</div>
+                        <div style={{ fontSize: 13, color: 'var(--am-text-muted)' }}>
                           Eligible: {posListByPlayerId.get(r.player.id) || r.player.posPrimary}
                         </div>
                       </div>
@@ -838,13 +838,13 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                 <div style={colBody}>
                   {(() => {
                     if (ilActId === '') {
-                      return <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--am-text-muted)' }}>Pick an IL player first.</div>;
+                      return <div style={{ padding: '16px 12px', fontSize: 13, color: 'var(--am-text-muted)' }}>Pick an IL player first.</div>;
                     }
                     const activatedPosList = posListByPlayerId.get(Number(ilActId)) || '';
                     const activatedSlots = slotsFor(activatedPosList);
                     const actives = teamRoster.filter(r => r.assignedPosition !== 'IL');
                     if (actives.length === 0) {
-                      return <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--am-text-muted)' }}>No active players to drop.</div>;
+                      return <div style={{ padding: '16px 12px', fontSize: 13, color: 'var(--am-text-muted)' }}>No active players to drop.</div>;
                     }
                     // Sort by direct-fit first so the simplest path surfaces.
                     // `activatedSlots` is keyed on the narrow eligibility SlotCode
@@ -868,8 +868,8 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                           onClick={() => setIlActDropId(r.player.id)}
                         >
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 600, fontSize: 12 }}>{r.player.name}</div>
-                            <div style={{ fontSize: 10, color: direct ? 'var(--am-accent)' : 'var(--am-text-muted)' }}>
+                            <div style={{ fontWeight: 600, fontSize: 13 }}>{r.player.name}</div>
+                            <div style={{ fontSize: 13, color: direct ? 'var(--am-accent)' : 'var(--am-text-muted)' }}>
                               {slot}{direct ? ' · direct fit' : ' · reshuffle'}
                             </div>
                           </div>
@@ -884,7 +884,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
               <div style={colLast}>
                 <div style={colHead}>Confirm</div>
                 <div style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ fontSize: 12 }}>
+                  <div style={{ fontSize: 13 }}>
                     <div className="cm-cap" style={{ marginBottom: 4 }}>Activating</div>
                     {(() => {
                       const ilRow = ilActId !== '' ? teamRoster.find(r => r.player.id === Number(ilActId)) : null;
@@ -893,7 +893,7 @@ export default function CommissionerRosterTool({ leagueId, teams, onUpdate }: Co
                         : <div style={{ color: 'var(--am-text-faint)' }}>— select from left</div>;
                     })()}
                   </div>
-                  <div style={{ fontSize: 12 }}>
+                  <div style={{ fontSize: 13 }}>
                     <div className="cm-cap" style={{ marginBottom: 4 }}>Dropping</div>
                     {(() => {
                       const dropRow = ilActDropId !== '' ? teamRoster.find(r => r.player.id === Number(ilActDropId)) : null;

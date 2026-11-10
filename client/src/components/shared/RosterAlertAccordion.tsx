@@ -46,7 +46,7 @@ export default function RosterAlertAccordion({
 
   return (
     <div>
-      <p className={`text-[9px] font-bold uppercase tracking-widest ${colors.label} mb-2`}>{label}</p>
+      <p className={`text-xs font-bold uppercase tracking-widest ${colors.label} mb-2`}>{label}</p>
       <div className="space-y-1">
         {players.slice(0, maxDisplay).map((p, i) => {
           const ilMatch = (p.mlbStatus || "").match(/(\d+)/);
@@ -68,14 +68,14 @@ export default function RosterAlertAccordion({
                   onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                 />
                 <div className="min-w-0 flex-1">
-                  <span className="text-[11px] font-semibold text-[var(--lg-text-primary)]">{p.playerName}</span>
-                  <span className={`text-[9px] ${colors.label} font-bold ml-1.5`}>{statusLabel}</span>
+                  <span className="text-xs font-semibold text-[var(--lg-text-primary)]">{p.playerName}</span>
+                  <span className={`text-xs ${colors.label} font-bold ml-1.5`}>{statusLabel}</span>
                 </div>
                 <svg className="w-3 h-3 text-[var(--lg-text-muted)] transition-transform group-open:rotate-180 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </summary>
-              <div className="text-[10px] text-[var(--lg-text-muted)] space-y-0.5 px-2 pb-2 ml-8">
+              <div className="text-xs text-[var(--lg-text-muted)] space-y-0.5 px-2 pb-2 ml-8">
                 {colorScheme === "red" && p.ilInjury && <div className="text-red-300/80">{p.ilInjury}</div>}
                 {colorScheme === "red" && placedStr && <div>Placed: {placedStr}</div>}
                 {colorScheme === "red" && eligStr && <div>Eligible: <span className="text-[var(--lg-text-secondary)] font-medium">{eligStr}</span></div>}

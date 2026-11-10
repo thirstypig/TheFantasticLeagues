@@ -127,7 +127,7 @@ export default function Pricing() {
             }`}
           >
             {tier.highlight && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-[var(--lg-accent)] text-[var(--lg-on-accent)] text-[10px] font-bold uppercase tracking-wider rounded-full">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-[var(--lg-accent)] text-[var(--lg-on-accent)] text-xs font-bold uppercase tracking-wider rounded-full">
                 Most Popular
               </div>
             )}
@@ -185,7 +185,7 @@ export default function Pricing() {
         <p className="text-sm text-[var(--lg-text-secondary)] max-w-lg mx-auto mb-4">
           First 100 users: <strong className="text-[var(--lg-accent)]">$99 one-time payment</strong> for lifetime access to all tiers, all sports, all future features. Forever.
         </p>
-        <p className="text-[10px] text-[var(--lg-text-muted)] uppercase tracking-wide">
+        <p className="text-xs text-[var(--lg-text-muted)] uppercase tracking-wide">
           Available when paid plans launch in 2027
         </p>
       </div>

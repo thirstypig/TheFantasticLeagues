@@ -126,7 +126,7 @@ const AURORA_BTN_BASE: React.CSSProperties = {
   alignItems: "center",
   gap: 6,
   padding: "8px 16px",
-  fontSize: 12,
+  fontSize: 13,
   fontWeight: 600,
   borderRadius: 99,
   border: "1px solid var(--am-border)",
@@ -248,7 +248,7 @@ export function RulesEditor({ leagueId, canEdit: canEditProp, onSaved }: { leagu
             <SectionLabel style={{ marginBottom: 0 }}>✦ League Rules</SectionLabel>
             <h2 style={{
               fontFamily: "var(--am-display)",
-              fontSize: 26,
+              fontSize: 24,
               fontWeight: 300,
               color: "var(--am-text)",
               margin: 0,
@@ -318,7 +318,7 @@ export function RulesEditor({ leagueId, canEdit: canEditProp, onSaved }: { leagu
             </div>
           )}
           {isLocked && (
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--am-text-faint)" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--am-text-faint)" }}>
               <Lock size={12} />
               Read-only
             </div>
@@ -332,7 +332,7 @@ export function RulesEditor({ leagueId, canEdit: canEditProp, onSaved }: { leagu
             borderRadius: 12,
             background: "var(--am-surface-faint)",
             border: "1px solid var(--am-border)",
-            fontSize: 11,
+            fontSize: 13,
             color: "var(--am-text-muted)",
             lineHeight: 1.5,
           }}
@@ -356,13 +356,13 @@ export function RulesEditor({ leagueId, canEdit: canEditProp, onSaved }: { leagu
                   style={{ width: 22, height: 22, opacity: 0.75, filter: 'brightness(0) invert(1) opacity(0.75)' }}
                 />
               ) : (
-                <span style={{ fontSize: 18 }}>📄</span>
+                <span style={{ fontSize: 17 }}>📄</span>
               )}
               <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                 <SectionLabel style={{ marginBottom: 0 }}>✦ {cat.replace('_', ' ')}</SectionLabel>
                 <span style={{
                   fontFamily: "var(--am-display)",
-                  fontSize: 18,
+                  fontSize: 17,
                   fontWeight: 400,
                   color: "var(--am-text)",
                   textTransform: "capitalize",
@@ -408,7 +408,7 @@ export function RulesEditor({ leagueId, canEdit: canEditProp, onSaved }: { leagu
                   >
                     <label style={{
                       display: "block",
-                      fontSize: 10,
+                      fontSize: 13,
                       fontWeight: 700,
                       letterSpacing: 1.2,
                       textTransform: "uppercase",
@@ -446,7 +446,7 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
                   borderRadius: 99,
                   background: "var(--am-chip)",
                   border: "1px solid var(--am-border)",
-                  fontSize: 11,
+                  fontSize: 13,
                   fontWeight: 600,
                   color: "var(--am-text)",
                 }}
@@ -466,7 +466,7 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
                   borderRadius: 99,
                   background: "var(--am-chip)",
                   border: "1px solid var(--am-border)",
-                  fontSize: 11,
+                  fontSize: 13,
                   fontWeight: 600,
                   color: "var(--am-text)",
                   display: "inline-flex",
@@ -474,19 +474,19 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
                   gap: 6,
                 }}
               >
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--am-text-faint)" }}>{k}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--am-text-faint)" }}>{k}</span>
                 {String(v)}
               </span>
             ))}
           </div>
         );
       } catch {
-        return <span style={{ fontSize: 14, fontWeight: 600, color: "var(--am-text)" }}>{val}</span>;
+        return <span style={{ fontSize: 15, fontWeight: 600, color: "var(--am-text)" }}>{val}</span>;
       }
     }
     return (
       <div style={{ display: "inline-flex", alignItems: "baseline", gap: 4 }}>
-        <span style={{ fontFamily: "var(--am-display)", fontSize: 22, fontWeight: 400, color: "var(--am-text)", letterSpacing: -0.3, fontVariantNumeric: "tabular-nums" }}>
+        <span style={{ fontFamily: "var(--am-display)", fontSize: 24, fontWeight: 400, color: "var(--am-text)", letterSpacing: -0.3, fontVariantNumeric: "tabular-nums" }}>
           {val}
         </span>
         {config.suffix && (
@@ -539,7 +539,7 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
           style={{ ...AURORA_INPUT, paddingRight: config.suffix ? 28 : 12 }}
         />
         {config.suffix && (
-          <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--am-text-faint)", fontSize: 12 }}>
+          <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--am-text-faint)", fontSize: 13 }}>
             {config.suffix}
           </span>
         )}
@@ -569,7 +569,7 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
               style={{
                 padding: "4px 10px",
                 borderRadius: 99,
-                fontSize: 11,
+                fontSize: 13,
                 fontWeight: 600,
                 cursor: "pointer",
                 background: active ? "var(--am-irid)" : "var(--am-surface-faint)",
@@ -611,7 +611,7 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
               gap: 2,
             }}
           >
-            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--am-text-faint)" }}>{opt}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", color: "var(--am-text-faint)" }}>{opt}</span>
             <input
               type="number"
               min="0"

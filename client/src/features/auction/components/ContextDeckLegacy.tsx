@@ -29,7 +29,7 @@ export default function ContextDeckLegacy({ tabs }: ContextDeckProps) {
               key={tab.key}
               onClick={() => setActiveKey(tab.key)}
               className={`
-                relative px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wide transition-all
+                relative px-3 py-2.5 text-xs font-semibold uppercase tracking-wide transition-all
                 ${isActive
                   ? 'text-[var(--lg-accent)]'
                   : 'text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)]'

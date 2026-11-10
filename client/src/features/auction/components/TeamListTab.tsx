@@ -173,7 +173,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              fontSize: 10,
+              fontSize: 13,
               fontWeight: 600,
               letterSpacing: 1.2,
               textTransform: "uppercase",
@@ -194,7 +194,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
           <div style={{ padding: "12px 20px 10px", borderBottom: "1px solid var(--am-border)" }}>
             <SectionLabel>Position Needs</SectionLabel>
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", fontSize: 9, borderCollapse: "collapse" }}>
+              <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "var(--am-surface-faint)" }}>
                     <th
@@ -354,7 +354,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                         style={{
                                             color: "var(--am-text-faint)",
                                             fontWeight: 700,
-                                            fontSize: 12,
+                                            fontSize: 13,
                                             width: 24,
                                             opacity: 0.5,
                                             fontVariantNumeric: "tabular-nums",
@@ -371,7 +371,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                             {showPace && isHot && <Flame size={12} style={{ color: "var(--am-cardinal)" }} />}
                                             {showPace && isCold && <Snowflake size={12} style={{ color: "var(--am-accent)" }} />}
                                         </div>
-                                        <span style={{ fontSize: 10, fontWeight: 500, color: "var(--am-text-faint)", marginTop: 2 }}>
+                                        <span style={{ fontSize: 13, fontWeight: 500, color: "var(--am-text-faint)", marginTop: 2 }}>
                                             {showPace
                                               ? `${team.rosterCount}/${rosterSize} · $${spent} spent${(team.keeperSpend ?? 0) > 0 ? ` (K:$${team.keeperSpend} + A:$${team.auctionSpend})` : ''} · $${remainingPerSpot.toFixed(0)}/spot`
                                               : `${team.rosterCount} / ${rosterSize} Roster`}
@@ -383,7 +383,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
                                         <span
                                             style={{
-                                                fontSize: 9,
+                                                fontSize: 13,
                                                 fontWeight: 600,
                                                 letterSpacing: 1.2,
                                                 textTransform: "uppercase",
@@ -397,7 +397,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
                                         <span
                                             style={{
-                                                fontSize: 9,
+                                                fontSize: 13,
                                                 fontWeight: 600,
                                                 letterSpacing: 1.2,
                                                 textTransform: "uppercase",
@@ -462,7 +462,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                             padding: "48px 24px",
                                             textAlign: "center",
                                             color: "var(--am-text-muted)",
-                                            fontSize: 12,
+                                            fontSize: 13,
                                             fontWeight: 500,
                                             letterSpacing: 1.2,
                                             textTransform: "uppercase",
@@ -508,7 +508,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                                             onClick={() => setExpandedPlayerId(isRowExpanded ? null : entry.id)}
                                                         >
                                                             <ThemedTd className="py-2">
-                                                              <span className="text-[10px] font-mono font-semibold text-[var(--lg-accent)]">
+                                                              <span className="text-xs font-mono font-semibold text-[var(--lg-accent)]">
                                                                 {displayPos || "—"}
                                                               </span>
                                                             </ThemedTd>
@@ -516,7 +516,7 @@ export default function TeamListTab({ teams = [], players = [], budgetCap = 400,
                                                                 <span className={`font-semibold ${isPitcher ? 'text-purple-400' : 'text-blue-400'}`}>{displayName}</span>
                                                             </ThemedTd>
                                                             <ThemedTd align="right" className="py-2 pr-6">
-                                                                <span className={priceDeemphasized ? "text-[10px] text-[var(--lg-text-muted)] opacity-50" : "font-semibold text-[var(--lg-text-primary)]"}>${entry.price}</span>
+                                                                <span className={priceDeemphasized ? "text-xs text-[var(--lg-text-muted)] opacity-50" : "font-semibold text-[var(--lg-text-primary)]"}>${entry.price}</span>
                                                             </ThemedTd>
                                                         </ThemedTr>
                                                         {isRowExpanded && (

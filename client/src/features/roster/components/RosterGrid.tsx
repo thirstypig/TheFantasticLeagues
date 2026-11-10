@@ -227,7 +227,7 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
                                    <div className="flex items-center gap-2 overflow-hidden">
                                        {canEditPosition ? (
                                          <select
-                                           className="font-mono text-[var(--lg-accent)] w-8 text-center shrink-0 bg-transparent border border-[var(--lg-border-faint)] rounded cursor-pointer text-[10px] outline-none hover:border-[var(--lg-accent)] transition-colors"
+                                           className="font-mono text-[var(--lg-accent)] w-8 text-center shrink-0 bg-transparent border border-[var(--lg-border-faint)] rounded cursor-pointer text-xs outline-none hover:border-[var(--lg-accent)] transition-colors"
                                            value={displayPos}
                                            onChange={(e) => handlePositionChange(r.id, r.teamId, r.player.name, e.target.value)}
                                          >
@@ -236,7 +236,7 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
                                            ))}
                                          </select>
                                        ) : (
-                                         <span className="font-mono text-[var(--lg-accent)] w-5 text-center shrink-0 text-[10px] font-semibold">{displayPos}</span>
+                                         <span className="font-mono text-[var(--lg-accent)] w-5 text-center shrink-0 text-xs font-semibold">{displayPos}</span>
                                        )}
                                        <span className="text-[var(--lg-text-primary)] truncate group-hover:text-sky-300 transition-colors">{r.player.name}</span>
                                    </div>
@@ -257,7 +257,7 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
                                           </form>
                                         ) : (
                                           <span
-                                            className={`w-6 text-right ${priceDeemphasized ? "text-[10px] text-[var(--lg-text-muted)] opacity-50" : "font-semibold text-amber-400"} ${canEditPrice ? "cursor-pointer hover:text-amber-300" : ""}`}
+                                            className={`w-6 text-right ${priceDeemphasized ? "text-xs text-[var(--lg-text-muted)] opacity-50" : "font-semibold text-amber-400"} ${canEditPrice ? "cursor-pointer hover:text-amber-300" : ""}`}
                                             onClick={() => { if (canEditPrice) { setEditingId(r.id); setEditPrice(String(r.price)); } }}
                                             title={canEditPrice ? "Click to edit price" : undefined}
                                           >${r.price}</span>

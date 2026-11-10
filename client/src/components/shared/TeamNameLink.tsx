@@ -16,7 +16,7 @@ export function TeamNameLink({ teamId, name, className }: TeamNameLinkProps) {
   return (
     <Link
       to={`/teams/${teamId}`}
-      className={`font-semibold text-[var(--lg-text-primary)] text-[11px] hover:text-[var(--lg-accent)] transition-colors tracking-tight ${className ?? ""}`}
+      className={`font-semibold text-[var(--lg-text-primary)] text-xs hover:text-[var(--lg-accent)] transition-colors tracking-tight ${className ?? ""}`}
     >
       {name}
     </Link>

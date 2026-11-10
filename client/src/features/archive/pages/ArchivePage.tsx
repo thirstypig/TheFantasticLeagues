@@ -466,7 +466,7 @@ export default function ArchivePage() {
     <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
       <Glass strong>
         <SectionLabel>✦ Historical Archive</SectionLabel>
-        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Historical Archive</h1>
+        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Historical Archive</h1>
         <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>League History: Season stats and draft records.</div>
       </Glass>
       <main>
@@ -721,7 +721,7 @@ export default function ArchivePage() {
                                           <div className="flex items-center gap-3">
                                             <span className="text-blue-400">{p.fullName}</span>
                                             {isKeeper && (
-                                              <span className="px-1.5 py-0.5 rounded-lg bg-amber-500 text-white text-[8px] font-bold uppercase shadow-lg shadow-amber-500/20">K</span>
+                                              <span className="px-1.5 py-0.5 rounded-lg bg-amber-500 text-white text-xs font-bold uppercase shadow-lg shadow-amber-500/20">K</span>
                                             )}
                                           </div>
                                         </ThemedTd>
@@ -761,7 +761,7 @@ export default function ArchivePage() {
                                           <div className="flex items-center gap-3">
                                             <span className="text-purple-400">{p.fullName}</span>
                                             {isKeeper && (
-                                              <span className="px-1.5 py-0.5 rounded bg-amber-500 text-white text-[8px] font-bold uppercase">K</span>
+                                              <span className="px-1.5 py-0.5 rounded bg-amber-500 text-white text-xs font-bold uppercase">K</span>
                                             )}
                                           </div>
                                         </ThemedTd>
@@ -992,7 +992,7 @@ export default function ArchivePage() {
                                         <ThemedTd className="px-6">
                                           <div className="flex items-center gap-2">
                                             <span className="group-hover:text-[var(--lg-accent)] transition-colors">{p.displayName || p.fullName || p.playerName}</span>
-                                            {!p.mlbId && <span className="text-amber-500 text-[8px]" title="Missing MLB ID">⚠️</span>}
+                                            {!p.mlbId && <span className="text-amber-500 text-xs" title="Missing MLB ID">⚠️</span>}
                                           </div>
                                         </ThemedTd>
                                         <ThemedTd align="center">{p.position || '—'}</ThemedTd>
@@ -1035,7 +1035,7 @@ export default function ArchivePage() {
                                         <ThemedTd className="px-6">
                                           <div className="flex items-center gap-2">
                                             <span className="group-hover:text-[var(--lg-accent)] transition-colors">{p.displayName || p.fullName || p.playerName}</span>
-                                            {!p.mlbId && <span className="text-amber-500 text-[8px]" title="Missing MLB ID">⚠️</span>}
+                                            {!p.mlbId && <span className="text-amber-500 text-xs" title="Missing MLB ID">⚠️</span>}
                                           </div>
                                         </ThemedTd>
                                         <ThemedTd align="center">{p.position || 'P'}</ThemedTd>

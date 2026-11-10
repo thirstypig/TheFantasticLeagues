@@ -102,7 +102,7 @@ export default function TeamsIndex() {
                   </div>
                 </div>
                 {isMyTeam && (
-                  <span className="rounded-full bg-[var(--lg-accent)]/20 border border-[var(--lg-accent)]/40 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[var(--lg-accent)]">
+                  <span className="rounded-full bg-[var(--lg-accent)]/20 border border-[var(--lg-accent)]/40 px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-[var(--lg-accent)]">
                     My Team
                   </span>
                 )}
@@ -112,7 +112,7 @@ export default function TeamsIndex() {
                 {ownerDisplay}
               </div>
 
-              <div className="mt-auto pt-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--lg-text-muted)] group-hover:text-[var(--lg-accent)] transition-colors">
+              <div className="mt-auto pt-2 text-xs font-semibold uppercase tracking-wider text-[var(--lg-text-muted)] group-hover:text-[var(--lg-accent)] transition-colors">
                 View roster →
               </div>
             </Link>

@@ -125,7 +125,7 @@ export function MobileTeamMoveSheet({ player, onPick, onDismiss }: MobileTeamMov
           <div style={{ flex: 1, minWidth: 0 }}>
             <div
               style={{
-                fontSize: 9,
+                fontSize: 13,
                 letterSpacing: 1,
                 fontWeight: 700,
                 color: "var(--am-text-faint)",
@@ -137,7 +137,7 @@ export function MobileTeamMoveSheet({ player, onPick, onDismiss }: MobileTeamMov
             <div
               style={{
                 fontFamily: "var(--am-display)",
-                fontSize: 18,
+                fontSize: 17,
                 lineHeight: 1.1,
                 marginTop: 4,
                 whiteSpace: "nowrap",
@@ -147,7 +147,7 @@ export function MobileTeamMoveSheet({ player, onPick, onDismiss }: MobileTeamMov
             >
               {player.playerName}
             </div>
-            <div style={{ fontSize: 11, color: "var(--am-text-muted)", marginTop: 4 }}>
+            <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 4 }}>
               {(player.mlbTeam ?? "—") + " · " + (player.posPrimary ?? "—") +
                 (current ? ` · currently ${current}` : "")}
             </div>
@@ -207,7 +207,7 @@ export function MobileTeamMoveSheet({ player, onPick, onDismiss }: MobileTeamMov
               >
                 {slot === "BN" ? "Bench" : slot === "IL" ? "IL stash" : slot}
                 {isCurrent && (
-                  <div style={{ fontSize: 9, fontWeight: 600, marginTop: 2, opacity: 0.85 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginTop: 2, opacity: 0.85 }}>
                     current
                   </div>
                 )}
@@ -218,7 +218,7 @@ export function MobileTeamMoveSheet({ player, onPick, onDismiss }: MobileTeamMov
 
         <div
           style={{
-            fontSize: 10,
+            fontSize: 13,
             color: "var(--am-text-faint)",
             marginTop: 12,
             textAlign: "center",

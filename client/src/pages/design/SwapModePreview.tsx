@@ -307,7 +307,7 @@ export default function SwapModePreview() {
           <h1
             style={{
               fontFamily: "var(--am-display)",
-              fontSize: 30,
+              fontSize: 32,
               fontWeight: 300,
               color: "var(--am-text)",
               margin: 0,
@@ -361,7 +361,7 @@ export default function SwapModePreview() {
           occupant in the cards selects them and lights up their eligible slots, demonstrating the
           "valid slots light up" north star.
         </p>
-        <p style={{ marginTop: 8, fontSize: 12, color: "var(--am-text-faint)" }}>
+        <p style={{ marginTop: 8, fontSize: 13, color: "var(--am-text-faint)" }}>
           This is the v1 (cards-based) approach. <Link to="/design/roster-hub-v3" style={{ color: "var(--am-text-muted)" }}>v3 preview at /design/roster-hub-v3 →</Link>
         </p>
       </Glass>
@@ -413,7 +413,7 @@ function StateToggler({ value, onChange }: { value: PreviewState; onChange: (s: 
     >
       <div
         style={{
-          fontSize: 10,
+          fontSize: 13,
           letterSpacing: 1.4,
           textTransform: "uppercase",
           color: "var(--am-text-faint)",
@@ -432,7 +432,7 @@ function StateToggler({ value, onChange }: { value: PreviewState; onChange: (s: 
               onClick={() => onChange(s.value)}
               style={{
                 textAlign: "left",
-                fontSize: 12,
+                fontSize: 13,
                 padding: "7px 10px",
                 borderRadius: 10,
                 border: "1px solid " + (active ? "var(--am-border-strong)" : "transparent"),
@@ -447,7 +447,7 @@ function StateToggler({ value, onChange }: { value: PreviewState; onChange: (s: 
           );
         })}
       </div>
-      <div style={{ fontSize: 11, color: "var(--am-text-faint)", lineHeight: 1.4, marginTop: 4 }}>{current.blurb}</div>
+      <div style={{ fontSize: 13, color: "var(--am-text-faint)", lineHeight: 1.4, marginTop: 4 }}>{current.blurb}</div>
     </div>
   );
 }

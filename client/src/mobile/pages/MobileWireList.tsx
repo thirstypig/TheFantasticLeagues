@@ -82,7 +82,7 @@ export function MobileWireList({ teamCode }: MobileWireListProps) {
         <div style={{ padding: "0 14px" }}>
           <MCard>
             <MLabel>Waiver Wire</MLabel>
-            <p style={{ fontSize: 14, color: "var(--am-text-muted)", marginTop: 8 }}>
+            <p style={{ fontSize: 15, color: "var(--am-text-muted)", marginTop: 8 }}>
               Loading Waiver Wire…
             </p>
           </MCard>
@@ -126,7 +126,7 @@ export function MobileWireList({ teamCode }: MobileWireListProps) {
         <div style={{ padding: "0 14px" }}>
           <MCard>
             <MLabel>Waiver Wire</MLabel>
-            <p style={{ fontSize: 14, color: "var(--am-text-muted)", marginTop: 8 }}>
+            <p style={{ fontSize: 15, color: "var(--am-text-muted)", marginTop: 8 }}>
               No active waiver period. Your commissioner will open one before the next deadline.
             </p>
           </MCard>

@@ -32,7 +32,7 @@ export function MSortHeader<K extends string>({
         width,
         padding: "8px 4px",
         textAlign: align,
-        fontSize: 9.5,
+        fontSize: 13,
         letterSpacing: 0.6,
         fontWeight: 700,
         color: on ? "var(--am-text)" : "var(--am-text-faint)",

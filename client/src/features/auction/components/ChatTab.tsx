@@ -60,7 +60,7 @@ export default function ChatTab({ messages, onSend, myUserId }: ChatTabProps) {
           <div
             style={{
               textAlign: 'center',
-              fontSize: 12,
+              fontSize: 13,
               color: 'var(--am-text-faint)',
               fontStyle: 'italic',
               padding: '48px 0',
@@ -97,7 +97,7 @@ export default function ChatTab({ messages, onSend, myUserId }: ChatTabProps) {
                 {!isMe && (
                   <div
                     style={{
-                      fontSize: 9,
+                      fontSize: 13,
                       fontWeight: 700,
                       textTransform: 'uppercase',
                       letterSpacing: 1.2,
@@ -114,7 +114,7 @@ export default function ChatTab({ messages, onSend, myUserId }: ChatTabProps) {
               </div>
               <span
                 style={{
-                  fontSize: 10,
+                  fontSize: 13,
                   color: 'var(--am-text-faint)',
                   marginTop: 2,
                   padding: '0 4px',
@@ -152,8 +152,8 @@ export default function ChatTab({ messages, onSend, myUserId }: ChatTabProps) {
             padding: '8px 12px',
             fontSize: 13,
             borderRadius: 12,
-            border: '1px solid var(--am-border)',
-            background: 'var(--am-surface-faint)',
+            border: '1px solid var(--am-field-line)',
+            background: 'var(--am-field)',
             color: 'var(--am-text)',
             outline: 'none',
           }}
@@ -168,7 +168,7 @@ export default function ChatTab({ messages, onSend, myUserId }: ChatTabProps) {
             justifyContent: 'center',
             gap: 6,
             padding: '8px 12px',
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: 600,
             borderRadius: 99,
             background: 'var(--am-chip-strong)',

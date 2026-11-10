@@ -65,14 +65,14 @@ export default function NFLDashboard() {
             <SectionLabel>NFL Dashboard</SectionLabel>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginTop: "12px" }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: "30px", fontWeight: 800, letterSpacing: "-0.015em" }}>Gridiron Glory</h2>
-                <p style={{ margin: "7px 0 0", fontSize: "14px", color: "var(--am-text-muted)" }}>2026 NFL Season · Week 4 of 18</p>
+                <h2 style={{ margin: 0, fontSize: 32, fontWeight: 800, letterSpacing: "-0.015em" }}>Gridiron Glory</h2>
+                <p style={{ margin: "7px 0 0", fontSize: 15, color: "var(--am-text-muted)" }}>2026 NFL Season · Week 4 of 18</p>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span style={{ fontSize: "12px", fontWeight: 700, letterSpacing: "0.08em", color: "#fff", background: "var(--am-accent)", padding: "6px 13px", borderRadius: "6px" }}>
+                <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.08em", color: "#fff", background: "var(--am-accent)", padding: "6px 13px", borderRadius: "6px" }}>
                   NFL
                 </span>
-                <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--am-text)", background: "var(--am-surface)", border: "1px solid var(--am-border)", padding: "6px 13px", borderRadius: "6px" }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)", background: "var(--am-surface)", border: "1px solid var(--am-border)", padding: "6px 13px", borderRadius: "6px" }}>
                   Owner
                 </span>
               </div>
@@ -82,33 +82,33 @@ export default function NFLDashboard() {
 
         {/* Standings */}
         <div style={{ gridColumn: "span 12" }}>
-          <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--am-text-muted)", marginBottom: "9px" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--am-text-muted)", marginBottom: "9px" }}>
             Standings
           </div>
           <Glass padded={false}>
             <div style={{ overflow: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px", color: "var(--am-text)" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 15, color: "var(--am-text)" }}>
                 <thead>
                   <tr style={{ background: "var(--am-surface-alt)" }}>
-                    <th style={{ textAlign: "center", padding: "11px 14px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "54px" }}>
+                    <th style={{ textAlign: "center", padding: "11px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "54px" }}>
                       Rank
                     </th>
-                    <th style={{ textAlign: "left", padding: "11px 14px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)" }}>
+                    <th style={{ textAlign: "left", padding: "11px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)" }}>
                       Team
                     </th>
-                    <th style={{ textAlign: "right", padding: "11px 14px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "48px" }}>
+                    <th style={{ textAlign: "right", padding: "11px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "48px" }}>
                       W
                     </th>
-                    <th style={{ textAlign: "right", padding: "11px 14px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "48px" }}>
+                    <th style={{ textAlign: "right", padding: "11px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "48px" }}>
                       L
                     </th>
-                    <th style={{ textAlign: "right", padding: "11px 14px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "72px" }}>
+                    <th style={{ textAlign: "right", padding: "11px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "72px" }}>
                       PF
                     </th>
-                    <th style={{ textAlign: "right", padding: "11px 14px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "72px" }}>
+                    <th style={{ textAlign: "right", padding: "11px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "72px" }}>
                       PA
                     </th>
-                    <th style={{ textAlign: "left", padding: "11px 14px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "88px" }}>
+                    <th style={{ textAlign: "left", padding: "11px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "88px" }}>
                       Streak
                     </th>
                   </tr>
@@ -141,7 +141,7 @@ export default function NFLDashboard() {
                       <td style={{ textAlign: "right", padding: "11px 14px", borderBottom: "1px solid var(--am-border)", fontVariantNumeric: "tabular-nums", color: "var(--am-text-muted)" }}>
                         {row.pa}
                       </td>
-                      <td style={{ padding: "11px 14px", borderBottom: "1px solid var(--am-border)", fontSize: "12px", fontWeight: 600, color: row.streak.startsWith("W") ? "var(--am-positive)" : "var(--am-negative)" }}>
+                      <td style={{ padding: "11px 14px", borderBottom: "1px solid var(--am-border)", fontSize: 13, fontWeight: 600, color: row.streak.startsWith("W") ? "var(--am-positive)" : "var(--am-negative)" }}>
                         {row.streak}
                       </td>
                     </tr>
@@ -154,7 +154,7 @@ export default function NFLDashboard() {
 
         {/* This Week's Matchups */}
         <div style={{ gridColumn: "span 12" }}>
-          <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--am-text-muted)", marginBottom: "9px" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--am-text-muted)", marginBottom: "9px" }}>
             This Week's Matchups
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
@@ -163,15 +163,15 @@ export default function NFLDashboard() {
                 <div style={{ padding: "16px 18px" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
                     <div>
-                      <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--am-text)" }}>{m.home}</div>
-                      <div style={{ fontSize: "12px", color: "var(--am-text-muted)" }}>Home</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "var(--am-text)" }}>{m.home}</div>
+                      <div style={{ fontSize: 13, color: "var(--am-text-muted)" }}>Home</div>
                     </div>
                     {m.live ? (
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
-                        <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--am-accent)", fontVariantNumeric: "tabular-nums" }}>
+                        <span style={{ fontSize: 17, fontWeight: 800, color: "var(--am-accent)", fontVariantNumeric: "tabular-nums" }}>
                           {m.homeScore}
                         </span>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "10px", fontWeight: 700, letterSpacing: "0.07em", color: "var(--am-accent)" }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: 13, fontWeight: 700, letterSpacing: "0.07em", color: "var(--am-accent)" }}>
                           <span
                             style={{
                               width: "6px",
@@ -186,17 +186,17 @@ export default function NFLDashboard() {
                       </div>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
-                        <span style={{ fontSize: "12px", color: "var(--am-text-muted)" }}>{m.projected}</span>
-                        <span style={{ fontSize: "10px", color: "var(--am-text-faint)" }}>Projected</span>
+                        <span style={{ fontSize: 13, color: "var(--am-text-muted)" }}>{m.projected}</span>
+                        <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>Projected</span>
                       </div>
                     )}
                     <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--am-text)" }}>{m.away}</div>
-                      <div style={{ fontSize: "12px", color: "var(--am-text-muted)" }}>Away</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "var(--am-text)" }}>{m.away}</div>
+                      <div style={{ fontSize: 13, color: "var(--am-text-muted)" }}>Away</div>
                     </div>
                   </div>
                   {m.live && (
-                    <div style={{ display: "flex", justifyContent: "center", fontSize: "16px", fontWeight: 700, color: "var(--am-accent)" }}>
+                    <div style={{ display: "flex", justifyContent: "center", fontSize: 17, fontWeight: 700, color: "var(--am-accent)" }}>
                       {m.awayScore}
                     </div>
                   )}
@@ -208,24 +208,24 @@ export default function NFLDashboard() {
 
         {/* Top Performers */}
         <div style={{ gridColumn: "span 12" }}>
-          <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--am-text-muted)", marginBottom: "9px" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--am-text-muted)", marginBottom: "9px" }}>
             Top Performers
           </div>
           <Glass padded={false}>
             <div style={{ overflow: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", color: "var(--am-text)" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, color: "var(--am-text)" }}>
                 <thead>
                   <tr style={{ background: "var(--am-surface-alt)" }}>
-                    <th style={{ textAlign: "left", padding: "7px 14px", fontSize: "10px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)" }}>
+                    <th style={{ textAlign: "left", padding: "7px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)" }}>
                       Player
                     </th>
-                    <th style={{ textAlign: "left", padding: "7px 14px", fontSize: "10px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "72px" }}>
+                    <th style={{ textAlign: "left", padding: "7px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "72px" }}>
                       Pos
                     </th>
-                    <th style={{ textAlign: "center", padding: "7px 14px", fontSize: "10px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "96px" }}>
+                    <th style={{ textAlign: "center", padding: "7px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "96px" }}>
                       Team
                     </th>
-                    <th style={{ textAlign: "right", padding: "7px 14px", fontSize: "10px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "72px" }}>
+                    <th style={{ textAlign: "right", padding: "7px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "72px" }}>
                       Pts
                     </th>
                   </tr>

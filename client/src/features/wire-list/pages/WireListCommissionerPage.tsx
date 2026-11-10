@@ -222,7 +222,7 @@ export default function WireListCommissionerPage() {
       <Glass>
         <div style={{ padding: 24 }}>
           <SectionLabel>Wire List · Commissioner</SectionLabel>
-          <div style={{ marginTop: 12, fontSize: 14, color: "var(--am-text-muted)" }}>
+          <div style={{ marginTop: 12, fontSize: 15, color: "var(--am-text-muted)" }}>
             No waiver periods yet. Create one to get started.
           </div>
           <CreatePeriodForm
@@ -251,7 +251,7 @@ export default function WireListCommissionerPage() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
           <div>
             <SectionLabel>Wire List · Commissioner</SectionLabel>
-            <div style={{ fontFamily: "var(--am-display)", fontSize: 18, color: "var(--am-text)", marginTop: 4 }}>
+            <div style={{ fontFamily: "var(--am-display)", fontSize: 17, color: "var(--am-text)", marginTop: 4 }}>
               Period #{period.id} · {new Date(period.deadlineAt).toLocaleString()}
             </div>
           </div>
@@ -324,7 +324,7 @@ export default function WireListCommissionerPage() {
                 </div>
               );
             })}
-            <div style={{ marginTop: 8, fontSize: 12, color: "var(--am-text-muted)" }}>
+            <div style={{ marginTop: 8, fontSize: 13, color: "var(--am-text-muted)" }}>
               Revert each blocked Add and re-decide its outcome (FAIL or SKIP), then try Finalize again.
             </div>
           </div>
@@ -340,7 +340,7 @@ export default function WireListCommissionerPage() {
         )}
 
         {byTeam.length === 0 ? (
-          <div style={{ marginTop: 24, padding: 24, fontSize: 14, color: "var(--am-text-muted)", textAlign: "center" }}>
+          <div style={{ marginTop: 24, padding: 24, fontSize: 15, color: "var(--am-text-muted)", textAlign: "center" }}>
             No teams have submitted Add or Drop entries for this period.
           </div>
         ) : (
@@ -404,7 +404,7 @@ function CreatePeriodForm({ value, onChange, onSubmit, busy }: {
       background: "var(--am-surface)", border: "1px solid var(--am-border)",
       display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap",
     }}>
-      <label style={{ fontSize: 12, color: "var(--am-text-muted)" }}>Deadline:</label>
+      <label style={{ fontSize: 13, color: "var(--am-text-muted)" }}>Deadline:</label>
       <input
         type="datetime-local"
         value={value}
@@ -446,9 +446,9 @@ function TeamBlock({
       background: "var(--am-surface)", border: "1px solid var(--am-border)",
     }}>
       <div style={{ marginBottom: 10 }}>
-        <div style={{ fontFamily: "var(--am-display)", fontSize: 16, color: "var(--am-text)" }}>
+        <div style={{ fontFamily: "var(--am-display)", fontSize: 17, color: "var(--am-text)" }}>
           {team?.name ?? `Team #${teamId}`}
-          {team?.code && <span style={{ marginLeft: 8, fontSize: 11, color: "var(--am-text-muted)" }}>{team.code}</span>}
+          {team?.code && <span style={{ marginLeft: 8, fontSize: 13, color: "var(--am-text-muted)" }}>{team.code}</span>}
         </div>
       </div>
       <div className="wl-two-col" style={{ marginTop: 0, gap: 12 }}>
@@ -510,7 +510,7 @@ function AddRow({ entry, isLocked, isProcessed, busy, onSucceed, onFail, onSkip,
       </span>
       <OutcomeChip outcome={entry.outcome} />
       {entry.reason && (
-        <span style={{ fontSize: 10, color: "var(--am-text-muted)", fontStyle: "italic", marginLeft: 4 }}>
+        <span style={{ fontSize: 13, color: "var(--am-text-muted)", fontStyle: "italic", marginLeft: 4 }}>
           {entry.reason}
         </span>
       )}
@@ -538,7 +538,7 @@ function DropRow({ entry }: { entry: DropEntry }) {
       <span style={{ flex: 1, color: "var(--am-text)", fontSize: 13 }}>
         {entry.player?.name ?? `#${entry.playerId}`}
       </span>
-      <span style={{ fontSize: 10, fontFamily: "var(--am-mono)", color: "var(--am-text-muted)" }}>
+      <span style={{ fontSize: 13, fontFamily: "var(--am-mono)", color: "var(--am-text-muted)" }}>
         {entry.dropMode === "IL_STASH" ? "IL" : "REL"}
       </span>
       <DropStatusChip status={entry.status} />
@@ -577,7 +577,7 @@ const btn: React.CSSProperties = {
 };
 const btnPrimary: React.CSSProperties = { ...btn, background: "var(--am-accent)", color: "var(--am-on-accent)", border: "none" };
 const btnDisabled: React.CSSProperties = { ...btn, opacity: 0.4, cursor: "not-allowed" };
-const btnSmall: React.CSSProperties = { ...btn, padding: "2px 8px", fontSize: 11 };
+const btnSmall: React.CSSProperties = { ...btn, padding: "2px 8px", fontSize: 13 };
 const btnGreen: React.CSSProperties = { ...btnSmall, background: "color-mix(in srgb, var(--am-positive) 20%, var(--am-chip))" };
 const btnRed: React.CSSProperties = { ...btnSmall, background: "color-mix(in srgb, var(--am-negative) 20%, var(--am-chip))" };
 const btnAmber: React.CSSProperties = { ...btnSmall, background: "color-mix(in srgb, var(--am-warning) 20%, var(--am-chip))" };
@@ -586,22 +586,22 @@ const priorityBadge: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", justifyContent: "center",
   minWidth: 22, height: 22, borderRadius: 5,
   background: "var(--am-chip)", color: "var(--am-text-muted)",
-  fontFamily: "var(--am-mono)", fontSize: 11, fontWeight: 600,
+  fontFamily: "var(--am-mono)", fontSize: 13, fontWeight: 600,
 };
 
 const chipBase: React.CSSProperties = {
   display: "inline-block",
   padding: "1px 6px", borderRadius: 4,
-  fontSize: 10, fontWeight: 600, fontFamily: "var(--am-mono)",
+  fontSize: 13, fontWeight: 600, fontFamily: "var(--am-mono)",
   border: "1px solid transparent",
 };
 
 const emptyStyle: React.CSSProperties = {
-  padding: "8px 0", fontSize: 12, color: "var(--am-text-muted)",
+  padding: "8px 0", fontSize: 13, color: "var(--am-text-muted)",
 };
 
 const selectStyle: React.CSSProperties = {
-  padding: "4px 8px", fontSize: 12, fontFamily: "var(--am-mono)",
+  padding: "4px 8px", fontSize: 13, fontFamily: "var(--am-mono)",
   background: "var(--am-bg)", color: "var(--am-text)",
   border: "1px solid var(--am-border)", borderRadius: 6,
 };

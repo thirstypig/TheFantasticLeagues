@@ -20,7 +20,7 @@ function FieldRow({ label, children }: { label: string; children: ReactNode }) {
         display: "flex",
         flexDirection: "column",
         gap: 4,
-        fontSize: 11,
+        fontSize: 13,
         color: "var(--am-text-muted)",
         textTransform: "uppercase",
         letterSpacing: 0.6,
@@ -42,7 +42,7 @@ function MockInput({ placeholder }: { placeholder: string }) {
         border: "1px solid var(--am-border)",
         background: "var(--am-surface-faint)",
         color: "var(--am-text-faint)",
-        fontSize: 12.5,
+        fontSize: 13,
         fontWeight: 500,
         textTransform: "none",
         letterSpacing: 0,
@@ -62,7 +62,7 @@ function MockSelect({ options }: { options: string[] }) {
         border: "1px solid var(--am-border)",
         background: "var(--am-chip)",
         color: "var(--am-text)",
-        fontSize: 12.5,
+        fontSize: 13,
         fontWeight: 500,
         textTransform: "none",
         letterSpacing: 0,
@@ -88,7 +88,7 @@ function MockButton({ label, primary }: { label: string; primary?: boolean }) {
         background: primary ? "var(--am-irid)" : "transparent",
         color: primary ? "var(--am-on-accent)" : "var(--am-text-muted)",
         border: primary ? "1px solid transparent" : "1px solid var(--am-border)",
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: 600,
         cursor: "default",
         minHeight: 36,
@@ -119,7 +119,7 @@ export function AddDropPanelMock({ preselectedSlot }: { preselectedSlot?: string
       <FieldRow label="Player to drop">
         <MockSelect options={["Choose from your roster…"]} />
       </FieldRow>
-      <div style={{ fontSize: 11, color: "var(--am-text-faint)", lineHeight: 1.5, marginTop: 4 }}>
+      <div style={{ fontSize: 13, color: "var(--am-text-faint)", lineHeight: 1.5, marginTop: 4 }}>
         Auto-resolve will compute legal slot assignments. If a Position-Eligibility shift is
         required, you'll see the proposed end-state before confirming.
       </div>
@@ -144,7 +144,7 @@ export function IlStashPanelMock({ playerName }: { playerName?: string }) {
       <FieldRow label="Free agent to fill the active spot (optional)">
         <MockInput placeholder="Search free agents to claim into the vacated slot…" />
       </FieldRow>
-      <div style={{ fontSize: 11, color: "var(--am-text-faint)", lineHeight: 1.5 }}>
+      <div style={{ fontSize: 13, color: "var(--am-text-faint)", lineHeight: 1.5 }}>
         Stashing on IL preserves the player's roster slot but vacates their lineup spot.
         If no replacement is selected, the lineup runs short until you fill it.
       </div>
@@ -166,7 +166,7 @@ export function IlActivatePanelMock({ playerName }: { playerName?: string }) {
       <FieldRow label="Active player to drop or move">
         <MockSelect options={["Auto-resolve", "Drop a specific player…"]} />
       </FieldRow>
-      <div style={{ fontSize: 11, color: "var(--am-text-faint)", lineHeight: 1.5 }}>
+      <div style={{ fontSize: 13, color: "var(--am-text-faint)", lineHeight: 1.5 }}>
         The bipartite matcher will find a legal slot configuration. If none exists, you'll
         be prompted to pick a drop manually.
       </div>
@@ -185,7 +185,7 @@ export function DropPanelMock({ playerName }: { playerName?: string }) {
       <FieldRow label="Player to drop">
         <MockSelect options={[playerName ?? "Pick a player…"]} />
       </FieldRow>
-      <div style={{ fontSize: 11, color: "var(--am-text-faint)", lineHeight: 1.5 }}>
+      <div style={{ fontSize: 13, color: "var(--am-text-faint)", lineHeight: 1.5 }}>
         Dropping a player without a replacement leaves the slot empty. This is a
         commissioner-only path; owners use Add & drop instead.
       </div>

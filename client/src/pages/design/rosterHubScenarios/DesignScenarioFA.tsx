@@ -285,7 +285,7 @@ export function DesignScenarioFA() {
             <div style={{ padding: 16, paddingBottom: 6, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
                 <SectionLabel>✦ Active roster · drop FAs onto slots</SectionLabel>
-                <p style={{ margin: 0, fontSize: 12, color: "var(--am-text-muted)" }}>
+                <p style={{ margin: 0, fontSize: 13, color: "var(--am-text-muted)" }}>
                   Drag a free agent (right panel) onto a roster row. The displaced player drops to
                   the pool below. Stack multiple adds before save.
                 </p>
@@ -343,7 +343,7 @@ export function DesignScenarioFA() {
                   <div
                     style={{
                       padding: "8px 12px",
-                      fontSize: 10,
+                      fontSize: 13,
                       letterSpacing: 1.4,
                       textTransform: "uppercase",
                       color: "#fbbf24",
@@ -417,7 +417,7 @@ export function DesignScenarioFA() {
                     border: "1px solid var(--am-border)",
                     background: "var(--am-chip)",
                     color: "var(--am-text)",
-                    fontSize: 12.5,
+                    fontSize: 13,
                   }}
                 />
                 <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 4 }}>
@@ -432,7 +432,7 @@ export function DesignScenarioFA() {
                         border: "1px solid var(--am-border)",
                         background: posFilter === p ? "var(--am-irid)" : "var(--am-chip)",
                         color: posFilter === p ? "#fff" : "var(--am-text-muted)",
-                        fontSize: 10.5,
+                        fontSize: 13,
                         fontWeight: 600,
                         cursor: "pointer",
                         letterSpacing: 0.4,
@@ -445,7 +445,7 @@ export function DesignScenarioFA() {
               </div>
               <div style={{ maxHeight: "calc(100svh - 220px)", overflowY: "auto" }}>
                 {filteredFAs.length === 0 ? (
-                  <div style={{ padding: 16, fontSize: 12, color: "var(--am-text-muted)", textAlign: "center" }}>
+                  <div style={{ padding: 16, fontSize: 13, color: "var(--am-text-muted)", textAlign: "center" }}>
                     No matches.
                   </div>
                 ) : (
@@ -494,7 +494,7 @@ function FACard({ fa, isDragging }: { fa: PreviewPlayer; isDragging: boolean }) 
           borderRadius: 8,
           padding: "4px 6px",
           color: "var(--am-text-muted)",
-          fontSize: 14,
+          fontSize: 15,
           touchAction: "none",
           userSelect: "none",
           cursor: isDragging ? "grabbing" : "grab",
@@ -504,7 +504,7 @@ function FACard({ fa, isDragging }: { fa: PreviewPlayer; isDragging: boolean }) 
       </button>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>{fa.name}</div>
-        <div style={{ fontSize: 11, color: "var(--am-text-faint)", letterSpacing: 0.4 }}>
+        <div style={{ fontSize: 13, color: "var(--am-text-faint)", letterSpacing: 0.4 }}>
           {fa.posList} · {fa.mlbTeam}
           {fa.projectedValue != null && (
             <span style={{ color: "var(--am-text-muted)", marginLeft: 6 }}>· ${fa.projectedValue} proj</span>
@@ -520,7 +520,7 @@ function FAFooter() {
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
       <Glass>
         <SectionLabel>✦ How it works</SectionLabel>
-        <ul style={{ margin: "8px 0 0 0", paddingLeft: 20, fontSize: 12.5, color: "var(--am-text)", lineHeight: 1.6 }}>
+        <ul style={{ margin: "8px 0 0 0", paddingLeft: 20, fontSize: 13, color: "var(--am-text)", lineHeight: 1.6 }}>
           <li>Side panel — not a modal — keeps stat columns visible.</li>
           <li>Drag a FA onto a slot to add them; the occupant moves to the drop pool.</li>
           <li>Multiple FA adds stack as pending changes.</li>
@@ -530,7 +530,7 @@ function FAFooter() {
       </Glass>
       <Glass>
         <SectionLabel>✦ Open questions — Free agent add/drop</SectionLabel>
-        <ol style={{ margin: "8px 0 0 0", paddingLeft: 20, fontSize: 12.5, color: "var(--am-text)", lineHeight: 1.6 }}>
+        <ol style={{ margin: "8px 0 0 0", paddingLeft: 20, fontSize: 13, color: "var(--am-text)", lineHeight: 1.6 }}>
           <li><strong>Search ergonomics</strong> — name only, or also by team/MLB position? Fuzzy match?</li>
           <li><strong>Filter persistence</strong> — does the panel remember the last filter across opens?</li>
           <li><strong>Multi-add UX</strong> — current is sequential drop; should there be a batch add cart instead?</li>
@@ -550,7 +550,7 @@ const ctlButton: React.CSSProperties = {
   border: "1px solid var(--am-border)",
   background: "var(--am-irid)",
   color: "#fff",
-  fontSize: 12.5,
+  fontSize: 13,
   fontWeight: 600,
   cursor: "pointer",
 };
@@ -560,7 +560,7 @@ const tinyBtn: React.CSSProperties = {
   border: "1px solid var(--am-border)",
   borderRadius: 8,
   padding: "3px 7px",
-  fontSize: 11,
+  fontSize: 13,
   color: "var(--am-text-muted)",
   cursor: "pointer",
 };

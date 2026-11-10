@@ -70,7 +70,7 @@ function StatTileInner({
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
           <span
             style={{
-              fontSize: 10,
+              fontSize: 13,
               fontWeight: 600,
               letterSpacing: 1.2,
               textTransform: "uppercase",
@@ -89,7 +89,7 @@ function StatTileInner({
             </div>
             <div
               style={{
-                fontSize: 11,
+                fontSize: 13,
                 color: "var(--am-text-faint)",
                 marginTop: 6,
                 whiteSpace: "nowrap",
@@ -114,7 +114,7 @@ function StatTileInner({
               marginTop: 12,
               borderRadius: 10,
               padding: "10px 12px",
-              fontSize: 11,
+              fontSize: 13,
               lineHeight: 1.5,
               background: INSIGHT_TONE[insight.priority].bg,
               border: `1px solid ${INSIGHT_TONE[insight.priority].border}`,
@@ -154,7 +154,7 @@ function DeltaBadge({ delta }: { delta: number }) {
         display: "inline-flex",
         alignItems: "center",
         gap: 2,
-        fontSize: 11,
+        fontSize: 13,
         fontWeight: 600,
         padding: "2px 8px",
         borderRadius: 99,

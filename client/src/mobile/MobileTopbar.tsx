@@ -38,7 +38,7 @@ export function MobileTopbar({
           style={{
             width: 32,
             minHeight: 32,
-            fontSize: 18,
+            fontSize: 17,
             color: "var(--am-text)",
             background: "transparent",
             border: "none",
@@ -55,7 +55,7 @@ export function MobileTopbar({
         <div style={{ flex: 1, textAlign: "center", minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 600, color: "var(--am-text)", lineHeight: 1.2 }}>{title}</div>
           {subtitle && (
-            <div style={{ fontSize: 10.5, color: "var(--am-text-faint)", marginTop: 2 }}>{subtitle}</div>
+            <div style={{ fontSize: 13, color: "var(--am-text-faint)", marginTop: 2 }}>{subtitle}</div>
           )}
         </div>
         <button
@@ -66,7 +66,7 @@ export function MobileTopbar({
           style={{
             width: 32,
             minHeight: 32,
-            fontSize: 16,
+            fontSize: 17,
             color: "var(--am-text-muted)",
             background: "transparent",
             border: "none",

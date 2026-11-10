@@ -24,22 +24,22 @@ export default function RecentChangesPage() {
     <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 16px 32px" }}>
       <Link
         to={`/commissioner/${leagueId}`}
-        style={{ display: "inline-flex", alignItems: "center", minHeight: 44, fontSize: 16, color: "var(--am-text-muted)" }}
+        style={{ display: "inline-flex", alignItems: "center", minHeight: 44, fontSize: 17, color: "var(--am-text-muted)" }}
       >
         ‹ Commissioner
       </Link>
       <SectionLabel>Recent changes</SectionLabel>
       <Glass padded={false}>
         {error ? (
-          <p style={{ padding: 16, margin: 0, fontSize: 16, color: "var(--am-negative)" }}>Couldn’t load recent changes.</p>
+          <p style={{ padding: 16, margin: 0, fontSize: 17, color: "var(--am-negative)" }}>Couldn’t load recent changes.</p>
         ) : changes === null ? (
-          <p style={{ padding: 16, margin: 0, fontSize: 16, color: "var(--am-text-muted)" }}>Loading…</p>
+          <p style={{ padding: 16, margin: 0, fontSize: 17, color: "var(--am-text-muted)" }}>Loading…</p>
         ) : changes.length === 0 ? (
-          <p style={{ padding: 16, margin: 0, fontSize: 16, color: "var(--am-text-muted)" }}>Nothing yet.</p>
+          <p style={{ padding: 16, margin: 0, fontSize: 17, color: "var(--am-text-muted)" }}>Nothing yet.</p>
         ) : (
           changes.map((c) => (
             <div key={c.id} style={{ padding: "12px 16px", borderBottom: "1px solid var(--am-border)", minHeight: 44 }}>
-              <div style={{ fontSize: 16, color: "var(--am-text)" }}>{describeChange(c, periods)}</div>
+              <div style={{ fontSize: 17, color: "var(--am-text)" }}>{describeChange(c, periods)}</div>
               <div style={MUTED}>
                 {c.userName ?? "System"} · {new Date(c.createdAt).toLocaleString()}
               </div>

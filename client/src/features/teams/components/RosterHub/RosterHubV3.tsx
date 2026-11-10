@@ -284,7 +284,7 @@ const totalCellStyle: CSSProperties = {
   borderBottom: "1px solid var(--am-border)",
   background: "var(--am-chip)",
   color: "var(--am-text)",
-  fontSize: 12,
+  fontSize: 13,
   fontWeight: 750,
   textAlign: "right",
   fontVariantNumeric: "tabular-nums",
@@ -307,7 +307,7 @@ function SectionThead({ cols }: SectionTheadProps) {
             style={{
               textAlign: c.align,
               padding: "8px 12px",
-              fontSize: 10,
+              fontSize: 13,
               letterSpacing: 1.2,
               textTransform: "uppercase",
               color: "var(--am-text-muted)",
@@ -346,7 +346,7 @@ function SectionLabelRow({ label, count }: { label: string; count: number }) {
     <div
       style={{
         padding: "12px 12px 6px",
-        fontSize: 10.5,
+        fontSize: 13,
         letterSpacing: 1.6,
         textTransform: "uppercase",
         color: "var(--am-text-muted)",
@@ -409,7 +409,7 @@ export function RosterHubV3({
       <Glass padded={false} style={{ overflow: "visible" }}>
         <div style={{ padding: 16, paddingBottom: 6 }}>
           <SectionLabel>✦ Active roster · 23 slots</SectionLabel>
-          <p style={{ margin: 0, fontSize: 12, color: "var(--am-text-muted)" }}>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--am-text-muted)" }}>
             Tap a slot pill to select; eligible destinations glow. Drag the ⋮⋮ icon
             to swap roster positions. The "..." menu navigates to focused sub-routes for
             free agent / IL flows — no modals, the stats table stays visible until you
@@ -441,14 +441,14 @@ export function RosterHubV3({
                 borderRadius: 12,
                 border: "1px solid var(--am-border-strong)",
                 background: "color-mix(in srgb, var(--am-positive) 8%, transparent)",
-                fontSize: 12.5,
+                fontSize: 13,
                 color: "var(--am-text)",
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
               }}
             >
-              <span aria-hidden style={{ fontSize: 14 }}>
+              <span aria-hidden style={{ fontSize: 15 }}>
                 ✦
               </span>
               <span>
@@ -656,7 +656,7 @@ export function RosterHubV3({
           aria-hidden
           style={{ left: dragSim.ghostX, top: dragSim.ghostY }}
         >
-          <span style={{ fontSize: 11, color: "var(--am-text-muted)", letterSpacing: 0.6, textTransform: "uppercase" }}>
+          <span style={{ fontSize: 13, color: "var(--am-text-muted)", letterSpacing: 0.6, textTransform: "uppercase" }}>
             Dragging
           </span>
           <span>
@@ -727,7 +727,7 @@ function CareerStatsAccordionRow({
               <div>
                 <div
                   style={{
-                    fontSize: 10,
+                    fontSize: 13,
                     fontWeight: 700,
                     letterSpacing: 1.2,
                     textTransform: "uppercase",
@@ -740,7 +740,7 @@ function CareerStatsAccordionRow({
                 <div style={{ color: "var(--am-text)", fontWeight: 750, fontSize: 13 }}>
                   {player.name}
                 </div>
-                <div style={{ color: "var(--am-text-muted)", fontSize: 12, marginTop: 2 }}>
+                <div style={{ color: "var(--am-text-muted)", fontSize: 13, marginTop: 2 }}>
                   {player.mlbTeam || "MLB team unknown"} · assigned to {formatSlotInstance(player)}
                 </div>
               </div>
@@ -748,7 +748,7 @@ function CareerStatsAccordionRow({
               <div>
                 <div
                   style={{
-                    fontSize: 10,
+                    fontSize: 13,
                     fontWeight: 700,
                     letterSpacing: 1.2,
                     textTransform: "uppercase",
@@ -764,7 +764,7 @@ function CareerStatsAccordionRow({
 
             <div
               style={{
-                fontSize: 10,
+                fontSize: 13,
                 fontWeight: 700,
                 letterSpacing: 1.2,
                 textTransform: "uppercase",
@@ -775,17 +775,17 @@ function CareerStatsAccordionRow({
             </div>
           </div>
           {loading ? (
-            <div style={{ padding: 18, fontSize: 12, color: "var(--am-text-muted)" }}>
+            <div style={{ padding: 18, fontSize: 13, color: "var(--am-text-muted)" }}>
               Loading career stats…
             </div>
           ) : error ? (
-            <div style={{ padding: 18, fontSize: 12, color: "var(--am-negative)" }}>
+            <div style={{ padding: 18, fontSize: 13, color: "var(--am-negative)" }}>
               {error}
             </div>
           ) : rows.length ? (
             <CareerTable rows={rows} mode={mode} />
           ) : (
-            <div style={{ padding: 18, fontSize: 12, color: "var(--am-text-muted)" }}>
+            <div style={{ padding: 18, fontSize: 13, color: "var(--am-text-muted)" }}>
               No career stats available.
             </div>
           )}
@@ -818,7 +818,7 @@ function EligibilityChips({ player }: { player: RosterHubPlayer }) {
               gap: 4,
               padding: "4px 9px",
               borderRadius: 999,
-              fontSize: 11,
+              fontSize: 13,
               fontWeight: 700,
               color: slot === player.assignedSlot ? "var(--am-on-accent)" : "var(--am-text-muted)",
               background: slot === player.assignedSlot ? "var(--am-accent)" : "var(--am-chip)",
@@ -967,7 +967,7 @@ function MobileSection({
       <div
         style={{
           padding: "8px 10px",
-          fontSize: 10,
+          fontSize: 13,
           letterSpacing: 1.4,
           textTransform: "uppercase",
           color: "var(--am-text-muted)",

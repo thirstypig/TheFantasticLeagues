@@ -81,12 +81,12 @@ export default function Login() {
     width: "100%",
     height: 44,
     padding: "0 14px",
-    background: "var(--am-surface-faint)",
-    border: `1px solid ${focused ? "var(--am-accent)" : "var(--am-border)"}`,
+    background: "var(--am-field)",
+    border: `1px solid ${focused ? "var(--am-accent)" : "var(--am-field-line)"}`,
     boxShadow: focused ? "0 0 0 1px var(--am-accent)" : "none",
     borderRadius: 12,
     color: "var(--am-text)",
-    fontSize: 14,
+    fontSize: 15,
     outline: "none",
     transition: "border-color 120ms ease, box-shadow 120ms ease",
   });
@@ -135,7 +135,7 @@ export default function Login() {
             <div
               style={{
                 fontFamily: "var(--am-display)",
-                fontSize: 18,
+                fontSize: 17,
                 lineHeight: 1.1,
                 letterSpacing: -0.2,
                 color: "var(--am-text)",
@@ -179,7 +179,7 @@ export default function Login() {
           {/* Divider */}
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
             <div style={{ flex: 1, height: 1, background: "var(--am-border)" }} />
-            <div style={{ fontSize: 10, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--am-text-faint)", fontWeight: 600 }}>
+            <div style={{ fontSize: 13, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--am-text-faint)", fontWeight: 600 }}>
               Or with email
             </div>
             <div style={{ flex: 1, height: 1, background: "var(--am-border)" }} />
@@ -190,7 +190,7 @@ export default function Login() {
               <label
                 style={{
                   display: "block",
-                  fontSize: 10,
+                  fontSize: 13,
                   letterSpacing: 1.4,
                   textTransform: "uppercase",
                   color: "var(--am-text-faint)",
@@ -216,7 +216,7 @@ export default function Login() {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                 <label
                   style={{
-                    fontSize: 10,
+                    fontSize: 13,
                     letterSpacing: 1.4,
                     textTransform: "uppercase",
                     color: "var(--am-text-faint)",
@@ -228,7 +228,7 @@ export default function Login() {
                 <Link
                   to="/forgot-password"
                   style={{
-                    fontSize: 11,
+                    fontSize: 13,
                     color: "var(--am-text-muted)",
                     textDecoration: "underline",
                     textUnderlineOffset: 2,
@@ -278,7 +278,7 @@ export default function Login() {
                   background: "color-mix(in srgb, var(--am-negative) 10%, transparent)",
                   border: "1px solid var(--am-border)",
                   color: "var(--am-negative)",
-                  fontSize: 12,
+                  fontSize: 13,
                 }}
               >
                 Your email is not approved. Contact your league admin for access.
@@ -290,9 +290,9 @@ export default function Login() {
                 style={{
                   padding: 12,
                   borderRadius: 12,
-                  background: "var(--am-surface-faint)",
-                  border: "1px solid var(--am-border)",
-                  fontSize: 12,
+                  background: "var(--am-field)",
+                  border: "1px solid var(--am-field-line)",
+                  fontSize: 13,
                   color: "var(--am-text)",
                 }}
               >
@@ -300,7 +300,7 @@ export default function Login() {
                   Please check your email for a confirmation link before logging in.
                 </div>
                 {resendSuccess ? (
-                  <div style={{ fontSize: 11, color: "var(--am-positive)" }}>
+                  <div style={{ fontSize: 13, color: "var(--am-positive)" }}>
                     Confirmation email sent! Check your inbox.
                   </div>
                 ) : (
@@ -309,7 +309,7 @@ export default function Login() {
                     onClick={handleResendConfirmation}
                     disabled={resendLoading || !email}
                     style={{
-                      fontSize: 11,
+                      fontSize: 13,
                       fontWeight: 600,
                       color: "var(--am-accent)",
                       background: "transparent",
@@ -335,7 +335,7 @@ export default function Login() {
                   background: "color-mix(in srgb, var(--am-negative) 10%, transparent)",
                   border: "1px solid var(--am-border)",
                   color: "var(--am-negative)",
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: 500,
                 }}
               >
@@ -353,7 +353,7 @@ export default function Login() {
                 borderRadius: 99,
                 background: "var(--am-irid)",
                 color: "var(--am-on-accent)",
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: 600,
                 border: "none",
                 cursor: loading ? "not-allowed" : "pointer",
@@ -395,10 +395,10 @@ export default function Login() {
                   justifyContent: "center",
                   gap: 8,
                   borderRadius: 12,
-                  background: "var(--am-surface-faint)",
-                  border: "1px solid var(--am-border)",
+                  background: "var(--am-field)",
+                  border: "1px solid var(--am-field-line)",
                   color: "var(--am-text-muted)",
-                  fontSize: 11,
+                  fontSize: 13,
                   fontWeight: 600,
                   letterSpacing: 1.2,
                   textTransform: "uppercase",

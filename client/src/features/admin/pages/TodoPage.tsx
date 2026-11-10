@@ -146,7 +146,7 @@ export default function TodoPage() {
     <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
       <Glass strong>
         <SectionLabel>✦ Admin · Planning</SectionLabel>
-        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
           Micro todos.
         </h1>
         <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
@@ -160,7 +160,7 @@ export default function TodoPage() {
       <main>
         <Glass>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 18, fontSize: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 18, fontSize: 13 }}>
               <span style={{ color: "var(--am-text-muted)" }}><strong style={{ color: "var(--am-text)", fontWeight: 700 }}>{totals.done}</strong> / {totals.total} done</span>
               <span style={{ color: "rgb(251, 191, 36)" }}><strong style={{ fontWeight: 700 }}>{totals.inProgress}</strong> in progress</span>
               <span style={{ color: "var(--am-text-faint)" }}><strong style={{ fontWeight: 700 }}>{totals.notStarted}</strong> not started</span>
@@ -169,7 +169,7 @@ export default function TodoPage() {
               <div style={{ height: 8, width: 192, background: "var(--am-surface-faint)", borderRadius: 99, overflow: "hidden" }}>
                 <div style={{ height: "100%", background: "rgb(16, 185, 129)", width: `${totals.total > 0 ? (totals.done / totals.total) * 100 : 0}%`, transition: "width 500ms" }} />
               </div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--am-text-muted)" }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--am-text-muted)" }}>
                 {totals.total > 0 ? Math.round((totals.done / totals.total) * 100) : 0}%
               </span>
             </div>
@@ -200,7 +200,7 @@ export default function TodoPage() {
                     <Link
                       key={phase.id}
                       to={`/roadmap#${phase.id}`}
-                      className="text-[10px] font-bold uppercase px-2 py-1 rounded border text-sky-400 bg-sky-500/10 border-sky-500/30 hover:bg-sky-500/20"
+                      className="text-xs font-bold uppercase px-2 py-1 rounded border text-sky-400 bg-sky-500/10 border-sky-500/30 hover:bg-sky-500/20"
                       title={phase.timeframe}
                     >
                       {phase.label} · {done}/{linked.length}
@@ -268,7 +268,7 @@ export default function TodoPage() {
                         style={{ width: `${cTotal > 0 ? (cDone / cTotal) * 100 : 0}%` }}
                       />
                     </div>
-                    <span className="text-[10px] text-[var(--lg-text-muted)] tabular-nums shrink-0">
+                    <span className="text-xs text-[var(--lg-text-muted)] tabular-nums shrink-0">
                       {cTotal > 0 ? Math.round((cDone / cTotal) * 100) : 0}%
                     </span>
                   </div>
@@ -296,7 +296,7 @@ export default function TodoPage() {
                               <Icon size={14} className={`${cfg.color} ${todo.status === "in_progress" ? "animate-spin" : ""}`} />
                             </button>
 
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${pcfg.color} flex-shrink-0`}>
+                            <span className={`text-xs font-bold px-1.5 py-0.5 rounded border ${pcfg.color} flex-shrink-0`}>
                               {pcfg.label}
                             </span>
 
@@ -308,13 +308,13 @@ export default function TodoPage() {
                             </button>
 
                             {todo.targetDate && (
-                              <span className="text-[10px] text-[var(--lg-text-muted)] flex items-center gap-1 flex-shrink-0" title={`Target: ${todo.targetDate}`}>
+                              <span className="text-xs text-[var(--lg-text-muted)] flex items-center gap-1 flex-shrink-0" title={`Target: ${todo.targetDate}`}>
                                 <Calendar size={10} /> {todo.targetDate}
                               </span>
                             )}
 
                             {todo.owner && (
-                              <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border flex-shrink-0 ${
+                              <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full border flex-shrink-0 ${
                                 todo.owner === "jimmy"
                                   ? "text-blue-400 bg-blue-500/10 border-blue-500/20"
                                   : "text-purple-400 bg-purple-500/10 border-purple-500/20"
@@ -342,7 +342,7 @@ export default function TodoPage() {
                                   {todo.roadmapLink && (
                                     <Link
                                       to={todo.roadmapLink}
-                                      className="text-[10px] font-bold uppercase px-2 py-1 rounded border text-sky-400 bg-sky-500/10 border-sky-500/30 hover:bg-sky-500/20 flex items-center gap-1"
+                                      className="text-xs font-bold uppercase px-2 py-1 rounded border text-sky-400 bg-sky-500/10 border-sky-500/30 hover:bg-sky-500/20 flex items-center gap-1"
                                     >
                                       <ExternalLink size={10} /> Roadmap
                                     </Link>
@@ -350,7 +350,7 @@ export default function TodoPage() {
                                   {todo.conceptLink && (
                                     <Link
                                       to={todo.conceptLink}
-                                      className="text-[10px] font-bold uppercase px-2 py-1 rounded border text-fuchsia-400 bg-fuchsia-500/10 border-fuchsia-500/30 hover:bg-fuchsia-500/20 flex items-center gap-1"
+                                      className="text-xs font-bold uppercase px-2 py-1 rounded border text-fuchsia-400 bg-fuchsia-500/10 border-fuchsia-500/30 hover:bg-fuchsia-500/20 flex items-center gap-1"
                                     >
                                       <ExternalLink size={10} /> Concept
                                     </Link>

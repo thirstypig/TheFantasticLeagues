@@ -204,18 +204,18 @@ export default function TradingBlockPanel({ teamId, leagueWide = false, rosterPl
                       {group.items.map((item) => (
                         <ThemedTr key={item.id} className="hover:bg-[var(--lg-tint)] transition-colors">
                           <ThemedTd frozen>
-                            <button type="button" onClick={() => item.player?.mlbId && setSelectedMlbId(item.player.mlbId)} className="font-semibold text-[11px] hover:text-[var(--lg-accent)] transition-colors cursor-pointer text-left">{item.player?.name ?? "Unknown"}</button>
+                            <button type="button" onClick={() => item.player?.mlbId && setSelectedMlbId(item.player.mlbId)} className="font-semibold text-xs hover:text-[var(--lg-accent)] transition-colors cursor-pointer text-left">{item.player?.name ?? "Unknown"}</button>
                           </ThemedTd>
                           <ThemedTd>
-                            <span className="px-1 py-px rounded text-[8px] font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                            <span className="px-1 py-px rounded text-xs font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
                               {displayPos(item.player?.posPrimary)}
                             </span>
                           </ThemedTd>
                           <ThemedTd>
-                            <span className="text-[10px] font-bold uppercase text-[var(--lg-text-muted)]">{item.player?.mlbTeam || "FA"}</span>
+                            <span className="text-xs font-bold uppercase text-[var(--lg-text-muted)]">{item.player?.mlbTeam || "FA"}</span>
                           </ThemedTd>
                           <ThemedTd>
-                            <span className="text-[10px] text-[var(--lg-text-secondary)] italic">
+                            <span className="text-xs text-[var(--lg-text-secondary)] italic">
                               {item.askingFor || "—"}
                             </span>
                           </ThemedTd>
@@ -250,15 +250,15 @@ export default function TradingBlockPanel({ teamId, leagueWide = false, rosterPl
                 {items.map((item) => (
                   <ThemedTr key={item.id} className="hover:bg-[var(--lg-tint)] transition-colors">
                     <ThemedTd frozen>
-                      <button type="button" onClick={() => item.player?.mlbId && setSelectedMlbId(item.player.mlbId)} className="font-semibold text-[11px] hover:text-[var(--lg-accent)] transition-colors cursor-pointer text-left">{item.player?.name ?? "Unknown"}</button>
+                      <button type="button" onClick={() => item.player?.mlbId && setSelectedMlbId(item.player.mlbId)} className="font-semibold text-xs hover:text-[var(--lg-accent)] transition-colors cursor-pointer text-left">{item.player?.name ?? "Unknown"}</button>
                     </ThemedTd>
                     <ThemedTd>
-                      <span className="px-1 py-px rounded text-[8px] font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      <span className="px-1 py-px rounded text-xs font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
                         {displayPos(item.player?.posPrimary)}
                       </span>
                     </ThemedTd>
                     <ThemedTd>
-                      <span className="text-[10px] font-bold uppercase text-[var(--lg-text-muted)]">{item.player?.mlbTeam || "FA"}</span>
+                      <span className="text-xs font-bold uppercase text-[var(--lg-text-muted)]">{item.player?.mlbTeam || "FA"}</span>
                     </ThemedTd>
                     <ThemedTd>
                       {isMyTeam && editingId === item.id ? (
@@ -268,17 +268,17 @@ export default function TradingBlockPanel({ teamId, leagueWide = false, rosterPl
                             value={editAskingFor}
                             onChange={(e) => setEditAskingFor(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && handleSaveAskingFor(item)}
-                            className="lg-input text-[10px] py-0.5 px-1 w-32"
+                            className="lg-input text-xs py-0.5 px-1 w-32"
                             maxLength={200}
                             autoFocus
                           />
-                          <button type="button" onClick={() => handleSaveAskingFor(item)} className="text-[var(--lg-accent)] text-[10px]">Save</button>
+                          <button type="button" onClick={() => handleSaveAskingFor(item)} className="text-[var(--lg-accent)] text-xs">Save</button>
                         </div>
                       ) : (
                         <button
                           type="button"
                           onClick={() => { if (isMyTeam) { setEditingId(item.id); setEditAskingFor(item.askingFor || ""); } }}
-                          className={`text-[10px] text-[var(--lg-text-secondary)] italic max-w-[140px] truncate ${isMyTeam ? "hover:text-[var(--lg-accent)] cursor-pointer" : "cursor-default"}`}
+                          className={`text-xs text-[var(--lg-text-secondary)] italic max-w-[140px] truncate ${isMyTeam ? "hover:text-[var(--lg-accent)] cursor-pointer" : "cursor-default"}`}
                           title={item.askingFor || (isMyTeam ? "Set what you're looking for" : "")}
                         >
                           {item.askingFor || (isMyTeam ? <span className="opacity-40">+ asking for</span> : "—")}

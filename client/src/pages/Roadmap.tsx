@@ -644,7 +644,7 @@ function effortBadge(effort: string) {
   };
   return (
     <span
-      className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${colors[effort] ?? ""}`}
+      className={`text-xs font-semibold uppercase px-1.5 py-0.5 rounded border ${colors[effort] ?? ""}`}
     >
       {effort}
     </span>
@@ -766,12 +766,12 @@ function ProductRoadmapSection({ roadmap, categories }: { roadmap: RoadmapPhase[
                       {totalCount} items
                     </span>
                     {microStats.total > 0 && (
-                      <span className="text-[10px] font-semibold text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded">
+                      <span className="text-xs font-semibold text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded">
                         {microStats.done}/{microStats.total} micro
                       </span>
                     )}
                     {inProgressCount > 0 && (
-                      <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                      <span className="text-xs font-semibold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
                         {inProgressCount} active
                       </span>
                     )}
@@ -810,7 +810,7 @@ function ProductRoadmapSection({ roadmap, categories }: { roadmap: RoadmapPhase[
                                 {item.title}
                               </h4>
                               {item.status === "in-progress" && (
-                                <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                                <span className="text-xs font-semibold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
                                   In Progress
                                 </span>
                               )}
@@ -823,7 +823,7 @@ function ProductRoadmapSection({ roadmap, categories }: { roadmap: RoadmapPhase[
                               {(item.tags ?? []).map((tag) => (
                                 <span
                                   key={tag}
-                                  className="text-[10px] text-[var(--lg-text-muted)] bg-[var(--lg-tint)] px-1.5 py-0.5 rounded"
+                                  className="text-xs text-[var(--lg-text-muted)] bg-[var(--lg-tint)] px-1.5 py-0.5 rounded"
                                 >
                                   {tag}
                                 </span>
@@ -895,7 +895,7 @@ function CompletedFeaturesSection() {
                         <span className="text-sm font-medium text-[var(--lg-text-primary)]">
                           {item.title}
                         </span>
-                        <span className="text-[10px] text-[var(--lg-text-muted)] tabular-nums">
+                        <span className="text-xs text-[var(--lg-text-muted)] tabular-nums">
                           Session {item.session}
                         </span>
                       </div>
@@ -957,11 +957,11 @@ export default function Roadmap() {
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
             <SectionLabel>✦ Roadmap</SectionLabel>
-            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Roadmap</h1>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Roadmap</h1>
             <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>Macro roadmap and micro todos from one planning file.</div>
-            <div style={{ marginTop: 4, fontSize: 11, color: "var(--am-text-faint)" }}>Last updated: {updatedAt}</div>
+            <div style={{ marginTop: 4, fontSize: 13, color: "var(--am-text-faint)" }}>Last updated: {updatedAt}</div>
           </div>
-          <Link to="/tech" style={{ fontSize: 12, color: "var(--am-text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
+          <Link to="/tech" style={{ fontSize: 13, color: "var(--am-text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
             Under the Hood <ArrowRight className="w-3 h-3" />
           </Link>
         </div>

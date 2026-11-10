@@ -60,7 +60,7 @@ export function DropPool({ rows, onRestore }: DropPoolProps) {
             background: "var(--am-negative)",
           }}
         />
-        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--am-text)" }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>
           Drop pool · {rows.length} {noun}
         </span>
       </div>
@@ -94,7 +94,7 @@ export function DropPool({ rows, onRestore }: DropPoolProps) {
               aria-label="Drop"
               title="Will be dropped on save"
               style={{
-                fontSize: 10,
+                fontSize: 13,
                 fontWeight: 700,
                 padding: "2px 6px",
                 borderRadius: 6,
@@ -105,7 +105,7 @@ export function DropPool({ rows, onRestore }: DropPoolProps) {
             >
               DROP
             </span>
-            <span style={{ fontSize: 12, color: "var(--am-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: 13, color: "var(--am-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               <strong>{r.name}</strong>
               <span style={{ color: "var(--am-text-muted)", marginLeft: 6 }}>
                 from {r.slot}
@@ -117,7 +117,7 @@ export function DropPool({ rows, onRestore }: DropPoolProps) {
               onClick={() => onRestore(r.changeId)}
               aria-label={`Restore ${r.name} to roster`}
               style={{
-                fontSize: 11,
+                fontSize: 13,
                 fontWeight: 600,
                 padding: "4px 10px",
                 borderRadius: 8,

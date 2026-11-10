@@ -69,7 +69,7 @@ function ExpCell({ label, value }: ExpCellProps) {
     >
       <div
         style={{
-          fontSize: 9,
+          fontSize: 13,
           letterSpacing: 0.6,
           color: "var(--am-text-faint)",
           fontWeight: 700,
@@ -79,7 +79,7 @@ function ExpCell({ label, value }: ExpCellProps) {
       </div>
       <div
         style={{
-          fontSize: 14,
+          fontSize: 15,
           fontWeight: 700,
           color: "var(--am-text)",
           fontVariantNumeric: "tabular-nums",
@@ -172,7 +172,7 @@ export function MobilePlayerExpand({
       {/* Season stat strip */}
       <div
         style={{
-          fontSize: 9,
+          fontSize: 13,
           letterSpacing: 0.6,
           fontWeight: 700,
           color: "var(--am-text-faint)",
@@ -211,7 +211,7 @@ export function MobilePlayerExpand({
       {/* Career */}
       <div
         style={{
-          fontSize: 9.5,
+          fontSize: 13,
           letterSpacing: 0.6,
           fontWeight: 700,
           color: "var(--am-text-faint)",
@@ -221,15 +221,15 @@ export function MobilePlayerExpand({
         {careerRows.length ? `CAREER · LAST ${careerRows.length} SEASONS` : "CAREER"}
       </div>
       {careerLoading ? (
-        <div style={{ fontSize: 11, color: "var(--am-text-muted)", padding: "8px 0" }}>
+        <div style={{ fontSize: 13, color: "var(--am-text-muted)", padding: "8px 0" }}>
           Loading career…
         </div>
       ) : careerError ? (
-        <div style={{ fontSize: 11, color: "var(--am-text-muted)", padding: "8px 0" }}>
+        <div style={{ fontSize: 13, color: "var(--am-text-muted)", padding: "8px 0" }}>
           Career stats unavailable.
         </div>
       ) : careerRows.length === 0 ? (
-        <div style={{ fontSize: 11, color: "var(--am-text-muted)", padding: "8px 0" }}>
+        <div style={{ fontSize: 13, color: "var(--am-text-muted)", padding: "8px 0" }}>
           No career data yet.
         </div>
       ) : (
@@ -241,7 +241,7 @@ export function MobilePlayerExpand({
               ? "60px repeat(5, 1fr)"
               : "60px repeat(5, 1fr)",
             rowGap: 3,
-            fontSize: 11,
+            fontSize: 13,
             fontVariantNumeric: "tabular-nums",
             marginBottom: 10,
           }}
@@ -284,7 +284,7 @@ export function MobilePlayerExpand({
             background: isWatched ? "var(--am-chip-strong)" : "var(--am-irid)",
             color: isWatched ? "var(--am-text)" : "var(--am-on-accent)",
             border: isWatched ? "1px solid var(--am-border-strong)" : "none",
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: 700,
             cursor: watchPending ? "wait" : "pointer",
             fontFamily: "inherit",
@@ -311,7 +311,7 @@ export function MobilePlayerExpand({
               background: addState === "done" ? "var(--am-chip-strong)" : "var(--am-chip)",
               color: addState === "done" ? "var(--am-positive)" : "var(--am-accent)",
               border: "1px solid " + (addState === "done" ? "var(--am-border-strong)" : "var(--am-border)"),
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: 700,
               cursor: addState === "loading" || addState === "done" ? "default" : "pointer",
               fontFamily: "inherit",
@@ -332,7 +332,7 @@ export function MobilePlayerExpand({
             background: "var(--am-chip-strong)",
             color: "var(--am-text)",
             border: "1px solid var(--am-border)",
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: 600,
             cursor: player.mlb_id ? "pointer" : "default",
             fontFamily: "inherit",
@@ -342,7 +342,7 @@ export function MobilePlayerExpand({
         </button>
       </div>
       {addState === "error" && addError && (
-        <div style={{ marginTop: 6, fontSize: 11, color: "var(--am-negative)", textAlign: "center" }}>
+        <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-negative)", textAlign: "center" }}>
           {addError}
         </div>
       )}
@@ -354,7 +354,7 @@ function CareerHeader({ children, align = "left" }: { children: React.ReactNode;
   return (
     <div
       style={{
-        fontSize: 9,
+        fontSize: 13,
         letterSpacing: 0.5,
         fontWeight: 700,
         color: "var(--am-text-faint)",

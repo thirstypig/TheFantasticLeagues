@@ -233,21 +233,21 @@ const CategoryStandingsView: React.FC<CategoryStandingsViewProps> = ({
 
   if (loading) {
     return (
-      <div style={{ padding: 36, color: "var(--am-text-faint)", fontSize: 12, textAlign: "center" }}>
+      <div style={{ padding: 36, color: "var(--am-text-faint)", fontSize: 13, textAlign: "center" }}>
         Loading category standings…
       </div>
     );
   }
   if (error) {
     return (
-      <div style={{ padding: 24, color: "var(--am-negative)", fontSize: 12 }}>
+      <div style={{ padding: 24, color: "var(--am-negative)", fontSize: 13 }}>
         {error}
       </div>
     );
   }
   if (!data || matrixRows.length === 0) {
     return (
-      <div style={{ padding: 36, color: "var(--am-text-faint)", fontSize: 12, textAlign: "center" }}>
+      <div style={{ padding: 36, color: "var(--am-text-faint)", fontSize: 13, textAlign: "center" }}>
         No category standings yet — periods may not have completed.
       </div>
     );
@@ -291,17 +291,17 @@ const CategoryStandingsView: React.FC<CategoryStandingsViewProps> = ({
                     {idx + 1}
                   </ThemedTd>
                   <ThemedTd frozen>
-                    <span style={{ fontSize: 12, fontWeight: 500 }}>
+                    <span style={{ fontSize: 13, fontWeight: 500 }}>
                       {row.teamName}
                     </span>
                   </ThemedTd>
                   {orderedCategoryKeys.map((k) => (
                     <ThemedTd key={k} align="center" className="tabular-nums">
                       <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
-                        <span style={{ fontSize: 12, fontWeight: 600 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>
                           {fmtPoints(row.pointsByCat[k] ?? 0)}
                         </span>
-                        <span style={{ fontSize: 10, color: "var(--am-text-faint)", marginTop: 2 }}>
+                        <span style={{ fontSize: 13, color: "var(--am-text-faint)", marginTop: 2 }}>
                           {fmtVal(k, row.valueByCat[k] ?? NaN)}
                         </span>
                       </div>
@@ -390,7 +390,7 @@ function renderCategoryCard(
             ✦ {k}
           </SectionLabel>
           {cat.label && cat.label !== k && (
-            <span style={{ fontSize: 10, color: "var(--am-text-faint)" }}>
+            <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>
               {cat.label}
             </span>
           )}
@@ -403,7 +403,7 @@ function renderCategoryCard(
             gridTemplateColumns: "20px 1fr 44px 32px 52px",
             alignItems: "center",
             gap: 8,
-            fontSize: 9.5,
+            fontSize: 13,
             fontWeight: 700,
             letterSpacing: 0.5,
             textTransform: "uppercase",
@@ -452,7 +452,7 @@ function renderCategoryCard(
                   gridTemplateColumns: "20px 1fr 44px 32px 52px",
                   alignItems: "center",
                   gap: 8,
-                  fontSize: 12,
+                  fontSize: 13,
                   padding: "5px 0",
                   borderBottom: "1px solid var(--am-border)",
                   background: isMine
@@ -504,7 +504,7 @@ function renderCategoryCard(
                   <span
                     style={{
                       fontVariantNumeric: "tabular-nums",
-                      fontSize: 10.5,
+                      fontSize: 13,
                       fontWeight: 600,
                       textAlign: "right",
                       color: up

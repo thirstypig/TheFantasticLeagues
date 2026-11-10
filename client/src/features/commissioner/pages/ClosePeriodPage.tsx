@@ -52,14 +52,14 @@ function Step1({ readiness, base, onNext }: { readiness: Load<CloseReadiness>; b
       </Glass>
       {closed ? (
         <div>
-          <p style={{ margin: "0 0 4px", fontSize: 16 }}>This period is already closed.</p>
+          <p style={{ margin: "0 0 4px", fontSize: 17 }}>This period is already closed.</p>
           <Link to={base} style={LINK}>Back to Commissioner</Link>
         </div>
       ) : r.ready ? (
         <button type="button" style={PRIMARY} onClick={onNext}>Next</button>
       ) : (
         <div>
-          <p style={{ margin: "0 0 4px", fontSize: 16 }}>Come back after tomorrow morning's stats sync.</p>
+          <p style={{ margin: "0 0 4px", fontSize: 17 }}>Come back after tomorrow morning's stats sync.</p>
           <Link to={base} style={LINK}>Back to Commissioner</Link>
         </div>
       )}
@@ -195,7 +195,7 @@ function ReadinessGate({
   if (r.status === "completed" || !r.ready) {
     return (
       <Glass padded>
-        <p style={{ margin: "0 0 4px", fontSize: 16 }}>
+        <p style={{ margin: "0 0 4px", fontSize: 17 }}>
           {r.status === "completed" ? "This period is already closed." : "Come back after tomorrow morning's stats sync."}
         </p>
         <Link to={base} style={LINK}>Back to Commissioner</Link>
@@ -229,7 +229,7 @@ function Step5({
   if (bill === null) {
     return (
       <Glass padded>
-        <p style={{ margin: "0 0 4px", fontSize: 16 }}>Pick whether to bill IL fees now or later first.</p>
+        <p style={{ margin: "0 0 4px", fontSize: 17 }}>Pick whether to bill IL fees now or later first.</p>
         <Link to="?step=4" style={LINK}>Choose how to bill ›</Link>
       </Glass>
     );
@@ -343,7 +343,7 @@ export default function ClosePeriodPage() {
             ‹ Step {step - 1}
           </button>
         )}
-        <h1 style={{ margin: "4px 0 0", fontSize: 22, fontWeight: 700, color: "var(--am-text)" }}>Close {name}</h1>
+        <h1 style={{ margin: "4px 0 0", fontSize: 24, fontWeight: 700, color: "var(--am-text)" }}>Close {name}</h1>
         <p style={{ margin: "2px 0 0", ...MUTED }}>Step {step} of 5 · {STEP_LABELS[step - 1]}</p>
       </header>
 

@@ -101,7 +101,7 @@ export function SlotEditor({
         <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span
             style={{
-              fontSize: 10,
+              fontSize: 13,
               fontWeight: 600,
               textTransform: "uppercase",
               color: "var(--am-text-muted)",
@@ -116,7 +116,7 @@ export function SlotEditor({
                 borderRadius: 999,
                 background: "color-mix(in srgb, var(--am-accent) 20%, transparent)",
                 padding: "1px 6px",
-                fontSize: 9,
+                fontSize: 13,
                 fontWeight: 700,
                 color: "var(--am-accent)",
               }}
@@ -124,9 +124,9 @@ export function SlotEditor({
               {changedCount} change{changedCount !== 1 ? "s" : ""}
             </span>
           )}
-          <span style={{ fontSize: 10, color: "var(--am-text-muted)" }}>(optional)</span>
+          <span style={{ fontSize: 13, color: "var(--am-text-muted)" }}>(optional)</span>
         </span>
-        <span style={{ fontSize: 10, color: "var(--am-text-muted)" }} aria-hidden>
+        <span style={{ fontSize: 13, color: "var(--am-text-muted)" }} aria-hidden>
           {open ? "▲" : "▼"}
         </span>
       </button>
@@ -142,7 +142,7 @@ export function SlotEditor({
         >
           <p
             style={{
-              fontSize: 10,
+              fontSize: 13,
               color: "var(--am-text-muted)",
               marginBottom: 10,
               marginTop: 0,
@@ -157,7 +157,7 @@ export function SlotEditor({
               style={{
                 width: "100%",
                 borderCollapse: "collapse",
-                fontSize: 11,
+                fontSize: 13,
               }}
             >
               <thead>
@@ -173,7 +173,7 @@ export function SlotEditor({
                         paddingBottom: 6,
                         textAlign: "left",
                         paddingLeft: col === "Player" ? 0 : 8,
-                        fontSize: 10,
+                        fontSize: 13,
                         fontWeight: 600,
                         textTransform: "uppercase",
                         color: "var(--am-text-muted)",
@@ -221,7 +221,7 @@ export function SlotEditor({
                           <span
                             style={{
                               marginLeft: 6,
-                              fontSize: 9,
+                              fontSize: 13,
                               fontWeight: 400,
                               color: "var(--am-accent)",
                             }}
@@ -248,7 +248,7 @@ export function SlotEditor({
                             borderRadius: 4,
                             border: "1px solid var(--am-border)",
                             padding: "1px 5px",
-                            fontSize: 10,
+                            fontSize: 13,
                             fontFamily: "var(--am-mono)",
                             fontWeight: 600,
                             color: changed ? "var(--am-text-muted)" : "var(--am-text)",
@@ -271,7 +271,7 @@ export function SlotEditor({
                               border: "1px solid var(--am-border)",
                               background: "var(--am-surface)",
                               padding: "2px 6px",
-                              fontSize: 11,
+                              fontSize: 13,
                               color: "var(--am-text)",
                               outline: "none",
                               cursor: disabled ? "not-allowed" : "pointer",
@@ -284,7 +284,7 @@ export function SlotEditor({
                             ))}
                           </select>
                         ) : (
-                          <span style={{ fontSize: 10, color: "var(--am-text-muted)" }}>—</span>
+                          <span style={{ fontSize: 13, color: "var(--am-text-muted)" }}>—</span>
                         )}
                       </td>
                     </tr>
@@ -304,7 +304,7 @@ export function SlotEditor({
                 background: "none",
                 border: "none",
                 padding: 0,
-                fontSize: 10,
+                fontSize: 13,
                 color: "var(--am-text-muted)",
                 textDecoration: "underline",
                 cursor: disabled ? "not-allowed" : "pointer",

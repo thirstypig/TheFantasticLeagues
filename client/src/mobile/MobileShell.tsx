@@ -115,7 +115,7 @@ export function MobileShell({ children }: MobileShellProps) {
         <div style={{ flex: 1, textAlign: "center", minWidth: 0, overflow: "hidden" }}>
           <div
             style={{
-              fontSize: 16,
+              fontSize: 17,
               fontWeight: 700,
               color: "var(--am-text)",
               whiteSpace: "nowrap",

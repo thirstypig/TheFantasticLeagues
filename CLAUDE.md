@@ -384,8 +384,10 @@ period-close and audit logging.
   detect a frozen deploy (the old image keeps serving) — only this version
   check can. Manual check: `curl -s https://app.thefantasticleagues.com/api/health | jq .version`
   vs `git rev-parse origin/main`.
-- **DESIGN.** Score Sheet design system (flat paper, Inter only, warm taupe /
-  medium gray, outfield-green accent). CSS class `.aurora-theme` and token
+- **DESIGN.** Score Sheet design system (flat paper, Sofia Sans, four text
+  sizes (13px floor), nine colors incl. Field; source of truth
+  `/admin/style-bible` (unlisted static page at `/style-bible/index.html`,
+  DOC-032)). CSS class `.aurora-theme` and token
   prefix `--am-*` are legacy Aurora names kept to avoid touching hundreds of
   callsites — don't rename without a full codebase sweep. Reference:
   `docs/aurora-design-system.md`. Yahoo Fantasy is the reference UX for

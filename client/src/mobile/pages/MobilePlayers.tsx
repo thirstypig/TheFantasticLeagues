@@ -427,7 +427,7 @@ export function MobilePlayers() {
           style={{
             padding: "4px 10px",
             borderRadius: 99,
-            fontSize: 11,
+            fontSize: 13,
             fontWeight: 600,
             cursor: "pointer",
             background: availOnly ? "var(--am-positive)" : "var(--am-chip)",
@@ -452,7 +452,7 @@ export function MobilePlayers() {
               style={{
                 padding: "4px 10px",
                 borderRadius: 99,
-                fontSize: 11,
+                fontSize: 13,
                 fontWeight: 600,
                 cursor: "pointer",
                 background: on ? "var(--am-irid)" : "var(--am-chip)",
@@ -479,7 +479,7 @@ export function MobilePlayers() {
               style={{
                 padding: "5px 11px",
                 borderRadius: 99,
-                fontSize: 11.5,
+                fontSize: 13,
                 fontWeight: 600,
                 cursor: "pointer",
                 background: on ? "var(--am-irid)" : "var(--am-chip)",
@@ -534,15 +534,15 @@ export function MobilePlayers() {
           </div>
 
           {error && (
-            <div style={{ padding: "12px 14px", color: "var(--am-negative)", fontSize: 12 }}>{error}</div>
+            <div style={{ padding: "12px 14px", color: "var(--am-negative)", fontSize: 13 }}>{error}</div>
           )}
 
           {loading && !allPlayers.length ? (
-            <div style={{ padding: "16px 14px", color: "var(--am-text-muted)", fontSize: 12 }}>
+            <div style={{ padding: "16px 14px", color: "var(--am-text-muted)", fontSize: 13 }}>
               Loading players…
             </div>
           ) : visible.length === 0 ? (
-            <div style={{ padding: "16px 14px", color: "var(--am-text-muted)", fontSize: 12 }}>
+            <div style={{ padding: "16px 14px", color: "var(--am-text-muted)", fontSize: 13 }}>
               No players match these filters.
             </div>
           ) : (
@@ -598,7 +598,7 @@ export function MobilePlayers() {
                 <div style={{ minWidth: 0 }}>
                   <div
                     style={{
-                      fontSize: 12.5,
+                      fontSize: 13,
                       color: "var(--am-text)",
                       fontWeight: 600,
                       lineHeight: 1.2,
@@ -609,7 +609,7 @@ export function MobilePlayers() {
                   >
                     {displayName(p)}
                   </div>
-                  <div style={{ fontSize: 10, color: "var(--am-text-faint)", marginTop: 2 }}>
+                  <div style={{ fontSize: 13, color: "var(--am-text-faint)", marginTop: 2 }}>
                     {teamAbbr(p)} · {positionFor(p)}
                   </div>
                 </div>
@@ -620,7 +620,7 @@ export function MobilePlayers() {
                       key={k}
                       style={{
                         textAlign: "right",
-                        fontSize: 12.5,
+                        fontSize: 13,
                         fontWeight: isActive ? 700 : 500,
                         fontVariantNumeric: "tabular-nums",
                         color: "var(--am-text)",
@@ -649,7 +649,7 @@ export function MobilePlayers() {
       </div>
 
       <div style={{ padding: "0 14px 16px" }}>
-        <div style={{ fontSize: 10, color: "var(--am-text-faint)", padding: "0 4px" }}>
+        <div style={{ fontSize: 13, color: "var(--am-text-faint)", padding: "0 4px" }}>
           {visible.length < sorted.length
             ? `Showing top ${visible.length} of ${sorted.length}. Tighten filters to narrow.`
             : "Tap any column header to sort. Tap a row to expand career stats."}

@@ -188,7 +188,7 @@ function CardDetailPanel({
               </span>
             )}
             {isCommissionerCard && (
-              <span className="text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
+              <span className="text-xs font-bold tracking-widest uppercase px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
                 ANNOUNCEMENT
               </span>
             )}
@@ -210,7 +210,7 @@ function CardDetailPanel({
             <h3 className={`text-base font-semibold text-[var(--lg-text-primary)] leading-snug mb-1
               ${isTradeBlock ? "" : ""}`}>
               {isTradeBlock && (
-                <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold uppercase
+                <span className="inline-block px-2 py-0.5 rounded text-xs font-semibold uppercase
                   bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 mr-2 align-middle">
                   Trade Block
                 </span>
@@ -221,7 +221,7 @@ function CardDetailPanel({
               <div className="mt-2">
                 {isTradeBlock ? (
                   <div className="rounded-lg bg-[var(--lg-tint)] border border-[var(--lg-border-faint)] p-3">
-                    <div className="text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-1">
+                    <div className="text-xs font-semibold uppercase text-[var(--lg-text-muted)] mb-1">
                       Looking for
                     </div>
                     <p className="text-sm text-[var(--lg-text-primary)] leading-relaxed">{card.body}</p>
@@ -278,7 +278,7 @@ function CardDetailPanel({
             <div className="space-y-3">
               {card.replies.map((r) => (
                 <div key={r.id} className="pl-3 border-l-2 border-[var(--lg-border-faint)]">
-                  <div className="flex items-center gap-2 text-[11px] text-[var(--lg-text-muted)]">
+                  <div className="flex items-center gap-2 text-xs text-[var(--lg-text-muted)]">
                     <span className="font-medium text-[var(--lg-text-secondary)]">
                       {r.user?.name ?? "Unknown"}
                     </span>
@@ -330,7 +330,7 @@ function CardDetailPanel({
               <Send className="w-4 h-4" />
             </button>
           </div>
-          <p className="text-[10px] text-[var(--lg-text-muted)] mt-1 opacity-60">
+          <p className="text-xs text-[var(--lg-text-muted)] mt-1 opacity-60">
             Press Cmd+Enter to send
           </p>
         </form>
@@ -368,7 +368,7 @@ function InlineReplySection({
       {/* Replies */}
       {card.replies.map((r) => (
         <div key={r.id} className="pl-3 border-l-2 border-[var(--lg-border-faint)]">
-          <div className="flex items-center gap-2 text-[10px] text-[var(--lg-text-muted)]">
+          <div className="flex items-center gap-2 text-xs text-[var(--lg-text-muted)]">
             <span className="font-medium text-[var(--lg-text-secondary)]">
               {r.user?.name ?? "Unknown"}
             </span>
@@ -378,7 +378,7 @@ function InlineReplySection({
         </div>
       ))}
       {card.replies.length === 0 && (
-        <p className="text-[10px] text-[var(--lg-text-muted)] italic">No replies yet.</p>
+        <p className="text-xs text-[var(--lg-text-muted)] italic">No replies yet.</p>
       )}
 
       {/* Reply input */}
@@ -466,34 +466,34 @@ function CardComponent({
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <div className="flex items-center gap-2 flex-wrap">
           {isCommissionerCard && (
-            <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
+            <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400">
               <Shield className="w-3 h-3" />
               Commissioner
             </span>
           )}
           {isTradeBlock && card.metadata?.posPrimary && (
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
               {card.metadata.posPrimary}
             </span>
           )}
           {isTradeBlock && card.metadata?.mlbTeam && (
-            <span className="text-[10px] font-medium text-[var(--lg-text-muted)]">
+            <span className="text-xs font-medium text-[var(--lg-text-muted)]">
               {card.metadata.mlbTeam}
             </span>
           )}
           {isTradeBlock && card.metadata?.teamName && (
-            <span className="text-[10px] text-[var(--lg-text-muted)]">
+            <span className="text-xs text-[var(--lg-text-muted)]">
               {card.metadata.teamName}
             </span>
           )}
           {!isTradeBlock && card.user?.name && (
-            <span className="text-[10px] text-[var(--lg-text-muted)]">
+            <span className="text-xs text-[var(--lg-text-muted)]">
               {card.user.name}
             </span>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] text-[var(--lg-text-muted)] flex items-center gap-1 whitespace-nowrap">
+          <span className="text-xs text-[var(--lg-text-muted)] flex items-center gap-1 whitespace-nowrap">
             <Clock className="w-3 h-3" />
             {formatRelativeTime(card.createdAt)}
           </span>
@@ -510,7 +510,7 @@ function CardComponent({
       </div>
 
       {/* Title */}
-      <h4 className="text-[13px] font-semibold text-[var(--lg-text-primary)] leading-snug mb-1">
+      <h4 className="text-xs font-semibold text-[var(--lg-text-primary)] leading-snug mb-1">
         {card.title}
       </h4>
 
@@ -518,7 +518,7 @@ function CardComponent({
       {card.body && (
         <div>
           {isTradeBlock ? (
-            <div className="text-[10px] text-[var(--lg-text-muted)] mt-1">
+            <div className="text-xs text-[var(--lg-text-muted)] mt-1">
               <span className="font-semibold uppercase">Looking for: </span>
               <span className="text-[var(--lg-text-secondary)]">{card.body}</span>
             </div>
@@ -542,7 +542,7 @@ function CardComponent({
           />
           <button
             onClick={(e) => { e.stopPropagation(); handleCardClick(); }}
-            className="flex items-center gap-1 text-[10px] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-colors"
+            className="flex items-center gap-1 text-xs text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-colors"
           >
             <MessageSquare className="w-3 h-3" />
             {card.replies.length > 0 ? card.replies.length : ""}
@@ -553,7 +553,7 @@ function CardComponent({
         </div>
       )}
       {isTradeBlock && (
-        <div className="mt-2 text-[10px] text-[var(--lg-text-muted)] italic">
+        <div className="mt-2 text-xs text-[var(--lg-text-muted)] italic">
           Click to view player details
         </div>
       )}
@@ -629,7 +629,7 @@ function NewCardForm({
                 key={c.id}
                 type="button"
                 onClick={() => setColumn(c.id)}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-medium
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium
                   transition-colors border whitespace-nowrap
                   ${isActive
                     ? `${c.accentBg} ${c.accentBorder} ${c.accent}`
@@ -880,7 +880,7 @@ export default function LeagueBoard({ leagueId }: { leagueId: number }) {
               >
                 <Icon className="w-3.5 h-3.5" />
                 {col.label}
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? col.accentBg : "bg-[var(--lg-tint)]"}`}>
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? col.accentBg : "bg-[var(--lg-tint)]"}`}>
                   {cardsByColumn(col.id).length}
                 </span>
               </button>
@@ -889,7 +889,7 @@ export default function LeagueBoard({ leagueId }: { leagueId: number }) {
         </div>
 
         {activeTab === "trade_block" && (
-          <p className="text-[10px] text-[var(--lg-text-muted)] text-center mt-1 mb-2 italic">
+          <p className="text-xs text-[var(--lg-text-muted)] text-center mt-1 mb-2 italic">
             Auto-synced from team rosters
           </p>
         )}
@@ -968,12 +968,12 @@ export default function LeagueBoard({ leagueId }: { leagueId: number }) {
                   <div className="flex flex-col">
                     <span className={`text-xs font-semibold ${col.accent}`}>{col.label}</span>
                     {col.id === "trade_block" && (
-                      <span className="text-[9px] text-[var(--lg-text-muted)] leading-tight">
+                      <span className="text-xs text-[var(--lg-text-muted)] leading-tight">
                         auto-synced from team rosters
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] text-[var(--lg-text-muted)] ml-auto">
+                  <span className="text-xs text-[var(--lg-text-muted)] ml-auto">
                     {colCards.length}
                   </span>
                 </div>

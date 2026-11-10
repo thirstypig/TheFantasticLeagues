@@ -66,7 +66,7 @@ export default function AdminDashboard() {
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
             <SectionLabel>✦ Admin · Dashboard</SectionLabel>
-            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
               Executive overview.
             </h1>
             <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
@@ -83,7 +83,7 @@ export default function AdminDashboard() {
                   onClick={() => setDays(p.days)}
                   style={{
                     padding: "6px 12px", borderRadius: 99,
-                    fontSize: 11, fontWeight: 600, letterSpacing: 0.2,
+                    fontSize: 13, fontWeight: 600, letterSpacing: 0.2,
                     background: isActive ? "var(--am-chip-strong)" : "var(--am-chip)",
                     color: isActive ? "var(--am-text)" : "var(--am-text-muted)",
                     border: "1px solid " + (isActive ? "var(--am-border-strong)" : "var(--am-border)"),
@@ -163,7 +163,7 @@ export default function AdminDashboard() {
                     </span>
                   )}
                 </div>
-                <time className="text-[11px] text-[var(--lg-text-muted)] tabular-nums shrink-0">
+                <time className="text-xs text-[var(--lg-text-muted)] tabular-nums shrink-0">
                   {relativeTime(a.createdAt)}
                 </time>
               </div>

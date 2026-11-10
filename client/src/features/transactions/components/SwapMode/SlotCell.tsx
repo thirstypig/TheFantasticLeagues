@@ -164,7 +164,7 @@ export function SlotCell({
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
         <span
           style={{
-            fontSize: 10,
+            fontSize: 13,
             letterSpacing: 1.2,
             textTransform: "uppercase",
             color: "var(--am-text-faint)",
@@ -178,7 +178,7 @@ export function SlotCell({
             <span
               aria-label="Keeper"
               title="Keeper"
-              style={{ fontSize: 12, color: "var(--am-warning)", lineHeight: 1 }}
+              style={{ fontSize: 13, color: "var(--am-warning)", lineHeight: 1 }}
             >
               ★
             </span>
@@ -188,7 +188,7 @@ export function SlotCell({
               aria-hidden
               title="Drag to reorder"
               style={{
-                fontSize: 12,
+                fontSize: 13,
                 color: "var(--am-text-faint)",
                 cursor: "grab",
                 userSelect: "none",
@@ -219,7 +219,7 @@ export function SlotCell({
           </div>
           <div
             style={{
-              fontSize: 10,
+              fontSize: 13,
               color: "var(--am-text-faint)",
               display: "flex",
               alignItems: "center",
@@ -231,7 +231,7 @@ export function SlotCell({
           </div>
         </div>
       ) : (
-        <div style={{ fontSize: 12, color: "var(--am-text-faint)", fontStyle: "italic" }}>empty</div>
+        <div style={{ fontSize: 13, color: "var(--am-text-faint)", fontStyle: "italic" }}>empty</div>
       )}
 
       {/* Eligibility chip row — small pills showing every slot the
@@ -242,7 +242,7 @@ export function SlotCell({
             <Chip
               key={s}
               style={{
-                fontSize: 9,
+                fontSize: 13,
                 padding: "2px 6px",
                 background: s === slotCode ? "var(--am-chip-strong)" : "var(--am-chip)",
                 color: s === slotCode ? "var(--am-text)" : "var(--am-text-muted)",

@@ -126,7 +126,7 @@ export function SaveDiffPreviewModal({
             id="save-diff-preview-title"
             style={{
               margin: 0,
-              fontSize: 18,
+              fontSize: 17,
               fontWeight: 700,
               fontFamily: "var(--am-display)",
             }}
@@ -134,7 +134,7 @@ export function SaveDiffPreviewModal({
             Save {rows.length} change{rows.length === 1 ? "" : "s"}?
           </h2>
         </div>
-        <p style={{ margin: "4px 0 16px 0", fontSize: 12.5, color: "var(--am-text-muted)" }}>
+        <p style={{ margin: "4px 0 16px 0", fontSize: 13, color: "var(--am-text-muted)" }}>
           Review the batch before committing. All changes save atomically — if any single
           mutation fails, the whole batch rolls back.
         </p>
@@ -149,7 +149,7 @@ export function SaveDiffPreviewModal({
               background: "color-mix(in srgb, var(--am-negative) 14%, transparent)",
               border: "1px solid var(--am-negative)",
               borderRadius: 12,
-              fontSize: 12.5,
+              fontSize: 13,
             }}
           >
             <strong>Save failed</strong> — {failures.length} change{failures.length === 1 ? "" : "s"} need
@@ -200,7 +200,7 @@ export function SaveDiffPreviewModal({
                       justifyContent: "center",
                       background: "var(--am-chip)",
                       border: "1px solid var(--am-border)",
-                      fontSize: 10,
+                      fontSize: 13,
                       color: "var(--am-text-muted)",
                       fontWeight: 700,
                       flexShrink: 0,
@@ -211,7 +211,7 @@ export function SaveDiffPreviewModal({
                   <span
                     aria-label={BADGE_LABELS[r.kind]}
                     style={{
-                      fontSize: 10,
+                      fontSize: 13,
                       fontWeight: 700,
                       padding: "2px 6px",
                       borderRadius: 6,
@@ -232,7 +232,7 @@ export function SaveDiffPreviewModal({
                       data-testid="save-diff-preview-revert"
                       disabled={saving}
                       style={{
-                        fontSize: 11,
+                        fontSize: 13,
                         fontWeight: 600,
                         padding: "4px 10px",
                         borderRadius: 6,
@@ -252,7 +252,7 @@ export function SaveDiffPreviewModal({
                   <span
                     style={{
                       display: "block",
-                      fontSize: 11,
+                      fontSize: 13,
                       color: "var(--am-text-muted)",
                       marginTop: 4,
                       paddingLeft: 36,
@@ -267,7 +267,7 @@ export function SaveDiffPreviewModal({
                     data-testid="save-diff-preview-row-error"
                     style={{
                       display: "block",
-                      fontSize: 11.5,
+                      fontSize: 13,
                       color: "var(--am-negative)",
                       marginTop: 6,
                       paddingLeft: 36,

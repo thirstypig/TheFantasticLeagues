@@ -5,7 +5,7 @@ import { OGBA_TEAM_NAMES } from "../../lib/ogbaTeams";
 
 /* ── Compact toggle (H/P, All/Avail) ───────────────────────────────── */
 const toggleBtnBase =
-  "text-[11px] font-bold uppercase tracking-wide rounded-[var(--lg-radius-sm)] transition-colors";
+  "text-xs font-bold uppercase tracking-wide rounded-[var(--lg-radius-sm)] transition-colors";
 const toggleActive =
   "bg-[var(--lg-accent)] text-[var(--lg-on-accent)]";
 const toggleInactive =

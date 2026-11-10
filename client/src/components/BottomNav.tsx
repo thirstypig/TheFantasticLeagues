@@ -30,7 +30,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {tab.icon}
             </svg>
-            <span className="text-[10px] font-medium">{tab.label}</span>
+            <span className="text-xs font-medium">{tab.label}</span>
           </NavLink>
         ))}
         <button
@@ -41,7 +41,7 @@ export default function BottomNav({ onMore }: { onMore: () => void }) {
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
-          <span className="text-[10px] font-medium">More</span>
+          <span className="text-xs font-medium">More</span>
         </button>
       </div>
     </nav>

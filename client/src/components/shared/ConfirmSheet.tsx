@@ -19,7 +19,7 @@ const BUTTON: React.CSSProperties = {
   minHeight: 44,
   padding: "0 16px",
   borderRadius: 6,
-  fontSize: 16,
+  fontSize: 17,
   fontWeight: 600,
   cursor: "pointer",
 };
@@ -84,8 +84,8 @@ export function ConfirmSheet({
           boxSizing: "border-box",
         }}
       >
-        <h2 id={titleId} style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700 }}>{title}</h2>
-        <p style={{ margin: "0 0 20px", fontSize: 16, color: "var(--am-text-muted)" }}>{body}</p>
+        <h2 id={titleId} style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700 }}>{title}</h2>
+        <p style={{ margin: "0 0 20px", fontSize: 17, color: "var(--am-text-muted)" }}>{body}</p>
         <div style={{ display: "flex", flexDirection: desktop ? "row-reverse" : "column", gap: 8 }}>
           <button
             ref={confirmRef}

@@ -54,7 +54,7 @@ const PILL_BTN_BASE: React.CSSProperties = {
   alignItems: "center",
   gap: 6,
   padding: "6px 12px",
-  fontSize: 10,
+  fontSize: 13,
   fontWeight: 600,
   letterSpacing: 0.4,
   textTransform: "uppercase",
@@ -130,8 +130,8 @@ export default function AuctionSettingsTab({ prefs, onToggle, onUpdate, rankings
                   }}
                 />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--am-text)" }}>{s.label}</div>
-                  <div style={{ fontSize: 10, color: "var(--am-text-muted)", lineHeight: 1.35, marginTop: 2 }}>{s.desc}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>{s.label}</div>
+                  <div style={{ fontSize: 13, color: "var(--am-text-muted)", lineHeight: 1.35, marginTop: 2 }}>{s.desc}</div>
                 </div>
                 <div
                   aria-hidden
@@ -167,8 +167,8 @@ export default function AuctionSettingsTab({ prefs, onToggle, onUpdate, rankings
           <div style={{ ...ROW_BASE, cursor: "default" }}>
             <Globe size={16} style={{ color: "var(--am-accent)", flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--am-text)" }}>Default League Filter</div>
-              <div style={{ fontSize: 10, color: "var(--am-text-muted)", lineHeight: 1.35, marginTop: 2 }}>Set your default Player Pool filter</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>Default League Filter</div>
+              <div style={{ fontSize: 13, color: "var(--am-text-muted)", lineHeight: 1.35, marginTop: 2 }}>Set your default Player Pool filter</div>
             </div>
             <div
               style={{
@@ -189,7 +189,7 @@ export default function AuctionSettingsTab({ prefs, onToggle, onUpdate, rankings
                     onClick={() => onUpdate('defaultLeagueFilter', f)}
                     style={{
                       padding: "4px 10px",
-                      fontSize: 10,
+                      fontSize: 13,
                       fontWeight: 600,
                       letterSpacing: 0.4,
                       textTransform: "uppercase",
@@ -243,10 +243,10 @@ export default function AuctionSettingsTab({ prefs, onToggle, onUpdate, rankings
                     }}
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--am-text)" }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>
                       {rankingsCount > 0 ? `${rankingsCount} players ranked` : 'No rankings imported'}
                     </div>
-                    <div style={{ fontSize: 10, color: "var(--am-text-muted)", lineHeight: 1.35, marginTop: 2 }}>
+                    <div style={{ fontSize: 13, color: "var(--am-text-muted)", lineHeight: 1.35, marginTop: 2 }}>
                       Upload a CSV or paste player names to add a private rank column
                     </div>
                   </div>
@@ -316,11 +316,11 @@ export default function AuctionSettingsTab({ prefs, onToggle, onUpdate, rankings
                         width: "100%",
                         height: 112,
                         padding: "8px 12px",
-                        fontSize: 12,
+                        fontSize: 13,
                         borderRadius: 8,
-                        background: "var(--am-surface-faint)",
+                        background: "var(--am-field)",
                         color: "var(--am-text)",
-                        border: "1px solid var(--am-border)",
+                        border: "1px solid var(--am-field-line)",
                         outline: "none",
                         resize: "none",
                         fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
@@ -357,7 +357,7 @@ export default function AuctionSettingsTab({ prefs, onToggle, onUpdate, rankings
 
                 {/* Import result feedback */}
                 {importResult && (
-                  <div style={{ fontSize: 10, lineHeight: 1.4, display: "flex", flexDirection: "column", gap: 4 }}>
+                  <div style={{ fontSize: 13, lineHeight: 1.4, display: "flex", flexDirection: "column", gap: 4 }}>
                     {importResult.imported > 0 && (
                       <div style={{ color: "rgb(52, 211, 153)", fontWeight: 600 }}>
                         Imported {importResult.imported} player rankings
@@ -384,7 +384,7 @@ export default function AuctionSettingsTab({ prefs, onToggle, onUpdate, rankings
           <div
             style={{
               paddingTop: 12,
-              fontSize: 10,
+              fontSize: 13,
               color: "var(--am-text-faint)",
               opacity: 0.6,
               textAlign: "center",

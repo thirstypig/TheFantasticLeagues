@@ -72,13 +72,13 @@ export default function DraftBoard({
         <table className="w-full text-xs border-collapse" style={{ minWidth: `${teamCount * 110 + 50}px` }}>
           <thead className="sticky top-0 z-10">
             <tr>
-              <th className="sticky left-0 z-20 bg-[var(--lg-bg-card)] border-b border-r border-[var(--lg-border-faint)] px-2 py-2 text-[10px] font-bold uppercase text-[var(--lg-text-muted)] text-center w-[50px]">
+              <th className="sticky left-0 z-20 bg-[var(--lg-bg-card)] border-b border-r border-[var(--lg-border-faint)] px-2 py-2 text-xs font-bold uppercase text-[var(--lg-text-muted)] text-center w-[50px]">
                 Rd
               </th>
               {teamOrder.map(teamId => (
                 <th
                   key={teamId}
-                  className={`bg-[var(--lg-bg-card)] border-b border-r border-[var(--lg-border-faint)] px-2 py-2 text-[10px] font-bold uppercase text-center whitespace-nowrap ${
+                  className={`bg-[var(--lg-bg-card)] border-b border-r border-[var(--lg-border-faint)] px-2 py-2 text-xs font-bold uppercase text-center whitespace-nowrap ${
                     teamId === myTeamId ? "text-[var(--lg-accent)]" : "text-[var(--lg-text-muted)]"
                   }`}
                 >
@@ -119,16 +119,16 @@ export default function DraftBoard({
                               {pick.playerName || "SKIP"}
                             </span>
                             {pick.position && (
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${posColor}`}>
+                              <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${posColor}`}>
                                 {pick.position}
                               </span>
                             )}
                             {pick.isAutoPick && (
-                              <span className="text-[8px] text-amber-400 font-bold">AUTO</span>
+                              <span className="text-xs text-amber-400 font-bold">AUTO</span>
                             )}
                           </div>
                         ) : isCurrent ? (
-                          <span className="text-[10px] font-bold text-[var(--lg-accent)] animate-pulse">
+                          <span className="text-xs font-bold text-[var(--lg-accent)] animate-pulse">
                             ON CLOCK
                           </span>
                         ) : null}

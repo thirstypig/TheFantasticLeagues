@@ -40,7 +40,7 @@ export function EligibilityChips({ posList, activeSlots }: EligibilityChipsProps
               alignItems: "center",
               padding: "2px 7px",
               borderRadius: 99,
-              fontSize: 10,
+              fontSize: 13,
               fontWeight: 600,
               letterSpacing: 0.4,
               color: isActive ? "var(--am-text)" : "var(--am-text-muted)",

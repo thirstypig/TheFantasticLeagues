@@ -184,7 +184,7 @@ function StatCard({
           <div className={NUMBER_CLASS}>{value}</div>
           <div className={LABEL_CLASS}>{label}</div>
           {hint && (
-            <div className="text-[10px] text-[var(--lg-text-muted)] opacity-70 mt-0.5">{hint}</div>
+            <div className="text-xs text-[var(--lg-text-muted)] opacity-70 mt-0.5">{hint}</div>
           )}
         </div>
       </div>
@@ -223,10 +223,10 @@ function ErrorRow({ err }: { err: AdminErrorRecord }) {
       <AlertTriangle size={14} className="text-red-400 mt-0.5 shrink-0" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <code className="text-[11px] font-mono text-[var(--lg-text-primary)] truncate">{err.ref}</code>
-          <span className="text-[10px] text-[var(--lg-text-muted)]">{relativeTime(err.timestamp)}</span>
+          <code className="text-xs font-mono text-[var(--lg-text-primary)] truncate">{err.ref}</code>
+          <span className="text-xs text-[var(--lg-text-muted)]">{relativeTime(err.timestamp)}</span>
         </div>
-        <div className="text-[11px] text-[var(--lg-text-muted)] truncate">
+        <div className="text-xs text-[var(--lg-text-muted)] truncate">
           <span className="font-semibold text-[var(--lg-text-primary)] opacity-80">{err.method}</span>{" "}
           {err.path}
         </div>
@@ -362,7 +362,7 @@ export default function Admin() {
       <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
         <Glass strong>
           <SectionLabel>✦ Admin</SectionLabel>
-          <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+          <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
             Ops command center.
           </h1>
         </Glass>
@@ -381,7 +381,7 @@ export default function Admin() {
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
             <SectionLabel>✦ Ops</SectionLabel>
-            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
               Admin Dashboard
             </h1>
             <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
@@ -395,7 +395,7 @@ export default function Admin() {
             style={{
               display: "inline-flex", alignItems: "center", gap: 6,
               padding: "6px 12px", borderRadius: 99,
-              fontSize: 12, fontWeight: 600,
+              fontSize: 13, fontWeight: 600,
               background: "var(--am-chip)", color: "var(--am-text)",
               border: "1px solid var(--am-border)",
               cursor: refreshing ? "not-allowed" : "pointer",
@@ -418,7 +418,7 @@ export default function Admin() {
               to={l.to}
               style={{
                 display: "inline-flex", alignItems: "center", minHeight: 44, padding: "0 14px",
-                borderRadius: 6, fontSize: 16, color: "var(--am-text)",
+                borderRadius: 6, fontSize: 17, color: "var(--am-text)",
                 background: "var(--am-chip)", border: "1px solid var(--am-border)", textDecoration: "none",
               }}
             >
@@ -535,7 +535,7 @@ export default function Admin() {
                       {(Object.keys(STATUS_PILL) as Array<keyof typeof STATUS_PILL>).map((k) => (
                         <span
                           key={k}
-                          className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded border ${STATUS_PILL[k].className}`}
+                          className={`text-xs font-semibold uppercase px-2 py-0.5 rounded border ${STATUS_PILL[k].className}`}
                         >
                           {STATUS_PILL[k].label}: {stats.leagues.byStatus[k]}
                         </span>
@@ -578,7 +578,7 @@ export default function Admin() {
                       {stats.aiInsights.latestWeekKey && (
                         <div>
                           Latest:{" "}
-                          <code className="text-[11px] text-[var(--lg-text-primary)]">
+                          <code className="text-xs text-[var(--lg-text-primary)]">
                             {stats.aiInsights.latestWeekKey}
                           </code>
                         </div>
@@ -616,7 +616,7 @@ export default function Admin() {
 
                   {stats ? (
                     <>
-                      <div className="flex items-center gap-3 text-[11px] text-[var(--lg-text-muted)] mb-3">
+                      <div className="flex items-center gap-3 text-xs text-[var(--lg-text-muted)] mb-3">
                         <span className="text-emerald-400">
                           <strong className="font-bold tabular-nums">{stats.todos.done}</strong> done
                         </span>
@@ -640,14 +640,14 @@ export default function Admin() {
                           {stats.todos.topActive.map((t) => (
                             <li key={t.id} className="flex items-center gap-2 text-xs">
                               <span
-                                className={`text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${PRIORITY_COLORS[t.priority]}`}
+                                className={`text-xs font-bold px-1.5 py-0.5 rounded border shrink-0 ${PRIORITY_COLORS[t.priority]}`}
                               >
                                 {t.priority.toUpperCase()}
                               </span>
                               <span className="text-[var(--lg-text-primary)] truncate flex-1">
                                 {t.title}
                               </span>
-                              <span className="text-[10px] text-[var(--lg-text-muted)] opacity-70 shrink-0">
+                              <span className="text-xs text-[var(--lg-text-muted)] opacity-70 shrink-0">
                                 {t.categoryTitle}
                               </span>
                             </li>
@@ -710,12 +710,12 @@ export default function Admin() {
                           <Icon size={14} className="text-[var(--lg-text-muted)] mt-0.5 shrink-0" />
                           <div className="min-w-0 flex-1">
                             <div className="text-xs text-[var(--lg-text-primary)] truncate">
-                              <code className="text-[10px] font-mono opacity-80">{row.action}</code>
+                              <code className="text-xs font-mono opacity-80">{row.action}</code>
                               {row.resourceId && (
                                 <span className="text-[var(--lg-text-muted)] opacity-70"> · {row.resourceType}#{row.resourceId}</span>
                               )}
                             </div>
-                            <div className="text-[10px] text-[var(--lg-text-muted)] truncate">
+                            <div className="text-xs text-[var(--lg-text-muted)] truncate">
                               {row.userEmail ?? row.userName ?? `user#${row.userId}`} · {relativeTime(row.createdAt)}
                             </div>
                           </div>
@@ -758,7 +758,7 @@ export default function Admin() {
               <div className="flex items-center justify-between mb-3">
                 <h3 className={SECTION_TITLE_CLASS}>Recent Errors</h3>
                 {errors && (
-                  <span className="text-[10px] text-[var(--lg-text-muted)] tabular-nums">
+                  <span className="text-xs text-[var(--lg-text-muted)] tabular-nums">
                     {errors.bufferSize}/{errors.bufferCapacity}
                   </span>
                 )}
@@ -771,7 +771,7 @@ export default function Admin() {
                 </div>
               ) : localErrors.length > 0 ? (
                 <>
-                  <p className="text-[10px] text-[var(--lg-text-muted)] italic mb-2">
+                  <p className="text-xs text-[var(--lg-text-muted)] italic mb-2">
                     Server buffer unavailable — showing errors from this session.
                   </p>
                   <ul className="space-y-1">
@@ -783,10 +783,10 @@ export default function Admin() {
                       >
                         <AlertTriangle size={12} className="text-red-400 mt-0.5 shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <div className="text-[11px] text-[var(--lg-text-primary)] truncate">
+                          <div className="text-xs text-[var(--lg-text-primary)] truncate">
                             {e.message}
                           </div>
-                          <div className="text-[10px] text-[var(--lg-text-muted)]">
+                          <div className="text-xs text-[var(--lg-text-muted)]">
                             {e.requestId ? <code className="font-mono">{e.requestId}</code> : null}{" "}
                             · {relativeTime(e.timestamp)}
                           </div>

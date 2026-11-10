@@ -176,7 +176,7 @@ function StatCard({
           <div className={NUMBER_CLASS}>{value}</div>
           <div className={LABEL_CLASS}>{label}</div>
           {hint && (
-            <div className="text-[10px] text-[var(--lg-text-muted)] opacity-70 mt-0.5">
+            <div className="text-xs text-[var(--lg-text-muted)] opacity-70 mt-0.5">
               {hint}
             </div>
           )}
@@ -203,7 +203,7 @@ function Chip<T extends string>({
       type="button"
       onClick={() => onClick(value)}
       className={[
-        "px-2.5 py-1 text-[11px] font-medium rounded-full border transition-colors",
+        "px-2.5 py-1 text-xs font-medium rounded-full border transition-colors",
         active
           ? "bg-[var(--lg-accent)]/10 border-[var(--lg-accent)] text-[var(--lg-accent)]"
           : "bg-[var(--lg-tint)] border-[var(--lg-border-faint)] text-[var(--lg-text-secondary)] hover:text-[var(--lg-text-primary)]",
@@ -225,7 +225,7 @@ function Avatar({ url, name, email }: { url: string | null; name: string | null;
     );
   }
   return (
-    <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-[10px] font-semibold bg-[var(--lg-tint)] text-[var(--lg-text-secondary)] border border-[var(--lg-border-faint)]">
+    <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center text-xs font-semibold bg-[var(--lg-tint)] text-[var(--lg-text-secondary)] border border-[var(--lg-border-faint)]">
       {initials(name, email)}
     </div>
   );
@@ -377,7 +377,7 @@ export default function AdminUsers() {
     <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
       <Glass strong>
         <SectionLabel>✦ Admin · Users</SectionLabel>
-        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
           User accounts.
         </h1>
         <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
@@ -431,7 +431,7 @@ export default function AdminUsers() {
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[10px] uppercase font-semibold text-[var(--lg-text-muted)] mr-1">
+          <span className="text-xs uppercase font-semibold text-[var(--lg-text-muted)] mr-1">
             Active:
           </span>
           {ACTIVE_CHIPS.map((c) => (
@@ -440,7 +440,7 @@ export default function AdminUsers() {
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[10px] uppercase font-semibold text-[var(--lg-text-muted)] mr-1">
+          <span className="text-xs uppercase font-semibold text-[var(--lg-text-muted)] mr-1">
             Tier:
           </span>
           {TIER_CHIPS.map((c) => (
@@ -460,7 +460,7 @@ export default function AdminUsers() {
                 {err.message}
               </div>
               {err.ref && (
-                <div className="text-[10px] font-mono text-[var(--lg-text-muted)] mt-1">
+                <div className="text-xs font-mono text-[var(--lg-text-muted)] mt-1">
                   {err.ref}
                 </div>
               )}
@@ -547,7 +547,7 @@ export default function AdminUsers() {
                           {r.name || r.email}
                         </div>
                         {r.name && (
-                          <div className="text-[10px] text-[var(--lg-text-muted)] truncate">
+                          <div className="text-xs text-[var(--lg-text-muted)] truncate">
                             {r.email}
                           </div>
                         )}
@@ -571,7 +571,7 @@ export default function AdminUsers() {
                   </ThemedTd>
                   <ThemedTd>
                     <span
-                      className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded border ${TIER_BADGE[r.tier]}`}
+                      className={`text-xs font-semibold uppercase px-2 py-0.5 rounded border ${TIER_BADGE[r.tier]}`}
                     >
                       {r.tier}
                     </span>
@@ -595,7 +595,7 @@ export default function AdminUsers() {
 
         {/* Pagination footer */}
         <div className="flex items-center justify-between border-t border-[var(--lg-border-faint)] px-3 py-2 bg-[var(--lg-tint)]">
-          <div className="text-[11px] text-[var(--lg-text-muted)] tabular-nums">
+          <div className="text-xs text-[var(--lg-text-muted)] tabular-nums">
             {loading ? (
               <span className="inline-flex items-center gap-1">
                 <Loader2 size={11} className="animate-spin" /> Loading
@@ -613,7 +613,7 @@ export default function AdminUsers() {
               type="button"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={loading || page <= 1}
-              className="flex items-center gap-1 px-2 py-1 text-[11px] rounded border border-[var(--lg-border-faint)] text-[var(--lg-text-secondary)] hover:text-[var(--lg-text-primary)] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-[var(--lg-border-faint)] text-[var(--lg-text-secondary)] hover:text-[var(--lg-text-primary)] disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <ChevronLeft size={12} /> Prev
             </button>
@@ -621,7 +621,7 @@ export default function AdminUsers() {
               type="button"
               onClick={() => setPage((p) => p + 1)}
               disabled={loading || page >= totalPages}
-              className="flex items-center gap-1 px-2 py-1 text-[11px] rounded border border-[var(--lg-border-faint)] text-[var(--lg-text-secondary)] hover:text-[var(--lg-text-primary)] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-[var(--lg-border-faint)] text-[var(--lg-text-secondary)] hover:text-[var(--lg-text-primary)] disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Next <ChevronRight size={12} />
             </button>

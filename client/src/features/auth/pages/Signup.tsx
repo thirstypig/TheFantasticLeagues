@@ -67,7 +67,7 @@ export default function Signup() {
   // ── Aurora field styles ──────────────────────────────────────────────
   const fieldLabelStyle: React.CSSProperties = {
     display: "block",
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: 600,
     letterSpacing: 0.4,
     textTransform: "uppercase",
@@ -80,16 +80,16 @@ export default function Signup() {
     height: 44,
     padding: "0 14px",
     borderRadius: 12,
-    background: "var(--am-surface-faint)",
-    border: "1px solid var(--am-border)",
+    background: "var(--am-field)",
+    border: "1px solid var(--am-field-line)",
     color: "var(--am-text)",
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: "var(--am-body)",
     outline: "none",
     transition: "border-color 120ms ease, box-shadow 120ms ease",
   };
   const fieldHintStyle: React.CSSProperties = {
-    fontSize: 11,
+    fontSize: 13,
     color: "var(--am-text-faint)",
     marginTop: 6,
     marginLeft: 2,
@@ -142,7 +142,7 @@ export default function Signup() {
               <span
                 style={{
                   fontFamily: "var(--am-display)",
-                  fontSize: 18,
+                  fontSize: 17,
                   fontWeight: 500,
                   color: "var(--am-text)",
                   letterSpacing: -0.2,
@@ -152,7 +152,7 @@ export default function Signup() {
               </span>
               <span
                 style={{
-                  fontSize: 11,
+                  fontSize: 13,
                   color: "var(--am-text-faint)",
                   marginTop: 4,
                   letterSpacing: 0.6,
@@ -171,7 +171,7 @@ export default function Signup() {
               <div
                 style={{
                   fontFamily: "var(--am-display)",
-                  fontSize: 28,
+                  fontSize: 24,
                   fontWeight: 400,
                   color: "var(--am-text)",
                   letterSpacing: -0.4,
@@ -191,8 +191,8 @@ export default function Signup() {
                   style={{
                     padding: 16,
                     borderRadius: 14,
-                    background: "var(--am-surface-faint)",
-                    border: "1px solid var(--am-border)",
+                    background: "var(--am-field)",
+                    border: "1px solid var(--am-field-line)",
                     color: "var(--am-text)",
                     fontSize: 13,
                     textAlign: "center",
@@ -241,7 +241,7 @@ export default function Signup() {
                       style={{
                         background: "var(--am-surface-strong)",
                         padding: "0 12px",
-                        fontSize: 10,
+                        fontSize: 13,
                         letterSpacing: 1.4,
                         textTransform: "uppercase",
                         fontWeight: 600,
@@ -268,7 +268,7 @@ export default function Signup() {
                         e.currentTarget.style.boxShadow = "0 0 0 3px rgba(92, 240, 212, 0.15)";
                       }}
                       onBlur={(e) => {
-                        e.currentTarget.style.borderColor = "var(--am-border)";
+                        e.currentTarget.style.borderColor = "var(--am-field-line)";
                         e.currentTarget.style.boxShadow = "none";
                       }}
                     />
@@ -289,7 +289,7 @@ export default function Signup() {
                         e.currentTarget.style.boxShadow = "0 0 0 3px rgba(92, 240, 212, 0.15)";
                       }}
                       onBlur={(e) => {
-                        e.currentTarget.style.borderColor = "var(--am-border)";
+                        e.currentTarget.style.borderColor = "var(--am-field-line)";
                         e.currentTarget.style.boxShadow = "none";
                       }}
                     />
@@ -310,7 +310,7 @@ export default function Signup() {
                           e.currentTarget.style.boxShadow = "0 0 0 3px rgba(92, 240, 212, 0.15)";
                         }}
                         onBlur={(e) => {
-                          e.currentTarget.style.borderColor = "var(--am-border)";
+                          e.currentTarget.style.borderColor = "var(--am-field-line)";
                           e.currentTarget.style.boxShadow = "none";
                         }}
                       />
@@ -348,7 +348,7 @@ export default function Signup() {
                         background: "var(--am-surface-faint)",
                         border: "1px solid var(--am-negative)",
                         color: "var(--am-negative)",
-                        fontSize: 12,
+                        fontSize: 13,
                         fontWeight: 600,
                       }}
                     >
@@ -366,7 +366,7 @@ export default function Signup() {
                       border: "1px solid var(--am-border-strong)",
                       background: "var(--am-irid)",
                       color: "var(--am-on-accent)",
-                      fontSize: 14,
+                      fontSize: 15,
                       fontWeight: 600,
                       letterSpacing: 0.2,
                       cursor: loading ? "not-allowed" : "pointer",
@@ -425,7 +425,7 @@ export default function Signup() {
                 display: "flex",
                 justifyContent: "center",
                 gap: 14,
-                fontSize: 11,
+                fontSize: 13,
                 color: "var(--am-text-faint)",
               }}
             >
@@ -449,7 +449,7 @@ export default function Signup() {
               href="https://www.thefantasticleagues.com"
               rel="noopener noreferrer"
               style={{
-                fontSize: 11,
+                fontSize: 13,
                 color: "var(--am-text-faint)",
                 opacity: 0.7,
                 textDecoration: "none",

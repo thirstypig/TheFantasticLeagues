@@ -77,7 +77,7 @@ function ReleaseCard({ r }: { r: Release }) {
             const cfg = typeMeta(t);
             const Icon = cfg.icon;
             return (
-              <span key={t} className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-[var(--lg-tint)] inline-flex items-center gap-1 ${cfg.color}`}>
+              <span key={t} className={`text-xs font-semibold uppercase px-2 py-0.5 rounded bg-[var(--lg-tint)] inline-flex items-center gap-1 ${cfg.color}`}>
                 <Icon className="w-3 h-3" /> {t}
               </span>
             );
@@ -113,20 +113,20 @@ function ChangelogStats() {
       <div className="grid grid-cols-3 gap-4 mb-4">
         <div className="text-center">
           <div className="text-xl font-semibold text-[var(--lg-text-primary)] tabular-nums">{releases.length}</div>
-          <div className="text-[10px] text-[var(--lg-text-muted)] uppercase">Releases</div>
+          <div className="text-xs text-[var(--lg-text-muted)] uppercase">Releases</div>
         </div>
         <div className="text-center">
           <div className="text-xl font-semibold text-[var(--lg-text-primary)] tabular-nums">{totalChanges}</div>
-          <div className="text-[10px] text-[var(--lg-text-muted)] uppercase">Changes</div>
+          <div className="text-xs text-[var(--lg-text-muted)] uppercase">Changes</div>
         </div>
         <div className="text-center">
           <div className="text-xl font-semibold text-[var(--lg-text-primary)] tabular-nums">{releases[0]?.version ?? "—"}</div>
-          <div className="text-[10px] text-[var(--lg-text-muted)] uppercase">Latest</div>
+          <div className="text-xs text-[var(--lg-text-muted)] uppercase">Latest</div>
         </div>
       </div>
       <div className="flex items-center gap-2 flex-wrap">
         {sorted.map(([type, count]) => (
-          <span key={type} className={`text-[10px] font-semibold uppercase px-2 py-1 rounded ${typeMeta(type).color} bg-[var(--lg-tint)]`}>
+          <span key={type} className={`text-xs font-semibold uppercase px-2 py-1 rounded ${typeMeta(type).color} bg-[var(--lg-tint)]`}>
             {type}: {count}
           </span>
         ))}
@@ -144,16 +144,16 @@ export default function Changelog() {
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
             <SectionLabel><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><GitCommit size={11} /> Changelog</span></SectionLabel>
-            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Changelog</h1>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Changelog</h1>
             <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)", maxWidth: 720 }}>
               Release history for The Fantastic Leagues — the features, fixes, and improvements shipped to production.
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <Link to="/roadmap" style={{ fontSize: 12, color: "var(--am-text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <Link to="/roadmap" style={{ fontSize: 13, color: "var(--am-text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
               Roadmap <ArrowRight className="w-3 h-3" />
             </Link>
-            <Link to="/tech" style={{ fontSize: 12, color: "var(--am-text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <Link to="/tech" style={{ fontSize: 13, color: "var(--am-text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
               Under the Hood <ArrowRight className="w-3 h-3" />
             </Link>
           </div>

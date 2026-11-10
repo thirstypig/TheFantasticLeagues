@@ -1,0 +1,1479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Fantastic Leagues Style Bible</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Source+Sans+3:wght@400;600;700&family=Barlow:wght@400;600;700&family=Barlow+Semi+Condensed:wght@600;700&family=Saira:wght@400;600;700&family=Saira+Semi+Condensed:wght@600;700&family=Archivo:wght@400;600;700&family=Archivo+Narrow:wght@600;700&family=Sofia+Sans:wght@400;600;700&family=Sofia+Sans+Condensed:wght@600;700&display=swap">
+<style>
+/* Layout: one column (max 1080px), three tabs on the hash: #style, #flow, #screens.
+   The page is built from the same tokens it documents. */
+:root{
+  /* 8 colors */
+  --page:#ded0a8; --card:#fbf7ec; --line:#c9b98c;
+  --text:#15171a; --muted:#5e5747;
+  --accent:#990000; --on-accent:#ffffff;
+  --good:#2a5f2a; --alert:#8a3a00;
+  --chip:#ece3c8;
+  --field:#ffffff; --field-line:#a8966a;
+  --ui-font:"Sofia Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --head-font:"Sofia Sans Condensed","Sofia Sans", system-ui, sans-serif;
+  /* 4 sizes. Nothing smaller than 13. */
+  --t-title:24px; --t-body:17px; --t-small:15px; --t-caption:13px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --page:#341b1e; --card:#5a3337; --line:#7a4a4f; --text:#f6f7f4; --muted:#c8b9b2;
+  --accent:#ffcc00; --on-accent:#2a1a00; --good:#a6e3b0; --alert:#ffb38a; --chip:#6b4045; --field:#1f0e10; --field-line:#a0767a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --page:#341b1e; --card:#5a3337; --line:#7a4a4f; --text:#f6f7f4; --muted:#c8b9b2;
+  --accent:#ffcc00; --on-accent:#2a1a00; --good:#a6e3b0; --alert:#ffb38a; --chip:#6b4045; --field:#1f0e10; --field-line:#a0767a; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--text);font-family:var(--ui-font);font-size:var(--t-body);line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 64px}
+.wrap{max-width:1080px;margin:0 auto}
+h1,h2,h3{font-family:var(--head-font);text-wrap:balance;margin:0;line-height:1.15;font-weight:700}
+h1{font-size:32px} h2{font-size:var(--t-title)} h3{font-size:var(--t-body)}
+p{margin:0;max-width:68ch}
+.muted{color:var(--muted)} .small{font-size:var(--t-small)}
+.cap{font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.06em;font-weight:600;color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+a{color:var(--accent)}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--page);padding-block:16px 0;border-bottom:1px solid var(--line)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--page)}
+.top .wrap{display:flex;flex-direction:column;gap:8px}
+.toprow{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:8px}
+.tabs{display:flex;gap:2px;overflow-x:auto}
+.tabs a{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;font-weight:600;color:var(--muted);text-decoration:none;border-bottom:3px solid transparent;white-space:nowrap}
+.tabs a[aria-current="page"]{color:var(--text);border-color:var(--accent)}
+.ctrls{display:flex;gap:16px;flex-wrap:wrap}
+.ctl{display:flex;flex-direction:column;gap:4px}
+.seg{display:inline-flex;border:1px solid var(--field-line);border-radius:22px;overflow:hidden;background:var(--field)}
+.seg button{min-height:40px;padding:0 14px;border:0;background:transparent;font-size:var(--t-small);font-weight:600;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+
+main section{display:flex;flex-direction:column;gap:16px;padding-block:32px;border-bottom:1px solid var(--line)}
+main section:last-child{border-bottom:0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:16px}
+.box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px;min-width:0;box-shadow:0 1px 0 var(--line)}
+.answer{border-left:4px solid var(--accent);padding:12px 16px;background:var(--card);border-radius:0 12px 12px 0;display:flex;flex-direction:column;gap:6px}
+ul.rules{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;max-width:72ch}
+
+/* fonts */
+.fontpick{display:flex;flex-wrap:wrap;gap:8px}
+.fontpick button{font-size:var(--t-small);font-weight:600;min-height:44px;padding:0 16px;border-radius:22px;border:1px solid var(--line);background:var(--card);cursor:pointer}
+.fontpick button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.fontcard h3{font-size:22px}
+.fontcard .tbl{font-size:var(--t-small)}
+.newtag{font-size:var(--t-caption);font-weight:700;color:var(--accent)}
+
+/* scale */
+.scale{display:flex;flex-direction:column}
+.scale div{display:grid;grid-template-columns:120px 56px 1fr;gap:12px;align-items:baseline;padding:12px 0;border-top:1px solid var(--line)}
+.scale div:first-child{border-top:0}
+.scale code{font-size:var(--t-caption);color:var(--muted)}
+
+/* swatches */
+.sw{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:12px}
+.sw div{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--card)}
+.sw span{display:block;height:56px;border-bottom:1px solid var(--line)}
+.sw p{padding:8px 12px;font-size:var(--t-small)} .sw p b{display:block}
+.pagecard{background:var(--page);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;gap:12px;flex-wrap:wrap}
+.pagecard .box{flex:1 1 200px}
+
+/* shared app components */
+.list{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 0 var(--line)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;padding:8px 14px;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row .l{min-width:0;display:flex;align-items:center;gap:10px}
+.row .t{min-width:0}
+.row .t b{display:block;font-weight:600;line-height:1.25}
+.row .t small{display:block;font-size:var(--t-small);color:var(--muted);line-height:1.3}
+.chip{flex:none;display:inline-flex;align-items:center;gap:4px;min-height:28px;padding:0 10px;border-radius:14px;background:var(--chip);font-size:var(--t-caption);font-weight:700;white-space:nowrap}
+.chip.good{color:var(--good)} .chip.alert{color:var(--alert)} .chip.acc{background:var(--accent);color:var(--on-accent)}
+.btn{display:flex;align-items:center;justify-content:center;gap:6px;min-height:48px;padding:0 18px;border-radius:12px;font-weight:700;white-space:nowrap;border:1px solid var(--field-line);background:var(--chip);color:var(--text);cursor:pointer}
+.btn.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.btn.sm{min-height:44px;padding:0 14px;font-size:var(--t-small)}
+.btns{display:flex;gap:8px;flex-wrap:wrap} .btns .btn{flex:1 1 auto}
+.chev{color:var(--muted)}
+.mlb{flex:none;display:inline-flex;align-items:center;gap:6px;font-size:var(--t-caption);font-weight:700;color:var(--muted)}
+.mlb img{width:26px;height:26px;object-fit:contain;background:#fff;border-radius:50%;padding:3px;border:1px solid var(--line)}
+.face{flex:none;width:40px;height:40px;border-radius:50%;object-fit:cover;object-position:50% 15%;background:var(--chip);border:1px solid var(--line)}
+.face.sm{width:30px;height:30px} .face.lg{width:60px;height:60px} .face.xl{width:84px;height:84px}
+.st{width:100%;border-collapse:collapse;font-size:var(--t-small)}
+.st th{font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:right;font-weight:600;padding:8px 6px}
+.st th:first-child,.st td:first-child{text-align:left}
+.st td{padding:9px 6px;border-top:1px solid var(--line);text-align:right}
+.st tr.me td{font-weight:700}
+
+/* do / don't */
+.tag{font-size:var(--t-caption);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.tag.no{color:var(--alert)} .tag.yes{color:var(--good)}
+.cramped{display:grid;grid-template-columns:96px 96px;gap:8px}
+.cramped span{border:1px solid var(--field-line);border-radius:10px;padding:6px 8px;font-size:12px;line-height:1.25;background:var(--field)}
+.roomy{display:grid;gap:8px}
+.roomy span{border:1px solid var(--field-line);border-radius:10px;min-height:48px;display:flex;align-items:center;padding:0 14px;background:var(--field)}
+
+/* flow */
+.legend{display:flex;flex-wrap:wrap;gap:8px}
+.who{display:inline-flex;align-items:center;min-height:26px;padding:0 10px;border-radius:13px;font-size:var(--t-caption);font-weight:700;white-space:nowrap}
+.who.o{background:var(--chip);color:var(--text)}
+.who.c{background:var(--accent);color:var(--on-accent)}
+.who.a{border:1px dashed var(--muted);color:var(--muted)}
+.lanes{display:grid;grid-template-columns:1fr;gap:10px}
+.lanes .stagehd{display:flex;flex-direction:column;gap:2px;padding-top:12px}
+.lanes .stagehd:first-child{padding-top:0}
+.lane{border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0;background:var(--card);border:1px solid var(--line)}
+.lane.c{border:2px solid var(--accent)}
+.lane.a{background:transparent;border:1px dashed var(--muted)}
+.lane ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:var(--t-small)}
+.lane .none{font-size:var(--t-small);color:var(--muted)}
+@media (min-width:900px){
+  .lanes{grid-template-columns:110px repeat(4,1fr);grid-template-rows:auto repeat(3,auto);grid-auto-flow:column;column-gap:12px;row-gap:10px}
+  .lanes .stagehd{padding-top:0}
+  .lanes .rowhd{display:flex!important;align-items:flex-start;padding-top:12px}
+  .lane .who{display:none}
+}
+.lanes .rowhd{display:none}
+.canlist{margin:0;padding:0;list-style:none;display:flex;flex-direction:column}
+.canlist li{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--line);font-size:var(--t-small)}
+.canlist li:first-child{border-top:0}
+.canlist li>span:first-child{display:flex;flex-direction:column;min-width:0}
+.canlist .st2{flex:none;font-size:var(--t-caption);font-weight:600;color:var(--muted)}
+.go{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 8px;min-height:36px;font-size:var(--t-small);font-weight:600;text-decoration:none}
+.go code{font-family:ui-monospace,Menlo,monospace;font-size:var(--t-caption);font-weight:400;color:var(--muted)}
+a.go span{text-decoration:underline;text-underline-offset:3px}
+.go.none{color:var(--muted);font-weight:400}
+.chain{display:flex;flex-direction:column;align-items:stretch}
+.step{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.step.c{border:2px solid var(--accent)} .step.future{border-style:dashed}
+.step p{font-size:var(--t-small);color:var(--muted)}
+.arr{align-self:center;color:var(--muted);font-size:20px;line-height:1;padding:6px 0}
+.arr::before{content:"↓"}
+@media (min-width:900px){
+  .chain.h{flex-direction:row}
+  .chain.h .step{flex:1 1 0}
+  .chain.h .arr{padding:0 6px}
+  .chain.h .arr::before{content:"→"}
+}
+.branch{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:12px}
+.open{border-left:4px solid var(--alert);padding:12px 16px;background:var(--card);border-radius:0 12px 12px 0}
+
+/* screens */
+.screen{display:flex;flex-direction:column;gap:12px;padding-block:8px 20px;border-top:1px dashed var(--line);min-width:0}
+.screen:first-of-type{border-top:0}
+.shead{display:flex;flex-direction:column;gap:4px}
+.why{font-size:var(--t-small);color:var(--muted);max-width:75ch}
+:root[data-view="phone"] .v-desk{display:none}
+:root[data-view="desktop"] .v-phone{display:none}
+.v-phone .ph{max-width:440px}
+:root[data-view="desktop"] #view-screens{max-width:1320px;margin-inline:auto}
+:root[data-view="desktop"] main.wrap{max-width:1320px}
+.ph{width:100%;max-width:390px;background:var(--page);border:1px solid var(--line);border-radius:28px;overflow:hidden;display:flex;flex-direction:column}
+.ph .bar{display:flex;align-items:center;justify-content:center;position:relative;min-height:52px;border-bottom:1px solid var(--line);font-weight:700;font-family:var(--head-font);font-size:var(--t-body)}
+.ph .bar .back{position:absolute;left:14px;font-family:var(--ui-font);font-weight:600;font-size:var(--t-small);color:var(--accent)}
+.ph .body{padding:14px;display:flex;flex-direction:column;gap:12px}
+.ph .tabbar{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);min-height:56px}
+.ph .tabbar span{display:flex;align-items:center;justify-content:center;font-size:var(--t-caption);font-weight:600;color:var(--muted)}
+.ph .tabbar span.on{color:var(--accent)}
+.now{background:var(--card);border:2px solid var(--accent);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.stepper{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.stepper span{display:flex;flex-direction:column;gap:4px;font-size:var(--t-caption);font-weight:600;color:var(--muted);text-align:center}
+.stepper span::before{content:"";height:6px;border-radius:3px;background:var(--line)}
+.stepper span.done::before{background:var(--muted)}
+.stepper span.on{color:var(--text)} .stepper span.on::before{background:var(--accent)}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:12px;min-height:64px;padding:10px 12px;display:flex;flex-direction:column;justify-content:center;gap:2px;box-shadow:0 1px 0 var(--line)}
+.tile b{font-weight:700} .tile small{font-size:var(--t-caption);color:var(--muted)}
+.tile .chip{align-self:flex-start}
+.desk{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--page);display:grid;grid-template-columns:200px 1fr;width:1280px;min-height:620px}
+.desk nav{background:var(--card);border-right:1px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:4px;font-weight:600}
+.desk nav .brand{font-family:var(--head-font);font-size:var(--t-body);padding:4px 12px 14px}
+.desk nav span{padding:10px 12px;border-radius:10px} .desk nav span.on{background:var(--chip);color:var(--accent)}
+.desk .main{padding:24px 28px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.mhead{display:flex;flex-direction:column;gap:2px}
+.col{display:flex;flex-direction:column;gap:12px;min-width:0}
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+.cols3{display:grid;grid-template-columns:260px 1fr 300px;gap:20px;align-items:start}
+.cols-side{display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start}
+.cols-side.wide{grid-template-columns:1fr 400px}
+.cols-side-l{display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start}
+.tiles.t3{grid-template-columns:repeat(3,1fr)}
+.list.pad{padding:4px 12px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;box-shadow:-6px 0 18px rgba(0,0,0,.12)}
+.pcell{display:inline-flex;align-items:center;gap:8px}
+.pc-head{display:flex;align-items:center;gap:12px}
+.pc-head .t{flex:1;min-width:0} .pc-head .t small{display:block;font-size:var(--t-small);color:var(--muted)}
+.pname{display:block;font-family:var(--head-font);font-size:var(--t-title);line-height:1.1}
+.spread{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap} .spread .r{text-align:right}
+.alerttx{color:var(--alert);font-weight:700}
+.faded{opacity:.4}
+.row.cur{background:var(--chip)}
+.row.col{flex-direction:column;align-items:stretch}
+.seg.in{align-self:flex-start} .seg.full{display:flex} .seg.full button{flex:1}
+.cbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--card);border:2px dashed var(--accent);border-radius:12px;padding:8px}
+.cbar .btn{flex:1 1 auto} .cbar.wide .btn{flex:0 0 auto}
+.good{color:var(--good)}
+.intro{padding-bottom:0!important;border-bottom:0!important}
+.ck{flex:none;width:26px;height:26px;border-radius:7px;border:2px solid var(--field-line);background:var(--field);display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--on-accent)}
+.ck.on{background:var(--accent);border-color:var(--accent)}
+.st.left th,.st.left td{text-align:left}
+.row.bare{border:0;padding:4px 0;min-height:48px}
+.row .t b+b{margin-top:2px}
+.cols3.wide2{grid-template-columns:240px 1fr 280px}
+.cols3.trade{grid-template-columns:1fr 1fr 320px}
+.open.small b{font-weight:700}
+
+.filters{display:flex;gap:6px;flex-wrap:wrap} .filters.scroll{flex-wrap:nowrap;overflow-x:auto}
+.pick{flex:none;display:inline-flex;align-items:center;min-height:40px;padding:0 12px;border-radius:20px;border:1px solid var(--field-line);background:var(--field);font-size:var(--t-small);font-weight:600;white-space:nowrap}
+.pick.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap} .tools .grow{flex:1 1 240px}
+.row .t small+small{margin-top:2px}
+.ptable td:last-child,.ptable th:last-child{text-align:right}
+.board td,.board th{text-align:left!important;vertical-align:top;font-size:var(--t-small)}
+.board td:first-child{font-weight:700;white-space:nowrap}
+.board i{color:var(--alert);font-style:normal;font-weight:600}
+.board tr.money td{font-weight:700;background:var(--chip)}
+.scrollx{overflow-x:auto;padding-bottom:4px}
+.toggle{flex:none;width:52px;height:32px;border-radius:16px;background:var(--line);border:0;position:relative;cursor:pointer;padding:0}
+.toggle::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;transition:left .15s}
+.toggle[aria-checked="true"]{background:var(--good)}
+.toggle[aria-checked="true"]::after{left:23px}
+.row.dim{opacity:.45}
+.clock{font-family:var(--head-font);font-size:48px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.oc{background:var(--card);border:2px solid var(--accent);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;align-items:stretch}
+.oc .top2{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.field{border:1px solid var(--field-line);border-radius:10px;min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 14px;background:var(--field);font-size:var(--t-small);color:var(--muted)}
+.sheet{background:var(--card);border-top:1px solid var(--line);border-radius:20px 20px 0 0;padding:12px 14px 16px;display:flex;flex-direction:column;gap:12px;box-shadow:0 -6px 18px rgba(0,0,0,.18)}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--line);align-self:center}
+.wins{display:flex;gap:6px;overflow-x:auto}
+.wins span{flex:none;min-height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--field-line);background:var(--field);display:inline-flex;align-items:center;font-size:var(--t-caption);font-weight:700}
+.wins span.on{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.pending{border:1px dashed var(--muted);border-radius:12px;padding:14px;font-size:var(--t-small);color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<header class="top"><div class="wrap">
+  <div class="toprow">
+    <div><p class="cap">The Fantastic Leagues · OGBA</p><h1>Style Bible</h1></div>
+    <div class="ctrls">
+      <div class="ctl"><span class="cap">Theme</span><div class="seg" role="group" aria-label="Theme"><button type="button" id="th-light">Light</button><button type="button" id="th-dark">Dark</button><button type="button" id="th-system">Auto</button></div></div>
+      <div class="ctl"><span class="cap">Screens</span><div class="seg" role="group" aria-label="Show screens as"><button type="button" id="vw-phone">Phone</button><button type="button" id="vw-desktop">Desktop</button></div></div>
+    </div>
+  </div>
+  <nav class="tabs" aria-label="Sections"><a href="#style" id="tab-style">Style</a><a href="#flow" id="tab-flow">Flow</a><a href="#screens" id="tab-screens">Screens</a></nav>
+</div></header>
+
+<main class="wrap">
+<!-- ================= STYLE ================= -->
+<div id="view-style">
+  <section>
+    <h2>What's wrong today</h2>
+    <p class="muted">Measured across the app's code on Nov 10. The sizes are the main problem, not the font.</p>
+    <div class="grid3">
+      <div class="box"><h2 class="num">20</h2><p class="small">different text sizes in use, from 8px to 34px.</p></div>
+      <div class="box"><h2 class="num">473</h2><p class="small">places set text at 10px or smaller.</p></div>
+      <div class="box"><h2 class="num">19</h2><p class="small">color names in the theme file, many of them duplicates.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Font</h2>
+    <p class="muted">Tap one to try it on this whole page, including the Screens tab. Each has a regular face for text and a condensed face for headings and numbers.</p>
+    <div class="fontpick" role="group" aria-label="Try a font">
+      <button type="button" id="f-sofia" data-ui='"Sofia Sans", system-ui, sans-serif' data-head='"Sofia Sans Condensed","Sofia Sans", system-ui, sans-serif'>Sofia Sans (chosen)</button>
+      <button type="button" id="f-barlow" data-ui='"Barlow", system-ui, sans-serif' data-head='"Barlow Semi Condensed","Barlow", system-ui, sans-serif'>Barlow</button>
+      <button type="button" id="f-inter" data-ui='"Inter", system-ui, sans-serif' data-head='"Inter", system-ui, sans-serif'>Inter (today)</button>
+      <button type="button" id="f-source" data-ui='"Source Sans 3", system-ui, sans-serif' data-head='"Source Sans 3", system-ui, sans-serif'>Source Sans 3</button>
+      <button type="button" id="f-saira" data-ui='"Saira", system-ui, sans-serif' data-head='"Saira Semi Condensed","Saira", system-ui, sans-serif'>Saira</button>
+      <button type="button" id="f-archivo" data-ui='"Archivo", system-ui, sans-serif' data-head='"Archivo Narrow","Archivo", system-ui, sans-serif'>Archivo</button>
+    </div>
+    <div class="grid3">
+      <div class="box fontcard"><p class="cap">Barlow</p><h3 style="font-family:'Barlow Semi Condensed',Barlow,sans-serif">Demolition Lumber 58.5</h3><p class="tbl" style="font-family:Barlow,sans-serif">Scoreboard feel. Condensed headings save room on a phone.</p></div>
+      <div class="box fontcard"><p class="cap">Inter · today</p><h3 style="font-family:Inter,sans-serif">Demolition Lumber 58.5</h3><p class="tbl" style="font-family:Inter,sans-serif">Very clear, wide, generic.</p></div>
+      <div class="box fontcard"><p class="cap">Source Sans 3</p><h3 style="font-family:'Source Sans 3',sans-serif">Demolition Lumber 58.5</h3><p class="tbl" style="font-family:'Source Sans 3',sans-serif">Newspaper box score. Quiet.</p></div>
+      <div class="box fontcard"><p class="cap">Saira <span class="newtag">New</span></p><h3 style="font-family:'Saira Semi Condensed',Saira,sans-serif">Demolition Lumber 58.5</h3><p class="tbl" style="font-family:Saira,sans-serif">Squared letters, like a stadium board or a jersey number. The boldest of the six.</p></div>
+      <div class="box fontcard"><p class="cap">Archivo <span class="newtag">New</span></p><h3 style="font-family:'Archivo Narrow',Archivo,sans-serif">Demolition Lumber 58.5</h3><p class="tbl" style="font-family:Archivo,sans-serif">Made for dense tables and news pages. Sturdy, slightly old-school.</p></div>
+      <div class="box fontcard"><p class="cap">Sofia Sans <span class="newtag">New</span></p><h3 style="font-family:'Sofia Sans Condensed','Sofia Sans',sans-serif">Demolition Lumber 58.5</h3><p class="tbl" style="font-family:'Sofia Sans',sans-serif">Softer and friendlier, with a very narrow condensed face. Fits the most on a row.</p></div>
+    </div>
+    <p><b>Chosen: Sofia Sans.</b> Regular Sofia Sans for text, Sofia Sans Condensed for headings, team names on tight rows, and big numbers like the clock. The other five stay here for comparison.</p>
+  </section>
+
+  <section>
+    <h2>Text sizes</h2>
+    <div class="answer"><b>Four, not five.</b><p class="small">Three is too few for a stats app: you need a size for reading, a smaller one for table cells and second lines, and a caption size for labels and chips, plus one big size for the page title. Section headings use the body size in bold, so they don't need their own size. Big apps use more (iPhone's own system has 11), but they have far more kinds of screens than we do.</p></div>
+    <div class="box scale">
+      <div><code>Title</code><code class="num">24px</code><span style="font-size:24px;font-weight:700;font-family:var(--head-font)">Period 9 moves</span></div>
+      <div><code>Body · headings bold</code><code class="num">17px</code><span><b>Your player news</b> · Skunk Dogs added Jake Fraley</span></div>
+      <div><code>Small · table cells</code><code class="num">15px</code><span class="small">23 / 23 players · .284 · 12 HR</span></div>
+      <div><code>Caption · chips</code><code class="num">13px</code><span style="font-size:13px;font-weight:700">2 MOVES ✓ · LAD · COLUMN HEADER</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Colors</h2>
+    <p class="muted">Nine colors. Use the Theme buttons at the top to see both sets. Rule: <b>no box ever has the same color as what it sits on.</b> Cards sit on the page; search boxes and pickers use their own Field color (white in light, darker than the page in dark) with a stronger border.</p>
+    <div class="answer"><b>What changed from the first draft</b><p class="small">Text and Muted looked the same, so Muted is now clearly lighter. Warning and Bad looked the same, so they're one color now, Alert. Cards are much lighter than the page, so boxes stand out.</p></div>
+    <div class="sw">
+      <div><span style="background:var(--page)"></span><p><b>Page</b>Background</p></div>
+      <div><span style="background:var(--card)"></span><p><b>Card</b>Boxes, lists, tables</p></div>
+      <div><span style="background:var(--line)"></span><p><b>Line</b>Borders, dividers</p></div>
+      <div><span style="background:var(--text)"></span><p><b>Text</b>What you read</p></div>
+      <div><span style="background:var(--muted)"></span><p><b>Muted</b>Second lines, labels</p></div>
+      <div><span style="background:var(--accent)"></span><p><b>Accent</b>Main button, links</p></div>
+      <div><span style="background:var(--good)"></span><p><b>Good</b>Done, gains</p></div>
+      <div><span style="background:var(--alert)"></span><p><b>Alert</b>Needs a look, losses</p></div>
+      <div><span style="background:var(--field);border:1px solid var(--field-line)"></span><p><b>Field</b>Search boxes and pickers</p></div>
+    </div>
+    <div class="pagecard">
+      <div class="box"><b>A card on the page</b><p class="small muted">The card is clearly lighter than the page around it, with a thin line under it.</p></div>
+      <div class="box"><b>Another card</b><p class="small muted">Second line in Muted, which reads as clearly lighter than the bold line.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Players and teams</h2>
+    <p class="muted">Every player row shows a face; every MLB team shows its logo with the three-letter code.</p>
+    <div class="grid2">
+      <div class="list">
+        <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/660271/headshot/67/current" alt=""><div class="t"><b>Shohei Ohtani</b><small>DH · SP</small></div></div><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/119.svg" alt="">LAD</span></div>
+        <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/665487/headshot/67/current" alt=""><div class="t"><b>Fernando Tatis Jr.</b><small>OF</small></div></div><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/135.svg" alt="">SD</span></div>
+        <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/668678/headshot/67/current" alt=""><div class="t"><b>Zac Gallen</b><small>SP · IL</small></div></div><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/109.svg" alt="">ARI</span></div>
+      </div>
+      <div class="box">
+        <b>Yes, both are possible</b>
+        <p class="small">MLB serves a headshot for every player ID, and an SVG logo for every team ID, from its public image server. We already store each player's MLB ID, so it's one image tag per row.</p>
+        <p class="small muted">These are the real images, copied from MLB's image server. Logos sit on a small white circle so they read in light and dark.</p>
+        <p class="small muted">Risk: MLB photos and logos are copyrighted and trademarked. Big fantasy apps license them. For a private 8-team league the risk is low, but if you ever market this, budget for that or switch to initials.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Boxes and room</h2>
+    <div class="grid2">
+      <div class="box"><p class="tag no">Don't</p><p class="small">Fixed-width boxes with small text that wraps.</p>
+        <div class="cramped"><span>🔍 Search NL free agents…</span><span>Choose a player ›</span><span>+ Another move</span><span>No moves</span></div></div>
+      <div class="box"><p class="tag yes">Do</p><p class="small">Boxes grow to fit the words. One line, full size.</p>
+        <div class="roomy"><span>🔍 Search NL free agents</span><span>Choose a player to drop ›</span></div></div>
+    </div>
+    <ul class="rules">
+      <li>Anything you tap is at least <b class="num">44px</b> tall. Main buttons are <b class="num">48px</b>.</li>
+      <li>List rows are at least <b class="num">56px</b> tall.</li>
+      <li>Buttons and chips never wrap. If the words don't fit, the layout stacks, not the text.</li>
+      <li>No fixed pixel widths on boxes. A desktop column holding a form is at least <b class="num">340px</b> wide.</li>
+      <li>No box has the same background as what's behind it. Cards on the page, Field color for anything you type in or pick from.</li>
+      <li>Gaps: <span class="num">4, 8, 12, 16, 24px</span>. Corners: <span class="num">12px</span>. Chips are fully round.</li>
+      <li>No page repeats the league name, season or phase banner. The header shows it once.</li>
+      <li>Desktop pages fit on one screen where they can, by using two columns instead of one long one.</li>
+    </ul>
+  </section>
+</div>
+
+<!-- ================= FLOW ================= -->
+<div id="view-flow" hidden>
+  <section>
+    <h2>Who does what</h2>
+    <p class="muted">Owners mostly watch. The commissioner runs the league. Each step names the page it happens on.</p>
+    <div class="legend"><span class="who o">Owner</span><span class="who c">Commissioner</span><span class="who a">App, automatic</span></div>
+    <div class="grid2">
+      <div class="box"><h3>Owner can</h3>
+        <ul class="canlist">
+          <li><span>See standings, rosters, stats, news, activity<span class="go"><code>/</code><span>(screenshot gallery)</span></span><span class="go"><code>/season</code><span>(screenshot gallery)</span></span></span><span class="st2">Built</span></li>
+          <li><span>Tap any player to see recent and season stats<a class="go" href="#screens"><span>Player card mockup</span></a></span><span class="st2">Designing</span></li>
+          <li><span>Propose, accept, reject or cancel a trade, on meeting day or anytime, per the Rules switch<span class="go none"><code>/trades</code>No screenshot yet</span><a class="go" href="#screens"><span>New design: screens 16–17</span></a></span><span class="st2">Built</span></li>
+          <li><span>Keep a Wire List: ranked players to add, and to drop<span class="go"><code>/teams/LDY/wire-list</code><span>(screenshot gallery)</span></span></span><span class="st2">Built</span></li>
+          <li><span>Enter own adds and drops on the clock at the meeting, if the commissioner turns it on<a class="go" href="#screens"><span>Mockup</span></a></span><span class="st2">Planned</span></li>
+        </ul></div>
+      <div class="box"><h3>Commissioner can</h3>
+        <ul class="canlist">
+          <li><span>Close a period, start the next<span class="go"><code>/commissioner/5/close</code><span>(screenshot gallery)</span></span></span><span class="st2">Built</span></li>
+          <li><span>Enter everyone's meeting moves<span class="go"><code>/commissioner/5/rosters</code><span>(screenshot gallery)</span></span></span><span class="st2">Redesigning</span></li>
+          <li><span>Fix a roster: IL, single add/drop, position<span class="go"><code>/commissioner/5/rosters</code><span>(screenshot gallery)</span></span><a class="go" href="#screens"><span>New design: screens 12–15</span></a></span><span class="st2">Built</span></li>
+          <li><span>Process, veto or reverse a trade<span class="go"><code>/commissioner/5/trades</code><span>(screenshot gallery)</span></span></span><span class="st2">Built</span></li>
+          <li><span>Money: fees, payouts<span class="go"><code>/commissioner/5/money</code><span>(screenshot gallery)</span></span></span><span class="st2">Built</span></li>
+          <li><span>League rules as on/off switches<a class="go" href="#screens"><span>Mockup</span></a></span><span class="st2">Planned</span></li>
+          <li><span>Run the live meeting: clock, more time, skip<a class="go" href="#screens"><span>Mockup</span></a></span><span class="st2">Planned</span></li>
+        </ul></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>One period, start to finish</h2>
+    <p class="muted">Each stage has three boxes: what the app does by itself, what owners do, what the commissioner does. Lineups are locked during a period; changes happen at the meeting.</p>
+    <div class="lanes">
+      <span class="rowhd" aria-hidden="true"></span>
+      <span class="rowhd"><span class="who a">App</span></span>
+      <span class="rowhd"><span class="who o">Owner</span></span>
+      <span class="rowhd"><span class="who c">Commissioner</span></span>
+
+      <div class="stagehd"><p class="cap">Stage 1</p><h3>During the period</h3></div>
+      <div class="lane a"><span class="who a">App</span><ul><li>Pulls stats every night</li><li>Pulls MLB moves: IL, sent down, traded</li><li>Updates standings</li></ul></div>
+      <div class="lane"><span class="who o">Owner</span><ul><li>Checks Today, standings, player news</li><li>Researches players</li><li>Trades, only if Rules says "Anytime"</li><li>Updates their Wire List</li></ul></div>
+      <div class="lane c"><span class="who c">Commissioner</span><ul><li>Processes accepted trades</li><li>One-off fixes: IL moves, corrections</li></ul></div>
+
+      <div class="stagehd"><p class="cap">Stage 2</p><h3>Period ends</h3></div>
+      <div class="lane a"><span class="who a">App</span><ul><li>Freezes final standings</li><li>Works out IL fees owed</li><li>Flags any team under 50 innings</li></ul></div>
+      <div class="lane"><span class="who o">Owner</span><p class="none">Nothing to do. Sees final standings.</p></div>
+      <div class="lane c"><span class="who c">Commissioner</span><ul><li>Closes the period</li><li>Bills IL fees</li><li>Decides what to do about any innings flag</li></ul></div>
+
+      <div class="stagehd"><p class="cap">Stage 3</p><h3>Between periods</h3></div>
+      <div class="lane a"><span class="who a">App</span><ul><li>Checks every move against the rules as it's entered</li><li>Runs the clock, if live meeting is on</li></ul></div>
+      <div class="lane"><span class="who o">Owner</span><ul><li>Says their adds and drops at the meeting</li><li>Makes trades (meeting day only is today's rule)</li><li>Or enters them on the clock, if live meeting is on</li></ul></div>
+      <div class="lane c"><span class="who c">Commissioner</span><ul><li>Enters moves team by team, or runs the clock</li><li>Reviews all moves, saves once</li></ul></div>
+
+      <div class="stagehd"><p class="cap">Stage 4</p><h3>Next period starts</h3></div>
+      <div class="lane a"><span class="who a">App</span><ul><li>Counts new rosters from the start date</li></ul></div>
+      <div class="lane"><span class="who o">Owner</span><p class="none">Sees their new roster.</p></div>
+      <div class="lane c"><span class="who c">Commissioner</span><ul><li>Starts the next period</li></ul></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>A trade</h2>
+    <p class="muted">Rules switch "When trades are allowed": <b>Meeting day only</b> (OGBA today) or <b>Anytime</b>. Outside the allowed window, the Propose button is off and says when trades open next.</p>
+    <div class="chain h">
+      <div class="step"><span class="who o">Owner A</span><b>Proposes</b><p>Picks players from both sides.</p></div><span class="arr" aria-hidden="true"></span>
+      <div class="step"><span class="who o">Owner B</span><b>Accepts or rejects</b><p>Owner A can cancel before then.</p></div><span class="arr" aria-hidden="true"></span>
+      <div class="step c"><span class="who c">Commissioner</span><b>Processes or vetoes</b><p>Rosters change only here.</p></div><span class="arr" aria-hidden="true"></span>
+      <div class="step"><span class="who a">App</span><b>Shows it in Activity</b><p>The commissioner can reverse it later.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The live meeting</h2>
+    <p class="muted">Off by default. The commissioner turns it on in Rules. When it's off, the commissioner enters everyone's moves, the way it works today.</p>
+    <div class="grid2">
+      <div class="box"><h3>Switches in Rules</h3>
+        <ul class="canlist">
+          <li><span>Owners enter their own moves on the clock</span><span class="st2">Off</span></li>
+          <li><span>Clock per turn</span><span class="st2">2 min</span></li>
+          <li><span>Commissioner can add time</span><span class="st2">On</span></li>
+          <li><span>Penalty for going over time</span><span class="st2">Off</span></li>
+        </ul></div>
+      <div class="box"><h3>Works on any screen</h3><p class="small">Owners can join from a phone or a computer. The phone screen is the main design; a computer shows the same thing with the turn order beside it.</p></div>
+    </div>
+    <div class="chain">
+      <div class="step c future"><span class="who c">Commissioner</span><b>Opens the meeting and sets the order</b><p>Only after Close Period.</p></div><span class="arr" aria-hidden="true"></span>
+      <div class="step future"><span class="who a">App</span><b>Puts the next owner on the clock</b><p>Everyone sees who's up and the time left.</p></div><span class="arr" aria-hidden="true"></span>
+      <div class="branch">
+        <div class="step future"><span class="who o">Owner on the clock</span><b>Enters adds and drops, or passes</b><p>Picks from their Wire List or searches. Rules are checked as they go.</p></div>
+        <div class="step c future"><span class="who c">Commissioner</span><b>Adds time, skips, or enters for them</b><p>Adding time only shows when that switch is on.</p></div>
+        <div class="step future"><span class="who a">App</span><b>Time runs out</b><p>Counts as a pass. If the penalty switch is on, the penalty is logged too.</p></div>
+      </div><span class="arr" aria-hidden="true"></span>
+      <div class="step future"><span class="who a">App</span><b>Next owner, until everyone has gone</b></div><span class="arr" aria-hidden="true"></span>
+      <div class="step c future"><span class="who c">Commissioner</span><b>Reviews and saves all moves</b><p>Same review screen as today's meeting.</p></div>
+    </div>
+    <div class="open"><b>Still to decide:</b> where the turn order comes from, and what the over-time penalty is (a dollar amount, or losing the turn).</div>
+  </section>
+</div>
+
+<!-- ================= SCREENS ================= -->
+<div id="view-screens" hidden>
+  <section class="intro">
+    <p class="muted">Design first, build after. Use <b>Screens: Phone / Desktop</b> at the top to switch every screen below. Phone frames are iPhone 16 Pro Max width (440px); desktop frames are a 1280px laptop window, scroll sideways inside the frame on a small screen. Player photos and team logos are real, pulled from MLB's image server; the players and numbers are samples.</p>
+  </section>
+
+  <!-- ===== COMMISSIONER ===== -->
+  <section>
+    <h2>Commissioner area</h2>
+    <p class="muted">Every page opens straight to its content: no repeated "League tools" header, league card or phase banner.</p>
+
+    <!-- 1 HOME -->
+    <div class="screen">
+      <div class="shead"><h3>1 · Commissioner home</h3><p class="why">The period tracker shows where you are. The next step is the big button. Jobs are tiles, so the page fits on one screen.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar">Commissioner</div>
+        <div class="body">
+          <div class="now">
+            <p class="cap">Period 8 · ends Sun Jun 14 · 3 days left</p>
+            <div class="stepper"><span class="on">Play</span><span>Close</span><span>Meeting</span><span>Start</span></div>
+            <p class="small">When Period 8 ends, close it to freeze standings.</p>
+            <div class="btn">Close Period 8 · Jun 14</div>
+          </div>
+          <div class="list">
+            <div class="row"><div class="t"><b>Trade to process</b><small>Bombers ↔ Skunk Dogs</small></div><span class="chip acc">1</span></div>
+            <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/668678/headshot/67/current" alt=""><div class="t"><b>Gallen back from MLB IL</b><small>Demolition Lumber</small></div></div><span class="chip alert">Fix</span></div>
+            <div class="row"><div class="t"><b>Under 50 innings in Period 7</b><small>Bombers · 46⅓ IP</small></div><span class="chip alert">Review</span></div>
+          </div>
+          <div class="tiles">
+            <div class="tile"><b>Rosters</b><small>8 teams</small></div>
+            <div class="tile"><b>Trades</b><small>1 waiting · meeting day only</small></div>
+            <div class="tile"><b>Money</b><small>$45 unpaid</small></div>
+            <div class="tile"><b>Rules</b><small>NL only · 23</small></div>
+            <div class="tile"><b>Owners</b><small>8 joined</small></div>
+            <div class="tile"><b>Auction</b><small>Mar 21 · set up</small></div>
+          </div>
+          <a class="small" href="#screens">History ›</a> · <a class="small" href="#screens">Season and periods ›</a>
+        </div>
+        <div class="tabbar"><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></nav>
+        <div class="main">
+          <div class="mhead"><h2>Commissioner</h2><p class="small muted">OGBA 2026</p></div>
+          <div class="cols2">
+            <div class="col">
+              <div class="now">
+                <p class="cap">Period 8 · ends Sun Jun 14 · 3 days left</p>
+                <div class="stepper"><span class="on">Play</span><span>Close</span><span>Meeting</span><span>Start</span></div>
+                <p class="small">When Period 8 ends, close it to freeze standings.</p>
+                <div class="btn">Close Period 8 · Jun 14</div>
+              </div>
+              <p class="cap">Waiting on you</p>
+              <div class="list">
+                <div class="row"><div class="t"><b>Trade to process</b><small>Bombers ↔ Skunk Dogs</small></div><span class="chip acc">1</span></div>
+                <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/668678/headshot/67/current" alt=""><div class="t"><b>Gallen back from MLB IL</b><small>Demolition Lumber</small></div></div><span class="chip alert">Fix</span></div>
+            <div class="row"><div class="t"><b>Under 50 innings in Period 7</b><small>Bombers · 46⅓ IP</small></div><span class="chip alert">Review</span></div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="tiles t3">
+                <div class="tile"><b>Rosters</b><small>8 teams</small></div><div class="tile"><b>Trades</b><small>1 waiting</small></div><div class="tile"><b>Money</b><small>$45 unpaid</small></div>
+                <div class="tile"><b>Rules</b><small>NL only · 23</small></div><div class="tile"><b>Owners</b><small>8 joined</small></div><div class="tile"><b>Auction</b><small>Mar 21</small></div>
+              </div>
+              <p class="cap">History</p>
+              <div class="list">
+                <div class="row"><div class="t"><b>Started Period 8</b><small>Nov 9</small></div></div>
+                <div class="row"><div class="t"><b>Billed IL fees for Period 7</b><small>Nov 9 · $35</small></div></div>
+                <div class="row"><div class="t"><b>Closed Period 7</b><small>Nov 9</small></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div></div>
+    </div>
+
+    <!-- 2 RULES -->
+    <div class="screen">
+      <div class="shead"><h3>2 · Rules</h3><p class="why">Every OGBA rule is a switch, a choice or one value. Settings that don't apply to OGBA are hidden. Try the switches: the meeting rows wake up when "Owners enter own moves" is on. Every change is logged in History.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar"><span class="back">‹ Commissioner</span>Rules</div>
+        <div class="body">
+          <p class="cap">Rosters</p>
+          <div class="list">
+            <div class="row"><div class="t"><b>NL players only</b></div><button class="toggle" role="switch" aria-checked="true" aria-label="NL players only"></button></div>
+            <div class="row"><div class="t"><b>Roster size</b></div><span class="chip num">23</span></div>
+            <div class="row"><div class="t"><b>IL fee, 1st player on IL</b><small>Per period</small></div><span class="chip num">$10</span></div>
+            <div class="row"><div class="t"><b>IL fee, 2nd player on IL</b><small>Per period</small></div><span class="chip num">$15</span></div>
+            <div class="row"><div class="t"><b>Minimum innings per period</b><small>The app flags teams under it; you decide</small></div><span class="chip num">50 IP</span></div>
+          </div>
+          <p class="cap">Trades</p>
+          <div class="list">
+            <div class="row col"><div class="t"><b>When trades are allowed</b><small>Today: only on meeting day, with adds and drops</small></div>
+              <div class="seg in" role="group" aria-label="When trades are allowed"><button type="button" aria-pressed="true">Meeting day only</button><button type="button" aria-pressed="false">Anytime</button></div></div>
+            <div class="row"><div class="t"><b>You approve every trade</b></div><button class="toggle" role="switch" aria-checked="true" aria-label="You approve every trade"></button></div>
+          </div>
+          <p class="cap">Meeting</p>
+          <div class="list">
+            <div class="row"><div class="t"><b>Owners enter own moves</b><small>Off: you enter them for everyone</small></div><button class="toggle" role="switch" aria-checked="false" aria-label="Owners enter own moves" data-controls="meet"></button></div>
+            <div class="row dim" data-dep="meet"><div class="t"><b>Clock per turn</b></div><span class="chip num">2 min</span></div>
+            <div class="row dim" data-dep="meet"><div class="t"><b>You can add time</b></div><button class="toggle" role="switch" aria-checked="true" aria-label="You can add time"></button></div>
+            <div class="row dim" data-dep="meet"><div class="t"><b>Penalty for going over</b><small>$5, logged in Money</small></div><button class="toggle" role="switch" aria-checked="false" aria-label="Penalty for going over"></button></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></nav>
+        <div class="main">
+          <div class="mhead"><a class="small" href="#screens">‹ Commissioner</a><h2>Rules</h2></div>
+          <div class="cols2">
+            <div class="col">
+              <p class="cap">Rosters</p>
+              <div class="list">
+                <div class="row"><div class="t"><b>NL players only</b></div><button class="toggle" role="switch" aria-checked="true" aria-label="NL players only"></button></div>
+                <div class="row"><div class="t"><b>Roster size</b></div><span class="chip num">23</span></div>
+                <div class="row"><div class="t"><b>IL fee, 1st player on IL</b><small>Per period</small></div><span class="chip num">$10</span></div>
+            <div class="row"><div class="t"><b>IL fee, 2nd player on IL</b><small>Per period</small></div><span class="chip num">$15</span></div>
+            <div class="row"><div class="t"><b>Minimum innings per period</b><small>The app flags teams under it; you decide</small></div><span class="chip num">50 IP</span></div>
+              </div>
+              <p class="cap">Trades</p>
+              <div class="list">
+                <div class="row"><div class="t"><b>When trades are allowed</b><small>Today: only on meeting day</small></div>
+                  <div class="seg in" role="group" aria-label="When trades are allowed"><button type="button" aria-pressed="true">Meeting day only</button><button type="button" aria-pressed="false">Anytime</button></div></div>
+                <div class="row"><div class="t"><b>You approve every trade</b></div><button class="toggle" role="switch" aria-checked="true" aria-label="You approve every trade"></button></div>
+              </div>
+            </div>
+            <div class="col">
+              <p class="cap">Meeting</p>
+              <div class="list">
+                <div class="row"><div class="t"><b>Owners enter own moves</b><small>Off: you enter them for everyone</small></div><button class="toggle" role="switch" aria-checked="false" aria-label="Owners enter own moves" data-controls="meet2"></button></div>
+                <div class="row dim" data-dep="meet2"><div class="t"><b>Clock per turn</b></div><span class="chip num">2 min</span></div>
+                <div class="row dim" data-dep="meet2"><div class="t"><b>You can add time</b></div><button class="toggle" role="switch" aria-checked="true" aria-label="You can add time"></button></div>
+                <div class="row dim" data-dep="meet2"><div class="t"><b>Penalty for going over</b><small>$5, logged in Money</small></div><button class="toggle" role="switch" aria-checked="false" aria-label="Penalty for going over"></button></div>
+              </div>
+              <p class="cap">Auction</p>
+              <div class="list">
+                <div class="row"><div class="t"><b>Budget per team</b></div><span class="chip num">$260</span></div>
+                <div class="row"><div class="t"><b>Bid clock</b></div><span class="chip num">15 sec</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div></div>
+    </div>
+
+    <!-- 3 MONEY -->
+    <div class="screen">
+      <div class="shead"><h3>3 · Money</h3><p class="why">One number per team. No empty boxes. Billing shows up only when there's something to bill.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar"><span class="back">‹ Commissioner</span>Money</div>
+        <div class="body">
+          <div class="box"><p class="cap">2026 season</p><div class="spread"><div><h2 class="num">$1,600</h2><p class="small muted">Prize pool · 8 × $200</p></div><div class="r"><h2 class="num">$45</h2><p class="small muted">Owed by 3 teams</p></div></div></div>
+          <div class="btn primary">Bill IL fees for Period 8</div>
+          <div class="list">
+            <div class="row"><div class="t"><b>Los Doyers</b><small>2 IL fees · $10 + $15</small></div><span class="chip alert num">$25 owed</span></div>
+            <div class="row"><div class="t"><b>Bombers</b><small>1 IL fee</small></div><span class="chip alert num">$10 owed</span></div>
+            <div class="row"><div class="t"><b>Black Sox</b><small>Paid up</small></div><span class="chip good">Paid</span></div>
+            <div class="row"><div class="t"><b>Diamond Kings</b><small>Paid up</small></div><span class="chip good">Paid</span></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></nav>
+        <div class="main">
+          <div class="mhead"><a class="small" href="#screens">‹ Commissioner</a><h2>Money</h2></div>
+          <div class="cols-side-l">
+            <div class="col">
+              <div class="box"><p class="cap">2026 season</p><h2 class="num">$1,600</h2><p class="small muted">Prize pool · 8 × $200</p><h2 class="num">$45</h2><p class="small muted">Owed by 3 teams</p></div>
+              <div class="btn primary">Bill IL fees for Period 8</div>
+            </div>
+            <div class="list pad">
+              <table class="st num"><thead><tr><th>Team</th><th>Entry</th><th>IL fees</th><th>Paid</th><th>Owed</th></tr></thead><tbody>
+                <tr><td>Los Doyers</td><td>$200</td><td>$25</td><td>$200</td><td class="alerttx">$25</td></tr>
+                <tr><td>Bombers</td><td>$200</td><td>$10</td><td>$200</td><td class="alerttx">$10</td></tr>
+                <tr><td>RGing Sluggers</td><td>$200</td><td>$10</td><td>$200</td><td class="alerttx">$10</td></tr>
+                <tr><td>Black Sox</td><td>$200</td><td>$0</td><td>$200</td><td>–</td></tr>
+                <tr><td>Diamond Kings</td><td>$200</td><td>$10</td><td>$210</td><td>–</td></tr>
+                <tr><td>Skunk Dogs</td><td>$200</td><td>$0</td><td>$200</td><td>–</td></tr>
+              </tbody></table>
+            </div>
+          </div>
+        </div>
+      </div></div></div>
+    </div>
+
+    <!-- 4 LIVE MEETING COMMISH -->
+    <div class="screen">
+      <div class="shead"><h3>4 · Live meeting, commissioner</h3><p class="why">Only when "Owners enter own moves" is on. Who's up is huge; your controls sit right under it. "+1 min" only shows if "You can add time" is on.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar"><span class="back">‹ Commissioner</span>Period 9 meeting</div>
+        <div class="body">
+          <div class="oc">
+            <div class="top2"><div><p class="cap">On the clock</p><h2>Los Doyers</h2></div><span class="clock">1:24</span></div>
+            <div class="btns"><div class="btn sm">+1 min</div><div class="btn sm">Skip</div><div class="btn sm">Enter for them</div></div>
+          </div>
+          <p class="cap">Up next</p>
+          <div class="list">
+            <div class="row"><div class="t"><b>Bombers</b><small>Online</small></div><span class="chip">Next</span></div>
+            <div class="row"><div class="t"><b>RGing Sluggers</b><small>Not online</small></div><span class="chip alert">Away</span></div>
+          </div>
+          <p class="cap">Done</p>
+          <div class="list">
+            <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/641584/headshot/67/current" alt=""><div class="t"><b>Diamond Kings</b><small>+ Fraley, − Bader</small></div></div><span class="chip good">1 move</span></div>
+            <div class="row"><div class="t"><b>Black Sox</b><small>Passed</small></div><span class="chip">Pass</span></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></nav>
+        <div class="main">
+          <div class="mhead"><a class="small" href="#screens">‹ Commissioner</a><h2>Period 9 meeting</h2></div>
+          <div class="cols3">
+            <div class="col"><p class="cap">Order</p><div class="list">
+              <div class="row"><div class="t"><b>Black Sox</b></div><span class="chip">Pass</span></div>
+              <div class="row"><div class="t"><b>Diamond Kings</b></div><span class="chip good">1</span></div>
+              <div class="row cur"><div class="t"><b>Los Doyers</b></div><span class="chip acc">Up</span></div>
+              <div class="row"><div class="t"><b>Bombers</b></div><span class="chip">Next</span></div>
+              <div class="row"><div class="t"><b>RGing Sluggers</b></div><span class="chip alert">Away</span></div>
+            </div></div>
+            <div class="col">
+              <div class="oc"><div class="top2"><div><p class="cap">On the clock</p><h2>Los Doyers</h2></div><span class="clock">1:24</span></div>
+                <div class="btns"><div class="btn sm">+1 min</div><div class="btn sm">Skip</div><div class="btn sm">Enter for them</div></div></div>
+              <p class="cap">What they're entering</p>
+              <div class="list"><div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/641584/headshot/67/current" alt=""><div class="t"><b>+ Jake Fraley</b><small>OF · free agent</small></div></div><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/113.svg" alt="">CIN</span></div>
+              <div class="row"><div class="t"><b>− choosing a drop…</b></div></div></div>
+            </div>
+            <div class="col"><p class="cap">Moves so far</p><div class="list">
+              <div class="row"><div class="t"><b>Diamond Kings</b><small>+ Fraley, − Bader</small></div></div>
+              <div class="row"><div class="t"><b>Black Sox</b><small>Passed</small></div></div>
+            </div><div class="btn">Review all moves</div></div>
+          </div>
+        </div>
+      </div></div></div>
+    </div>
+
+    <!-- 5 LIVE MEETING OWNER -->
+    <div class="screen">
+      <div class="shead"><h3>5 · Live meeting, owner</h3><p class="why">The owner's own clock, then their Wire List, so a move is two taps. Rules are checked as they go.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar">Period 9 meeting</div>
+        <div class="body">
+          <div class="oc"><div class="top2"><div><p class="cap">You're up</p><h2>Los Doyers</h2></div><span class="clock">1:24</span></div></div>
+          <p class="cap">Add · from your Wire List</p>
+          <div class="list">
+            <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/641584/headshot/67/current" alt=""><div class="t"><b>1. Jake Fraley</b><small>OF · free agent</small></div></div><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/113.svg" alt="">CIN</span></div>
+            <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/624413/headshot/67/current" alt=""><div class="t"><b>2. Pete Alonso</b><small>1B · free agent</small></div></div><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/121.svg" alt="">NYM</span></div>
+          </div>
+          <div class="field">🔍 Search all NL free agents</div>
+          <p class="cap">Drop</p>
+          <div class="field">Choose a player to drop <span class="chev">›</span></div>
+          <div class="btns"><div class="btn">Pass</div><div class="btn primary">Submit move</div></div>
+        </div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></nav>
+        <div class="main">
+          <div class="mhead"><h2>Period 9 meeting</h2></div>
+          <div class="cols-side">
+            <div class="col">
+              <div class="oc"><div class="top2"><div><p class="cap">You're up</p><h2>Los Doyers</h2></div><span class="clock">1:24</span></div></div>
+              <div class="cols2">
+                <div class="col"><p class="cap">Add</p><div class="field">🔍 Search all NL free agents</div>
+                  <div class="list"><div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/641584/headshot/67/current" alt=""><div class="t"><b>Jake Fraley</b><small>OF</small></div></div><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/113.svg" alt="">CIN</span></div></div></div>
+                <div class="col"><p class="cap">Drop</p><div class="field">Choose a player to drop <span class="chev">›</span></div><p class="small good">✓ Roster stays at 23 / 23</p></div>
+              </div>
+              <div class="btns"><div class="btn">Pass</div><div class="btn primary">Submit move</div></div>
+            </div>
+            <div class="col"><p class="cap">Your Wire List</p><div class="list">
+              <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/641584/headshot/67/current" alt=""><div class="t"><b>1. Jake Fraley</b><small>OF</small></div></div><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/113.svg" alt="">CIN</span></div>
+              <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/624413/headshot/67/current" alt=""><div class="t"><b>2. Pete Alonso</b><small>1B</small></div></div><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/121.svg" alt="">NYM</span></div>
+            </div><p class="cap">Up after you</p><div class="list"><div class="row"><div class="t"><b>Bombers</b></div></div><div class="row"><div class="t"><b>RGing Sluggers</b></div></div></div></div>
+          </div>
+        </div>
+      </div></div></div>
+    </div>
+  </section>
+
+  <!-- ===== EVERYONE ===== -->
+  <section>
+    <h2>Everyone</h2>
+    <div class="answer"><b>Player stats: what the big apps do</b><p class="small">ESPN and Yahoo use day windows (last 7, 14, 30 days) plus Season and Last season, and open on Season. Days match the calendar you're scored on. The card also lists recent games for hot streaks. MLB's free data feed has everything needed.</p></div>
+
+    <div class="screen">
+      <div class="shead"><h3>6 · Players table</h3><p class="why">One players table for the whole app. Same columns and look on the Players page and in the auction; only the action buttons change. Try it:</p>
+        <div class="seg in" role="group" aria-label="Show actions for" id="ctx-seg"><button type="button" aria-pressed="true" data-ctx="season">During the season</button><button type="button" aria-pressed="false" data-ctx="auction">In the auction</button></div></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar">Players</div>
+        <div class="body">
+          <div class="seg full" role="group" aria-label="Hitters or pitchers"><button type="button" aria-pressed="true">Hitters</button><button type="button" aria-pressed="false">Pitchers</button></div>
+          <div class="field">🔍 Search players</div>
+          <div class="filters"><span class="pick">NL free agents ▾</span><span class="pick">All positions ▾</span><span class="pick">Season ▾</span></div>
+          <div class="list">
+            <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/641584/headshot/67/current" alt=""><div class="t"><b>Jake Fraley</b><small>OF · CIN · free agent</small><small class="num">R 41 · HR 9 · RBI 38 · SB 11 · .262</small></div></div><span class="btn sm act" data-season="+ Wire List" data-auction="+ List">+ Wire List</span></div>
+            <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/682829/headshot/67/current" alt=""><div class="t"><b>Elly De La Cruz</b><small>SS · CIN · Skunk Dogs</small><small class="num">R 80 · HR 18 · RBI 55 · SB 41 · .259</small></div></div><span class="btn sm act" data-season="Trade" data-auction="+ List">Trade</span></div>
+            <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/547180/headshot/67/current" alt=""><div class="t"><b>Bryce Harper</b><small>1B · PHI · Bombers</small><small class="num">R 66 · HR 20 · RBI 70 · SB 6 · .279</small></div></div><span class="btn sm act" data-season="Trade" data-auction="+ List">Trade</span></div>
+          </div>
+          <p class="small muted">Tap a name for the player card. On a phone the five stats sit under the name, so nothing scrolls sideways.</p>
+        </div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span class="on">Players</span><span>League</span></nav>
+        <div class="main">
+          <div class="mhead"><h2>Players</h2></div>
+          <div class="tools"><div class="seg" role="group" aria-label="Hitters or pitchers"><button type="button" aria-pressed="true">Hitters</button><button type="button" aria-pressed="false">Pitchers</button></div><div class="field grow">🔍 Search players</div><span class="pick">NL free agents ▾</span><span class="pick">All positions ▾</span><span class="pick">Season ▾</span></div>
+          <div class="list pad"><table class="st num ptable"><thead><tr><th>Player</th><th>MLB</th><th>Pos</th><th>Fantasy team</th><th>R</th><th>HR</th><th>RBI</th><th>SB</th><th>AVG</th><th>Action</th></tr></thead><tbody>
+            <tr><td><span class="pcell"><img class="face sm" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/641584/headshot/67/current" alt="">Jake Fraley</span></td><td><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/113.svg" alt="">CIN</span></td><td>OF</td><td class="muted">Free agent</td><td>41</td><td>9</td><td>38</td><td>11</td><td>.262</td><td><span class="btn sm act" data-season="+ Wire List" data-auction="+ List">+ Wire List</span></td></tr>
+            <tr><td><span class="pcell"><img class="face sm" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/694973/headshot/67/current" alt="">Paul Skenes</span></td><td><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/134.svg" alt="">PIT</span></td><td>SP</td><td>Black Sox</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td><span class="btn sm act" data-season="Trade" data-auction="+ List">Trade</span></td></tr>
+            <tr><td><span class="pcell"><img class="face sm" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/682829/headshot/67/current" alt="">Elly De La Cruz</span></td><td><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/113.svg" alt="">CIN</span></td><td>SS</td><td>Skunk Dogs</td><td>80</td><td>18</td><td>55</td><td>41</td><td>.259</td><td><span class="btn sm act" data-season="Trade" data-auction="+ List">Trade</span></td></tr>
+            <tr><td><span class="pcell"><img class="face sm" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/547180/headshot/67/current" alt="">Bryce Harper</span></td><td><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/143.svg" alt="">PHI</span></td><td>1B</td><td>Bombers</td><td>66</td><td>20</td><td>70</td><td>6</td><td>.279</td><td><span class="btn sm act" data-season="Trade" data-auction="+ List">Trade</span></td></tr>
+            <tr><td><span class="pcell"><img class="face sm" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/624413/headshot/67/current" alt="">Pete Alonso</span></td><td><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/121.svg" alt="">NYM</span></td><td>1B</td><td class="muted">Free agent</td><td>58</td><td>24</td><td>72</td><td>1</td><td>.244</td><td><span class="btn sm act" data-season="+ Wire List" data-auction="+ List">+ Wire List</span></td></tr>
+          </tbody></table></div>
+          <p class="small muted">In the auction the "Fantasy team" column reads "Available" or the buyer and price, and the filter defaults to Available.</p>
+        </div>
+      </div></div></div>
+    </div>
+
+    <div class="screen">
+      <div class="shead"><h3>7 · Player card</h3><p class="why">Tap any player name anywhere. On a phone it slides up from the bottom; on a computer it opens as a panel on the right, so the list stays visible. Pitchers show IP, W, SV, K, ERA, WHIP and their last 3 starts.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar">Players</div>
+        <div class="body faded"><div class="list"><div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/660271/headshot/67/current" alt=""><div class="t"><b>Shohei Ohtani</b></div></div></div><div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/665487/headshot/67/current" alt=""><div class="t"><b>Fernando Tatis Jr.</b></div></div></div></div></div>
+        <div class="sheet">
+          <span class="grab" aria-hidden="true"></span>
+          <div class="pc-head"><img class="face lg" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/660271/headshot/67/current" alt=""><div class="t"><b class="pname">Shohei Ohtani</b><small>DH · Los Doyers</small></div><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/119.svg" alt="">LAD</span></div>
+          <p class="small"><b>vs SD tonight 7:10</b></p>
+          <div class="wins"><span>Last 7 days</span><span>Last 14</span><span>Last 30</span><span class="on">Season</span><span>Last season</span></div>
+          <table class="st num"><thead><tr><th>AB</th><th>R</th><th>HR</th><th>RBI</th><th>SB</th><th>AVG</th></tr></thead><tbody><tr><td style="text-align:right">412</td><td>88</td><td>31</td><td>79</td><td>14</td><td>.284</td></tr></tbody></table>
+          <p class="cap">Last 5 games</p>
+          <table class="st num"><thead><tr><th>Date</th><th>Opp</th><th>H-AB</th><th>HR</th><th>RBI</th><th>SB</th></tr></thead><tbody>
+            <tr><td>Jun 10</td><td>@COL</td><td>2-4</td><td>1</td><td>3</td><td>0</td></tr><tr><td>Jun 9</td><td>@COL</td><td>1-5</td><td>0</td><td>0</td><td>1</td></tr><tr><td>Jun 8</td><td>SF</td><td>0-3</td><td>0</td><td>0</td><td>0</td></tr></tbody></table>
+          <div class="btn sm">Full profile ›</div>
+        </div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span class="on">Players</span><span>League</span></nav>
+        <div class="main">
+          <div class="cols-side wide">
+            <div class="col faded">
+              <div class="mhead"><h2>Players</h2></div>
+              <div class="list pad"><table class="st num"><thead><tr><th>Player</th><th>Team</th><th>R</th><th>HR</th><th>RBI</th><th>SB</th><th>AVG</th></tr></thead><tbody>
+                <tr class="me"><td><span class="pcell"><img class="face sm" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/660271/headshot/67/current" alt="">Shohei Ohtani</span></td><td><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/119.svg" alt="">LAD</span></td><td>88</td><td>31</td><td>79</td><td>14</td><td>.284</td></tr>
+                <tr><td><span class="pcell"><img class="face sm" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/665487/headshot/67/current" alt="">Fernando Tatis Jr.</span></td><td><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/135.svg" alt="">SD</span></td><td>71</td><td>22</td><td>60</td><td>19</td><td>.271</td></tr>
+                <tr><td><span class="pcell"><img class="face sm" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/682829/headshot/67/current" alt="">Elly De La Cruz</span></td><td><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/113.svg" alt="">CIN</span></td><td>80</td><td>18</td><td>55</td><td>41</td><td>.259</td></tr>
+                <tr><td><span class="pcell"><img class="face sm" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/547180/headshot/67/current" alt="">Bryce Harper</span></td><td><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/143.svg" alt="">PHI</span></td><td>66</td><td>20</td><td>70</td><td>6</td><td>.279</td></tr>
+              </tbody></table></div>
+            </div>
+            <div class="panel">
+              <div class="pc-head"><img class="face lg" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/660271/headshot/67/current" alt=""><div class="t"><b class="pname">Shohei Ohtani</b><small>DH · Los Doyers</small></div><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/119.svg" alt="">LAD</span></div>
+              <p class="small"><b>vs SD tonight 7:10</b></p>
+              <div class="wins"><span>Last 7 days</span><span>Last 14</span><span>Last 30</span><span class="on">Season</span><span>Last season</span></div>
+              <table class="st num"><thead><tr><th>AB</th><th>R</th><th>HR</th><th>RBI</th><th>SB</th><th>AVG</th></tr></thead><tbody><tr><td style="text-align:right">412</td><td>88</td><td>31</td><td>79</td><td>14</td><td>.284</td></tr></tbody></table>
+              <p class="cap">Last 5 games</p>
+              <table class="st num"><thead><tr><th>Date</th><th>Opp</th><th>H-AB</th><th>HR</th><th>RBI</th></tr></thead><tbody>
+                <tr><td>Jun 10</td><td>@COL</td><td>2-4</td><td>1</td><td>3</td></tr><tr><td>Jun 9</td><td>@COL</td><td>1-5</td><td>0</td><td>0</td></tr><tr><td>Jun 8</td><td>SF</td><td>0-3</td><td>0</td><td>0</td></tr></tbody></table>
+              <div class="btn sm">Full profile ›</div>
+            </div>
+          </div>
+        </div>
+      </div></div></div>
+    </div>
+  </section>
+
+  <!-- ===== AUCTION ===== -->
+  <section>
+    <h2>Auction</h2>
+    <div class="answer"><b>What the auction has today</b>
+      <ul class="rules small">
+        <li><b>It works:</b> live bidding over a connection that updates instantly, a 15-second bid clock that resets on every bid, max bids that bid for you, a nomination queue, pause and resume, and a results page with grades.</li>
+        <li><b>No phone layout.</b> On a phone it squeezes the computer page into the top half of the screen, so the bid buttons can scroll out of view.</li>
+        <li><b>You can't see other teams' money while bidding.</b> Budgets and max bids live on a separate Teams tab, so you leave the player list to check them.</li>
+        <li><b>Tiny text:</b> 8 to 11px on the bid clock, the tabs and the player table. Five tabs at 11px don't fit a phone.</li>
+        <li><b>Bid buttons are only +$1 and +$5,</b> with no way to type an amount.</li>
+        <li><b>Commissioner gaps:</b> you can't pause while someone is choosing a player, and some controls may need the site admin, not the commissioner.</li>
+        <li><b>Dead weight:</b> about 2,900 lines of old copies nothing uses, and a "classic" page that is the same as the new one.</li>
+      </ul>
+      <p class="small muted">Plan: keep the engine, rebuild the screens. The screens below cover the whole auction.</p>
+    </div>
+
+    <!-- A1 LIVE BIDDING -->
+    <div class="screen">
+      <div class="shead"><h3>8 · Live bidding</h3><p class="why">The player, the price, who's winning and the clock stay pinned at the top; the bid buttons never scroll away. Every team's money is one tab away on a phone and always visible on a computer.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar">Auction · Lot 47</div>
+        <div class="body">
+          <div class="oc">
+            <div class="pc-head"><img class="face lg" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/682829/headshot/67/current" alt=""><div class="t"><b class="pname">Elly De La Cruz</b><small>SS · nominated by Bombers</small></div><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/113.svg" alt="">CIN</span></div>
+            <div class="top2"><div><p class="cap">High bid</p><h2 class="num">$34 · Skunk Dogs</h2></div><span class="clock">0:09</span></div>
+            <div class="btns"><div class="btn primary">Bid $35</div><div class="btn">$39</div><div class="btn">Type</div></div>
+            <div class="spread small"><span class="muted">Your max bid: $40 (auto)</span><span>You can spend up to <b class="num">$61</b></span></div>
+          </div>
+          <div class="box"><p class="cap">Order for putting players up</p><div class="filters"><span class="pick">Bombers · now</span><span class="pick on">You · next</span><span class="pick">Black Sox</span><span class="pick">Skunk Dogs</span></div></div>
+          <div class="seg full" role="group" aria-label="Auction views"><button type="button" aria-pressed="true">Teams</button><button type="button" aria-pressed="false">Players</button><button type="button" aria-pressed="false">Board</button></div>
+          <div class="list">
+            <div class="row"><div class="t"><b>Skunk Dogs</b><small>$88 left · 9 spots · needs C, OF ×4</small></div><span class="chip num">max $80</span></div>
+            <div class="row"><div class="t"><b>Los Doyers · you</b><small>$69 left · 9 spots · needs C, SS, OF ×2, P ×5</small></div><span class="chip num">max $61</span></div>
+            <div class="row"><div class="t"><b>Bombers</b><small>$31 left · 6 spots · needs C, OF ×3, P ×2</small></div><span class="chip alert num">max $26</span></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></nav>
+        <div class="main">
+          <div class="mhead"><h2>Auction</h2><p class="small muted">Lot 47 · 112 players left to buy</p></div>
+          <div class="cols3 auc">
+            <div class="col"><p class="cap">Players</p><div class="field">🔍 Search</div>
+              <div class="list">
+                <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/694973/headshot/67/current" alt=""><div class="t"><b>Paul Skenes</b><small>SP · $38</small></div></div><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/134.svg" alt="">PIT</span></div>
+                <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/547180/headshot/67/current" alt=""><div class="t"><b>Bryce Harper</b><small>1B · $29</small></div></div><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/143.svg" alt="">PHI</span></div>
+                <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/624413/headshot/67/current" alt=""><div class="t"><b>Pete Alonso</b><small>1B · $26</small></div></div><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/121.svg" alt="">NYM</span></div>
+              </div></div>
+            <div class="col">
+              <div class="oc">
+                <div class="pc-head"><img class="face xl" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/682829/headshot/67/current" alt=""><div class="t"><b class="pname">Elly De La Cruz</b><small>SS · nominated by Bombers · value $36</small></div><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/113.svg" alt="">CIN</span></div>
+                <div class="top2"><div><p class="cap">High bid</p><h2 class="num">$34 · Skunk Dogs</h2></div><span class="clock">0:09</span></div>
+                <div class="btns"><div class="btn primary">Bid $35</div><div class="btn">$39</div><div class="btn">Type an amount</div></div>
+                <div class="spread small"><span class="muted">Your max bid: $40 (auto)</span><span>You can spend up to <b class="num">$61</b></span></div>
+              </div>
+              <p class="cap">Bids on this player</p>
+              <div class="list"><div class="row"><div class="t"><b>Skunk Dogs $34</b></div></div><div class="row"><div class="t"><b>Los Doyers $33 (auto)</b></div></div></div>
+            </div>
+            <div class="col"><div class="box"><p class="cap">Putting players up</p><p class="small"><b>Bombers</b> now · <b>You</b> next · Black Sox · Skunk Dogs</p></div><p class="cap">Teams</p><div class="list">
+              <div class="row"><div class="t"><b>Skunk Dogs</b><small>$88 · 9 spots · C, OF ×4</small></div><span class="chip num">$80</span></div>
+              <div class="row"><div class="t"><b>Los Doyers</b><small>$69 · 9 spots · C, SS, OF ×2, P ×5</small></div><span class="chip num">$61</span></div>
+              <div class="row"><div class="t"><b>Black Sox</b><small>$52 · 7 spots · C ×2, P ×5</small></div><span class="chip num">$46</span></div>
+              <div class="row"><div class="t"><b>Bombers</b><small>$31 · 6 spots · C, OF ×3, P ×2</small></div><span class="chip alert num">$26</span></div>
+            </div><p class="small muted">Chip = most that team can bid.</p></div>
+          </div>
+        </div>
+      </div></div></div>
+    </div>
+
+    <!-- A2 NOMINATE -->
+    <div class="screen">
+      <div class="shead"><h3>9 · Your turn to put a player up</h3><p class="why">Your list comes first; tap one to put him up. If the clock runs out, the top of your list goes up automatically.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar">Auction</div>
+        <div class="body">
+          <div class="oc"><div class="top2"><div><p class="cap">Your turn</p><h2>Put a player up</h2></div><span class="clock">0:22</span></div><p class="small muted">After you: Black Sox, Skunk Dogs. Before your turn, this box reads "You're up next" so you can get ready.</p></div>
+          <p class="cap">Your list · built from the players table with "+ List"</p>
+          <div class="list">
+            <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/694973/headshot/67/current" alt=""><div class="t"><b>1. Paul Skenes</b><small>SP · value $38</small></div></div><span class="chip acc">Put up</span></div>
+            <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/547180/headshot/67/current" alt=""><div class="t"><b>2. Bryce Harper</b><small>1B · value $29</small></div></div><span class="chip">Put up</span></div>
+          </div>
+          <div class="field">🔍 Search all players</div>
+          <div class="list"><div class="row"><div class="t"><b>Opening bid</b></div><span class="chip num">$1</span></div></div>
+        </div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></nav>
+        <div class="main">
+          <div class="mhead"><h2>Auction</h2></div>
+          <div class="cols-side">
+            <div class="col">
+              <div class="oc"><div class="top2"><div><p class="cap">Your turn</p><h2>Put a player up</h2></div><span class="clock">0:22</span></div></div>
+              <div class="field">🔍 Search all players</div>
+              <div class="list pad"><table class="st num"><thead><tr><th>Player</th><th>Team</th><th>Pos</th><th>Value</th><th></th></tr></thead><tbody>
+                <tr><td><span class="pcell"><img class="face sm" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/694973/headshot/67/current" alt="">Paul Skenes</span></td><td><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/134.svg" alt="">PIT</span></td><td>SP</td><td>$38</td><td><span class="chip acc">Put up</span></td></tr>
+                <tr><td><span class="pcell"><img class="face sm" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/547180/headshot/67/current" alt="">Bryce Harper</span></td><td><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/143.svg" alt="">PHI</span></td><td>1B</td><td>$29</td><td><span class="chip">Put up</span></td></tr>
+                <tr><td><span class="pcell"><img class="face sm" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/624413/headshot/67/current" alt="">Pete Alonso</span></td><td><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/121.svg" alt="">NYM</span></td><td>1B</td><td>$26</td><td><span class="chip">Put up</span></td></tr>
+              </tbody></table></div>
+            </div>
+            <div class="col"><p class="cap">Your list</p><div class="list">
+              <div class="row"><div class="t"><b>1. Paul Skenes</b></div></div><div class="row"><div class="t"><b>2. Bryce Harper</b></div></div>
+            </div><div class="list"><div class="row"><div class="t"><b>Opening bid</b></div><span class="chip num">$1</span></div></div></div>
+          </div>
+        </div>
+      </div></div></div>
+    </div>
+
+    <!-- A3 COMMISH -->
+    <div class="screen">
+      <div class="shead"><h3>10 · Commissioner controls</h3><p class="why">The same bidding screen with one extra bar. Pause works at any moment, including while someone is choosing. Every fix is logged.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar">Auction · Lot 47</div>
+        <div class="body">
+          <div class="cbar"><div class="btn sm">Pause</div><div class="btn sm">Undo last sale</div><div class="btn sm">More ›</div></div>
+          <div class="oc">
+            <div class="pc-head"><img class="face lg" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/682829/headshot/67/current" alt=""><div class="t"><b class="pname">Elly De La Cruz</b><small>SS · nominated by Bombers</small></div><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/113.svg" alt="">CIN</span></div>
+            <div class="top2"><div><p class="cap">High bid</p><h2 class="num">$34 · Skunk Dogs</h2></div><span class="clock">0:09</span></div>
+          </div>
+          <p class="cap">More</p>
+          <div class="list">
+            <div class="row"><div class="t"><b>Give a player to a team</b><small>For a sale that went wrong</small></div><span class="chev">›</span></div>
+            <div class="row"><div class="t"><b>Skip this team's turn</b></div><span class="chev">›</span></div>
+            <div class="row"><div class="t"><b>End the auction</b><small>Asks you to confirm</small></div><span class="chev">›</span></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></nav>
+        <div class="main">
+          <div class="cbar wide"><b>Commissioner</b><div class="btn sm">Pause</div><div class="btn sm">Undo last sale</div><div class="btn sm">Give a player to a team</div><div class="btn sm">Skip turn</div><div class="btn sm">End auction</div></div>
+          <div class="cols2">
+            <div class="oc">
+              <div class="pc-head"><img class="face xl" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/682829/headshot/67/current" alt=""><div class="t"><b class="pname">Elly De La Cruz</b><small>SS · nominated by Bombers</small></div><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/113.svg" alt="">CIN</span></div>
+              <div class="top2"><div><p class="cap">High bid</p><h2 class="num">$34 · Skunk Dogs</h2></div><span class="clock">0:09</span></div>
+            </div>
+            <div class="col"><p class="cap">Last sales</p><div class="list">
+              <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/694973/headshot/67/current" alt=""><div class="t"><b>Paul Skenes</b><small>Black Sox · $41</small></div></div><span class="chip">Undo</span></div>
+              <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/547180/headshot/67/current" alt=""><div class="t"><b>Bryce Harper</b><small>Los Doyers · $30</small></div></div></div>
+            </div></div>
+          </div>
+        </div>
+      </div></div></div>
+    </div>
+
+    <!-- A4 BOARD -->
+    <div class="screen">
+      <div class="shead"><h3>11 · Team board (during and after)</h3><p class="why">Every team's roster by position, live while the auction runs and as the results afterward. Open spots are marked, so everyone can see who still needs what and how much they can spend.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar">Auction · teams</div>
+        <div class="body">
+          <div class="filters scroll"><span class="pick on">Los Doyers</span><span class="pick">Skunk Dogs</span><span class="pick">Bombers</span><span class="pick">Black Sox</span><span class="pick">Diamond Kings</span></div>
+          <div class="box"><div class="spread"><div><h2 class="num">$69 left</h2><p class="small muted">Max bid $61 · 9 spots open</p></div><div class="r"><p class="cap">Needs</p><p class="small"><b>C, SS, OF ×2, P ×5</b></p></div></div></div>
+          <div class="list">
+            <div class="row"><div class="t"><b>C</b><small>W. Contreras $18</small></div><span class="chip alert">1 open</span></div>
+            <div class="row"><div class="t"><b>1B · 2B · 3B</b><small>Harper $30 · Hoerner $9 · Riley $24</small></div><span class="chip good">Full</span></div>
+            <div class="row"><div class="t"><b>SS · MI · CI</b><small>Hayes $6 · Alonso $27</small></div><span class="chip alert">1 open</span></div>
+            <div class="row"><div class="t"><b>OF</b><small>Tatis $33 · Soto $40 · Fraley $4</small></div><span class="chip alert">2 open</span></div>
+            <div class="row"><div class="t"><b>P</b><small>Skenes $41 · Gallen $19 · 2 more</small></div><span class="chip alert">5 open</span></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></nav>
+        <div class="main">
+          <div class="mhead"><h2>Auction · team board</h2><p class="small muted">Live · 112 players left to buy · updates as players are sold</p></div>
+          <div class="list pad"><table class="st board"><thead><tr><th>Pos</th><th>Los Doyers</th><th>Skunk Dogs</th><th>Bombers</th><th>Black Sox</th><th>Diamond Kings</th><th>RGing Sluggers</th></tr></thead><tbody>
+            <tr class="money"><td>Left · max</td><td class="num">$69 · $61</td><td class="num">$88 · $80</td><td class="num">$31 · $26</td><td class="num">$52 · $46</td><td class="num">$40 · $33</td><td class="num">$77 · $70</td></tr>
+            <tr><td>C</td><td>Contreras 18 · <i>open</i></td><td>Realmuto 14 · Kelly 3</td><td>Smith 22 · <i>open</i></td><td><i>open ×2</i></td><td>Stephenson 9 · Diaz 2</td><td><i>open ×2</i></td></tr>
+            <tr><td>1B 2B 3B</td><td>Harper 30 · Hoerner 9 · Riley 24</td><td>Freeman 31 · <i>open</i> · Bohm 17</td><td>Olson 28 · Albies 20 · Machado 25</td><td><i>open</i> · Marte 15 · <i>open</i></td><td>Goldschmidt 12 · <i>open ×2</i></td><td>Alonso 27 · <i>open</i> · Arenado 16</td></tr>
+            <tr><td>SS MI CI</td><td>Hayes 6 · <i>open</i></td><td>De La Cruz 36 · Swanson 11</td><td>Turner 29 · <i>open</i></td><td><i>open ×2</i></td><td>Tatis 33 · <i>open</i></td><td>Lindor 30 · <i>open</i></td></tr>
+            <tr><td>OF ×5</td><td>Tatis 33 · Soto 40 · Fraley 4 · <i>open ×2</i></td><td>Betts 38 · <i>open ×4</i></td><td>Acuña 41 · Harris 22 · <i>open ×3</i></td><td>Carroll 30 · <i>open ×4</i></td><td>Nimmo 15 · <i>open ×4</i></td><td>Ohtani 40 · <i>open ×4</i></td></tr>
+            <tr><td>P ×9</td><td>Skenes 41 · Gallen 19 · 2 more · <i>open ×5</i></td><td>Wheeler 30 · 3 more · <i>open ×5</i></td><td>Strider 26 · 5 more · <i>open ×3</i></td><td>Webb 22 · <i>open ×8</i></td><td>Sale 20 · 2 more · <i>open ×6</i></td><td>Diaz 12 · <i>open ×8</i></td></tr>
+          </tbody></table></div>
+          <p class="small muted">Click a team name for its full roster. After the auction the same board is the results page; grades and charts are one tap away.</p>
+        </div>
+      </div></div></div>
+    </div>
+
+  </section>
+
+  <!-- ===== ROSTERS & TRADES ===== -->
+  <section>
+    <h2>Rosters and trades</h2>
+    <p class="muted">Rosters replaces today's commissioner Rosters page (four inner tabs, a three-column add/drop panel, unusable on a phone). Trades covers both sides: owners propose and answer, the commissioner processes.</p>
+
+    <!-- 12 ROSTERS HOME -->
+    <div class="screen">
+      <div class="shead"><h3>12 · Rosters home</h3><p class="why">Between periods the meeting card sits on top. During a period it disappears and this is just the team list, with anything that needs fixing flagged on the team's row.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar"><span class="back">‹ Commissioner</span>Rosters</div>
+        <div class="body">
+          <div class="now"><p class="cap">Between Period 8 and 9</p><b>Period 9 meeting moves</b><p class="small muted">Enter every owner's adds and drops, review, then save them all at once.</p><div class="btn primary">Enter meeting moves</div></div>
+          <p class="cap">Teams · A to Z</p>
+          <div class="list">
+            <div class="row"><div class="t"><b>Black Sox</b><small class="num">23 / 23</small></div><span class="chev">›</span></div>
+            <div class="row"><div class="t"><b>Bombers</b><small class="num">23 / 23</small></div><span class="chev">›</span></div>
+            <div class="row"><div class="l"><img class="face sm" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/668678/headshot/67/current" alt=""><div class="t"><b>Demolition Lumber</b><small>Gallen back from MLB IL</small></div></div><span class="chip alert">Fix</span></div>
+            <div class="row"><div class="t"><b>Diamond Kings</b><small class="num">23 / 23</small></div><span class="chev">›</span></div>
+            <div class="row"><div class="t"><b>Los Doyers</b><small class="num">24 / 23</small></div><span class="chip alert">1 over</span></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></nav>
+        <div class="main">
+          <div class="mhead"><a class="small" href="#screens">‹ Commissioner</a><h2>Rosters</h2></div>
+          <div class="cols-side-l">
+            <div class="now"><p class="cap">Between Period 8 and 9</p><b>Period 9 meeting moves</b><p class="small muted">Enter every owner's adds and drops, review, then save them all at once. Dated Mon Jun 15.</p><div class="btn primary">Enter meeting moves</div></div>
+            <div class="list pad"><table class="st num"><thead><tr><th>Team</th><th>Roster</th><th>IL</th><th>Needs attention</th></tr></thead><tbody>
+              <tr><td>Black Sox</td><td>23 / 23</td><td>0</td><td class="muted">–</td></tr>
+              <tr><td>Bombers</td><td>23 / 23</td><td>1</td><td class="muted">–</td></tr>
+              <tr><td>Demolition Lumber</td><td>23 / 23</td><td>1</td><td class="alerttx">Gallen back from MLB IL</td></tr>
+              <tr><td>Diamond Kings</td><td>23 / 23</td><td>0</td><td class="muted">–</td></tr>
+              <tr><td>Los Doyers</td><td>24 / 23</td><td>2</td><td class="alerttx">1 over the limit</td></tr>
+              <tr><td>Skunk Dogs</td><td>23 / 23</td><td>0</td><td class="muted">–</td></tr>
+            </tbody></table></div>
+          </div>
+        </div>
+      </div></div></div>
+    </div>
+
+    <!-- 13 MEETING ENTRY -->
+    <div class="screen">
+      <div class="shead"><h3>13 · Meeting: one team's moves</h3><p class="why">Tap whoever is talking. Each move is an add and a drop together, checked as you type: NL only, roster stays at the limit, no dropping someone added tonight. Nothing is saved to rosters until Review.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar"><span class="back">‹ Period 9 moves</span>Skunk Dogs</div>
+        <div class="body">
+          <div class="box"><div class="spread"><p class="cap">Move 1</p><a class="small" href="#screens">Remove</a></div>
+            <div class="row bare"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/641584/headshot/67/current" alt=""><div class="t"><b class="good">+ Jake Fraley</b><small>OF · free agent</small></div></div><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/113.svg" alt="">CIN</span></div>
+            <div class="row bare"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/624413/headshot/67/current" alt=""><div class="t"><b class="alerttx">− Pete Alonso</b><small>1B</small></div></div><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/121.svg" alt="">NYM</span></div>
+          </div>
+          <div class="box"><p class="cap">Move 2</p><div class="field">🔍 Add: search NL free agents</div><div class="field">Drop: choose a player <span class="chev">›</span></div></div>
+          <p class="small good">✓ Roster stays at 23 / 23</p>
+          <div class="btn">+ Another move</div>
+          <div class="btns"><div class="btn">No moves</div><div class="btn primary">Done · back to teams</div></div>
+        </div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></nav>
+        <div class="main">
+          <div class="mhead"><a class="small" href="#screens">‹ Rosters</a><h2>Period 9 moves</h2><p class="small muted">Dated Mon Jun 15 · 3 of 8 teams done · nothing saved until you review</p></div>
+          <div class="cols3 wide2">
+            <div class="col"><p class="cap">Teams · A to Z</p><div class="list">
+              <div class="row"><div class="t"><b>Black Sox</b></div><span class="chip">Passed</span></div>
+              <div class="row"><div class="t"><b>Bombers</b></div><span class="chip good">1 ✓</span></div>
+              <div class="row"><div class="t"><b>Demolition Lumber</b></div><span class="chip">Not yet</span></div>
+              <div class="row"><div class="t"><b>Diamond Kings</b></div><span class="chip good">2 ✓</span></div>
+              <div class="row cur"><div class="t"><b>Skunk Dogs</b></div><span class="chev">›</span></div>
+            </div></div>
+            <div class="col"><h3>Skunk Dogs · 23 / 23</h3>
+              <div class="box"><div class="spread"><p class="cap">Move 1</p><a class="small" href="#screens">Remove</a></div>
+                <div class="cols2"><div class="row bare"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/641584/headshot/67/current" alt=""><div class="t"><b class="good">+ Jake Fraley</b><small>OF · CIN · free agent</small></div></div></div>
+                <div class="row bare"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/624413/headshot/67/current" alt=""><div class="t"><b class="alerttx">− Pete Alonso</b><small>1B · NYM</small></div></div></div></div></div>
+              <div class="box"><p class="cap">Move 2</p><div class="field">🔍 Add: search NL free agents</div><div class="field">Drop: choose a player <span class="chev">›</span></div></div>
+              <p class="small good">✓ Roster stays at 23 / 23</p>
+              <div class="btns"><div class="btn">+ Another move</div><div class="btn">No moves</div><div class="btn primary">Done · next team</div></div>
+            </div>
+            <div class="col"><p class="cap">Tonight's moves (4)</p><div class="list">
+              <div class="row"><div class="t"><b>Bombers</b><small>+ Casas · − Pham</small></div></div>
+              <div class="row"><div class="t"><b>Diamond Kings</b><small>+ Fraley · − Bader<br>+ Ashcraft · − Blalock</small></div></div>
+            </div><div class="btn">Review all moves</div></div>
+          </div>
+        </div>
+      </div></div></div>
+    </div>
+
+    <!-- 14 REVIEW + SAVE -->
+    <div class="screen">
+      <div class="shead"><h3>14 · Review and save</h3><p class="why">Every move by team, with anything the rules flag at the top. Saving changes eight rosters at once, so it gets the one kind of pop-up we keep: a confirm sheet.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar"><span class="back">‹ Period 9 moves</span>Review</div>
+        <div class="body">
+          <div class="open small"><b>Los Doyers:</b> adding Ward puts them at 24 / 23. Add a drop or remove the add.</div>
+          <p class="cap">Bombers</p><div class="list"><div class="row"><div class="t"><b class="good">+ Casas <span class="muted small">1B · CIN</span></b><b class="alerttx">− Pham <span class="muted small">OF · PIT</span></b></div><span class="chev">›</span></div></div>
+          <p class="cap">Diamond Kings</p><div class="list"><div class="row"><div class="t"><b class="good">+ Fraley</b><b class="alerttx">− Bader</b></div><span class="chev">›</span></div><div class="row"><div class="t"><b class="good">+ Ashcraft</b><b class="alerttx">− Blalock</b></div><span class="chev">›</span></div></div>
+        </div>
+        <div class="sheet"><b>Save 9 moves for 8 teams?</b><p class="small muted">Rosters change effective Mon Jun 15. Owners see the moves in Activity. You can undo a single move later.</p><div class="btn primary">Save moves</div><div class="btn">Keep reviewing</div></div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></nav>
+        <div class="main">
+          <div class="mhead"><a class="small" href="#screens">‹ Period 9 moves</a><h2>Review 9 moves</h2></div>
+          <div class="cols-side">
+            <div class="col">
+              <div class="open small"><b>Los Doyers:</b> adding Ward puts them at 24 / 23. Add a drop or remove the add.</div>
+              <div class="list pad"><table class="st left"><thead><tr><th>Team</th><th>Add</th><th>Drop</th><th></th></tr></thead><tbody>
+                <tr><td>Bombers</td><td class="good">Casas · 1B · CIN</td><td class="alerttx">Pham · OF · PIT</td><td>Edit</td></tr>
+                <tr><td>Diamond Kings</td><td class="good">Fraley · OF · CIN</td><td class="alerttx">Bader · OF</td><td>Edit</td></tr>
+                <tr><td>Diamond Kings</td><td class="good">Ashcraft · SP · CIN</td><td class="alerttx">Blalock · RP</td><td>Edit</td></tr>
+                <tr><td>Los Doyers</td><td class="good">Ward · OF</td><td><span class="chip alert">Needs a drop</span></td><td>Fix</td></tr>
+              </tbody></table></div>
+            </div>
+            <div class="box"><b>Save 9 moves for 8 teams</b><p class="small muted">Effective Mon Jun 15. Owners see them in Activity. Fix the flagged move first.</p><div class="btn primary">Save moves</div></div>
+          </div>
+        </div>
+      </div></div></div>
+    </div>
+
+    <!-- 15 ONE TEAM FIX -->
+    <div class="screen">
+      <div class="shead"><h3>15 · One team: a one-off fix</h3><p class="why">For fixes between meetings. Each player's actions are on his row; IL moves walk through the same add-and-drop check.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar"><span class="back">‹ Rosters</span>Demolition Lumber</div>
+        <div class="body">
+          <div class="open small">Gallen is back from the MLB IL but still in your IL slot. <b>Activate ›</b></div>
+          <p class="cap">Hitters</p>
+          <div class="list">
+            <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/660271/headshot/67/current" alt=""><div class="t"><b>DH · Ohtani</b><small>LAD</small></div></div><span class="btn sm">Actions</span></div>
+            <div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/547180/headshot/67/current" alt=""><div class="t"><b>1B · Harper</b><small>PHI</small></div></div><span class="btn sm">Actions</span></div>
+          </div>
+          <p class="cap">IL</p>
+          <div class="list"><div class="row"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/668678/headshot/67/current" alt=""><div class="t"><b>IL · Gallen</b><small>ARI · activated by MLB Jun 12</small></div></div><span class="btn sm primary">Activate</span></div></div>
+          <p class="cap">Actions on Harper</p>
+          <div class="list"><div class="row"><div class="t"><b>Move to IL</b></div><span class="chev">›</span></div><div class="row"><div class="t"><b>Drop</b></div><span class="chev">›</span></div><div class="row"><div class="t"><b>Change position</b></div><span class="chev">›</span></div></div>
+        </div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></nav>
+        <div class="main">
+          <div class="mhead"><a class="small" href="#screens">‹ Rosters</a><h2>Demolition Lumber · 23 / 23</h2></div>
+          <div class="open small">Gallen is back from the MLB IL but still in your IL slot. <b>Activate ›</b></div>
+          <div class="cols-side">
+            <div class="list pad"><table class="st left"><thead><tr><th>Slot</th><th>Player</th><th>MLB</th><th>Status</th><th>Action</th></tr></thead><tbody>
+              <tr><td>DH</td><td><span class="pcell"><img class="face sm" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/660271/headshot/67/current" alt="">Shohei Ohtani</span></td><td><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/119.svg" alt="">LAD</span></td><td>Active</td><td><span class="btn sm">Actions</span></td></tr>
+              <tr class="me"><td>1B</td><td><span class="pcell"><img class="face sm" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/547180/headshot/67/current" alt="">Bryce Harper</span></td><td><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/143.svg" alt="">PHI</span></td><td>Active</td><td><span class="btn sm">Actions</span></td></tr>
+              <tr><td>SS</td><td><span class="pcell"><img class="face sm" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/682829/headshot/67/current" alt="">Elly De La Cruz</span></td><td><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/113.svg" alt="">CIN</span></td><td>Active</td><td><span class="btn sm">Actions</span></td></tr>
+              <tr><td>IL</td><td><span class="pcell"><img class="face sm" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/668678/headshot/67/current" alt="">Zac Gallen</span></td><td><span class="mlb"><img src="https://www.mlbstatic.com/team-logos/109.svg" alt="">ARI</span></td><td class="alerttx">Back from MLB IL</td><td><span class="btn sm primary">Activate</span></td></tr>
+            </tbody></table></div>
+            <div class="panel"><b>Harper: move to IL</b><p class="small muted">IL slot 2 of 2 · fee $15 per period</p><div class="field">Add a replacement: search NL free agents</div><p class="small good">✓ Roster stays at 23 / 23</p><div class="btn primary">Move Harper to IL</div><div class="btn">Cancel</div></div>
+          </div>
+        </div>
+      </div></div></div>
+    </div>
+
+    <!-- 16 PROPOSE TRADE -->
+    <div class="screen">
+      <div class="shead"><h3>16 · Propose a trade (owner)</h3><p class="why">Pick a team, tick what you give and what you get, add auction dollars if you want (OGBA trades dollars, not picks). Roster limits are checked for both sides before you can send. When trades are "Meeting day only", outside that day this screen says when trades open next.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar"><span class="back">‹ Trades</span>New trade</div>
+        <div class="body">
+          <div class="open small">Trades open on meeting day, <b>Sun Jun 14</b>. You can build one now and send it then.</div>
+          <p class="cap">Trade with</p>
+          <div class="filters scroll"><span class="pick">Black Sox</span><span class="pick on">Bombers</span><span class="pick">Skunk Dogs</span><span class="pick">Diamond Kings</span></div>
+          <p class="cap">You give · Los Doyers</p>
+          <div class="list">
+            <div class="row"><div class="l"><span class="ck on" aria-hidden="true">✓</span><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/665487/headshot/67/current" alt=""><div class="t"><b>Fernando Tatis Jr.</b><small>OF · SD</small></div></div></div>
+            <div class="row"><div class="l"><span class="ck" aria-hidden="true"></span><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/694973/headshot/67/current" alt=""><div class="t"><b>Paul Skenes</b><small>SP · PIT</small></div></div></div>
+          </div>
+          <p class="cap">You get · Bombers</p>
+          <div class="list">
+            <div class="row"><div class="l"><span class="ck on" aria-hidden="true">✓</span><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/547180/headshot/67/current" alt=""><div class="t"><b>Bryce Harper</b><small>1B · PHI</small></div></div></div>
+            <div class="row"><div class="l"><span class="ck" aria-hidden="true"></span><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/624413/headshot/67/current" alt=""><div class="t"><b>Pete Alonso</b><small>1B · NYM</small></div></div></div>
+          </div>
+          <div class="field">+ Add auction dollars</div>
+          <p class="small good">✓ Both rosters stay at 23</p>
+          <div class="btn primary">Review trade</div>
+        </div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></nav>
+        <div class="main">
+          <div class="mhead"><a class="small" href="#screens">‹ Trades</a><h2>New trade</h2></div>
+          <div class="open small">Trades open on meeting day, <b>Sun Jun 14</b>. You can build one now and send it then.</div>
+          <div class="tools"><span class="cap">Trade with</span><span class="pick">Black Sox</span><span class="pick on">Bombers</span><span class="pick">Skunk Dogs</span><span class="pick">Diamond Kings</span></div>
+          <div class="cols3 trade">
+            <div class="col"><p class="cap">You give · Los Doyers</p><div class="list">
+              <div class="row"><div class="l"><span class="ck on" aria-hidden="true">✓</span><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/665487/headshot/67/current" alt=""><div class="t"><b>Fernando Tatis Jr.</b><small>OF · SD · .271, 22 HR</small></div></div></div>
+              <div class="row"><div class="l"><span class="ck" aria-hidden="true"></span><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/694973/headshot/67/current" alt=""><div class="t"><b>Paul Skenes</b><small>SP · PIT · 2.41 ERA</small></div></div></div>
+              <div class="row"><div class="l"><span class="ck" aria-hidden="true"></span><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/660271/headshot/67/current" alt=""><div class="t"><b>Shohei Ohtani</b><small>DH · LAD · 31 HR</small></div></div></div>
+            </div></div>
+            <div class="col"><p class="cap">You get · Bombers</p><div class="list">
+              <div class="row"><div class="l"><span class="ck on" aria-hidden="true">✓</span><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/547180/headshot/67/current" alt=""><div class="t"><b>Bryce Harper</b><small>1B · PHI · .279, 20 HR</small></div></div></div>
+              <div class="row"><div class="l"><span class="ck" aria-hidden="true"></span><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/624413/headshot/67/current" alt=""><div class="t"><b>Pete Alonso</b><small>1B · NYM · 24 HR</small></div></div></div>
+              <div class="row"><div class="l"><span class="ck" aria-hidden="true"></span><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/682829/headshot/67/current" alt=""><div class="t"><b>Elly De La Cruz</b><small>SS · CIN · 41 SB</small></div></div></div>
+            </div></div>
+            <div class="panel"><b>Summary</b><p class="small"><span class="alerttx">− Tatis Jr.</span> for <span class="good">+ Harper</span></p><div class="field">+ Add auction dollars</div><p class="small good">✓ Both rosters stay at 23</p><div class="field">Note to Bombers (optional)</div><div class="btn primary">Send on Jun 14</div></div>
+          </div>
+        </div>
+      </div></div></div>
+    </div>
+
+    <!-- 17 OFFERS -->
+    <div class="screen">
+      <div class="shead"><h3>17 · Trade offers (owner)</h3><p class="why">Offers to you come first, with Accept and Reject right on the card. After you accept, the trade waits for the commissioner.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar">Trades</div>
+        <div class="body">
+          <div class="btn primary">+ New trade</div>
+          <p class="cap">Offers to you</p>
+          <div class="box"><div class="spread"><b>From Skunk Dogs</b><span class="small muted">Jun 14, 7:42 pm</span></div>
+            <p class="small"><span class="good">You get: De La Cruz</span><br><span class="alerttx">You give: Skenes, $5 auction</span></p>
+            <div class="btns"><div class="btn">Reject</div><div class="btn primary">Accept</div></div></div>
+          <p class="cap">Your offers</p>
+          <div class="list"><div class="row"><div class="t"><b>To Bombers</b><small>Tatis Jr. for Harper</small></div><span class="chip">Waiting</span></div>
+          <div class="row"><div class="t"><b>To Black Sox</b><small>Accepted · with commissioner</small></div><span class="chip good">Accepted</span></div></div>
+        </div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></nav>
+        <div class="main">
+          <div class="spread"><h2>Trades</h2><div class="btn primary">+ New trade</div></div>
+          <div class="cols2">
+            <div class="col"><p class="cap">Offers to you</p><div class="box"><div class="spread"><b>From Skunk Dogs</b><span class="small muted">Jun 14, 7:42 pm</span></div>
+              <div class="cols2"><div><p class="cap">You get</p><div class="row bare"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/682829/headshot/67/current" alt=""><div class="t"><b>De La Cruz</b><small>SS · CIN</small></div></div></div></div>
+              <div><p class="cap">You give</p><div class="row bare"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/694973/headshot/67/current" alt=""><div class="t"><b>Skenes</b><small>SP · PIT · + $5</small></div></div></div></div></div>
+              <div class="btns"><div class="btn">Reject</div><div class="btn primary">Accept</div></div></div></div>
+            <div class="col"><p class="cap">Your offers</p><div class="list"><div class="row"><div class="t"><b>To Bombers</b><small>Tatis Jr. for Harper</small></div><span class="chip">Waiting · Cancel</span></div>
+              <div class="row"><div class="t"><b>To Black Sox</b><small>Accepted · with commissioner</small></div><span class="chip good">Accepted</span></div></div>
+              <p class="cap">Done this season</p><div class="list"><div class="row"><div class="t"><b>Bombers ↔ Diamond Kings</b><small>May 17 · processed</small></div></div></div></div>
+          </div>
+        </div>
+      </div></div></div>
+    </div>
+
+    <!-- 18 COMMISH TRADES -->
+    <div class="screen">
+      <div class="shead"><h3>18 · Trades (commissioner)</h3><p class="why">Accepted trades wait here. Each card shows both sides and the roster check; Process makes the rosters change, Veto sends it back. Processed trades can be reversed from History.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar"><span class="back">‹ Commissioner</span>Trades</div>
+        <div class="body">
+          <p class="cap">To process · 1</p>
+          <div class="box"><b>Black Sox ↔ Los Doyers</b>
+            <div class="row bare"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/694973/headshot/67/current" alt=""><div class="t"><b>Skenes → Los Doyers</b><small>SP · PIT</small></div></div></div>
+            <div class="row bare"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/665487/headshot/67/current" alt=""><div class="t"><b>Tatis Jr. → Black Sox</b><small>OF · SD</small></div></div></div>
+            <p class="small good">✓ Both rosters stay at 23 · accepted Jun 14, 8:05 pm</p>
+            <div class="btns"><div class="btn">Veto</div><div class="btn primary">Process</div></div></div>
+          <p class="cap">Still being discussed</p>
+          <div class="list"><div class="row"><div class="t"><b>Los Doyers → Bombers</b><small>Offered, not answered</small></div><span class="chip">Waiting</span></div></div>
+          <p class="cap">Processed</p>
+          <div class="list"><div class="row"><div class="t"><b>Bombers ↔ Diamond Kings</b><small>May 17</small></div><span class="btn sm">Reverse</span></div></div>
+        </div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></nav>
+        <div class="main">
+          <div class="mhead"><a class="small" href="#screens">‹ Commissioner</a><h2>Trades</h2><p class="small muted">Rule: meeting day only · you approve every trade</p></div>
+          <div class="cols2">
+            <div class="col"><p class="cap">To process · 1</p><div class="box"><b>Black Sox ↔ Los Doyers</b>
+              <div class="cols2"><div class="row bare"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/694973/headshot/67/current" alt=""><div class="t"><b>Skenes → Los Doyers</b><small>SP · PIT</small></div></div></div>
+              <div class="row bare"><div class="l"><img class="face" src="https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/665487/headshot/67/current" alt=""><div class="t"><b>Tatis Jr. → Black Sox</b><small>OF · SD</small></div></div></div></div>
+              <p class="small good">✓ Both rosters stay at 23 · accepted Jun 14, 8:05 pm</p>
+              <div class="btns"><div class="btn">Veto</div><div class="btn primary">Process</div></div></div></div>
+            <div class="col"><p class="cap">Still being discussed</p><div class="list"><div class="row"><div class="t"><b>Los Doyers → Bombers</b><small>Offered Jun 14, not answered</small></div><span class="chip">Waiting</span></div></div>
+              <p class="cap">Processed this season</p><div class="list"><div class="row"><div class="t"><b>Bombers ↔ Diamond Kings</b><small>May 17 · 2 players</small></div><span class="btn sm">Reverse</span></div></div></div>
+          </div>
+        </div>
+      </div></div></div>
+    </div>
+  </section>
+  <!-- ===== SEASON JOBS ===== -->
+  <section>
+    <h2>Season jobs</h2>
+    <p class="muted">Closing and starting periods, owners, the period calendar, and the history of every change. These replace today's guided close/start pages and the old Overview, Archive and Recent changes links.</p>
+
+    <!-- 19 CLOSE -->
+    <div class="screen">
+      <div class="shead"><h3>19 · Close a period</h3><p class="why">A checklist, top to bottom. Green means ready; anything amber needs a look but doesn't block you. Closing locks standings, so it ends with a confirm sheet. The innings check is new.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar"><span class="back">‹ Commissioner</span>Close Period 8</div>
+        <div class="body">
+          <p class="cap">Before you close</p>
+          <div class="list">
+            <div class="row"><div class="t"><b>Final stats are in</b><small>Last stat date Jun 14 · period ended Jun 14</small></div><span class="chip good">Ready</span></div>
+            <div class="row"><div class="t"><b>Rosters at the limit</b><small>8 of 8 teams at 23</small></div><span class="chip good">Ready</span></div>
+            <div class="row"><div class="t"><b>Innings minimum</b><small>Bombers 46⅓ of 50 IP</small></div><span class="chip alert">Review</span></div>
+            <div class="row"><div class="t"><b>IL players back from MLB IL</b><small>Gallen, Demolition Lumber</small></div><span class="chip alert">Review</span></div>
+          </div>
+          <p class="cap">Standings at close</p>
+          <div class="list pad"><table class="st num"><thead><tr><th>Team</th><th>Pts</th></tr></thead><tbody><tr><td>1 · Skunk Dogs</td><td>63.0</td></tr><tr><td>2 · Demolition Lumber</td><td>61.0</td></tr><tr class="me"><td>3 · Los Doyers</td><td>58.5</td></tr></tbody></table></div>
+          <p class="cap">IL fees for Period 8</p>
+          <div class="box"><div class="spread"><b class="num">$45 from 3 teams</b><a class="small" href="#screens">Details ›</a></div>
+            <div class="seg full" role="group" aria-label="Bill IL fees"><button type="button" aria-pressed="true">Bill now</button><button type="button" aria-pressed="false">Bill later</button></div></div>
+          <div class="btn primary">Close Period 8</div>
+        </div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></nav>
+        <div class="main">
+          <div class="mhead"><a class="small" href="#screens">‹ Commissioner</a><h2>Close Period 8</h2><p class="small muted">May 31 – Jun 14</p></div>
+          <div class="cols-side">
+            <div class="col">
+              <p class="cap">Before you close</p>
+              <div class="list">
+                <div class="row"><div class="t"><b>Final stats are in</b><small>Last stat date Jun 14 · period ended Jun 14</small></div><span class="chip good">Ready</span></div>
+                <div class="row"><div class="t"><b>Rosters at the limit</b><small>8 of 8 teams at 23</small></div><span class="chip good">Ready</span></div>
+                <div class="row"><div class="t"><b>Innings minimum</b><small>Bombers 46⅓ of 50 IP · you decide what happens</small></div><span class="chip alert">Review</span></div>
+                <div class="row"><div class="t"><b>IL players back from MLB IL</b><small>Gallen, Demolition Lumber</small></div><span class="chip alert">Review</span></div>
+              </div>
+              <p class="cap">Standings at close</p>
+              <div class="list pad"><table class="st num"><thead><tr><th>Team</th><th>Pts</th><th>Change</th></tr></thead><tbody><tr><td>1 · Skunk Dogs</td><td>63.0</td><td>▲ 1</td></tr><tr><td>2 · Demolition Lumber</td><td>61.0</td><td>▼ 1</td></tr><tr class="me"><td>3 · Los Doyers</td><td>58.5</td><td>▲ 2</td></tr><tr><td>4 · RGing Sluggers</td><td>55.0</td><td>–</td></tr></tbody></table></div>
+            </div>
+            <div class="panel"><b>IL fees for Period 8</b><p class="small">Los Doyers $25 · Bombers $10 · RGing Sluggers $10 · <b class="num">$45 total</b></p>
+              <div class="seg full" role="group" aria-label="Bill IL fees"><button type="button" aria-pressed="true">Bill now</button><button type="button" aria-pressed="false">Bill later</button></div>
+              <p class="small muted">Standings lock when you close. You can't undo this.</p><div class="btn primary">Close Period 8</div></div>
+          </div>
+        </div>
+      </div></div></div>
+    </div>
+
+    <!-- 20 START -->
+    <div class="screen">
+      <div class="shead"><h3>20 · Start the next period</h3><p class="why">Shows the moves saved at the meeting, all dated to the new start. One button starts the period; owners see the new rosters right away.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar"><span class="back">‹ Commissioner</span>Start Period 9</div>
+        <div class="body">
+          <div class="box"><p class="cap">Period 9</p><b>Mon Jun 15 – Sun Jun 28</b><p class="small muted">14 days · trades: meeting day only</p></div>
+          <p class="cap">Moves from the meeting · 9</p>
+          <div class="list">
+            <div class="row"><div class="t"><b>Bombers</b><small>+ Casas · − Pham</small></div></div>
+            <div class="row"><div class="t"><b>Diamond Kings</b><small>+ Fraley · − Bader · + Ashcraft · − Blalock</small></div></div>
+            <div class="row"><div class="t"><b>Black Sox</b><small>Passed</small></div></div>
+          </div>
+          <p class="small good">✓ All 8 rosters at 23</p>
+          <div class="btn primary">Start Period 9</div>
+        </div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></nav>
+        <div class="main">
+          <div class="mhead"><a class="small" href="#screens">‹ Commissioner</a><h2>Start Period 9</h2></div>
+          <div class="cols-side">
+            <div class="list pad"><table class="st left"><thead><tr><th>Team</th><th>Added</th><th>Dropped</th></tr></thead><tbody>
+              <tr><td>Bombers</td><td class="good">Casas</td><td class="alerttx">Pham</td></tr>
+              <tr><td>Diamond Kings</td><td class="good">Fraley, Ashcraft</td><td class="alerttx">Bader, Blalock</td></tr>
+              <tr><td>Black Sox</td><td class="muted">Passed</td><td></td></tr>
+              <tr><td>Los Doyers</td><td class="good">Ward</td><td class="alerttx">Hayes</td></tr>
+            </tbody></table></div>
+            <div class="panel"><p class="cap">Period 9</p><b>Mon Jun 15 – Sun Jun 28</b><p class="small good">✓ All 8 rosters at 23</p><div class="btn primary">Start Period 9</div></div>
+          </div>
+        </div>
+      </div></div></div>
+    </div>
+
+    <!-- 21 OWNERS -->
+    <div class="screen">
+      <div class="shead"><h3>21 · Owners and invites</h3><p class="why">One row per team: who owns it and whether they've joined. The invite link is one tap to copy. A co-owner can be added to any team.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar"><span class="back">‹ Commissioner</span>Owners</div>
+        <div class="body">
+          <div class="box"><p class="cap">Invite link</p><div class="field">thefantasticleagues.com/join/ogba-26 <span class="chip">Copy</span></div></div>
+          <div class="list">
+            <div class="row"><div class="t"><b>Black Sox</b><small>Joined · seen today</small></div><span class="chip good">Joined</span></div>
+            <div class="row"><div class="t"><b>Bombers</b><small>Joined · 2 owners</small></div><span class="chip good">Joined</span></div>
+            <div class="row"><div class="t"><b>RGing Sluggers</b><small>Invite sent Mar 2</small></div><span class="chip alert">Resend</span></div>
+            <div class="row"><div class="t"><b>Skunk Dogs</b><small>Joined · seen Jun 12</small></div><span class="chip good">Joined</span></div>
+          </div>
+        </div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></nav>
+        <div class="main">
+          <div class="mhead"><a class="small" href="#screens">‹ Commissioner</a><h2>Owners and invites</h2></div>
+          <div class="tools"><div class="field grow">thefantasticleagues.com/join/ogba-26 <span class="chip">Copy</span></div></div>
+          <div class="list pad"><table class="st left"><thead><tr><th>Team</th><th>Owners</th><th>Status</th><th>Last seen</th><th>Action</th></tr></thead><tbody>
+            <tr><td>Black Sox</td><td>1</td><td><span class="chip good">Joined</span></td><td>Today</td><td><span class="btn sm">Manage</span></td></tr>
+            <tr><td>Bombers</td><td>2</td><td><span class="chip good">Joined</span></td><td>Jun 13</td><td><span class="btn sm">Manage</span></td></tr>
+            <tr><td>RGing Sluggers</td><td>1</td><td><span class="chip alert">Invited Mar 2</span></td><td>–</td><td><span class="btn sm">Resend</span></td></tr>
+            <tr><td>Skunk Dogs</td><td>1</td><td><span class="chip good">Joined</span></td><td>Jun 12</td><td><span class="btn sm">Manage</span></td></tr>
+          </tbody></table></div>
+        </div>
+      </div></div></div>
+    </div>
+
+    <!-- 22 PERIODS -->
+    <div class="screen">
+      <div class="shead"><h3>22 · Season and periods</h3><p class="why">The season calendar. Each period shows its dates and where it is. Add the next period here; that's what "No next period set up" points to today.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar"><span class="back">‹ Commissioner</span>2026 season</div>
+        <div class="body">
+          <div class="list">
+            <div class="row"><div class="t"><b>Period 7</b><small>May 17 – May 30</small></div><span class="chip">Closed</span></div>
+            <div class="row"><div class="t"><b>Period 8</b><small>May 31 – Jun 14</small></div><span class="chip acc">Now</span></div>
+            <div class="row"><div class="t"><b>Period 9</b><small>Jun 15 – Jun 28</small></div><span class="chip">Next</span></div>
+          </div>
+          <div class="btn">+ Add Period 10</div>
+          <p class="cap">Season</p>
+          <div class="list"><div class="row"><div class="t"><b>Auction</b><small>Mar 21 · done</small></div><span class="chev">›</span></div><div class="row"><div class="t"><b>Past seasons</b><small>2019–2025</small></div><span class="chev">›</span></div></div>
+        </div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></nav>
+        <div class="main">
+          <div class="spread"><div class="mhead"><a class="small" href="#screens">‹ Commissioner</a><h2>2026 season</h2></div><div class="btn">+ Add Period 10</div></div>
+          <div class="cols-side">
+            <div class="list pad"><table class="st left"><thead><tr><th>Period</th><th>Dates</th><th>Days</th><th>Status</th><th>Winner</th></tr></thead><tbody>
+              <tr><td>Period 7</td><td>May 17 – May 30</td><td>14</td><td><span class="chip">Closed</span></td><td>Skunk Dogs</td></tr>
+              <tr class="me"><td>Period 8</td><td>May 31 – Jun 14</td><td>15</td><td><span class="chip acc">Now</span></td><td class="muted">–</td></tr>
+              <tr><td>Period 9</td><td>Jun 15 – Jun 28</td><td>14</td><td><span class="chip">Next</span></td><td class="muted">–</td></tr>
+            </tbody></table></div>
+            <div class="col"><p class="cap">Season</p><div class="list"><div class="row"><div class="t"><b>Auction</b><small>Mar 21 · done</small></div><span class="chev">›</span></div><div class="row"><div class="t"><b>Past seasons</b><small>2019–2025</small></div><span class="chev">›</span></div></div></div>
+          </div>
+        </div>
+      </div></div></div>
+    </div>
+
+    <!-- 23 HISTORY -->
+    <div class="screen">
+      <div class="shead"><h3>23 · History</h3><p class="why">Every commissioner action, newest first, filtered by kind. Things that can be undone say so on the row.</p></div>
+      <div class="v-phone"><div class="ph">
+        <div class="bar"><span class="back">‹ Commissioner</span>History</div>
+        <div class="body">
+          <div class="filters scroll"><span class="pick on">All</span><span class="pick">Rosters</span><span class="pick">Trades</span><span class="pick">Money</span><span class="pick">Rules</span><span class="pick">Periods</span></div>
+          <p class="cap">Jun 14</p>
+          <div class="list">
+            <div class="row"><div class="t"><b>Saved 9 meeting moves</b><small>8 teams · 8:31 pm</small></div><span class="chip">Undo one</span></div>
+            <div class="row"><div class="t"><b>Processed trade</b><small>Black Sox ↔ Los Doyers · 8:10 pm</small></div><span class="chip">Reverse</span></div>
+            <div class="row"><div class="t"><b>Closed Period 8 · billed $45</b><small>7:55 pm</small></div></div>
+          </div>
+          <p class="cap">Jun 2</p>
+          <div class="list"><div class="row"><div class="t"><b>Rule changed: trades anytime → meeting day only</b><small>9:14 am</small></div></div></div>
+        </div>
+      </div></div>
+      <div class="v-desk"><div class="scrollx"><div class="desk">
+        <nav><b class="brand">Fantastic Leagues</b><span>Today</span><span>My Team</span><span>Players</span><span class="on">League</span></nav>
+        <div class="main">
+          <div class="mhead"><a class="small" href="#screens">‹ Commissioner</a><h2>History</h2></div>
+          <div class="filters"><span class="pick on">All</span><span class="pick">Rosters</span><span class="pick">Trades</span><span class="pick">Money</span><span class="pick">Rules</span><span class="pick">Periods</span></div>
+          <div class="list pad"><table class="st left"><thead><tr><th>When</th><th>What</th><th>Details</th><th></th></tr></thead><tbody>
+            <tr><td>Jun 14, 8:31 pm</td><td>Saved 9 meeting moves</td><td>8 teams, dated Jun 15</td><td><span class="btn sm">Undo one</span></td></tr>
+            <tr><td>Jun 14, 8:10 pm</td><td>Processed trade</td><td>Black Sox ↔ Los Doyers</td><td><span class="btn sm">Reverse</span></td></tr>
+            <tr><td>Jun 14, 7:55 pm</td><td>Closed Period 8</td><td>Billed $45 IL fees</td><td></td></tr>
+            <tr><td>Jun 2, 9:14 am</td><td>Rule changed</td><td>Trades: anytime → meeting day only</td><td></td></tr>
+          </tbody></table></div>
+        </div>
+      </div></div></div>
+    </div>
+  </section>
+</div>
+
+</main>
+
+
+
+<script src="bible.js" defer></script>
+</body>
+</html>

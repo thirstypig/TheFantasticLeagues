@@ -109,7 +109,7 @@ function VelocityChart() {
                   className="h-full rounded bg-[var(--lg-accent)] text-[var(--lg-on-accent)] transition-all"
                   style={{ width: `${pct}%` }}
                 />
-                <span className="absolute inset-y-0 left-2 flex items-center text-[10px] font-semibold text-white mix-blend-difference">
+                <span className="absolute inset-y-0 left-2 flex items-center text-xs font-semibold text-white mix-blend-difference">
                   {s.items}
                 </span>
               </div>
@@ -126,19 +126,19 @@ function VelocityChart() {
           <div className="text-lg font-semibold text-[var(--lg-text-primary)] tabular-nums">
             {Math.round(totalItems / 27 * 10) / 10}
           </div>
-          <div className="text-[10px] text-[var(--lg-text-muted)] uppercase">Avg per Session</div>
+          <div className="text-xs text-[var(--lg-text-muted)] uppercase">Avg per Session</div>
         </div>
         <div>
           <div className="text-lg font-semibold text-[var(--lg-text-primary)] tabular-nums">
             {maxItems}
           </div>
-          <div className="text-[10px] text-[var(--lg-text-muted)] uppercase">Peak (S21-23)</div>
+          <div className="text-xs text-[var(--lg-text-muted)] uppercase">Peak (S21-23)</div>
         </div>
         <div>
           <div className="text-lg font-semibold text-emerald-400 tabular-nums">
             +{Math.round(((sessionVelocity[sessionVelocity.length - 1].items - sessionVelocity[0].items) / sessionVelocity[0].items) * 100)}%
           </div>
-          <div className="text-[10px] text-[var(--lg-text-muted)] uppercase">Growth</div>
+          <div className="text-xs text-[var(--lg-text-muted)] uppercase">Growth</div>
         </div>
       </div>
     </div>
@@ -157,16 +157,16 @@ export default function Analytics() {
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
             <SectionLabel><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><BarChart3 size={11} /> Analytics</span></SectionLabel>
-            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Analytics</h1>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Analytics</h1>
             <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
               Product analytics powered by PostHog. Track how owners use the platform, identify adoption patterns, and make data-driven decisions about what to build next.
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <Link to="/roadmap" style={{ fontSize: 12, color: "var(--am-text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <Link to="/roadmap" style={{ fontSize: 13, color: "var(--am-text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
               Roadmap <ArrowRight className="w-3 h-3" />
             </Link>
-            <Link to="/tech" style={{ fontSize: 12, color: "var(--am-text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <Link to="/tech" style={{ fontSize: 13, color: "var(--am-text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
               Under the Hood <ArrowRight className="w-3 h-3" />
             </Link>
           </div>
@@ -203,7 +203,7 @@ export default function Analytics() {
                         {m.label}
                       </h3>
                       <span
-                        className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${
+                        className={`text-xs font-semibold uppercase px-1.5 py-0.5 rounded border ${
                           m.status === "tracking"
                             ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
                             : "text-[var(--lg-text-muted)] bg-[var(--lg-tint)] border-[var(--lg-border-faint)]"
@@ -243,7 +243,7 @@ export default function Analytics() {
               <p className="text-sm text-[var(--lg-text-secondary)] leading-relaxed mb-2">
                 {insight.answer}
               </p>
-              <span className="text-[10px] text-[var(--lg-text-muted)] bg-[var(--lg-tint)] px-1.5 py-0.5 rounded">
+              <span className="text-xs text-[var(--lg-text-muted)] bg-[var(--lg-tint)] px-1.5 py-0.5 rounded">
                 Source: {insight.source}
               </span>
             </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Play, Pause, SkipBack, SkipForward, Rewind, FastForward, X } from 'lucide-react';
 import type { AuctionLogEvent } from '../hooks/useAuctionState';
 import { track } from '../../../lib/posthog';
+import { playerHeadshotUrl } from '../../../lib/mlbImages';
 import { Glass, IridText, SectionLabel, Chip } from '../../../components/aurora/atoms';
 
 interface AuctionTeamBasic {
@@ -102,7 +103,7 @@ function formatTimestamp(ts: number): string {
 }
 
 function getHeadshotUrl(playerId: string): string {
-  return `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${playerId}/headshot/67/current`;
+  return playerHeadshotUrl(playerId);
 }
 
 const CTRL_BTN_BASE: React.CSSProperties = {
@@ -249,7 +250,7 @@ export default function AuctionReplay({ log, teams: _teams, onClose }: AuctionRe
             <div
               style={{
                 fontFamily: "var(--am-display)",
-                fontSize: 20,
+                fontSize: 17,
                 fontWeight: 300,
                 color: "var(--am-text)",
                 lineHeight: 1.1,
@@ -323,13 +324,13 @@ export default function AuctionReplay({ log, teams: _teams, onClose }: AuctionRe
                   flexShrink: 0,
                 }}
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/0/headshot/67/current`;
+                  (e.target as HTMLImageElement).src = playerHeadshotUrl(0);
                 }}
               />
               <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
                 <div
                   style={{
-                    fontSize: 10,
+                    fontSize: 13,
                     letterSpacing: 1.4,
                     textTransform: "uppercase",
                     color: "var(--am-text-faint)",
@@ -342,7 +343,7 @@ export default function AuctionReplay({ log, teams: _teams, onClose }: AuctionRe
                 <div
                   style={{
                     fontFamily: "var(--am-display)",
-                    fontSize: 18,
+                    fontSize: 17,
                     fontWeight: 400,
                     color: "var(--am-text)",
                     lineHeight: 1.15,
@@ -354,7 +355,7 @@ export default function AuctionReplay({ log, teams: _teams, onClose }: AuctionRe
                 >
                   {currentLot.playerName}
                 </div>
-                <div style={{ fontSize: 12, color: "var(--am-text-muted)" }}>
+                <div style={{ fontSize: 13, color: "var(--am-text-muted)" }}>
                   Nominated by{" "}
                   <span style={{ color: "var(--am-text)", fontWeight: 500 }}>
                     {currentLot.nominatorTeamName}
@@ -391,7 +392,7 @@ export default function AuctionReplay({ log, teams: _teams, onClose }: AuctionRe
                         display: "flex",
                         alignItems: "center",
                         gap: 10,
-                        fontSize: 12,
+                        fontSize: 13,
                         padding: "7px 10px",
                         borderBottom: "1px solid var(--am-border)",
                         background: isWinning
@@ -430,7 +431,7 @@ export default function AuctionReplay({ log, teams: _teams, onClose }: AuctionRe
                           <span
                             style={{
                               marginLeft: 8,
-                              fontSize: 10,
+                              fontSize: 13,
                               letterSpacing: 1.2,
                               textTransform: "uppercase",
                               fontWeight: 600,
@@ -443,7 +444,7 @@ export default function AuctionReplay({ log, teams: _teams, onClose }: AuctionRe
                       </span>
                       <span
                         style={{
-                          fontSize: 10,
+                          fontSize: 13,
                           color: "var(--am-text-faint)",
                           fontVariantNumeric: "tabular-nums",
                           flexShrink: 0,
@@ -457,7 +458,7 @@ export default function AuctionReplay({ log, teams: _teams, onClose }: AuctionRe
                 {visibleBidCount === 0 && (
                   <div
                     style={{
-                      fontSize: 12,
+                      fontSize: 13,
                       color: "var(--am-text-muted)",
                       padding: "12px 4px",
                       textAlign: "center",
@@ -473,7 +474,7 @@ export default function AuctionReplay({ log, teams: _teams, onClose }: AuctionRe
                     style={{
                       marginTop: 6,
                       alignSelf: "flex-start",
-                      fontSize: 11,
+                      fontSize: 13,
                       fontWeight: 500,
                       color: "var(--am-accent)",
                       background: "transparent",
@@ -581,7 +582,7 @@ export default function AuctionReplay({ log, teams: _teams, onClose }: AuctionRe
                 aria-pressed={active}
                 aria-label={`Speed ${opt}x`}
                 style={{
-                  fontSize: 11,
+                  fontSize: 13,
                   fontWeight: 600,
                   fontVariantNumeric: "tabular-nums",
                   padding: "4px 10px",
@@ -629,7 +630,7 @@ export default function AuctionReplay({ log, teams: _teams, onClose }: AuctionRe
         {/* Lot counter */}
         <div
           style={{
-            fontSize: 11,
+            fontSize: 13,
             color: "var(--am-text-muted)",
             fontVariantNumeric: "tabular-nums",
             fontWeight: 500,

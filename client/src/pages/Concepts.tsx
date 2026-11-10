@@ -286,8 +286,8 @@ export default function Concepts() {
       <Glass strong>
         <SectionLabel>✦ Concepts Lab</SectionLabel>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Concepts Lab</h1>
-          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 1.4, textTransform: "uppercase", padding: "3px 8px", borderRadius: 99, background: "rgba(177, 75, 255, 0.15)", color: "rgb(196, 137, 255)" }}>BETA</span>
+          <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Concepts Lab</h1>
+          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: 1.4, textTransform: "uppercase", padding: "3px 8px", borderRadius: 99, background: "rgba(177, 75, 255, 0.15)", color: "rgb(196, 137, 255)" }}>BETA</span>
         </div>
         <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>Strategic features, SEO pages, integrations, and UX mockups we're exploring.</div>
         <div style={{ marginTop: 12 }}><AdminCrossNav /></div>
@@ -331,7 +331,7 @@ export default function Concepts() {
                 >
                   <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div className="flex items-center gap-3">
-                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${phaseStyle.cls}`}>{phaseStyle.label}</span>
+                      <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded border ${phaseStyle.cls}`}>{phaseStyle.label}</span>
                       <h3 className="text-sm font-bold text-[var(--lg-text-heading)]">{c.title}</h3>
                     </div>
                     <p className="text-xs text-[var(--lg-text-muted)] flex-1 text-right sm:text-right">{c.tagline}</p>
@@ -343,23 +343,23 @@ export default function Concepts() {
                     {c.id === "pricing" && (
                       <div className="rounded-md border border-[var(--lg-border-faint)] bg-[var(--lg-bg-card)] p-3">
                         <div className="flex items-center justify-between gap-2 mb-2">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--lg-text-muted)]">Tier summary</span>
-                          <Link to="/pricing" className="text-[10px] text-[var(--lg-accent)] hover:underline">
+                          <span className="text-xs font-bold uppercase tracking-wider text-[var(--lg-text-muted)]">Tier summary</span>
+                          <Link to="/pricing" className="text-xs text-[var(--lg-accent)] hover:underline">
                             Full pricing page →
                           </Link>
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-xs">
                           <div className="rounded border border-[var(--lg-border-subtle)] p-2">
                             <div className="font-semibold text-[var(--lg-text-primary)]">Free</div>
-                            <div className="text-[var(--lg-text-muted)] text-[10px]">$0 · core league play · up to 2 leagues</div>
+                            <div className="text-[var(--lg-text-muted)] text-xs">$0 · core league play · up to 2 leagues</div>
                           </div>
                           <div className="rounded border border-[var(--lg-accent)]/40 bg-[var(--lg-accent)]/5 p-2">
                             <div className="font-semibold text-[var(--lg-text-primary)]">Pro · $29/season</div>
-                            <div className="text-[var(--lg-text-muted)] text-[10px]">AI draft report · trade advisor · Statcast</div>
+                            <div className="text-[var(--lg-text-muted)] text-xs">AI draft report · trade advisor · Statcast</div>
                           </div>
                           <div className="rounded border border-[var(--lg-border-subtle)] p-2">
                             <div className="font-semibold text-[var(--lg-text-primary)]">Commissioner · $49/season</div>
-                            <div className="text-[var(--lg-text-muted)] text-[10px]">Everything in Pro · auction admin · custom rules</div>
+                            <div className="text-[var(--lg-text-muted)] text-xs">Everything in Pro · auction admin · custom rules</div>
                           </div>
                         </div>
                       </div>
@@ -367,9 +367,9 @@ export default function Concepts() {
                     <RelatedTodos kind="concept" anchor={c.id} />
                     {c.competitors && (
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[10px] font-bold uppercase text-[var(--lg-text-muted)]">Competitors:</span>
+                        <span className="text-xs font-bold uppercase text-[var(--lg-text-muted)]">Competitors:</span>
                         {c.competitors.map(comp => (
-                          <span key={comp} className="text-[10px] px-2 py-0.5 rounded border border-[var(--lg-border-subtle)] text-[var(--lg-text-muted)]">
+                          <span key={comp} className="text-xs px-2 py-0.5 rounded border border-[var(--lg-border-subtle)] text-[var(--lg-text-muted)]">
                             {comp}
                           </span>
                         ))}
@@ -377,12 +377,12 @@ export default function Concepts() {
                     )}
                     <div className="flex flex-wrap items-center gap-2">
                       {c.todoLink && (
-                        <Link to={c.todoLink} className="text-[10px] font-bold uppercase px-2 py-1 rounded border text-emerald-400 bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20">
+                        <Link to={c.todoLink} className="text-xs font-bold uppercase px-2 py-1 rounded border text-emerald-400 bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20">
                           → Todo
                         </Link>
                       )}
                       {c.roadmapLink && (
-                        <Link to={c.roadmapLink} className="text-[10px] font-bold uppercase px-2 py-1 rounded border text-sky-400 bg-sky-500/10 border-sky-500/30 hover:bg-sky-500/20">
+                        <Link to={c.roadmapLink} className="text-xs font-bold uppercase px-2 py-1 rounded border text-sky-400 bg-sky-500/10 border-sky-500/30 hover:bg-sky-500/20">
                           → Roadmap
                         </Link>
                       )}
@@ -403,35 +403,35 @@ export default function Concepts() {
             <table className="w-full text-xs">
               <thead className="bg-[var(--lg-bg-card)] border-b border-[var(--lg-border-faint)]">
                 <tr>
-                  <th className="text-left p-3 font-bold text-[var(--lg-text-muted)] uppercase text-[10px]">Slug</th>
-                  <th className="text-left p-3 font-bold text-[var(--lg-text-muted)] uppercase text-[10px]">Title</th>
-                  <th className="text-left p-3 font-bold text-[var(--lg-text-muted)] uppercase text-[10px]">Keywords</th>
-                  <th className="text-right p-3 font-bold text-[var(--lg-text-muted)] uppercase text-[10px]">Words</th>
-                  <th className="text-left p-3 font-bold text-[var(--lg-text-muted)] uppercase text-[10px]">Status</th>
+                  <th className="text-left p-3 font-bold text-[var(--lg-text-muted)] uppercase text-xs">Slug</th>
+                  <th className="text-left p-3 font-bold text-[var(--lg-text-muted)] uppercase text-xs">Title</th>
+                  <th className="text-left p-3 font-bold text-[var(--lg-text-muted)] uppercase text-xs">Keywords</th>
+                  <th className="text-right p-3 font-bold text-[var(--lg-text-muted)] uppercase text-xs">Words</th>
+                  <th className="text-left p-3 font-bold text-[var(--lg-text-muted)] uppercase text-xs">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--lg-border-faint)]">
                 {SEO_PAGES.map(p => (
                   <tr key={p.slug} className="hover:bg-[var(--lg-bg-card)]/50">
-                    <td className="p-3 font-mono text-[11px] text-[var(--lg-accent)]">{p.slug}</td>
+                    <td className="p-3 font-mono text-xs text-[var(--lg-accent)]">{p.slug}</td>
                     <td className="p-3 text-[var(--lg-text-primary)]">{p.title}</td>
                     <td className="p-3 text-[var(--lg-text-muted)]">
                       <div className="flex flex-wrap gap-1">
                         {p.keywords.slice(0, 3).map(k => (
-                          <span key={k} className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--lg-bg)] border border-[var(--lg-border-subtle)]">{k}</span>
+                          <span key={k} className="text-xs px-1.5 py-0.5 rounded bg-[var(--lg-bg)] border border-[var(--lg-border-subtle)]">{k}</span>
                         ))}
                       </div>
                     </td>
                     <td className="p-3 text-right tabular-nums text-[var(--lg-text-muted)]">{p.wordCount}</td>
                     <td className="p-3">
-                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${
+                      <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded border ${
                         p.status === "published" ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/30" :
                         p.status === "draft" ? "text-amber-400 bg-amber-500/10 border-amber-500/30" :
                         "text-slate-400 bg-slate-500/10 border-slate-500/30"
                       }`}>
                         {p.status}
                       </span>
-                      {p.targetDate && <div className="text-[9px] text-[var(--lg-text-muted)] mt-0.5">{p.targetDate}</div>}
+                      {p.targetDate && <div className="text-xs text-[var(--lg-text-muted)] mt-0.5">{p.targetDate}</div>}
                     </td>
                   </tr>
                 ))}
@@ -449,11 +449,11 @@ export default function Concepts() {
             <table className="w-full text-xs">
               <thead className="bg-[var(--lg-bg-card)] border-b border-[var(--lg-border-faint)]">
                 <tr>
-                  <th className="text-left p-3 font-bold text-[var(--lg-text-muted)] uppercase text-[10px]">Service</th>
-                  <th className="text-left p-3 font-bold text-[var(--lg-text-muted)] uppercase text-[10px]">Kind</th>
-                  <th className="text-left p-3 font-bold text-[var(--lg-text-muted)] uppercase text-[10px]">API</th>
-                  <th className="text-left p-3 font-bold text-[var(--lg-text-muted)] uppercase text-[10px]">Status</th>
-                  <th className="text-left p-3 font-bold text-[var(--lg-text-muted)] uppercase text-[10px]">Summary</th>
+                  <th className="text-left p-3 font-bold text-[var(--lg-text-muted)] uppercase text-xs">Service</th>
+                  <th className="text-left p-3 font-bold text-[var(--lg-text-muted)] uppercase text-xs">Kind</th>
+                  <th className="text-left p-3 font-bold text-[var(--lg-text-muted)] uppercase text-xs">API</th>
+                  <th className="text-left p-3 font-bold text-[var(--lg-text-muted)] uppercase text-xs">Status</th>
+                  <th className="text-left p-3 font-bold text-[var(--lg-text-muted)] uppercase text-xs">Summary</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--lg-border-faint)]">
@@ -467,7 +467,7 @@ export default function Concepts() {
                        <X size={14} className="text-slate-500" />}
                     </td>
                     <td className="p-3">
-                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${
+                      <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded border ${
                         i.status === "live" ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/30" :
                         i.status === "planned" ? "text-amber-400 bg-amber-500/10 border-amber-500/30" :
                         i.status === "explore" ? "text-sky-400 bg-sky-500/10 border-sky-500/30" :
@@ -499,7 +499,7 @@ export default function Concepts() {
                 >
                   <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div className="flex items-center gap-3">
-                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${
+                      <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded border ${
                         m.status === "prototyped" ? "text-fuchsia-400 bg-fuchsia-500/10 border-fuchsia-500/30" :
                         m.status === "sketching" ? "text-amber-400 bg-amber-500/10 border-amber-500/30" :
                         "text-slate-400 bg-slate-500/10 border-slate-500/30"
@@ -515,7 +515,7 @@ export default function Concepts() {
                   <div className="px-4 pb-4 border-t border-[var(--lg-border-faint)] pt-3 space-y-3">
                     <p className="text-xs text-[var(--lg-text-secondary)] leading-relaxed">{m.description}</p>
                     {m.todoLink && (
-                      <Link to={m.todoLink} className="inline-block text-[10px] font-bold uppercase px-2 py-1 rounded border text-emerald-400 bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20">
+                      <Link to={m.todoLink} className="inline-block text-xs font-bold uppercase px-2 py-1 rounded border text-emerald-400 bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20">
                         → Todo
                       </Link>
                     )}
@@ -535,7 +535,7 @@ export default function Concepts() {
         <div className="flex items-center gap-2 mb-4">
           <Sparkles className="w-5 h-5 text-[var(--lg-accent)]" />
           <h2 className="text-lg font-semibold text-[var(--lg-text-heading)]">Live: League Board</h2>
-          <span className="text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">LIVE</span>
+          <span className="text-xs font-bold tracking-widest uppercase px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">LIVE</span>
           <Link to="/board" className="ml-auto flex items-center gap-1 text-xs font-medium text-[var(--lg-accent)] hover:underline">
             Full page <ChevronRight className="w-3 h-3" />
           </Link>
@@ -547,7 +547,7 @@ export default function Concepts() {
         <div className="flex items-center gap-2 mb-2">
           <Users className="w-5 h-5 text-[var(--lg-accent)]" />
           <h2 className="text-lg font-semibold text-[var(--lg-text-heading)]">Coming Soon: Community Marketplace</h2>
-          <span className="text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded-full bg-[var(--lg-tint)] text-[var(--lg-text-muted)]">COMING SOON</span>
+          <span className="text-xs font-bold tracking-widest uppercase px-2 py-0.5 rounded-full bg-[var(--lg-tint)] text-[var(--lg-text-muted)]">COMING SOON</span>
         </div>
         <p className="text-xs text-[var(--lg-text-muted)] mb-4 max-w-2xl">
           Find leagues looking for players. Post your team for adoption. Browse by format, buy-in, and timezone.
@@ -557,7 +557,7 @@ export default function Concepts() {
             <div key={i} className="rounded-xl p-4 border border-[var(--lg-border-faint)] bg-[var(--lg-glass-bg)]">
               <div className="flex items-start justify-between mb-2">
                 <h3 className="text-sm font-semibold text-[var(--lg-text-primary)]">{listing.name}</h3>
-                <span className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                <span className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                   <MapPin className="w-3 h-3" /> {listing.spots} open
                 </span>
               </div>

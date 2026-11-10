@@ -132,12 +132,12 @@ export default function RelatedTodos({ kind, anchor, title }: RelatedTodosProps)
   return (
     <div className="mt-3 rounded-md border border-[var(--lg-border-faint)] bg-[var(--lg-tint)]/50 p-3">
       <div className="flex items-center justify-between gap-2 mb-2">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--lg-text-muted)]">
+        <span className="text-xs font-bold uppercase tracking-wider text-[var(--lg-text-muted)]">
           {title ?? "Related tasks"}
         </span>
         <Link
           to="/todo"
-          className="text-[10px] text-[var(--lg-accent)] hover:underline"
+          className="text-xs text-[var(--lg-accent)] hover:underline"
         >
           Manage in /todo →
         </Link>
@@ -155,7 +155,7 @@ export default function RelatedTodos({ kind, anchor, title }: RelatedTodosProps)
                 {t.title}
               </Link>
               <span
-                className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border shrink-0 ${PRIORITY_CLS[t.priority]}`}
+                className={`text-xs font-bold uppercase px-1.5 py-0.5 rounded border shrink-0 ${PRIORITY_CLS[t.priority]}`}
               >
                 {t.priority}
               </span>

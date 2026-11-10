@@ -58,7 +58,7 @@ export default function DesignRosterHubDeferred() {
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
         <Glass strong>
           <SectionLabel>✦ Design preview · admin only</SectionLabel>
-          <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, margin: 0 }}>
+          <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, margin: 0 }}>
             Roster Hub Deferred Items
           </h1>
         </Glass>
@@ -167,7 +167,7 @@ function ScenarioSwitcher({
               <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.2 }}>{s.label}</div>
               <div
                 style={{
-                  fontSize: 11,
+                  fontSize: 13,
                   color: isActive ? "rgba(255,255,255,0.85)" : "var(--am-text-muted)",
                   marginTop: 2,
                   lineHeight: 1.3,

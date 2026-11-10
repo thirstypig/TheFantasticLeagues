@@ -188,7 +188,7 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
             className="lg-input w-full"
             aria-label="Search players to add to watchlist"
           />
-          {showAdd && !playersLoaded && <div className="text-[10px] text-[var(--lg-text-muted)] animate-pulse">Loading players...</div>}
+          {showAdd && !playersLoaded && <div className="text-xs text-[var(--lg-text-muted)] animate-pulse">Loading players...</div>}
           {addSearch.length >= 2 && filteredResults.length > 0 && !addPlayerId && (
             <div className="max-h-40 overflow-y-auto divide-y divide-[var(--lg-divide)] rounded-lg border border-[var(--lg-border-subtle)]">
               {filteredResults.map((p) => (
@@ -221,7 +221,7 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
                 key={tag}
                 type="button"
                 onClick={() => setAddTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag])}
-                className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wide rounded-full border transition-colors ${addTags.includes(tag) ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)] border-[var(--lg-accent)]" : "text-[var(--lg-text-muted)] border-[var(--lg-border-subtle)] hover:border-[var(--lg-accent)]"}`}
+                className={`px-2 py-1 text-xs font-bold uppercase tracking-wide rounded-full border transition-colors ${addTags.includes(tag) ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)] border-[var(--lg-accent)]" : "text-[var(--lg-text-muted)] border-[var(--lg-border-subtle)] hover:border-[var(--lg-accent)]"}`}
               >
                 {tag}
               </button>
@@ -263,19 +263,19 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
                     <button
                       type="button"
                       onClick={() => item.player?.mlbId && setSelectedMlbId(item.player.mlbId)}
-                      className="font-semibold text-[11px] text-[var(--lg-text-primary)] hover:text-[var(--lg-accent)] transition-colors cursor-pointer text-left"
+                      className="font-semibold text-xs text-[var(--lg-text-primary)] hover:text-[var(--lg-accent)] transition-colors cursor-pointer text-left"
                       title="View player details"
                     >
                       {item.player?.name ?? "Unknown"}
                     </button>
                   </ThemedTd>
                   <ThemedTd>
-                    <span className="px-1 py-px rounded text-[8px] font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                    <span className="px-1 py-px rounded text-xs font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
                       {displayPos(item.player?.posPrimary)}
                     </span>
                   </ThemedTd>
                   <ThemedTd>
-                    <span className="text-[10px] font-bold uppercase text-[var(--lg-text-muted)]">
+                    <span className="text-xs font-bold uppercase text-[var(--lg-text-muted)]">
                       {item.player?.mlbTeam || "FA"}
                     </span>
                   </ThemedTd>
@@ -286,7 +286,7 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
                           key={tag}
                           type="button"
                           onClick={() => toggleTag(item, tag)}
-                          className={`px-1.5 py-px text-[8px] font-bold uppercase rounded-full border transition-colors ${item.tags.includes(tag) ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)] border-[var(--lg-accent)]" : "text-[var(--lg-text-muted)] border-[var(--lg-border-subtle)] opacity-40 hover:opacity-100"}`}
+                          className={`px-1.5 py-px text-xs font-bold uppercase rounded-full border transition-colors ${item.tags.includes(tag) ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)] border-[var(--lg-accent)]" : "text-[var(--lg-text-muted)] border-[var(--lg-border-subtle)] opacity-40 hover:opacity-100"}`}
                         >
                           {tag}
                         </button>
@@ -302,7 +302,7 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
                           onChange={(e) => setEditNote(e.target.value)}
                           onKeyDown={(e) => e.key === "Enter" && handleSaveNote(item)}
                           onBlur={() => handleSaveNote(item)}
-                          className="lg-input text-[10px] py-0.5 px-1 w-32"
+                          className="lg-input text-xs py-0.5 px-1 w-32"
                           maxLength={200}
                           autoFocus
                         />
@@ -311,7 +311,7 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
                       <button
                         type="button"
                         onClick={() => { setEditingId(item.id); setEditNote(item.note || ""); }}
-                        className="text-[10px] text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-colors max-w-[120px] truncate"
+                        className="text-xs text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-colors max-w-[120px] truncate"
                         title={item.note || "Add note"}
                       >
                         {item.note || <span className="opacity-40 italic">+ note</span>}

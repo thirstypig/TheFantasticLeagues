@@ -193,7 +193,7 @@ export default function ActivateFromIlPanel({ leagueId, teamId, players, onCompl
   if (ilPlayers.length === 0) {
     return (
       <div className="rounded border border-[var(--lg-border-faint)] bg-[var(--lg-tint)]/40 p-6 text-center">
-        <p className="text-[11px] text-[var(--lg-text-muted)]">
+        <p className="text-xs text-[var(--lg-text-muted)]">
           No players currently on IL. Place a player on IL from the Place on IL mode first.
         </p>
       </div>
@@ -202,13 +202,13 @@ export default function ActivateFromIlPanel({ leagueId, teamId, players, onCompl
 
   return (
     <div className="space-y-4">
-      <p className="text-[11px] text-[var(--lg-text-muted)]">
+      <p className="text-xs text-[var(--lg-text-muted)]">
         Bring a player back from IL, choose the active slot they will reclaim, then click the player to drop.
         Confirm unlocks only after the full roster can resolve legally.
       </p>
 
       <div
-        className={`rounded border p-2 text-[11px] ${
+        className={`rounded border p-2 text-xs ${
           rosterRulesSatisfied
             ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-200"
             : "border-[var(--lg-border-faint)] bg-[var(--lg-tint)]/50 text-[var(--lg-text-muted)]"
@@ -223,7 +223,7 @@ export default function ActivateFromIlPanel({ leagueId, teamId, players, onCompl
 
       {/* IL-slotted player picker */}
       <div>
-        <label className="block text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-1">
+        <label className="block text-xs font-semibold uppercase text-[var(--lg-text-muted)] mb-1">
           Player to activate from IL
         </label>
         <select
@@ -240,7 +240,7 @@ export default function ActivateFromIlPanel({ leagueId, teamId, players, onCompl
         </select>
         {targetSlot && filteredDropCandidates.length > 0 && (
           <div className="mt-2 rounded border border-[var(--lg-border-faint)] bg-[var(--lg-tint)]/25 p-2">
-            <div className="mb-2 text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">
+            <div className="mb-2 text-xs font-semibold uppercase text-[var(--lg-text-muted)]">
               Players in {targetSlot}
             </div>
             <div className="grid gap-1.5 sm:grid-cols-2">
@@ -251,7 +251,7 @@ export default function ActivateFromIlPanel({ leagueId, teamId, players, onCompl
                     key={`activate-drop-card-${r._dbPlayerId}`}
                     type="button"
                     onClick={() => { setDropPlayerId(r._dbPlayerId ?? null); setError(null); }}
-                    className={`rounded border px-3 py-2 text-left text-[11px] ${
+                    className={`rounded border px-3 py-2 text-left text-xs ${
                       selected
                         ? "border-[var(--lg-accent)] bg-[var(--lg-accent)]/15 text-[var(--lg-text-primary)]"
                         : "border-[var(--lg-border-faint)] bg-[var(--lg-bg-surface)] text-[var(--lg-text-primary)] hover:bg-[var(--lg-tint)]"
@@ -259,9 +259,9 @@ export default function ActivateFromIlPanel({ leagueId, teamId, players, onCompl
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span className="font-semibold">{r.player_name || r.name}</span>
-                      <span className="font-mono text-[10px] text-[var(--lg-text-muted)]">{targetSlot}</span>
+                      <span className="font-mono text-xs text-[var(--lg-text-muted)]">{targetSlot}</span>
                     </div>
-                    <div className="mt-1 text-[10px] text-[var(--lg-text-muted)]">
+                    <div className="mt-1 text-xs text-[var(--lg-text-muted)]">
                       Eligible: {r.positions || r.posPrimary || "-"}
                     </div>
                   </button>
@@ -274,14 +274,14 @@ export default function ActivateFromIlPanel({ leagueId, teamId, players, onCompl
 
       {/* Drop picker */}
       <div>
-        <label className="block text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-1">
+        <label className="block text-xs font-semibold uppercase text-[var(--lg-text-muted)] mb-1">
           Active slot to reclaim
         </label>
         <div className="mb-2 rounded border border-[var(--lg-border-faint)] bg-[var(--lg-tint)]/35 p-2">
           {!activatePlayer ? (
-            <div className="text-[11px] text-[var(--lg-text-muted)]">Select an IL player first to see eligible active slots.</div>
+            <div className="text-xs text-[var(--lg-text-muted)]">Select an IL player first to see eligible active slots.</div>
           ) : occupiedSlots.length === 0 ? (
-            <div className="text-[11px] text-amber-300">
+            <div className="text-xs text-amber-300">
               This roster has no active slot available to reclaim.
             </div>
           ) : (
@@ -295,7 +295,7 @@ export default function ActivateFromIlPanel({ leagueId, teamId, players, onCompl
                     key={slot}
                     type="button"
                     onClick={() => { setTargetSlot(slot); setDropPlayerId(null); }}
-                    className={`rounded border px-2 py-1 text-[11px] font-semibold ${
+                    className={`rounded border px-2 py-1 text-xs font-semibold ${
                       active
                         ? "border-[var(--lg-accent)] bg-[var(--lg-accent)]/15 text-[var(--lg-text-primary)]"
                         : "border-[var(--lg-border-faint)] bg-[var(--lg-tint)] text-[var(--lg-text-muted)] hover:bg-[var(--lg-tint-hover)]"
@@ -309,7 +309,7 @@ export default function ActivateFromIlPanel({ leagueId, teamId, players, onCompl
             </div>
           )}
         </div>
-        <label className="block text-[10px] font-semibold uppercase text-[var(--lg-text-muted)] mb-1">
+        <label className="block text-xs font-semibold uppercase text-[var(--lg-text-muted)] mb-1">
           Drop player from {targetSlot ?? "selected slot"}
         </label>
         <select
@@ -341,13 +341,13 @@ export default function ActivateFromIlPanel({ leagueId, teamId, players, onCompl
       </div>
 
       {selectedDrop && activatePlayer && !slotCompatible && !needsServerPreview && (
-        <div className="rounded border border-amber-500/40 bg-amber-500/10 p-2 text-[11px] text-amber-200">
+        <div className="rounded border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-200">
           {activatePlayer.player_name || activatePlayer.name} is not eligible for the{" "}
           {dropTargetSlot} slot. Pick a different drop player.
         </div>
       )}
       {error && (
-        <div className="rounded border border-red-500/40 bg-red-500/10 p-2 text-[11px] text-red-300">
+        <div className="rounded border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-300">
           {error}
         </div>
       )}

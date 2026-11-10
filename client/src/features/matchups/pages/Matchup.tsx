@@ -104,7 +104,7 @@ export default function Matchup() {
               {tab === "matchup" ? "This week's matchup." : "League standings."}
             </h1>
             {computedAt && (
-              <div style={{ marginTop: 6, fontSize: 12, color: "var(--am-text-muted)" }}>
+              <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
                 <DataFreshness computedAt={computedAt} className="text-xs" />
               </div>
             )}
@@ -131,7 +131,7 @@ export default function Matchup() {
                   marginBottom: 12,
                 }}
               />
-              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--am-text-faint)" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: 1.4, textTransform: "uppercase", color: "var(--am-text-faint)" }}>
                 Loading…
               </div>
               <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -221,7 +221,7 @@ export default function Matchup() {
                 {!matchup.result && (
                   <div style={{ gridColumn: "span 12" }}>
                     <Glass>
-                      <div style={{ textAlign: "center", padding: 8, fontSize: 12, color: "var(--am-text-muted)" }}>
+                      <div style={{ textAlign: "center", padding: 8, fontSize: 13, color: "var(--am-text-muted)" }}>
                         Results pending — week hasn't been scored yet.
                       </div>
                     </Glass>
@@ -241,12 +241,12 @@ export default function Matchup() {
                 <Glass padded={false}>
                   <div style={{ padding: "12px 16px 4px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <SectionLabel style={{ marginBottom: 0 }}>H2H Standings</SectionLabel>
-                    <span style={{ fontSize: 11, color: "var(--am-text-faint)" }}>Top 4 advance</span>
+                    <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>Top 4 advance</span>
                   </div>
                   <div style={{ overflowX: "auto", padding: "8px 8px 12px" }}>
                     <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontVariantNumeric: "tabular-nums" }}>
                       <thead>
-                        <tr style={{ fontSize: 10, color: "var(--am-text-faint)", textTransform: "uppercase", letterSpacing: 1.2 }}>
+                        <tr style={{ fontSize: 13, color: "var(--am-text-faint)", textTransform: "uppercase", letterSpacing: 1.2 }}>
                           <th style={thStyle("center", 32)}>#</th>
                           <th style={thStyle("left")}>Team</th>
                           <th style={thStyle("center", 44)}>W</th>
@@ -263,7 +263,7 @@ export default function Matchup() {
                           return (
                             <tr key={s.teamId} style={{ background: isMine ? "var(--am-chip)" : undefined }}>
                               <td style={tdStyle("center")}>
-                                <span style={{ fontSize: 11, color: "var(--am-text-faint)" }}>{s.rank}</span>
+                                <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>{s.rank}</span>
                               </td>
                               <td style={tdStyle("left")}>
                                 <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>{s.teamName}</span>
@@ -311,18 +311,18 @@ function ScoreboardSide({
 }) {
   return (
     <div style={{ textAlign: align, padding: "12px 8px" }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--am-text)", marginBottom: 6, display: "flex", alignItems: "center", gap: 6, justifyContent: align === "right" ? "flex-end" : "flex-start" }}>
+      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)", marginBottom: 6, display: "flex", alignItems: "center", gap: 6, justifyContent: align === "right" ? "flex-end" : "flex-start" }}>
         {isMine && align === "left" ? <Chip strong>You</Chip> : null}
         <span>{teamName}</span>
         {isMine && align === "right" ? <Chip strong>You</Chip> : null}
       </div>
       <div>
         {scoreText == null ? (
-          <span style={{ fontSize: 28, fontWeight: 300, color: "var(--am-text-faint)", fontFamily: "var(--am-display)" }}>—</span>
+          <span style={{ fontSize: 24, fontWeight: 300, color: "var(--am-text-faint)", fontFamily: "var(--am-display)" }}>—</span>
         ) : isWinner ? (
           <IridText size={36} weight={300}>{scoreText}</IridText>
         ) : (
-          <span style={{ fontSize: 36, fontWeight: 300, color: "var(--am-text-muted)", fontFamily: "var(--am-display)", fontVariantNumeric: "tabular-nums" }}>{scoreText}</span>
+          <span style={{ fontSize: 32, fontWeight: 300, color: "var(--am-text-muted)", fontFamily: "var(--am-display)", fontVariantNumeric: "tabular-nums" }}>{scoreText}</span>
         )}
       </div>
     </div>
@@ -352,7 +352,7 @@ function tabBtnStyle(active: boolean): React.CSSProperties {
   return {
     padding: "8px 16px",
     borderRadius: 999,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: 600,
     letterSpacing: 0.4,
     textTransform: "uppercase",

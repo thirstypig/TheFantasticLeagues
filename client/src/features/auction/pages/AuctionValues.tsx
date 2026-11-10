@@ -169,7 +169,7 @@ export default function AuctionValues() {
 
         {canViewAuctionResults && (
           <Glass style={{ marginBottom: 16, borderColor: "rgba(217, 119, 6, 0.3)" }}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: "rgb(245, 158, 11)" }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: "rgb(245, 158, 11)" }}>
               These are pre-draft projected values and do not reflect in-season performance. Check the Team page for current stats.
             </div>
           </Glass>
@@ -195,8 +195,8 @@ export default function AuctionValues() {
                   width: "100%",
                   padding: "9px 14px 9px 36px",
                   borderRadius: 99,
-                  border: "1px solid var(--am-border)",
-                  background: "var(--am-surface-faint)",
+                  border: "1px solid var(--am-field-line)",
+                  background: "var(--am-field)",
                   color: "var(--am-text)",
                   fontSize: 13,
                   outline: "none",
@@ -230,7 +230,7 @@ export default function AuctionValues() {
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontVariantNumeric: "tabular-nums" }}>
                 <thead>
-                  <tr style={{ fontSize: 10, color: "var(--am-text-faint)", textTransform: "uppercase", letterSpacing: 1.2 }}>
+                  <tr style={{ fontSize: 13, color: "var(--am-text-faint)", textTransform: "uppercase", letterSpacing: 1.2 }}>
                     <th style={thStyle("left")}>Player</th>
                     <th style={thStyle("left", 140)}>Team</th>
                     <th style={thStyle("left", 110)}>Pos</th>
@@ -254,7 +254,7 @@ export default function AuctionValues() {
                           <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>{playerName(p)}</span>
                         </td>
                         <td style={tdStyle("left")}>
-                          <span style={{ fontSize: 12, color: "var(--am-text-muted)" }}>
+                          <span style={{ fontSize: 13, color: "var(--am-text-muted)" }}>
                             {teamNameMap[ogbaTeam(p).toUpperCase()] || ogbaTeam(p) || "FA"}
                           </span>
                         </td>
@@ -312,7 +312,7 @@ function tabBtnStyle(active: boolean): React.CSSProperties {
   return {
     padding: "8px 16px",
     borderRadius: 99,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: 600,
     letterSpacing: 0.4,
     textTransform: "uppercase",

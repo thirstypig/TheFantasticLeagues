@@ -265,13 +265,13 @@ export default function AIHub() {
     <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
       <Glass strong>
         <SectionLabel>✦ AI Insights</SectionLabel>
-        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
           AI Insights
         </h1>
         <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
           AI-powered analysis across every phase of your fantasy baseball season. Expand any card to see exactly what the AI analyzes.
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, fontSize: 11, color: "var(--am-text-faint)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, fontSize: 13, color: "var(--am-text-faint)" }}>
           <span style={{ width: 6, height: 6, borderRadius: 99, background: "rgb(16, 185, 129)" }} />
           <span style={{ fontWeight: 500, color: "var(--am-text-muted)" }}>AI Available</span>
           <span>·</span>
@@ -298,7 +298,7 @@ export default function AIHub() {
                   {formatInsightType(row.type)}
                   {row.teamName ? ` · ${row.teamName}` : ""}
                 </div>
-                <div className="text-[10px] text-[var(--lg-text-muted)]">
+                <div className="text-xs text-[var(--lg-text-muted)]">
                   {new Date(row.generatedAt).toLocaleString()}
                   {row.weekKey ? ` · ${row.weekKey}` : ""}
                 </div>
@@ -336,7 +336,7 @@ export default function AIHub() {
                   >
                     {/* Lock badge */}
                     {isLocked && (
-                      <div className="absolute top-4 right-4 flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--lg-tint)] border border-[var(--lg-border-faint)] text-[10px] font-bold text-[var(--lg-text-muted)]">
+                      <div className="absolute top-4 right-4 flex items-center gap-1 px-2 py-0.5 rounded-full bg-[var(--lg-tint)] border border-[var(--lg-border-faint)] text-xs font-bold text-[var(--lg-text-muted)]">
                         <Lock size={10} />
                         <span className="uppercase tracking-wide">Locked</span>
                       </div>
@@ -354,7 +354,7 @@ export default function AIHub() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <h3 className="text-sm font-bold text-[var(--lg-text-primary)] leading-tight">{feature.title}</h3>
-                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${scopeInfo.color}`}>
+                          <span className={`px-1.5 py-0.5 rounded text-xs font-bold border ${scopeInfo.color}`}>
                             {scopeInfo.label}
                           </span>
                         </div>
@@ -364,7 +364,7 @@ export default function AIHub() {
 
                     {/* Lock reason */}
                     {isLocked && feature.lockReason && (
-                      <p className="text-[11px] text-[var(--lg-text-muted)] italic mb-3 pl-12">{feature.lockReason}</p>
+                      <p className="text-xs text-[var(--lg-text-muted)] italic mb-3 pl-12">{feature.lockReason}</p>
                     )}
 
                     {/* Action area */}
@@ -396,7 +396,7 @@ export default function AIHub() {
                         <div>
                           <div className="flex items-center gap-1.5 mb-1">
                             <Zap size={11} className="text-amber-400" />
-                            <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">When It Runs</span>
+                            <span className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">When It Runs</span>
                           </div>
                           <p className="text-xs text-[var(--lg-text-secondary)] leading-relaxed pl-4">{feature.trigger}</p>
                         </div>
@@ -405,7 +405,7 @@ export default function AIHub() {
                         <div>
                           <div className="flex items-center gap-1.5 mb-1">
                             <Brain size={11} className="text-purple-400" />
-                            <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">What the AI Does</span>
+                            <span className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">What the AI Does</span>
                           </div>
                           <p className="text-xs text-[var(--lg-text-secondary)] leading-relaxed pl-4">{feature.promptSummary}</p>
                         </div>
@@ -414,7 +414,7 @@ export default function AIHub() {
                         <div>
                           <div className="flex items-center gap-1.5 mb-1">
                             <Eye size={11} className="text-blue-400" />
-                            <span className="text-[10px] font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">Data It Sees</span>
+                            <span className="text-xs font-bold uppercase tracking-wide text-[var(--lg-text-muted)]">Data It Sees</span>
                           </div>
                           <ul className="text-xs text-[var(--lg-text-secondary)] leading-relaxed pl-4 space-y-0.5">
                             {feature.dataUsed.map((item, i) => (
@@ -428,8 +428,8 @@ export default function AIHub() {
 
                         {/* Model */}
                         <div className="flex items-center gap-1.5 pt-1">
-                          <span className="text-[10px] text-[var(--lg-text-muted)]">Model:</span>
-                          <span className="text-[10px] text-[var(--lg-text-secondary)] font-medium">{feature.model}</span>
+                          <span className="text-xs text-[var(--lg-text-muted)]">Model:</span>
+                          <span className="text-xs text-[var(--lg-text-secondary)] font-medium">{feature.model}</span>
                         </div>
                       </div>
                     )}

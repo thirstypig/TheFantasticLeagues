@@ -30,8 +30,8 @@
     /* Background — warm gray, easy on eyes */
     --lg-bg-primary: #ece2c6;
     --lg-bg-secondary: #e5d9b8;
-    --lg-bg-card: #ece2c6;
-    --lg-bg-page: #e0d3ae;
+    --lg-bg-card: #fbf7ec;
+    --lg-bg-page: #ded0a8;
 
     /* Glass — visible panels on the gray background */
     --lg-glass-bg: rgba(245, 247, 250, 0.7);
@@ -45,8 +45,8 @@
 
     /* Text */
     --lg-text-primary: #15171a;
-    --lg-text-secondary: #33373b;
-    --lg-text-muted: #33373b;
+    --lg-text-secondary: #5e5747;
+    --lg-text-muted: #5e5747;
     --lg-text-heading: #15171a;
     --lg-text-accent: var(--lg-pantone-294-light);
 
@@ -75,14 +75,14 @@
     --lg-sidebar-item-active: rgba(0, 45, 114, 0.12);
 
     /* Inputs */
-    --lg-input-bg: rgba(248, 250, 252, 0.7);
-    --lg-input-border: rgba(0, 45, 114, 0.15);
+    --lg-input-bg: #ffffff;
+    --lg-input-border: #8a7a4f;
     --lg-input-focus: var(--lg-pantone-294-bright);
 
     /* Mode-aware tints (navy on light, white on dark) */
-    --lg-tint: rgba(0, 45, 114, 0.06);
-    --lg-tint-hover: rgba(0, 45, 114, 0.10);
-    --lg-border-faint: rgba(0, 45, 114, 0.08);
+    --lg-tint: #ece3c8;
+    --lg-tint-hover: #ddd0a8;
+    --lg-border-faint: #c9b98c;
     --lg-border-subtle: #c9b98c;
     --lg-border-strong: #8a7a4f;
     --lg-divide: rgba(0, 45, 114, 0.08);
@@ -105,15 +105,21 @@
 
     /* Typography */
     --lg-font-family:
-      "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      "Sofia Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
       sans-serif;
-    --lg-font-size-xs: 0.75rem; /* 12px */
-    --lg-font-size-sm: 0.875rem; /* 14px */
-    --lg-font-size-base: 1rem; /* 16px */
-    --lg-font-size-lg: 1.125rem; /* 18px */
-    --lg-font-size-xl: 1.25rem; /* 20px */
-    --lg-font-size-2xl: 1.5rem; /* 24px */
-    --lg-font-size-3xl: 1.875rem; /* 30px */
+    /* Type scale (UX step A): 13 / 15 / 17 / 24, plus 32 display */
+    --lg-font-size-xs: 13px;
+    --lg-font-size-sm: 15px;
+    --lg-font-size-base: 17px;
+    --lg-font-size-lg: 17px;
+    --lg-font-size-xl: 24px;
+    --lg-font-size-2xl: 24px;
+    --lg-font-size-3xl: 32px;
+    --am-t-caption: 13px;
+    --am-t-small: 15px;
+    --am-t-body: 17px;
+    --am-t-title: 24px;
+    --am-t-display: 32px;
 
     /* Spacing Tokens */
     --lg-gap-xs: 4px;
@@ -164,8 +170,8 @@
 
     --lg-bg-primary: #4a2a2e;
     --lg-bg-secondary: #553236;
-    --lg-bg-card: #4a2a2e;
-    --lg-bg-page: #3a1f22;
+    --lg-bg-card: #5a3337;
+    --lg-bg-page: #341b1e;
 
     /* Glass - Dark */
     --lg-glass-bg: rgba(15, 23, 42, 0.75);
@@ -179,8 +185,8 @@
 
     /* Text - Dark */
     --lg-text-primary: #f6f7f4;
-    --lg-text-secondary: #dde1dc;
-    --lg-text-muted: #dde1dc;
+    --lg-text-secondary: #c8b9b2;
+    --lg-text-muted: #c8b9b2;
     --lg-text-heading: #f6f7f4;
     --lg-text-accent: var(--lg-pantone-294-bright);
 
@@ -209,16 +215,16 @@
     --lg-sidebar-item-active: rgba(26, 117, 255, 0.2);
 
     /* Inputs - Dark */
-    --lg-input-bg: rgba(30, 41, 59, 0.6);
-    --lg-input-border: rgba(255, 255, 255, 0.1);
+    --lg-input-bg: #1f0e10;
+    --lg-input-border: #b08488;
     --lg-input-focus: var(--lg-pantone-294-bright);
 
     /* Mode-aware tints - Dark (white tints) */
-    --lg-tint: rgba(255, 255, 255, 0.06);
-    --lg-tint-hover: rgba(255, 255, 255, 0.12);
-    --lg-border-faint: rgba(255, 255, 255, 0.07);
-    --lg-border-subtle: #6a3d42;
-    --lg-border-strong: #a07a7e;
+    --lg-tint: #4a2629;
+    --lg-tint-hover: #633a3e;
+    --lg-border-faint: #7a4a4f;
+    --lg-border-subtle: #7a4a4f;
+    --lg-border-strong: #b08488;
     --lg-divide: rgba(255, 255, 255, 0.07);
 
     /* Status Colors — Dark (lighter/vivid for dark bg) */
@@ -419,7 +425,7 @@
     padding: 10px 12px;
     border-radius: var(--lg-radius-md);
     color: var(--lg-text-secondary);
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 500;
     text-transform: none;
     letter-spacing: normal;
@@ -443,7 +449,7 @@
   }
 
   .lg-sidebar-section-label {
-    font-size: 10px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--lg-text-muted);
     text-transform: uppercase;
@@ -483,9 +489,9 @@
   }
 
   .lg-button-secondary {
-    background: var(--lg-glass-bg);
+    background: var(--lg-tint);
     color: var(--lg-text-primary);
-    border: 1px solid var(--lg-border-subtle);
+    border: 1px solid var(--lg-input-border);
     backdrop-filter: var(--lg-glass-blur);
   }
 

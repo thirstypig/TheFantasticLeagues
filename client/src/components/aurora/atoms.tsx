@@ -120,7 +120,7 @@ export function Chip({
         gap: 6,
         padding: "4px 10px",
         borderRadius: 4,
-        fontSize: 11,
+        fontSize: 13,
         fontWeight: 500,
         background: strong ? "var(--am-chip-strong)" : "var(--am-chip)",
         color: color || "var(--am-text-muted)",
@@ -145,7 +145,7 @@ export function SectionLabel({
   return (
     <div
       style={{
-        fontSize: 10.5,
+        fontSize: 13,
         letterSpacing: 0.4,
         textTransform: "uppercase",
         color: "var(--am-text-faint)",
@@ -258,7 +258,7 @@ export function AIStrip({
         }}
       >
         <SectionLabel style={{ marginBottom: 0 }}>AI suggestions</SectionLabel>
-        <span style={{ fontSize: 11, color: "var(--am-text-muted)" }}>{subtitle}</span>
+        <span style={{ fontSize: 13, color: "var(--am-text-muted)" }}>{subtitle}</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {items.map((it, i) => (
@@ -283,20 +283,20 @@ export function AIStrip({
                 background: "var(--am-accent)",
                 display: "grid",
                 placeItems: "center",
-                fontSize: 11,
+                fontSize: 13,
                 color: "var(--am-on-accent)",
               }}
             >
               {it.icon}
             </span>
-            <div style={{ fontSize: 12, lineHeight: 1.4, flex: 1 }}>
+            <div style={{ fontSize: 13, lineHeight: 1.4, flex: 1 }}>
               <div style={{ color: "var(--am-text)", fontWeight: 500 }}>{it.title}</div>
               <div style={{ color: "var(--am-text-muted)", marginTop: 2 }}>{it.body}</div>
               <div
                 style={{
                   marginTop: 6,
                   display: "inline-block",
-                  fontSize: 10.5,
+                  fontSize: 13,
                   fontWeight: 600,
                   padding: "4px 9px",
                   borderRadius: 4,
@@ -366,7 +366,7 @@ export function Topbar({
         </div>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "var(--am-text)", whiteSpace: "nowrap" }}>{title}</div>
-          {subtitle && <div style={{ fontSize: 11, color: "var(--am-text-faint)" }}>{subtitle}</div>}
+          {subtitle && <div style={{ fontSize: 13, color: "var(--am-text-faint)" }}>{subtitle}</div>}
         </div>
       </div>
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -383,7 +383,7 @@ export function Topbar({
             border: "1px solid var(--am-border)",
             cursor: "pointer",
             padding: 0,
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: 600,
             color: "var(--am-text-muted)",
           }}

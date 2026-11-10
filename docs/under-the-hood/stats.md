@@ -21,24 +21,24 @@ updated: 2026-11-10
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-10 from 1,838 git-tracked files.*
+*Generated 2026-11-10 from 1,856 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 595 | 105,054 |
-| `.tsx` | 323 | 90,300 |
-| `.md` | 551 | 68,739 |
+| `.ts` | 602 | 105,350 |
+| `.tsx` | 330 | 90,563 |
+| `.md` | 553 | 69,153 |
 | `.json` | 36 | 40,134 |
 | `.sql` | 40 | 2,153 |
-| `.css` | 9 | 1,842 |
+| `.css` | 9 | 1,855 |
 | `.prisma` | 1 | 1,767 |
-| `.mjs` | 7 | 1,531 |
-| `.js` | 8 | 1,220 |
+| `.mjs` | 9 | 1,745 |
+| `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,834** | **354,266** |
+| **All tracked** | **1,852** | **357,006** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -67,11 +67,10 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 |---|---:|---|
 | `feat` | 20 | ❌ off-vocabulary |
 | `fix` | 6 | ❌ off-vocabulary |
-| `plan` | 5 | ✅ |
+| `plan` | 6 | ✅ |
 | `refactor` | 3 | ❌ off-vocabulary |
 | `tech-spec` | 3 | ✅ |
 | `report` | 3 | ✅ |
-| `stats` | 3 | ✅ |
 | `solution` | 2 | ✅ |
 | `deployment-failure` | 2 | ❌ off-vocabulary |
 | `inbox` | 1 | ✅ |
@@ -91,15 +90,17 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `roadmap` | 1 | ✅ |
 | `todos` | 1 | ✅ |
 | `build-config-issue` | 1 | ❌ off-vocabulary |
+| `spec` | 1 | ❌ off-vocabulary |
 | `changelog` | 1 | ✅ |
 | `costs` | 1 | ✅ |
 | `experiment` | 1 | ✅ |
 | `privacy` | 1 | ✅ |
 | `risk` | 1 | ✅ |
 | `runbook` | 1 | ✅ |
+| `stats` | 1 | ✅ |
 | `status` | 1 | ✅ |
 
-**35 docs use a `type` outside the controlled vocabulary** (see `docs/README-DOCS.md` §4) — mostly older `docs/solutions/` and `docs/archive/` entries written before the schema existed.
+**36 docs use a `type` outside the controlled vocabulary** (see `docs/README-DOCS.md` §4) — mostly older `docs/solutions/` and `docs/archive/` entries written before the schema existed.
 
 | Status | Docs | In vocabulary? |
 |---|---:|---|

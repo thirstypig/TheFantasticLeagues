@@ -55,13 +55,13 @@ function ChatMessage({
       onMouseLeave={() => setShowDelete(false)}
     >
       {!isOwn && (
-        <div className="w-7 h-7 rounded-full bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] flex items-center justify-center text-[10px] font-bold text-[var(--lg-text-muted)] flex-shrink-0 mt-0.5">
+        <div className="w-7 h-7 rounded-full bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)] flex items-center justify-center text-xs font-bold text-[var(--lg-text-muted)] flex-shrink-0 mt-0.5">
           {initial}
         </div>
       )}
       <div className={`max-w-[75%] ${isOwn ? "text-right" : ""}`}>
         {!isOwn && (
-          <div className="text-[10px] font-semibold text-[var(--lg-text-muted)] mb-0.5 px-1">
+          <div className="text-xs font-semibold text-[var(--lg-text-muted)] mb-0.5 px-1">
             {msg.userName}
           </div>
         )}
@@ -75,11 +75,11 @@ function ChatMessage({
           {msg.text}
         </div>
         <div className="flex items-center gap-1.5 mt-0.5 px-1">
-          <span className="text-[10px] text-[var(--lg-text-muted)]">{formatTime(msg.createdAt)}</span>
+          <span className="text-xs text-[var(--lg-text-muted)]">{formatTime(msg.createdAt)}</span>
           {isCommissioner && showDelete && (
             <button
               onClick={() => onDelete?.(msg.id)}
-              className="text-[10px] text-rose-400 hover:text-rose-300 transition-colors"
+              className="text-xs text-rose-400 hover:text-rose-300 transition-colors"
               title="Delete message"
             >
               Delete

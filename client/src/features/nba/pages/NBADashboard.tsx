@@ -93,14 +93,14 @@ export default function NBADashboard() {
             <SectionLabel>NBA Dashboard</SectionLabel>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginTop: "12px" }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: "30px", fontWeight: 800, letterSpacing: "-0.015em" }}>Hardwood Heroes</h2>
-                <p style={{ margin: "7px 0 0", fontSize: "14px", color: "var(--am-text-muted)" }}>2026-27 NBA Season · Week 12 of 24</p>
+                <h2 style={{ margin: 0, fontSize: 32, fontWeight: 800, letterSpacing: "-0.015em" }}>Hardwood Heroes</h2>
+                <p style={{ margin: "7px 0 0", fontSize: 15, color: "var(--am-text-muted)" }}>2026-27 NBA Season · Week 12 of 24</p>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span style={{ fontSize: "12px", fontWeight: 700, letterSpacing: "0.08em", color: "#fff", background: "var(--am-accent)", padding: "6px 13px", borderRadius: "6px" }}>
+                <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.08em", color: "#fff", background: "var(--am-accent)", padding: "6px 13px", borderRadius: "6px" }}>
                   NBA
                 </span>
-                <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--am-text)", background: "var(--am-surface)", border: "1px solid var(--am-border)", padding: "6px 13px", borderRadius: "6px" }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)", background: "var(--am-surface)", border: "1px solid var(--am-border)", padding: "6px 13px", borderRadius: "6px" }}>
                   Commissioner
                 </span>
               </div>
@@ -110,33 +110,33 @@ export default function NBADashboard() {
 
         {/* Standings */}
         <div style={{ gridColumn: "span 12" }}>
-          <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--am-text-muted)", marginBottom: "9px" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--am-text-muted)", marginBottom: "9px" }}>
             Standings
           </div>
           <Glass padded={false}>
             <div style={{ overflow: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px", color: "var(--am-text)" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 15, color: "var(--am-text)" }}>
                 <thead>
                   <tr style={{ background: "var(--am-surface-alt)" }}>
-                    <th style={{ textAlign: "center", padding: "11px 14px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "54px" }}>
+                    <th style={{ textAlign: "center", padding: "11px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "54px" }}>
                       Rank
                     </th>
-                    <th style={{ textAlign: "left", padding: "11px 14px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)" }}>
+                    <th style={{ textAlign: "left", padding: "11px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)" }}>
                       Team
                     </th>
-                    <th style={{ textAlign: "right", padding: "11px 14px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "48px" }}>
+                    <th style={{ textAlign: "right", padding: "11px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "48px" }}>
                       W
                     </th>
-                    <th style={{ textAlign: "right", padding: "11px 14px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "48px" }}>
+                    <th style={{ textAlign: "right", padding: "11px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "48px" }}>
                       L
                     </th>
-                    <th style={{ textAlign: "right", padding: "11px 14px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "88px" }}>
+                    <th style={{ textAlign: "right", padding: "11px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "88px" }}>
                       PF
                     </th>
-                    <th style={{ textAlign: "right", padding: "11px 14px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "88px" }}>
+                    <th style={{ textAlign: "right", padding: "11px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "88px" }}>
                       PA
                     </th>
-                    <th style={{ textAlign: "center", padding: "11px 14px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "120px" }}>
+                    <th style={{ textAlign: "center", padding: "11px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "120px" }}>
                       Last 5
                     </th>
                   </tr>
@@ -195,7 +195,7 @@ export default function NBADashboard() {
 
         {/* Weekly Matchups */}
         <div style={{ gridColumn: "span 12" }}>
-          <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--am-text-muted)", marginBottom: "9px" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--am-text-muted)", marginBottom: "9px" }}>
             Weekly Matchups · Category Scoring
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -205,15 +205,15 @@ export default function NBADashboard() {
                 <div key={i} style={{ background: "var(--am-surface)", border: "1px solid var(--am-border)", borderRadius: "10px", padding: "15px 18px" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "13px" }}>
                     <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
-                      <span style={{ fontSize: "16px", fontWeight: 700, color: "var(--am-text)" }}>{m.a}</span>
-                      <span style={{ fontSize: "12px", color: "var(--am-text-faint)" }}>{m.aRec}</span>
+                      <span style={{ fontSize: 17, fontWeight: 700, color: "var(--am-text)" }}>{m.a}</span>
+                      <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>{m.aRec}</span>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <span style={{ fontSize: "20px", fontWeight: 800, color: "var(--am-text)", fontVariantNumeric: "tabular-nums" }}>
+                      <span style={{ fontSize: 17, fontWeight: 800, color: "var(--am-text)", fontVariantNumeric: "tabular-nums" }}>
                         {tally}
                       </span>
                       {m.live ? (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.07em", color: "var(--am-accent)" }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: 13, fontWeight: 700, letterSpacing: "0.07em", color: "var(--am-accent)" }}>
                           <span
                             style={{
                               width: "7px",
@@ -226,14 +226,14 @@ export default function NBADashboard() {
                           LIVE
                         </span>
                       ) : (
-                        <span style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.07em", color: "var(--am-text-faint)" }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.07em", color: "var(--am-text-faint)" }}>
                           FINAL
                         </span>
                       )}
                     </div>
                     <div style={{ display: "flex", alignItems: "baseline", gap: "10px" }}>
-                      <span style={{ fontSize: "12px", color: "var(--am-text-faint)" }}>{m.bRec}</span>
-                      <span style={{ fontSize: "16px", fontWeight: 700, color: "var(--am-text)" }}>{m.b}</span>
+                      <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>{m.bRec}</span>
+                      <span style={{ fontSize: 17, fontWeight: 700, color: "var(--am-text)" }}>{m.b}</span>
                     </div>
                   </div>
 
@@ -244,14 +244,14 @@ export default function NBADashboard() {
                       const aWins = aVal > bVal;
                       return (
                         <div key={cat} style={{ background: "var(--am-surface-alt)", padding: "7px 4px", textAlign: "center" }}>
-                          <div style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.04em", color: "var(--am-text-faint)", marginBottom: "4px" }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.04em", color: "var(--am-text-faint)", marginBottom: "4px" }}>
                             {cat}
                           </div>
-                          <div style={{ fontSize: "13px", fontVariantNumeric: "tabular-nums" }}>
+                          <div style={{ fontSize: 13, fontVariantNumeric: "tabular-nums" }}>
                             <span style={{ color: aWins ? "var(--am-accent)" : "var(--am-text-muted)", fontWeight: aWins ? 700 : 500 }}>
                               {m.av[catIdx]}
                             </span>
-                            <span style={{ color: "var(--am-text-faint)", fontSize: "11px", margin: "0 2px" }}>·</span>
+                            <span style={{ color: "var(--am-text-faint)", fontSize: 13, margin: "0 2px" }}>·</span>
                             <span style={{ color: !aWins ? "var(--am-accent)" : "var(--am-text-muted)", fontWeight: !aWins ? 700 : 500 }}>
                               {m.bv[catIdx]}
                             </span>
@@ -268,24 +268,24 @@ export default function NBADashboard() {
 
         {/* Category Leaders */}
         <div style={{ gridColumn: "span 12" }}>
-          <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--am-text-muted)", marginBottom: "9px" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--am-text-muted)", marginBottom: "9px" }}>
             Category Leaders
           </div>
           <Glass padded={false}>
             <div style={{ overflow: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", color: "var(--am-text)" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, color: "var(--am-text)" }}>
                 <thead>
                   <tr style={{ background: "var(--am-surface-alt)" }}>
-                    <th style={{ textAlign: "left", padding: "7px 14px", fontSize: "10px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "90px" }}>
+                    <th style={{ textAlign: "left", padding: "7px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "90px" }}>
                       Category
                     </th>
-                    <th style={{ textAlign: "left", padding: "7px 14px", fontSize: "10px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)" }}>
+                    <th style={{ textAlign: "left", padding: "7px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)" }}>
                       Player
                     </th>
-                    <th style={{ textAlign: "left", padding: "7px 14px", fontSize: "10px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "96px" }}>
+                    <th style={{ textAlign: "left", padding: "7px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "96px" }}>
                       Team
                     </th>
-                    <th style={{ textAlign: "right", padding: "7px 14px", fontSize: "10px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "90px" }}>
+                    <th style={{ textAlign: "right", padding: "7px 14px", fontSize: 13, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--am-text-muted)", borderBottom: "1px solid var(--am-border)", width: "90px" }}>
                       Value
                     </th>
                   </tr>
@@ -294,7 +294,7 @@ export default function NBADashboard() {
                   {leaders.map((ld, i) => (
                     <tr key={i}>
                       <td style={{ textAlign: "left", padding: "7px 14px", borderBottom: "1px solid var(--am-border)" }}>
-                        <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--am-accent)", background: "color-mix(in srgb, var(--am-accent) 12%, transparent)", padding: "2px 8px", borderRadius: "5px" }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--am-accent)", background: "color-mix(in srgb, var(--am-accent) 12%, transparent)", padding: "2px 8px", borderRadius: "5px" }}>
                           {ld.cat}
                         </span>
                       </td>

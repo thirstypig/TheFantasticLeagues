@@ -260,7 +260,7 @@ export function DesignScenarioHub() {
         <Glass padded={false} style={{ overflow: "visible" }}>
           <div style={{ padding: 16, paddingBottom: 6 }}>
             <SectionLabel>✦ Active roster · drag-to-mutate enabled</SectionLabel>
-            <p style={{ margin: 0, fontSize: 12, color: "var(--am-text-muted)" }}>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--am-text-muted)" }}>
               Grab a row by the ⋮⋮ handle, drop it onto another row to swap slots. Illegal drops
               shake. Mobile: long-press to grab. Keyboard: Tab to handle, Space to lift, arrows
               to move, Space to drop, Escape to cancel.
@@ -369,7 +369,7 @@ function HubFooter({
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
       <Glass>
         <SectionLabel>✦ Mock controls</SectionLabel>
-        <p style={{ fontSize: 12, color: "var(--am-text-muted)", marginTop: 6, marginBottom: 10 }}>
+        <p style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 6, marginBottom: 10 }}>
           Toggles to exercise edge cases without a backend.
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -387,10 +387,10 @@ function HubFooter({
 
       <Glass>
         <SectionLabel>✦ Open questions — Hub mutations</SectionLabel>
-        <p style={{ fontSize: 12, color: "var(--am-text-muted)", marginTop: 6, marginBottom: 10 }}>
+        <p style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 6, marginBottom: 10 }}>
           Decisions to lock before backend wiring.
         </p>
-        <ol style={{ margin: 0, paddingLeft: 20, fontSize: 12.5, color: "var(--am-text)", lineHeight: 1.6 }}>
+        <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: "var(--am-text)", lineHeight: 1.6 }}>
           <li><strong>Drop semantics</strong> — direct swap, or queue for the bipartite auto-resolve matcher?</li>
           <li><strong>Save trigger</strong> — explicit Save click only, or debounced auto-save (e.g. 2s)?</li>
           <li><strong>Navigate-away with pending</strong> — block + confirm, auto-save, or auto-revert?</li>
@@ -410,7 +410,7 @@ const ctlButton: React.CSSProperties = {
   border: "1px solid var(--am-border)",
   background: "var(--am-chip)",
   color: "var(--am-text)",
-  fontSize: 12.5,
+  fontSize: 13,
   fontWeight: 600,
   cursor: "pointer",
   textAlign: "left",
@@ -421,7 +421,7 @@ const ctlToggle: React.CSSProperties = {
   alignItems: "center",
   gap: 8,
   padding: "6px 8px",
-  fontSize: 12.5,
+  fontSize: 13,
   color: "var(--am-text-muted)",
   cursor: "pointer",
 };

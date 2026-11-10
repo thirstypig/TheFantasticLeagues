@@ -148,6 +148,9 @@ export function ACCOUNT_LINKS(isAdmin: boolean): NavLink[] {
     { to: "/guide", label: "Help & Guide" },
     { to: "/about", label: "About" },
   ];
-  if (isAdmin) links.push({ to: "/admin", label: "Admin" });
+  if (isAdmin) {
+    links.push({ to: "/admin", label: "Admin" });
+    links.push({ to: "/admin/style-bible", label: "Style Bible" });
+  }
   return links;
 }

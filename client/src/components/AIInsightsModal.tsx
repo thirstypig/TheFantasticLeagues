@@ -121,7 +121,7 @@ export default function AIInsightsModal({ isOpen, onClose, year, teamCode, teamN
 
           {error && (
             <div className="lg-alert lg-alert-error">
-              <div className="flex items-center gap-2 font-bold uppercase tracking-wide text-[11px] mb-2">
+              <div className="flex items-center gap-2 font-bold uppercase tracking-wide text-xs mb-2">
                 <span className="text-lg">⚠️</span> Error
               </div>
               <p className="text-sm font-medium">{error}</p>

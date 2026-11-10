@@ -23,7 +23,7 @@ export default function CommissionerSectionPage() {
     <>
       <Link
         to={`/commissioner/${leagueId}`}
-        style={{ display: "inline-flex", alignItems: "center", minHeight: 44, padding: "0 16px", fontSize: 16, color: "var(--am-text-muted)" }}
+        style={{ display: "inline-flex", alignItems: "center", minHeight: 44, padding: "0 16px", fontSize: 17, color: "var(--am-text-muted)" }}
       >
         ‹ Commissioner
       </Link>

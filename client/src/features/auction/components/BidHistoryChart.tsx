@@ -123,7 +123,7 @@ function LotChart({ lot, teamColorMap, maxPrice }: {
   return (
     <div className="space-y-3">
       {/* Summary stats row */}
-      <div className="flex flex-wrap gap-x-5 gap-y-1" style={{ fontSize: 11 }}>
+      <div className="flex flex-wrap gap-x-5 gap-y-1" style={{ fontSize: 13 }}>
         <span style={{ color: "var(--am-text-muted)" }}>
           Opening: <span className="font-semibold tabular-nums" style={{ color: "var(--am-text)" }}>${lot.openingBid}</span>
         </span>
@@ -163,7 +163,7 @@ function LotChart({ lot, teamColorMap, maxPrice }: {
               {/* Bid number */}
               <span
                 className="w-5 text-right tabular-nums shrink-0"
-                style={{ fontSize: 10, color: "var(--am-text-faint)" }}
+                style={{ fontSize: 13, color: "var(--am-text-faint)" }}
               >
                 {i + 1}
               </span>
@@ -178,10 +178,10 @@ function LotChart({ lot, teamColorMap, maxPrice }: {
                     boxShadow: isWinner ? "0 0 0 1px var(--am-positive)" : undefined,
                   }}
                 >
-                  <span className="absolute left-2 text-[11px] font-semibold text-white truncate pr-1">
+                  <span className="absolute left-2 text-xs font-semibold text-white truncate pr-1">
                     {bid.teamName}
                   </span>
-                  <span className="absolute right-2 text-[11px] font-semibold text-white tabular-nums">
+                  <span className="absolute right-2 text-xs font-semibold text-white tabular-nums">
                     ${bid.amount}
                   </span>
                 </div>
@@ -190,7 +190,7 @@ function LotChart({ lot, teamColorMap, maxPrice }: {
               {/* Timestamp delta */}
               <span
                 className="w-12 text-right tabular-nums shrink-0"
-                style={{ fontSize: 10, color: "var(--am-text-faint)" }}
+                style={{ fontSize: 13, color: "var(--am-text-faint)" }}
               >
                 {bid.isNomination ? 'nom' : `+${elapsed}s`}
               </span>
@@ -284,7 +284,7 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
       <Glass>
         <div
           className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums"
-          style={{ fontSize: 12, color: "var(--am-text-muted)" }}
+          style={{ fontSize: 13, color: "var(--am-text-muted)" }}
         >
           <span>
             <span className="font-semibold" style={{ color: "var(--am-text)" }}>{summary.totalLots}</span> lots
@@ -327,9 +327,9 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
             onChange={e => setSearchQuery(e.target.value)}
             className="w-full pl-8 pr-3 py-2 focus:outline-none"
             style={{
-              fontSize: 12,
-              background: "var(--am-surface-faint)",
-              border: "1px solid var(--am-border)",
+              fontSize: 13,
+              background: "var(--am-field)",
+              border: "1px solid var(--am-field-line)",
               borderRadius: 12,
               color: "var(--am-text)",
             }}
@@ -354,7 +354,7 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
                 onClick={() => setSortBy(mode)}
                 style={{
                   padding: "5px 12px",
-                  fontSize: 10,
+                  fontSize: 13,
                   fontWeight: 600,
                   letterSpacing: 0.6,
                   textTransform: "uppercase",
@@ -381,7 +381,7 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
             <span
               key={team.id}
               className="inline-flex items-center gap-1"
-              style={{ fontSize: 10, color: "var(--am-text-muted)" }}
+              style={{ fontSize: 13, color: "var(--am-text-muted)" }}
             >
               <span className={`w-2.5 h-2.5 rounded-full ${color.dot}`} />
               {team.code}
@@ -431,7 +431,7 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
                   {/* Lot number */}
                   <span
                     className="tabular-nums w-6 text-right shrink-0"
-                    style={{ fontSize: 11, color: "var(--am-text-faint)" }}
+                    style={{ fontSize: 13, color: "var(--am-text-faint)" }}
                   >
                     {idx + 1}
                   </span>
@@ -444,7 +444,7 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
                     >
                       {lot.playerName}
                     </div>
-                    <div style={{ fontSize: 10, color: "var(--am-text-muted)" }}>
+                    <div style={{ fontSize: 13, color: "var(--am-text-muted)" }}>
                       <span className="inline-flex items-center gap-1">
                         <span className={`w-2 h-2 rounded-full ${winnerColor.dot} shrink-0`} />
                         {lot.winnerTeamName}
@@ -465,7 +465,7 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
                   {/* Bid count */}
                   <span
                     className="tabular-nums w-10 text-right"
-                    style={{ fontSize: 11, color: "var(--am-text-muted)" }}
+                    style={{ fontSize: 13, color: "var(--am-text-muted)" }}
                   >
                     {lot.bidCount} bid{lot.bidCount !== 1 ? 's' : ''}
                   </span>

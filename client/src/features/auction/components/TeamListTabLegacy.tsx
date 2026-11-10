@@ -138,7 +138,7 @@ export default function TeamListTabLegacy({ teams = [], players = [], budgetCap 
     <div className="h-full overflow-y-auto scrollbar-hide">
         {/* League summary */}
         {showPace && teams.length > 0 && (
-          <div className="px-6 py-2 border-b border-[var(--lg-divide)] bg-[var(--lg-glass-bg-hover)] flex items-center justify-between text-[10px] font-semibold uppercase text-[var(--lg-text-muted)]">
+          <div className="px-6 py-2 border-b border-[var(--lg-divide)] bg-[var(--lg-glass-bg-hover)] flex items-center justify-between text-xs font-semibold uppercase text-[var(--lg-text-muted)]">
             <span>{teams.reduce((s, t) => s + t.rosterCount, 0)} drafted</span>
             <span>${teams.reduce((s, t) => s + (budgetCap - t.budget), 0)} spent</span>
             {teams.some(t => (t.keeperSpend ?? 0) > 0) && (
@@ -151,7 +151,7 @@ export default function TeamListTabLegacy({ teams = [], players = [], budgetCap 
         {/* Position Needs Matrix (AUC-07) */}
         {showPositionMatrix && teams.length > 0 && (
           <div className="overflow-x-auto border-b border-[var(--lg-divide)]">
-            <table className="w-full text-[9px]">
+            <table className="w-full text-xs">
               <thead>
                 <tr className="bg-[var(--lg-glass-bg-hover)]">
                   <th className="text-left px-2 py-1.5 font-semibold text-[var(--lg-text-muted)] uppercase tracking-wide sticky left-0 bg-[var(--lg-glass-bg-hover)] z-10 min-w-[80px]">Team</th>
@@ -226,7 +226,7 @@ export default function TeamListTabLegacy({ teams = [], players = [], budgetCap 
                                             {showPace && isHot && <Flame size={12} className="text-red-400" />}
                                             {showPace && isCold && <Snowflake size={12} className="text-blue-400" />}
                                         </div>
-                                        <span className="text-[10px] font-medium text-[var(--lg-text-muted)] opacity-60">
+                                        <span className="text-xs font-medium text-[var(--lg-text-muted)] opacity-60">
                                             {showPace
                                               ? `${team.rosterCount}/${rosterSize} · $${spent} spent${(team.keeperSpend ?? 0) > 0 ? ` (K:$${team.keeperSpend} + A:$${team.auctionSpend})` : ''} · $${remainingPerSpot.toFixed(0)}/spot`
                                               : `${team.rosterCount} / ${rosterSize} Roster`}
@@ -306,7 +306,7 @@ export default function TeamListTabLegacy({ teams = [], players = [], budgetCap 
                                                             onClick={() => setExpandedPlayerId(isRowExpanded ? null : entry.id)}
                                                         >
                                                             <ThemedTd className="py-2">
-                                                              <span className="text-[10px] font-mono font-semibold text-[var(--lg-accent)]">
+                                                              <span className="text-xs font-mono font-semibold text-[var(--lg-accent)]">
                                                                 {displayPos || "—"}
                                                               </span>
                                                             </ThemedTd>
@@ -314,7 +314,7 @@ export default function TeamListTabLegacy({ teams = [], players = [], budgetCap 
                                                                 <span className={`font-semibold ${isPitcher ? 'text-purple-400' : 'text-blue-400'}`}>{displayName}</span>
                                                             </ThemedTd>
                                                             <ThemedTd align="right" className="py-2 pr-6">
-                                                                <span className={priceDeemphasized ? "text-[10px] text-[var(--lg-text-muted)] opacity-50" : "font-semibold text-[var(--lg-text-primary)]"}>${entry.price}</span>
+                                                                <span className={priceDeemphasized ? "text-xs text-[var(--lg-text-muted)] opacity-50" : "font-semibold text-[var(--lg-text-primary)]"}>${entry.price}</span>
                                                             </ThemedTd>
                                                         </ThemedTr>
                                                         {isRowExpanded && (

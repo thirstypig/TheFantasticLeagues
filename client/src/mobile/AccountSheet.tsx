@@ -18,7 +18,7 @@ const rowStyle: React.CSSProperties = {
   alignItems: "center",
   minHeight: 48,
   padding: "0 20px",
-  fontSize: 16,
+  fontSize: 17,
   fontFamily: "inherit",
   color: "var(--am-text)",
   background: "transparent",

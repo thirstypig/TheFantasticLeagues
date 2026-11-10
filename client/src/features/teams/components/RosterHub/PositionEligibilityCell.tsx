@@ -110,7 +110,7 @@ function PositionEligibilityCellImpl({
       {showEligibility && secondarySlots.length > 0 && (
         <span
           aria-hidden
-          style={{ color: "var(--am-text-faint)", fontSize: 11, lineHeight: 1 }}
+          style={{ color: "var(--am-text-faint)", fontSize: 13, lineHeight: 1 }}
         >
           ·
         </span>
@@ -126,7 +126,7 @@ function PositionEligibilityCellImpl({
               gap: 3,
               padding: "2px 8px",
               borderRadius: 99,
-              fontSize: 10.5,
+              fontSize: 13,
               fontWeight: 600,
               letterSpacing: 0.4,
               color: "var(--am-text-muted)",
@@ -141,7 +141,7 @@ function PositionEligibilityCellImpl({
           {idx < secondarySlots.length - 1 && (
             <span
               aria-hidden
-              style={{ color: "var(--am-text-faint)", fontSize: 11, lineHeight: 1 }}
+              style={{ color: "var(--am-text-faint)", fontSize: 13, lineHeight: 1 }}
             >
               ·
             </span>

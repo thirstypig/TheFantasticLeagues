@@ -2,6 +2,7 @@ import React from 'react';
 import { PlayerSeasonStat } from '../../../api';
 import { Trash2, Gavel, ChevronUp, ChevronDown } from 'lucide-react';
 import { getPrimaryPosition } from '../../../lib/baseballUtils';
+import { playerHeadshotUrl } from '../../../lib/mlbImages';
 
 interface MyNominationQueueProps {
     players: PlayerSeasonStat[]; // Full list to lookup details
@@ -41,7 +42,7 @@ export default function MyNominationQueue({ players, queueIds, onRemove, onMoveU
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded bg-[var(--lg-tint)] overflow-hidden shrink-0">
                                  <img 
-                                    src={`https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_426,q_auto:best/v1/people/${p.mlb_id}/headshot/67/current`}
+                                    src={playerHeadshotUrl(p.mlb_id, 426)}
                                     alt={p.player_name}
                                     className="w-full h-full object-cover"
                                  />

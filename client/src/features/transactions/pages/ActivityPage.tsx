@@ -238,7 +238,7 @@ export default function ActivityPage() {
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
             <SectionLabel>✦ Activity</SectionLabel>
-            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
+            <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
               Manage roster moves.
             </h1>
             <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
@@ -265,7 +265,7 @@ export default function ActivityPage() {
                   alignItems: "center",
                   padding: "8px 14px",
                   borderRadius: 99,
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: 600,
                   background: isActive ? "var(--am-chip-strong)" : "var(--am-chip)",
                   color: isActive ? "var(--am-text)" : "var(--am-text-muted)",
@@ -338,13 +338,13 @@ export default function ActivityPage() {
                   : undefined;
               return (
                 <Glass>
-                  <div style={{ fontSize: 12, color: "var(--am-text-muted)" }}>
+                  <div style={{ fontSize: 13, color: "var(--am-text-muted)" }}>
                     {REASON_COPY[permission.reason]}
                   </div>
                   {myCode && (
                     <Link
                       to={`/teams/${myCode}/wire-list`}
-                      style={{ display: "inline-block", marginTop: 12, fontSize: 12, fontWeight: 600, color: "var(--am-text)" }}
+                      style={{ display: "inline-block", marginTop: 12, fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}
                     >
                       Queue waiver moves on your Wire List →
                     </Link>
@@ -374,7 +374,7 @@ export default function ActivityPage() {
                     gap: 6,
                     padding: "8px 16px",
                     borderRadius: 99,
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: 600,
                     background: "var(--am-chip-strong)",
                     color: "var(--am-text)",
@@ -513,7 +513,7 @@ export default function ActivityPage() {
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 960, maxHeight: "90vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <Glass strong padded={false}>
               <div style={{ padding: 14, borderBottom: "1px solid var(--am-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontFamily: "var(--am-display)", fontSize: 16, fontWeight: 500, color: "var(--am-text)" }}>Trade Context</span>
+                <span style={{ fontFamily: "var(--am-display)", fontSize: 17, fontWeight: 500, color: "var(--am-text)" }}>Trade Context</span>
                 <button
                   type="button"
                   onClick={() => setContextTrade(null)}
@@ -521,7 +521,7 @@ export default function ActivityPage() {
                     background: "transparent",
                     border: "none",
                     color: "var(--am-text-muted)",
-                    fontSize: 18,
+                    fontSize: 17,
                     cursor: "pointer",
                     padding: 0,
                     lineHeight: 1,

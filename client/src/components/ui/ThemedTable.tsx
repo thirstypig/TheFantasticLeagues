@@ -62,7 +62,7 @@ export function ThemedTable({ children, className = '', bare = false, density = 
     >
       {children}
       {caption && (
-        <caption className="mt-2 text-[10px] text-[var(--lg-text-muted)] text-left px-1">
+        <caption className="mt-2 text-xs text-[var(--lg-text-muted)] text-left px-1">
           {caption}
         </caption>
       )}

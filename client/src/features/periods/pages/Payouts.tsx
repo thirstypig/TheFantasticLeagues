@@ -100,7 +100,7 @@ export default function Payouts() {
     <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
       <Glass strong>
         <SectionLabel>✦ Payouts</SectionLabel>
-        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 30, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Payouts</h1>
+        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Payouts</h1>
         <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>End-of-season settlement based on final standings and league payout rules.</div>
       </Glass>
 
@@ -201,7 +201,7 @@ export default function Payouts() {
                           badges.push(
                             <span
                               key={`v-${o.id}`}
-                              className="inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-400"
+                              className="inline-flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-semibold text-blue-400"
                               title={o.venmoHandle}
                             >
                               Venmo
@@ -212,7 +212,7 @@ export default function Payouts() {
                           badges.push(
                             <span
                               key={`z-${o.id}`}
-                              className="inline-flex items-center rounded-full bg-purple-500/10 px-2 py-0.5 text-[10px] font-semibold text-purple-400"
+                              className="inline-flex items-center rounded-full bg-purple-500/10 px-2 py-0.5 text-xs font-semibold text-purple-400"
                               title={o.zelleHandle}
                             >
                               Zelle
@@ -223,7 +223,7 @@ export default function Payouts() {
                           badges.push(
                             <span
                               key={`p-${o.id}`}
-                              className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-400"
+                              className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-semibold text-amber-400"
                               title={o.paypalHandle}
                             >
                               PayPal
@@ -234,7 +234,7 @@ export default function Payouts() {
                       })}
                       {row.owners.every(
                         (o) => !o.venmoHandle && !o.zelleHandle && !o.paypalHandle
-                      ) && <span className="text-[10px] text-[var(--lg-text-muted)] italic">None</span>}
+                      ) && <span className="text-xs text-[var(--lg-text-muted)] italic">None</span>}
                     </div>
                   </ThemedTd>
                 </ThemedTr>

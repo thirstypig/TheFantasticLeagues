@@ -259,7 +259,7 @@ export default function NewsFeedsPanel({
               style={{
                 padding: "5px 11px",
                 borderRadius: 99,
-                fontSize: 11,
+                fontSize: 13,
                 fontWeight: 500,
                 letterSpacing: 0.2,
                 cursor: "pointer",
@@ -293,7 +293,7 @@ export default function NewsFeedsPanel({
           ))}
         </div>
       ) : visible.length === 0 ? (
-        <div style={{ fontSize: 12, color: "var(--am-text-muted)", padding: "20px 4px", textAlign: "center" }}>
+        <div style={{ fontSize: 13, color: "var(--am-text-muted)", padding: "20px 4px", textAlign: "center" }}>
           {error ?? "News loading…"}
         </div>
       ) : (
@@ -371,23 +371,23 @@ function HeadlineRow({ h }: { h: Headline }) {
               style={{
                 background: tint.bg,
                 border: `1px solid ${tint.border}`,
-                fontSize: 10,
+                fontSize: 13,
                 padding: "2px 7px",
               }}
             >
               {h.source}
             </Chip>
             {h.meta && (
-              <span style={{ fontSize: 10.5, color: "var(--am-text-faint)" }}>{h.meta}</span>
+              <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>{h.meta}</span>
             )}
             {h.ts > 0 && (
-              <span style={{ fontSize: 10.5, color: "var(--am-text-faint)" }}>· {ago(h.ts)}</span>
+              <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>· {ago(h.ts)}</span>
             )}
           </div>
           {h.matchedPlayers && h.matchedPlayers.length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
               {h.matchedPlayers.map((name) => (
-                <Chip key={name} strong style={{ fontSize: 10, padding: "2px 7px" }}>
+                <Chip key={name} strong style={{ fontSize: 13, padding: "2px 7px" }}>
                   {name}
                 </Chip>
               ))}

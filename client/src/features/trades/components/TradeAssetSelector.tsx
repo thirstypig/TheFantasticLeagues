@@ -143,7 +143,7 @@ export function TradeAssetSelector({ teamId, label, onAssetsChange }: Props) {
                 isSelected ? "bg-[var(--lg-accent)]/10 text-[var(--lg-accent)] border border-[var(--lg-accent)]/20" : "hover:bg-[var(--lg-tint-hover)] text-[var(--lg-text-secondary)]"
               }`}
             >
-              <span><span className="text-[10px] text-[var(--lg-text-muted)] mr-1">{p.posPrimary}</span> <strong>{p.name}</strong></span>
+              <span><span className="text-xs text-[var(--lg-text-muted)] mr-1">{p.posPrimary}</span> <strong>{p.name}</strong></span>
             </div>
           );
         })}
@@ -169,7 +169,7 @@ export function TradeAssetSelector({ teamId, label, onAssetsChange }: Props) {
                 setBudgetAmount(val > 0 ? String(val) : "");
               }}
             />
-            <span className="text-[10px] text-[var(--lg-text-muted)]">of ${budget}</span>
+            <span className="text-xs text-[var(--lg-text-muted)]">of ${budget}</span>
           </div>
         </div>
 

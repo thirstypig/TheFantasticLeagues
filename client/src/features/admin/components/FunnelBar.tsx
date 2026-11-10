@@ -26,7 +26,7 @@ function FunnelBarInner({ label, stages }: FunnelBarProps) {
     <Glass>
       <h3
         style={{
-          fontSize: 10,
+          fontSize: 13,
           fontWeight: 600,
           letterSpacing: 1.4,
           textTransform: "uppercase",
@@ -48,7 +48,7 @@ function FunnelBarInner({ label, stages }: FunnelBarProps) {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  fontSize: 11,
+                  fontSize: 13,
                   marginBottom: 4,
                 }}
               >
@@ -70,7 +70,7 @@ function FunnelBarInner({ label, stages }: FunnelBarProps) {
                         alignItems: "center",
                         padding: "1px 6px",
                         borderRadius: 99,
-                        fontSize: 10,
+                        fontSize: 13,
                         fontWeight: 600,
                         color: "var(--am-negative)",
                         background: "color-mix(in srgb, var(--am-negative) 12%, transparent)",

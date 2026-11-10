@@ -111,7 +111,7 @@ export default function Landing() {
               See Features <ChevronRight size={14} />
             </a>
           </div>
-          <p className="mt-4 text-[10px] text-[var(--lg-text-muted)] opacity-60">No credit card required</p>
+          <p className="mt-4 text-xs text-[var(--lg-text-muted)] opacity-60">No credit card required</p>
         </div>
       </section>
 
@@ -129,10 +129,10 @@ export default function Landing() {
                 : "border-[var(--lg-border-faint)] bg-[var(--lg-tint)] opacity-60"
             }`}>
               {fmt.available && (
-                <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">Available</span>
+                <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-xs font-bold uppercase bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">Available</span>
               )}
               {!fmt.available && (
-                <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-amber-500/10 text-amber-500 border border-amber-500/20">Planned</span>
+                <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-xs font-bold uppercase bg-amber-500/10 text-amber-500 border border-amber-500/20">Planned</span>
               )}
               <fmt.icon size={24} className="text-[var(--lg-accent)] mb-3" />
               <h3 className="text-base font-semibold text-[var(--lg-text-primary)] mb-1">{fmt.name}</h3>
@@ -169,7 +169,7 @@ export default function Landing() {
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-lg mx-auto">
             {["Draft Grades", "Trade Analysis", "Weekly Insights", "Bid Advice"].map(f => (
-              <div key={f} className="px-3 py-2 rounded-xl bg-[var(--lg-bg-card)] border border-[var(--lg-border-faint)] text-[10px] font-semibold text-[var(--lg-text-muted)]">{f}</div>
+              <div key={f} className="px-3 py-2 rounded-xl bg-[var(--lg-bg-card)] border border-[var(--lg-border-faint)] text-xs font-semibold text-[var(--lg-text-muted)]">{f}</div>
             ))}
           </div>
         </div>
@@ -189,7 +189,7 @@ export default function Landing() {
                 : "border-[var(--lg-border-faint)] bg-[var(--lg-tint)]"
             }`}>
               {tier.badge && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[10px] font-bold uppercase bg-[var(--lg-accent)] text-[var(--lg-on-accent)]">
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold uppercase bg-[var(--lg-accent)] text-[var(--lg-on-accent)]">
                   {tier.badge}
                 </span>
               )}
@@ -224,7 +224,7 @@ export default function Landing() {
             </div>
           ))}
         </div>
-        <p className="text-center text-[10px] text-[var(--lg-text-muted)] opacity-60 mt-4">
+        <p className="text-center text-xs text-[var(--lg-text-muted)] opacity-60 mt-4">
           Early users get founding member pricing when Pro launches.
         </p>
       </section>
@@ -245,14 +245,14 @@ export default function Landing() {
             <Logo size={20} />
             <span className="text-xs font-bold text-[var(--lg-text-muted)]">The Fantastic Leagues</span>
           </div>
-          <nav className="flex items-center gap-4 text-[10px] font-medium text-[var(--lg-text-muted)]">
+          <nav className="flex items-center gap-4 text-xs font-medium text-[var(--lg-text-muted)]">
             <Link to="/changelog" className="hover:text-[var(--lg-text-primary)]">Changelog</Link>
             <Link to="/roadmap" className="hover:text-[var(--lg-text-primary)]">Roadmap</Link>
             <Link to="/status" className="hover:text-[var(--lg-text-primary)]">Status</Link>
             <Link to="/about" className="hover:text-[var(--lg-text-primary)]">About</Link>
             <Link to="/guide" className="hover:text-[var(--lg-text-primary)]">Guide</Link>
           </nav>
-          <div className="text-[10px] text-[var(--lg-text-muted)] opacity-50">
+          <div className="text-xs text-[var(--lg-text-muted)] opacity-50">
             &copy; {new Date().getFullYear()} The Fantastic Leagues
           </div>
         </div>

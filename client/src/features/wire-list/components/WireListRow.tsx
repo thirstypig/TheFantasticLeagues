@@ -48,7 +48,7 @@ export function WireListRow({
     border: "1px solid var(--am-border)",
     cursor: disabled ? "not-allowed" : "pointer",
     opacity: disabled ? 0.4 : 1,
-    fontSize: 11,
+    fontSize: 13,
     lineHeight: 1,
     display: "flex",
     alignItems: "center",
@@ -63,7 +63,7 @@ export function WireListRow({
     color: "var(--am-text-muted)",
     border: "1px solid var(--am-border)",
     cursor: "pointer",
-    fontSize: compact ? 16 : 14,
+    fontSize: compact ? 17 : 15,
     lineHeight: 1,
     display: "flex",
     alignItems: "center",
@@ -94,7 +94,7 @@ export function WireListRow({
           background: "var(--am-chip)",
           color: "var(--am-text-muted)",
           fontFamily: "var(--am-mono)",
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: 600,
           flexShrink: 0,
         }}
@@ -113,7 +113,7 @@ export function WireListRow({
           background: "var(--am-chip-strong)",
           color: "var(--am-text)",
           fontFamily: "var(--am-mono)",
-          fontSize: 11,
+          fontSize: 13,
           fontWeight: 600,
           border: "1px solid var(--am-border)",
           flexShrink: 0,
@@ -136,7 +136,7 @@ export function WireListRow({
         >
           {playerName}
         </div>
-        <div style={{ fontSize: compact ? 10 : 11, color: "var(--am-text-muted)" }}>
+        <div style={{ fontSize: compact ? 13 : 13, color: "var(--am-text-muted)" }}>
           {playerTeam}
         </div>
       </div>

@@ -29,7 +29,7 @@ export function StatsUpdated({ source = "synced", timestamp, className = "" }: {
     } catch { /* ignore */ }
   }
   return (
-    <div className={`text-[9px] text-[var(--lg-text-muted)] opacity-60 ${className}`}>
+    <div className={`text-xs text-[var(--lg-text-muted)] opacity-60 ${className}`}>
       {prefix}{timeStr ? ` · ${timeStr}` : ""}
     </div>
   );
@@ -328,7 +328,7 @@ export const CategoryPeriodTable: React.FC<CategoryPeriodTableProps> = ({
             <ThemedTr key={row.teamId} className="group hover:bg-[var(--lg-tint)] transition-colors">
               <ThemedTd frozen>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-[var(--lg-text-muted)] opacity-40 w-4">{idx + 1}</span>
+                  <span className="text-xs font-bold text-[var(--lg-text-muted)] opacity-40 w-4">{idx + 1}</span>
                   <TeamNameLink teamId={(row as any).teamCode || row.teamId} name={row.teamName} />
                 </div>
               </ThemedTd>

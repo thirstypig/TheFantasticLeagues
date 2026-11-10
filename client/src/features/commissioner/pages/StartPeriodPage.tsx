@@ -67,7 +67,7 @@ export default function StartPeriodPage() {
   const header = (title: string) => (
     <header>
       <Link to={base} style={LINK}>‹ Commissioner</Link>
-      <h1 style={{ margin: "4px 0 0", fontSize: 22, fontWeight: 700, color: "var(--am-text)" }}>{title}</h1>
+      <h1 style={{ margin: "4px 0 0", fontSize: 24, fontWeight: 700, color: "var(--am-text)" }}>{title}</h1>
     </header>
   );
 
@@ -79,14 +79,14 @@ export default function StartPeriodPage() {
   } else if (!period) {
     content = (
       <Glass padded>
-        <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 600 }}>No next period set up</p>
+        <p style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 600 }}>No next period set up</p>
         <Link to={`${base}/settings`} style={LINK}>Set up periods ›</Link>
       </Glass>
     );
   } else if (period.status !== "pending") {
     content = (
       <Glass padded>
-        <p style={{ margin: "0 0 4px", fontSize: 16 }}>This period has already started.</p>
+        <p style={{ margin: "0 0 4px", fontSize: 17 }}>This period has already started.</p>
         <Link to={base} style={LINK}>Back to Commissioner</Link>
       </Glass>
     );
@@ -100,7 +100,7 @@ export default function StartPeriodPage() {
       <>
         {stillActive && (
           <Glass padded>
-            <p style={{ margin: "0 0 4px", fontSize: 16, color: "var(--am-warning)" }}>
+            <p style={{ margin: "0 0 4px", fontSize: 17, color: "var(--am-warning)" }}>
               {stillActive.name} is still active — close it first so standings and moves land in the right period.
             </p>
             <Link to={`${base}/close/${stillActive.id}`} style={LINK}>Close {stillActive.name} ›</Link>

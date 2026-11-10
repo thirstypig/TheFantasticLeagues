@@ -248,17 +248,17 @@ export function MobileStandings() {
       </div>
 
       {error && (
-        <div style={{ padding: "12px 18px", color: "var(--am-negative)", fontSize: 12 }}>{error}</div>
+        <div style={{ padding: "12px 18px", color: "var(--am-negative)", fontSize: 13 }}>{error}</div>
       )}
 
       {loading && !matrix.length && !periodRows.length ? (
-        <div style={{ padding: "16px 18px", color: "var(--am-text-muted)", fontSize: 12 }}>
+        <div style={{ padding: "16px 18px", color: "var(--am-text-muted)", fontSize: 13 }}>
           Loading standings…
         </div>
       ) : view === "Period" ? (
         <div style={{ padding: "0 14px 12px", marginTop: 4 }}>
           {!periodRows.length && !loading ? (
-            <div style={{ padding: "16px 14px", color: "var(--am-text-muted)", fontSize: 12 }}>
+            <div style={{ padding: "16px 14px", color: "var(--am-text-muted)", fontSize: 13 }}>
               No standings available yet.
             </div>
           ) : (
@@ -312,7 +312,7 @@ export function MobileStandings() {
                     <div style={{ minWidth: 0, paddingRight: 4 }}>
                       <div
                         style={{
-                          fontSize: 12,
+                          fontSize: 13,
                           color: "var(--am-text)",
                           fontWeight: isMe ? 700 : 500,
                           lineHeight: 1.2,
@@ -326,7 +326,7 @@ export function MobileStandings() {
                         {isMe && (
                           <span
                             style={{
-                              fontSize: 9,
+                              fontSize: 13,
                               color: "var(--am-accent)",
                               marginLeft: 5,
                               fontWeight: 700,
@@ -343,7 +343,7 @@ export function MobileStandings() {
                         key={pi}
                         style={{
                           textAlign: "center",
-                          fontSize: 14,
+                          fontSize: 15,
                           fontWeight: 600,
                           fontVariantNumeric: "tabular-nums",
                           color: "var(--am-text)",
@@ -353,7 +353,7 @@ export function MobileStandings() {
                       </div>
                     ))}
                     <div style={{ textAlign: "right", paddingLeft: 4 }}>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: "var(--am-text)", fontVariantNumeric: "tabular-nums", letterSpacing: -0.3 }}>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: "var(--am-text)", fontVariantNumeric: "tabular-nums", letterSpacing: -0.3 }}>
                         {t.total}
                       </span>
                     </div>
@@ -414,7 +414,7 @@ export function MobileStandings() {
                 >
                   <div
                     style={{
-                      fontSize: 11,
+                      fontSize: 13,
                       fontWeight: 700,
                       color: "var(--am-text-muted)",
                       textAlign: "center",
@@ -426,7 +426,7 @@ export function MobileStandings() {
                   <div style={{ minWidth: 0, paddingLeft: 6, paddingRight: 4 }}>
                     <div
                       style={{
-                        fontSize: 12,
+                        fontSize: 13,
                         color: "var(--am-text)",
                         fontWeight: isMe ? 700 : 500,
                         lineHeight: 1.2,
@@ -440,7 +440,7 @@ export function MobileStandings() {
                       {isMe && (
                         <span
                           style={{
-                            fontSize: 9,
+                            fontSize: 13,
                             color: "var(--am-accent)",
                             marginLeft: 5,
                             fontWeight: 700,
@@ -470,7 +470,7 @@ export function MobileStandings() {
                     );
                   })}
                   <div style={{ textAlign: "right", paddingLeft: 4 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: "var(--am-text)", fontVariantNumeric: "tabular-nums", letterSpacing: -0.3 }}>
+                    <span style={{ fontSize: 15, fontWeight: 700, color: "var(--am-text)", fontVariantNumeric: "tabular-nums", letterSpacing: -0.3 }}>
                       {totalForView.toFixed(1)}
                     </span>
                   </div>
@@ -479,7 +479,7 @@ export function MobileStandings() {
             })}
 
             {!loading && !sortedRows.length && (
-              <div style={{ padding: "16px 14px", color: "var(--am-text-muted)", fontSize: 12 }}>
+              <div style={{ padding: "16px 14px", color: "var(--am-text-muted)", fontSize: 13 }}>
                 No standings available yet.
               </div>
             )}
@@ -488,7 +488,7 @@ export function MobileStandings() {
       )}
 
       <div style={{ padding: "0 14px 16px" }}>
-        <div style={{ fontSize: 10, color: "var(--am-text-faint)", padding: "0 4px" }}>
+        <div style={{ fontSize: 13, color: "var(--am-text-faint)", padding: "0 4px" }}>
           {view === "Period"
             ? "Each cell shows total roto points earned per scoring period. Tap a row to view team."
             : "Each cell shows roto points (1–10). Tap any column header to sort. Green = top tier."}
@@ -497,7 +497,7 @@ export function MobileStandings() {
 
       {catTables.length > 0 && (
         <div style={{ padding: "0 14px 24px" }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.5, color: "var(--am-text-faint)", textTransform: "uppercase", marginBottom: 10 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 0.5, color: "var(--am-text-faint)", textTransform: "uppercase", marginBottom: 10 }}>
             Category Leaders
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -511,8 +511,8 @@ export function MobileStandings() {
               return (
                 <MCard key={cat.key} padded={false}>
                   <div style={{ padding: "8px 12px 6px", borderBottom: "1px solid var(--am-border)" }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--am-text-muted)", letterSpacing: 0.4 }}>{cat.key}</span>
-                    <span style={{ fontSize: 9, color: "var(--am-text-faint)", marginLeft: 6 }}>{cat.label}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--am-text-muted)", letterSpacing: 0.4 }}>{cat.key}</span>
+                    <span style={{ fontSize: 13, color: "var(--am-text-faint)", marginLeft: 6 }}>{cat.label}</span>
                   </div>
                   {allRows.map((row, i) => {
                     const isMe = !!myTeamId && (sortedRows.find((r) => r.teamCode === row.teamCode)?.teamId === myTeamId);
@@ -531,13 +531,13 @@ export function MobileStandings() {
                           background: isMe ? "var(--am-chip)" : "transparent",
                         }}
                       >
-                        <span style={{ fontSize: 11, color: "var(--am-text)", fontWeight: isMe ? 700 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        <span style={{ fontSize: 13, color: "var(--am-text)", fontWeight: isMe ? 700 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           {row.teamName}
                         </span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: i === 0 ? "var(--am-positive)" : "var(--am-text-muted)", fontVariantNumeric: "tabular-nums" }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: i === 0 ? "var(--am-positive)" : "var(--am-text-muted)", fontVariantNumeric: "tabular-nums" }}>
                           {fmt(row.value)}
                         </span>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--am-text-muted)", fontVariantNumeric: "tabular-nums", marginLeft: 6, minWidth: 20, textAlign: "right" }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--am-text-muted)", fontVariantNumeric: "tabular-nums", marginLeft: 6, minWidth: 20, textAlign: "right" }}>
                           {row.points}
                         </span>
                       </div>

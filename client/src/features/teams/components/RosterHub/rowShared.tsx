@@ -110,7 +110,7 @@ export function PlayerNameContent({
  */
 export function PlayerSubtitle({ player }: { player: RosterHubPlayer }): React.ReactElement {
   return (
-    <span style={{ fontSize: 11, color: "var(--am-text-faint)", letterSpacing: 0.4 }}>
+    <span style={{ fontSize: 13, color: "var(--am-text-faint)", letterSpacing: 0.4 }}>
       {(player.mlbTeam ?? "FA") + " · " + player.posPrimary}
     </span>
   );

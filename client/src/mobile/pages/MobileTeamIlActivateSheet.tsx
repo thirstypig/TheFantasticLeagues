@@ -81,7 +81,7 @@ export function MobileTeamIlActivateSheet({
           <div style={{ flex: 1, minWidth: 0 }}>
             <div
               style={{
-                fontSize: 9,
+                fontSize: 13,
                 letterSpacing: 1,
                 fontWeight: 700,
                 color: "var(--am-text-faint)",
@@ -93,7 +93,7 @@ export function MobileTeamIlActivateSheet({
             <div
               style={{
                 fontFamily: "var(--am-display)",
-                fontSize: 18,
+                fontSize: 17,
                 lineHeight: 1.1,
                 marginTop: 4,
                 whiteSpace: "nowrap",
@@ -103,7 +103,7 @@ export function MobileTeamIlActivateSheet({
             >
               {player.playerName}
             </div>
-            <div style={{ fontSize: 11, color: "var(--am-text-muted)", marginTop: 4 }}>
+            <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 4 }}>
               {(player.mlbTeam ?? "—") + " · " + (player.posPrimary ?? "—") +
                 " · pick a player to drop"}
             </div>
@@ -132,7 +132,7 @@ export function MobileTeamIlActivateSheet({
 
         <div
           style={{
-            fontSize: 9.5,
+            fontSize: 13,
             letterSpacing: 0.6,
             fontWeight: 700,
             color: "var(--am-text-faint)",
@@ -144,7 +144,7 @@ export function MobileTeamIlActivateSheet({
         </div>
 
         {dropCandidates.length === 0 ? (
-          <div style={{ fontSize: 11, color: "var(--am-text-muted)", padding: "12px 0" }}>
+          <div style={{ fontSize: 13, color: "var(--am-text-muted)", padding: "12px 0" }}>
             No droppable players. Bench someone first.
           </div>
         ) : (
@@ -183,7 +183,7 @@ export function MobileTeamIlActivateSheet({
               >
                 <div
                   style={{
-                    fontSize: 9.5,
+                    fontSize: 13,
                     fontWeight: 700,
                     color: "var(--am-text)",
                     background: "var(--am-chip-strong)",
@@ -198,7 +198,7 @@ export function MobileTeamIlActivateSheet({
                 <div style={{ minWidth: 0 }}>
                   <div
                     style={{
-                      fontSize: 12.5,
+                      fontSize: 13,
                       fontWeight: 500,
                       whiteSpace: "nowrap",
                       overflow: "hidden",
@@ -207,7 +207,7 @@ export function MobileTeamIlActivateSheet({
                   >
                     {cand.playerName}
                   </div>
-                  <div style={{ fontSize: 10, color: "var(--am-text-faint)" }}>
+                  <div style={{ fontSize: 13, color: "var(--am-text-faint)" }}>
                     {(cand.mlbTeam ?? "—") + " · " + (cand.posPrimary ?? "—")}
                   </div>
                 </div>
@@ -219,7 +219,7 @@ export function MobileTeamIlActivateSheet({
 
         <div
           style={{
-            fontSize: 10,
+            fontSize: 13,
             color: "var(--am-text-faint)",
             marginTop: 12,
             textAlign: "center",

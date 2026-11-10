@@ -68,7 +68,7 @@ export default function RosterMovesTab({ leagueId, teamId, players, onComplete }
           >
             {MODE_LABEL[m]}
             {m === "activate-il" && ilCount > 0 && (
-              <span className="ml-2 inline-flex items-center justify-center rounded-full bg-amber-500/20 border border-amber-500/40 px-1.5 text-[10px] font-semibold text-amber-300">
+              <span className="ml-2 inline-flex items-center justify-center rounded-full bg-amber-500/20 border border-amber-500/40 px-1.5 text-xs font-semibold text-amber-300">
                 {ilCount}
               </span>
             )}

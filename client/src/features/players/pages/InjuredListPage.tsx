@@ -24,6 +24,7 @@ import { DataFreshness } from "../../../components/shared/DataFreshness";
 import type { RosterAlertPlayer } from "../../../components/shared/RosterAlertAccordion";
 import { AL_TEAMS, NL_TEAMS } from "../../../lib/sports/baseball";
 import { getOgbaTeamName } from "../../../lib/ogbaTeams";
+import { playerHeadshotUrl } from "../../../lib/mlbImages";
 
 type ViewMode = "ALL" | "BY_LEAGUE" | "BY_TEAM";
 
@@ -34,7 +35,7 @@ interface IlEntry extends RosterAlertPlayer {
 }
 
 const MLB_HEADSHOT = (mlbId: number | null | undefined) =>
-  `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${mlbId}/headshot/67/current`;
+  playerHeadshotUrl(mlbId ?? "generic");
 
 function ilStatusLabel(mlbStatus: string): string {
   const m = (mlbStatus || "").match(/(\d+)/);
@@ -189,7 +190,7 @@ export default function InjuredListPage() {
             <h1
               style={{
                 fontFamily: "var(--am-display)",
-                fontSize: 30,
+                fontSize: 32,
                 fontWeight: 300,
                 color: "var(--am-text)",
                 margin: 0,
@@ -202,10 +203,10 @@ export default function InjuredListPage() {
               Every IL player across the league, by team and league.
             </div>
             {currentLeagueName && (
-              <div style={{ marginTop: 4, fontSize: 11, color: "var(--am-text-faint)" }}>{currentLeagueName}</div>
+              <div style={{ marginTop: 4, fontSize: 13, color: "var(--am-text-faint)" }}>{currentLeagueName}</div>
             )}
             {computedAt && (
-              <div style={{ marginTop: 4, fontSize: 11, color: "var(--am-text-faint)" }}>
+              <div style={{ marginTop: 4, fontSize: 13, color: "var(--am-text-faint)" }}>
                 <DataFreshness computedAt={computedAt} className="text-xs" />
               </div>
             )}
@@ -213,7 +214,7 @@ export default function InjuredListPage() {
           {total > 0 && (
             <div style={{ textAlign: "right" }}>
               <IridText size={48}>{total}</IridText>
-              <div style={{ fontSize: 11, color: "var(--am-text-faint)", marginTop: 4, letterSpacing: 1.2, textTransform: "uppercase" }}>
+              <div style={{ fontSize: 13, color: "var(--am-text-faint)", marginTop: 4, letterSpacing: 1.2, textTransform: "uppercase" }}>
                 On the IL
               </div>
             </div>
@@ -250,7 +251,7 @@ export default function InjuredListPage() {
             <Chip strong color="rgb(134, 239, 172)">
               <Dot color="rgb(74, 222, 128)" /> Healthy
             </Chip>
-            <div style={{ fontSize: 14, color: "var(--am-text)" }}>
+            <div style={{ fontSize: 15, color: "var(--am-text)" }}>
               No players currently on IL across the league. ✓
             </div>
           </div>
@@ -278,19 +279,19 @@ export default function InjuredListPage() {
                   <span
                     style={{
                       fontFamily: "var(--am-display)",
-                      fontSize: 18,
+                      fontSize: 17,
                       color: "var(--am-text)",
                       fontWeight: 400,
                     }}
                   >
                     {g.team.name}
                   </span>
-                  <span style={{ fontSize: 11, color: "var(--am-text-faint)", letterSpacing: 0.5 }}>{g.team.code}</span>
+                  <span style={{ fontSize: 13, color: "var(--am-text-faint)", letterSpacing: 0.5 }}>{g.team.code}</span>
                 </div>
                 <Chip>{g.players.length} on IL</Chip>
               </div>
               {g.players.length === 0 ? (
-                <div style={{ fontSize: 12, color: "var(--am-text-faint)", padding: "4px 0" }}>
+                <div style={{ fontSize: 13, color: "var(--am-text-faint)", padding: "4px 0" }}>
                   No players on IL.
                 </div>
               ) : (
@@ -325,7 +326,7 @@ function ViewPill({
         gap: 6,
         padding: "6px 12px",
         borderRadius: 99,
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: 500,
         background: active ? "var(--am-chip-strong)" : "var(--am-chip)",
         color: active ? "var(--am-text)" : "var(--am-text-muted)",
@@ -355,7 +356,7 @@ function LeagueColumn({
         <Chip>{entries.length}</Chip>
       </div>
       {entries.length === 0 ? (
-        <div style={{ fontSize: 12, color: "var(--am-text-faint)", padding: "8px 0" }}>
+        <div style={{ fontSize: 13, color: "var(--am-text-faint)", padding: "8px 0" }}>
           No players on IL.
         </div>
       ) : (
@@ -428,7 +429,7 @@ function PlayerRow({ player, showFantasyTeam }: { player: IlEntry; showFantasyTe
           <span style={{ fontSize: 13, fontWeight: 500, color: "var(--am-text)" }}>{player.playerName}</span>
           <span
             style={{
-              fontSize: 10,
+              fontSize: 13,
               fontWeight: 700,
               letterSpacing: 0.6,
               color: "rgb(248, 113, 113)",
@@ -441,11 +442,11 @@ function PlayerRow({ player, showFantasyTeam }: { player: IlEntry; showFantasyTe
           >
             {status}
           </span>
-          <span style={{ fontSize: 11, color: "var(--am-text-muted)" }}>
+          <span style={{ fontSize: 13, color: "var(--am-text-muted)" }}>
             {player.mlbTeam || "—"} · {player.position || "—"}
           </span>
         </div>
-        <div style={{ marginTop: 2, fontSize: 11, color: "var(--am-text-faint)", display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <div style={{ marginTop: 2, fontSize: 13, color: "var(--am-text-faint)", display: "flex", flexWrap: "wrap", gap: 8 }}>
           {showFantasyTeam && <span>Stash: {player.fantasyTeamName}</span>}
           {placedStr && <span>Placed {placedStr}</span>}
           {player.ilDays != null && <span>{player.ilDays}d on IL</span>}
@@ -458,7 +459,7 @@ function PlayerRow({ player, showFantasyTeam }: { player: IlEntry; showFantasyTe
         <Link
           to={`/players/${player.mlbId}`}
           style={{
-            fontSize: 11,
+            fontSize: 13,
             color: "var(--am-text-muted)",
             textDecoration: "none",
             padding: "4px 8px",

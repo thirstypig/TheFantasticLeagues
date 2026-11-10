@@ -199,7 +199,7 @@ export default function AuctionStageLegacy({ serverState, myTeamId, onBid, onFin
                     className="object-cover h-full w-full"
                     onError={(e) => (e.currentTarget.src = 'https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/generic/headshot/67/current')}
                 />
-                <div className="absolute bottom-1 left-1 bg-[var(--lg-accent)] text-[var(--lg-on-accent)] px-1.5 py-0.5 rounded text-[9px] font-bold uppercase">
+                <div className="absolute bottom-1 left-1 bg-[var(--lg-accent)] text-[var(--lg-on-accent)] px-1.5 py-0.5 rounded text-xs font-bold uppercase">
                     {nomination.positions || (nomination.isPitcher ? 'P' : 'UT')}
                 </div>
             </div>
@@ -207,7 +207,7 @@ export default function AuctionStageLegacy({ serverState, myTeamId, onBid, onFin
             {/* Player info */}
             <div className="flex-1 py-2 pr-2 flex flex-col justify-center min-w-0">
                 <div className="text-sm font-semibold text-[var(--lg-text-heading)] truncate">{nomination.playerName}</div>
-                <div className="text-[10px] text-[var(--lg-text-muted)] uppercase">{nomination.playerTeam}</div>
+                <div className="text-xs text-[var(--lg-text-muted)] uppercase">{nomination.playerTeam}</div>
             </div>
 
             {/* Timer + Going Once visual (AUC-09) */}
@@ -218,13 +218,13 @@ export default function AuctionStageLegacy({ serverState, myTeamId, onBid, onFin
                     {timeLeft}
                 </div>
                 {nomination.status === 'running' && timeLeft <= 5 && timeLeft > 3 && (
-                  <div className="text-[9px] font-bold uppercase tracking-wider text-amber-400 animate-pulse">Going once...</div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-amber-400 animate-pulse">Going once...</div>
                 )}
                 {nomination.status === 'running' && timeLeft <= 3 && timeLeft > 1 && (
-                  <div className="text-[9px] font-bold uppercase tracking-wider text-[var(--lg-error)] animate-pulse">Going twice...</div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-[var(--lg-error)] animate-pulse">Going twice...</div>
                 )}
                 {nomination.status === 'running' && timeLeft <= 1 && timeLeft > 0 && (
-                  <div className="text-[10px] font-black uppercase tracking-widest text-[var(--lg-error)] animate-bounce">SOLD!</div>
+                  <div className="text-xs font-black uppercase tracking-widest text-[var(--lg-error)] animate-bounce">SOLD!</div>
                 )}
             </div>
         </div>
@@ -237,11 +237,11 @@ export default function AuctionStageLegacy({ serverState, myTeamId, onBid, onFin
         <div className={`rounded-lg p-3 border transition-all ${isHighBidder ? 'border-[var(--lg-success)]/40 bg-[var(--lg-success)]/5' : 'border-[var(--lg-border-subtle)] bg-[var(--lg-tint)]'}`}>
             <div className="flex items-center justify-between">
                 <div>
-                    <div className="text-[10px] font-semibold text-[var(--lg-text-muted)] uppercase mb-0.5">Current Bid</div>
+                    <div className="text-xs font-semibold text-[var(--lg-text-muted)] uppercase mb-0.5">Current Bid</div>
                     <div className="text-3xl font-bold text-[var(--lg-text-heading)] tabular-nums">${currentBid}</div>
                 </div>
                 <div className="text-right">
-                    <div className="text-[10px] font-semibold text-[var(--lg-text-muted)] uppercase mb-0.5">High Bidder</div>
+                    <div className="text-xs font-semibold text-[var(--lg-text-muted)] uppercase mb-0.5">High Bidder</div>
                     <div className={`text-sm font-semibold ${isHighBidder ? 'text-[var(--lg-success)]' : 'text-[var(--lg-text-primary)]'}`}>
                         {highBidderTeam?.name || '—'} {isHighBidder ? '(You)' : ''}
                     </div>
@@ -254,7 +254,7 @@ export default function AuctionStageLegacy({ serverState, myTeamId, onBid, onFin
             <div className="flex flex-col gap-2">
                 <div className="text-center py-3 rounded-lg border border-[var(--lg-warning)]/30 bg-[var(--lg-warning)]/5">
                     <div className="text-sm font-semibold text-[var(--lg-warning)]">Passing on this player</div>
-                    <div className="text-[10px] text-[var(--lg-text-muted)] mt-0.5">You won't bid unless you rejoin</div>
+                    <div className="text-xs text-[var(--lg-text-muted)] mt-0.5">You won't bid unless you rejoin</div>
                 </div>
                 <Button
                     variant="secondary"
@@ -278,7 +278,7 @@ export default function AuctionStageLegacy({ serverState, myTeamId, onBid, onFin
                         variant="default"
                         className="h-14 flex flex-col items-center justify-center gap-0.5"
                     >
-                        <span className="text-[10px] font-medium uppercase opacity-70">+$1</span>
+                        <span className="text-xs font-medium uppercase opacity-70">+$1</span>
                         <span className="text-lg font-bold">${minRaise}</span>
                     </Button>
                     <Button
@@ -287,7 +287,7 @@ export default function AuctionStageLegacy({ serverState, myTeamId, onBid, onFin
                         variant="secondary"
                         className="h-14 flex flex-col items-center justify-center gap-0.5 bg-[var(--lg-tint)] border-[var(--lg-border-subtle)]"
                     >
-                        <span className="text-[10px] font-medium uppercase text-[var(--lg-text-muted)] opacity-70">+$5</span>
+                        <span className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-70">+$5</span>
                         <span className="text-lg font-bold text-[var(--lg-text-primary)]">${jumpRaise}</span>
                     </Button>
                 </div>
@@ -321,7 +321,7 @@ export default function AuctionStageLegacy({ serverState, myTeamId, onBid, onFin
                       </button>
                     )}
                     {bidAdviceError && (
-                      <div className="text-[10px] text-red-400 text-center">{bidAdviceError}</div>
+                      <div className="text-xs text-red-400 text-center">{bidAdviceError}</div>
                     )}
                     {bidAdvice && (
                       <div className="rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-2 space-y-1">
@@ -339,7 +339,7 @@ export default function AuctionStageLegacy({ serverState, myTeamId, onBid, onFin
                             <span className="text-xs text-[var(--lg-text-muted)]">
                               Max: <span className="font-bold text-[var(--lg-text-primary)]">${bidAdvice.maxRecommendedBid}</span>
                             </span>
-                            <span className={`px-1 py-0.5 rounded text-[8px] font-bold uppercase ${
+                            <span className={`px-1 py-0.5 rounded text-xs font-bold uppercase ${
                               bidAdvice.confidence === 'high' ? 'bg-emerald-500/10 text-emerald-400' :
                               bidAdvice.confidence === 'medium' ? 'bg-amber-500/10 text-amber-400' :
                               'bg-red-500/10 text-red-400'
@@ -348,9 +348,9 @@ export default function AuctionStageLegacy({ serverState, myTeamId, onBid, onFin
                             </span>
                           </div>
                         </div>
-                        <p className="text-[10px] text-[var(--lg-text-secondary)] leading-relaxed">{bidAdvice.reasoning}</p>
+                        <p className="text-xs text-[var(--lg-text-secondary)] leading-relaxed">{bidAdvice.reasoning}</p>
                         {bidAdvice.categoryImpact && (
-                          <p className="text-[10px] text-[var(--lg-accent)] leading-relaxed italic">{bidAdvice.categoryImpact}</p>
+                          <p className="text-xs text-[var(--lg-accent)] leading-relaxed italic">{bidAdvice.categoryImpact}</p>
                         )}
                       </div>
                     )}
@@ -381,7 +381,7 @@ export default function AuctionStageLegacy({ serverState, myTeamId, onBid, onFin
             />
         )}
 
-        <div className="text-center text-[10px] text-[var(--lg-text-muted)] opacity-50">
+        <div className="text-center text-xs text-[var(--lg-text-muted)] opacity-50">
             {isHighBidder
               ? `You are the high bidder · Keeper next year: $${currentBid + 5}`
               : !myTeam

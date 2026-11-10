@@ -66,7 +66,7 @@ function CodeBlock({ children, label }: { children: string; label?: string }) {
   return (
     <div className={`relative rounded-md ${C.tint} border ${C.border} my-3`}>
       {label && (
-        <div className={`px-3 pt-2 pb-0 text-[10px] font-semibold uppercase tracking-wider ${C.muted}`}>
+        <div className={`px-3 pt-2 pb-0 text-xs font-semibold uppercase tracking-wider ${C.muted}`}>
           {label}
         </div>
       )}
@@ -98,7 +98,7 @@ function StatusBadge({
     neutral: "bg-[var(--lg-tint)] text-[var(--lg-text-muted)] border-[var(--lg-border-faint)]",
   };
   return (
-    <span className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded border ${styles[variant]}`}>
+    <span className={`text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded border ${styles[variant]}`}>
       {children}
     </span>
   );
@@ -116,7 +116,7 @@ function BulletItem({ children }: { children: React.ReactNode }) {
 function StepItem({ n, children }: { n: number; children: React.ReactNode }) {
   return (
     <div className="flex items-start gap-3 my-2">
-      <span className={`shrink-0 w-5 h-5 rounded-full border ${C.border} flex items-center justify-center text-[10px] font-bold ${C.muted} mt-0.5`}>
+      <span className={`shrink-0 w-5 h-5 rounded-full border ${C.border} flex items-center justify-center text-xs font-bold ${C.muted} mt-0.5`}>
         {n}
       </span>
       <div className={`text-sm ${C.secondary} flex-1`}>{children}</div>
@@ -228,7 +228,7 @@ export default function StagingDocsPreview() {
 
       {/* ── Right-rail jump nav ── */}
       <aside className="hidden xl:flex flex-col w-52 shrink-0 border-r border-[var(--lg-border-faint)] py-6 px-4 gap-1 overflow-y-auto">
-        <p className={`text-[10px] font-semibold uppercase tracking-wider ${C.muted} mb-2`}>On this page</p>
+        <p className={`text-xs font-semibold uppercase tracking-wider ${C.muted} mb-2`}>On this page</p>
         {SECTIONS.map((s) => (
           <button
             key={s.id}
@@ -443,7 +443,7 @@ npm run seed:staging -- --sport mlb`}
                     <tr key={row.sport} className="border-b border-[var(--lg-border-faint)]/50">
                       <td className={`py-2 px-3 font-semibold ${C.text}`}>{row.sport}</td>
                       <td className={`py-2 px-3 ${C.secondary}`}>{row.api}</td>
-                      <td className={`py-2 px-3 font-mono ${C.muted} text-[10px]`}>{row.base}</td>
+                      <td className={`py-2 px-3 font-mono ${C.muted} text-xs`}>{row.base}</td>
                       <td className={`py-2 px-3 ${C.muted}`}>{row.key}</td>
                       <td className="py-2 px-3">
                         <StatusBadge variant={row.status === "live" ? "ok" : "neutral"}>
@@ -470,7 +470,7 @@ npm run seed:staging -- --sport mlb`}
               ["/people/{mlbId}/stats?stats=season&group=pitching", "Season pitching stats"],
             ].map(([endpoint, desc]) => (
               <div key={endpoint as string} className={`flex items-start gap-3 py-1.5 border-b ${C.border} last:border-0`}>
-                <code className={`text-[10px] font-mono ${C.accent} shrink-0 mt-0.5`}>{endpoint}</code>
+                <code className={`text-xs font-mono ${C.accent} shrink-0 mt-0.5`}>{endpoint}</code>
                 <span className={`text-xs ${C.muted} flex-1`}>{desc}</span>
               </div>
             ))}

@@ -49,7 +49,7 @@ export function MChip({ children, strong = false, color }: { children: React.Rea
         gap: 4,
         padding: "3px 8px",
         borderRadius: 99,
-        fontSize: 10.5,
+        fontSize: 13,
         fontWeight: 500,
         background: strong ? "var(--am-chip-strong)" : "var(--am-chip)",
         border: "1px solid " + (strong ? "var(--am-border-strong)" : "var(--am-border)"),
@@ -70,7 +70,7 @@ export function MLabel({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
-        fontSize: 9.5,
+        fontSize: 13,
         letterSpacing: 1.1,
         fontWeight: 600,
         color: "var(--am-text-faint)",
@@ -119,7 +119,7 @@ export function MStat({ label, value, sub, big = false }: MStatProps) {
     >
       <div
         style={{
-          fontSize: 9,
+          fontSize: 13,
           letterSpacing: 1,
           fontWeight: 600,
           color: "var(--am-text-faint)",
@@ -132,7 +132,7 @@ export function MStat({ label, value, sub, big = false }: MStatProps) {
         style={{
           marginTop: 4,
           fontFamily: "var(--am-display)",
-          fontSize: big ? 26 : 20,
+          fontSize: big ? 24 : 17,
           lineHeight: 1,
           color: "var(--am-text)",
           fontVariantNumeric: "tabular-nums",
@@ -140,7 +140,7 @@ export function MStat({ label, value, sub, big = false }: MStatProps) {
       >
         {value}
       </div>
-      {sub && <div style={{ marginTop: 3, fontSize: 10, color: "var(--am-text-muted)" }}>{sub}</div>}
+      {sub && <div style={{ marginTop: 3, fontSize: 13, color: "var(--am-text-muted)" }}>{sub}</div>}
     </div>
   );
 }
@@ -162,7 +162,7 @@ export function MSection({ title, action, onActionClick, children, style }: MSec
           <span
             onClick={onActionClick}
             style={{
-              fontSize: 11,
+              fontSize: 13,
               color: "var(--am-accent)",
               fontWeight: 600,
               cursor: onActionClick ? "pointer" : "default",
@@ -214,9 +214,9 @@ export function MAICard({ icon = "✦", title, body, cta, onCtaClick }: MAICardP
         {icon}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--am-text)", lineHeight: 1.3 }}>{title}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)", lineHeight: 1.3 }}>{title}</div>
         {body && (
-          <div style={{ fontSize: 11, color: "var(--am-text-muted)", marginTop: 3, lineHeight: 1.4 }}>{body}</div>
+          <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 3, lineHeight: 1.4 }}>{body}</div>
         )}
       </div>
       {cta && (
@@ -226,7 +226,7 @@ export function MAICard({ icon = "✦", title, body, cta, onCtaClick }: MAICardP
           style={{
             padding: "4px 10px",
             borderRadius: 99,
-            fontSize: 10.5,
+            fontSize: 13,
             fontWeight: 600,
             background: "var(--am-chip-strong)",
             border: "1px solid var(--am-border-strong)",

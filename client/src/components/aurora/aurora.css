@@ -3,7 +3,7 @@
  *
  * USC palette (colors only, no marks): medium-tone gold paper with cardinal
  * (#990000) accent in light mode; deep cardinal-brown page with gold
- * (#ffcc00) accent in dark mode. Sans-serif (Inter only), flat surfaces.
+ * (#ffcc00) accent in dark mode. Sofia Sans; nine colors; see DOC-032. Flat surfaces.
  * Contrast is enforced by __tests__/tokenContrast.test.ts.
  *
  * Tokens are scoped to `.aurora-theme` (unchanged from the Aurora era so
@@ -16,35 +16,41 @@
  */
 
 .aurora-theme {
-  /* Typeface — Inter only; no separate display face */
-  --am-display: "Inter", system-ui, sans-serif;
-  --am-body:    "Inter", system-ui, sans-serif;
+  /* Typeface — Sofia Sans for text, Sofia Sans Condensed for headings and big numbers (DOC-032) */
+  --am-display: "Sofia Sans Condensed", "Sofia Sans", system-ui, sans-serif;
+  --am-body:    "Sofia Sans", system-ui, sans-serif;
+
+  /* Type scale — four text sizes plus a display size (UX step A). Sizes do not change by theme. */
+  --am-t-caption: 13px;
+  --am-t-small:   15px;
+  --am-t-body:    17px;
+  --am-t-title:   24px;
+  --am-t-display: 32px;
 
   /* ── Light mode: USC gold paper (medium tone, not pure white) ── */
-  --am-bg:             #e0d3ae;   /* page background */
-  --am-surface:        #ece2c6;   /* card / table background */
-  --am-surface-alt:    #e5d9b8;   /* zebra row, table header bg */
-  --am-surface-strong: #e5d9b8;   /* alias: used by older atoms that reference surface-strong */
-  --am-surface-faint:  #ece2c6;   /* compat alias: same as surface */
-
-  --am-border:         #c9b98c;   /* hairline borders */
-  --am-border-strong:  #8a7a4f;   /* nav underline, divider above tables */
-
+  --am-bg:             #ded0a8;   /* page */
+  --am-surface:        #fbf7ec;   /* card */
+  --am-border:         #c9b98c;   /* line */
   --am-text:           #15171a;
-  --am-text-muted:     #33373b;
-  --am-text-faint:     #4f4a3d;   /* AA for small text — enforced by tokenContrast test */
+  --am-text-muted:     #5e5747;
+  --am-accent:         #990000;
+  --am-on-accent:      #ffffff;   /* text/icons on --am-accent fills */
+  --am-positive:       #2a5f2a;
+  --am-negative:       #8a3a00;
+  --am-field:          #ffffff;   /* input background */
+  --am-field-line:     #8a7a4f;   /* input border, dividers */
+  --am-chip:           #ece3c8;   /* pills, tinted buttons, zebra rows */
 
-  --am-accent:         #990000;   /* USC cardinal — primary */
-  --am-on-accent:     #ffffff;   /* text/icons placed on --am-accent fills */
-  --am-accent-2:       #6b4e00;   /* dark gold — secondary, activity tags */
-  --am-cardinal:       #6b4e00;   /* compat alias → accent-2 */
-
-  --am-chip:           #dccb98;   /* filter pills / chips */
-  --am-chip-strong:    #cfbb80;
-
-  --am-positive:       #2a5f2a;   /* +stat deltas */
-  --am-negative:       #8a3a00;   /* −stat deltas */
-  --am-warning:        #5e3400;   /* lock icons, warn chips, ghost-IL */
+  /* Retired names: aliases of the nine */
+  --am-surface-alt:    var(--am-chip);
+  --am-surface-strong: var(--am-chip-strong);
+  --am-chip-strong:    #ddd0a8;
+  --am-surface-faint:  var(--am-surface);
+  --am-border-strong:  var(--am-field-line);
+  --am-text-faint:     var(--am-text-muted);
+  --am-warning:        var(--am-negative);
+  --am-accent-2:       var(--am-accent);
+  --am-cardinal:       var(--am-accent);
 
   --am-scrim:          rgba(0, 0, 0, 0.45);   /* dims the page behind the confirm sheet */
 
@@ -61,30 +67,29 @@
 .aurora-theme.dark,
 .dark .aurora-theme {
   /* ── Dark mode: deep cardinal-brown page and cards ── */
-  --am-bg:             #3a1f22;   /* page background */
-  --am-surface:        #4a2a2e;   /* card / table background */
-  --am-surface-alt:    #553236;   /* zebra row, table header bg */
-  --am-surface-strong: #553236;
-  --am-surface-faint:  #4a2a2e;
-
-  --am-border:         #6a3d42;
-  --am-border-strong:  #a07a7e;
-
+  --am-bg:             #341b1e;   /* page */
+  --am-surface:        #5a3337;   /* card */
+  --am-border:         #7a4a4f;   /* line */
   --am-text:           #f6f7f4;
-  --am-text-muted:     #dde1dc;
-  --am-text-faint:     #cfc6c0;   /* AA for small text — enforced by tokenContrast test */
-
-  --am-accent:         #ffcc00;   /* USC gold — primary */
-  --am-on-accent:     #2a1a00;   /* text/icons placed on --am-accent fills */
-  --am-accent-2:       #f0c8a8;
-  --am-cardinal:       #f0c8a8;
-
-  --am-chip:           #5a3a30;   /* lifted to sit on raised surface */
-  --am-chip-strong:    #6a4636;
-
+  --am-text-muted:     #c8b9b2;
+  --am-accent:         #ffcc00;
+  --am-on-accent:      #2a1a00;   /* text/icons on --am-accent fills */
   --am-positive:       #a6e3b0;
   --am-negative:       #ffb38a;
-  --am-warning:        #f8db9c;   /* lock icons, warn chips, ghost-IL (dark) */
+  --am-field:          #1f0e10;   /* input background */
+  --am-field-line:     #b08488;   /* input border, dividers */
+  --am-chip:           #4a2629;   /* pills, tinted buttons, zebra rows */
+
+  /* Retired names: aliases of the nine */
+  --am-surface-alt:    var(--am-chip);
+  --am-surface-strong: var(--am-chip-strong);
+  --am-chip-strong:    #633a3e;
+  --am-surface-faint:  var(--am-surface);
+  --am-border-strong:  var(--am-field-line);
+  --am-text-faint:     var(--am-text-muted);
+  --am-warning:        var(--am-negative);
+  --am-accent-2:       var(--am-accent);
+  --am-cardinal:       var(--am-accent);
 
   --am-scrim:          rgba(0, 0, 0, 0.6);    /* must DARKEN in dark mode too (never mix from --am-text) */
 
@@ -155,9 +160,11 @@
   --lg-bg-surface:     var(--am-surface);
   --lg-tint:           var(--am-chip);
   --lg-tint-hover:     var(--am-chip-strong);
+  --lg-bg-primary:     var(--am-surface);
+  --lg-bg-secondary:   var(--am-chip);
 
-  --lg-input-bg:       var(--am-surface);
-  --lg-input-border:   var(--am-border);
+  --lg-input-bg:       var(--am-field);
+  --lg-input-border:   var(--am-field-line);
   --lg-input-focus:    var(--am-accent);
 
   --lg-success:        var(--am-positive);

@@ -131,7 +131,7 @@ async function main() {
             "https://*.analytics.google.com",
             "https://googleads.g.doubleclick.net",
           ],
-          imgSrc: ["'self'", "data:", "https://*.googleusercontent.com", "https://i.ytimg.com", "https://*.ytimg.com", "https://img.mlbstatic.com", "https://*.mlb.com", "https://www.google-analytics.com", "https://*.google-analytics.com", "https://www.googletagmanager.com"],
+          imgSrc: ["'self'", "data:", "https://*.googleusercontent.com", "https://i.ytimg.com", "https://*.ytimg.com", "https://img.mlbstatic.com", "https://www.mlbstatic.com", "https://*.mlb.com", "https://www.google-analytics.com", "https://*.google-analytics.com", "https://www.googletagmanager.com"],
           styleSrc: ["'self'", "'unsafe-inline'", "https:"],
           fontSrc: ["'self'", "https:", "data:"],
           frameSrc: ["'self'", "https://accounts.google.com", "https://www.youtube.com", "https://youtube.com", "https://www.youtube-nocookie.com", "https://www.google.com", "https://tpc.googlesyndication.com"],
@@ -635,6 +635,7 @@ async function main() {
   if (fs.existsSync(clientDistPath)) {
     logger.info({ path: clientDistPath }, "Serving static frontend assets");
     serveSWNocache(clientDistPath);
+    app.use('/style-bible', express.static(path.join(clientDistPath, 'style-bible'), { maxAge: 0, index: 'index.html' }));
     app.use(express.static(clientDistPath, { maxAge: '1y', immutable: true, index: false }));
   } else {
     // try alternative (repo root)
@@ -642,6 +643,7 @@ async function main() {
     if (fs.existsSync(altPath)) {
         logger.info({ path: altPath }, "Serving static frontend assets (alt path)");
         serveSWNocache(altPath);
+        app.use('/style-bible', express.static(path.join(altPath, 'style-bible'), { maxAge: 0, index: 'index.html' }));
         app.use(express.static(altPath, { maxAge: '1y', immutable: true, index: false }));
     } else {
        logger.warn({ checked: [clientDistPath, altPath] }, "⚠️ Frontend build not found. API mode only.");

@@ -43,7 +43,7 @@ export function RosterSection({
       <div
         style={{
           padding: "8px 12px",
-          fontSize: 10,
+          fontSize: 13,
           letterSpacing: 1.4,
           textTransform: "uppercase",
           color: tone === "il" ? "#fca5a5" : "var(--am-text-muted)",
@@ -77,7 +77,7 @@ export function SectionHeader({ role }: { role: "hitter" | "pitcher" }) {
         gridTemplateColumns: grid,
         gap: 0,
         padding: "8px 12px",
-        fontSize: 10,
+        fontSize: 13,
         letterSpacing: 1.2,
         textTransform: "uppercase",
         color: "var(--am-text-muted)",
@@ -138,7 +138,7 @@ export function PillCell({
           borderRadius: 99,
           background: isIl ? "#ef4444" : "var(--am-irid)",
           color: "#fff",
-          fontSize: 11,
+          fontSize: 13,
           fontWeight: 700,
           letterSpacing: 0.4,
           border: "1px solid transparent",
@@ -149,7 +149,7 @@ export function PillCell({
         {primaryLabel}
       </button>
       {secondary.length > 0 && (
-        <span aria-hidden style={{ color: "var(--am-text-faint)", fontSize: 11 }}>
+        <span aria-hidden style={{ color: "var(--am-text-faint)", fontSize: 13 }}>
           ·
         </span>
       )}
@@ -159,7 +159,7 @@ export function PillCell({
           style={{
             padding: "2px 8px",
             borderRadius: 99,
-            fontSize: 10.5,
+            fontSize: 13,
             fontWeight: 600,
             color: "var(--am-text-muted)",
             background: "var(--am-chip)",
@@ -186,7 +186,7 @@ export function Stat({ children }: { children: React.ReactNode }) {
       style={{
         textAlign: "right",
         paddingRight: 8,
-        fontSize: 12,
+        fontSize: 13,
         color: "var(--am-text-muted)",
         fontVariantNumeric: "tabular-nums",
       }}
@@ -258,7 +258,7 @@ export function IlBadge({ status }: { status: string }) {
         borderRadius: 4,
         background: "rgba(239, 68, 68, 0.18)",
         color: "#fca5a5",
-        fontSize: 10,
+        fontSize: 13,
         fontWeight: 700,
         letterSpacing: 0.4,
         border: "1px solid rgba(239, 68, 68, 0.35)",
@@ -405,7 +405,7 @@ export function DragRowGrid({
             borderRadius: 8,
             padding: "4px 6px",
             color: "var(--am-text-muted)",
-            fontSize: 14,
+            fontSize: 15,
             lineHeight: 1,
             touchAction: "none",
             userSelect: "none",
@@ -426,7 +426,7 @@ export function DragRowGrid({
             {player.name}
             {player.mlbStatus && <IlBadge status={player.mlbStatus} />}
           </span>
-          <span style={{ fontSize: 11, color: "var(--am-text-faint)", letterSpacing: 0.4 }}>
+          <span style={{ fontSize: 13, color: "var(--am-text-faint)", letterSpacing: 0.4 }}>
             {(player.mlbTeam ?? "FA") + " · " + player.posPrimary}
           </span>
         </div>
@@ -461,7 +461,7 @@ export function DragRowGrid({
               border: "1px solid var(--am-border)",
               borderRadius: 8,
               padding: "3px 7px",
-              fontSize: 12,
+              fontSize: 13,
               color: "var(--am-text-muted)",
               cursor: "pointer",
             }}
@@ -511,7 +511,7 @@ export function EmptyIlRow({
             ? "color-mix(in srgb, #ef4444 12%, transparent)"
             : "transparent",
         color: "rgba(252, 165, 165, 0.7)",
-        fontSize: 12,
+        fontSize: 13,
         fontStyle: "italic",
         animation: isLandingTarget ? "amSlotFill 280ms ease" : undefined,
       }}
@@ -578,7 +578,7 @@ export function SaveBanner({
         marginBottom: 12,
         background: palette.bg,
         border: `1px solid ${palette.border}`,
-        fontSize: 12.5,
+        fontSize: 13,
         color: "var(--am-text)",
       }}
       role="status"

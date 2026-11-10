@@ -112,8 +112,8 @@ export default function About() {
             <div key={f.title} className="flex gap-2 p-2.5 rounded-lg bg-[var(--lg-tint)] border border-[var(--lg-border-subtle)]">
               <f.icon size={14} className="text-[var(--lg-accent)] shrink-0 mt-0.5" />
               <div>
-                <div className="text-[11px] font-semibold text-[var(--lg-text-primary)]">{f.title}</div>
-                <div className="text-[10px] text-[var(--lg-text-muted)] leading-snug">{f.desc}</div>
+                <div className="text-xs font-semibold text-[var(--lg-text-primary)]">{f.title}</div>
+                <div className="text-xs text-[var(--lg-text-muted)] leading-snug">{f.desc}</div>
               </div>
             </div>
           ))}
@@ -134,7 +134,7 @@ export default function About() {
           ].map(t => (
             <div key={t.title} className="p-3 rounded-lg border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)]">
               <div className="text-xs font-semibold text-[var(--lg-text-primary)] mb-0.5">{t.title}</div>
-              <div className="text-[11px] text-[var(--lg-text-muted)] leading-relaxed">{t.desc}</div>
+              <div className="text-xs text-[var(--lg-text-muted)] leading-relaxed">{t.desc}</div>
             </div>
           ))}
         </div>
