@@ -22,6 +22,18 @@ describe("rewriteSource", () => {
     expect(tsx("fontSize: size").changes).toBe(0);
     expect(tsx('fontSize: "var(--lg-font-size-sm)"').changes).toBe(0);
   });
+  it("leaves computed sizes alone", () => {
+    expect(tsx("fontSize: size * 0.85").changes).toBe(0);
+    expect(tsx("fontSize: Math.round(size * 0.35)").changes).toBe(0);
+    expect(tsx("fontSize: compact ? 10 : 16").text).toBe("fontSize: compact ? 13 : 17");
+  });
+  it("multi-line ternary", () => {
+    expect(tsx("fontSize: compact\n  ? 10\n  : 11,").text).toBe("fontSize: compact\n  ? 13\n  : 13,");
+  });
+  it("JSX prop", () => {
+    expect(tsx("<T fontSize={10} />").text).toBe("<T fontSize={13} />");
+    expect(tsx("<T fontSize={compact ? 10 : 11} />").text).toBe("<T fontSize={compact ? 13 : 13} />");
+  });
   it("css", () => {
     expect(rewriteSource(".x{font-size:11px}", "css").text).toBe(".x{font-size:13px}");
     expect(rewriteSource(".x{font-size: 48px}", "css").changes).toBe(0);

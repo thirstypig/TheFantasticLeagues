@@ -38,7 +38,7 @@ function Initials({ name, size = 64 }: { name: string | null; size?: number }) {
   return (
     <div
       className="rounded-xl bg-[var(--lg-accent)]/15 text-[var(--lg-accent)] font-semibold flex items-center justify-center"
-      style={{ width: size, height: size, fontSize: size * 13 }}
+      style={{ width: size, height: size, fontSize: size * 0.35 }}
     >
       {letters}
     </div>

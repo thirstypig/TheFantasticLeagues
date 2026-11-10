@@ -13,7 +13,7 @@ export function Logo({ size = 40, className = "" }: LogoProps) {
   return (
     <span
       className={className}
-      style={{ fontSize: size * 13, lineHeight: 1, display: "inline-block", width: size, height: size, textAlign: "center" }}
+      style={{ fontSize: size * 0.85, lineHeight: 1, display: "inline-block", width: size, height: size, textAlign: "center" }}
       role="img"
       aria-label="TFL Logo"
     >

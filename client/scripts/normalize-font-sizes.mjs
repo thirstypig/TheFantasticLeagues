@@ -5,6 +5,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+export const ALLOWED_SIZES = new Set([13, 15, 17, 24, 32]);
+
 export function snapPx(px) {
   if (px <= 13.5) return 13;
   if (px <= 15.5) return 15;
@@ -17,8 +19,10 @@ export function snapPx(px) {
 const toPx = (n, unit) => (unit === "rem" ? n * 16 : n);
 const CLASS_FOR = { 13: "text-xs", 15: "text-sm", 17: "text-base", 24: "text-xl", 32: "text-3xl" };
 
-// Find the end index of a fontSize expression starting at `start`.
-function exprEnd(text, start) {
+// Find the end index of a fontSize expression starting at `start`: the next
+// top-level `,` or `;`, or a closing bracket that closes past the start depth.
+// Newlines do not end it (multi-line ternaries).
+export function exprEnd(text, start) {
   let depth = 0;
   let i = start;
   while (i < text.length) {
@@ -33,13 +37,35 @@ function exprEnd(text, start) {
     else if (c === ")" || c === "}" || c === "]") {
       if (depth === 0) return i;
       depth--;
-    } else if ((c === "," || c === ";" || c === "\n") && depth === 0) return i;
+    } else if ((c === "," || c === ";") && depth === 0) return i;
     i++;
   }
   return i;
 }
 
+// Arithmetic on a non-literal (an operator next to an identifier or a closing
+// paren) is a computed size, like a variable: left alone by codemod and sweep.
+export function isComputed(expr) {
+  const bare = expr.replace(/"[^"]*"|'[^']*'|`[^`]*`/g, '""');
+  return /[A-Za-z_$)\]]\s*[*\/+-]|[*\/+-]\s*[A-Za-z_$(]/.test(bare);
+}
+
+// Every `fontSize: <expr>` and `fontSize={<expr>}` span in `text`.
+export function findFontSizeExpressions(text) {
+  const out = [];
+  const re = /\bfontSize\s*(?::|=\s*\{)\s*/g;
+  let m;
+  while ((m = re.exec(text))) {
+    const start = m.index + m[0].length;
+    const end = exprEnd(text, start);
+    out.push({ start, end, expr: text.slice(start, end) });
+    re.lastIndex = end;
+  }
+  return out;
+}
+
 function rewriteExpr(expr) {
+  if (isComputed(expr)) return { text: expr, changes: 0 };
   let changes = 0;
   // Whole-string px/rem literals first, then bare numbers outside strings.
   const out = [];
@@ -104,18 +130,13 @@ export function rewriteSource(text, kind) {
     return CLASS_FOR[s];
   });
   // tsx: fontSize: <expr>
-  const re = /\bfontSize\s*:\s*/g;
   let result = "";
   let last = 0;
-  let m;
-  while ((m = re.exec(t))) {
-    const start = m.index + m[0].length;
-    const end = exprEnd(t, start);
-    const r = rewriteExpr(t.slice(start, end));
+  for (const { start, end, expr } of findFontSizeExpressions(t)) {
+    const r = rewriteExpr(expr);
     result += t.slice(last, start) + r.text;
     changes += r.changes;
     last = end;
-    re.lastIndex = end;
   }
   result += t.slice(last);
   return { text: result, changes };
