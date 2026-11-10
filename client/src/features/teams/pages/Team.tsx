@@ -1319,14 +1319,9 @@ export default function Team() {
         </>
       ) : (
         <div style={{ marginTop: 4, fontSize: 12, color: "var(--am-text-faint)", lineHeight: 1.5 }}>
-          AI insights for this team haven't been generated this week. Check the AI Hub for league-wide recommendations.
+          AI insights for this team haven't been generated this week.
         </div>
       )}
-      <div style={{ marginTop: 14 }}>
-        <Link to="/ai" style={{ textDecoration: "none" }}>
-          <Chip strong>Open AI Hub →</Chip>
-        </Link>
-      </div>
     </Glass>
   );
 

@@ -5,7 +5,6 @@ import { MobileHome } from "../pages/MobileHome";
 import { getSeasonStandings } from "../../api";
 import { getTransactions } from "../../features/transactions/api";
 import { getTrades } from "../../features/trades/api";
-import { getBoardCards } from "../../features/board/api";
 
 vi.mock("../../auth/AuthProvider", () => ({
   useAuth: () => ({ me: { user: { id: 1, name: "James" } } }),
@@ -24,7 +23,6 @@ vi.mock("../../contexts/LeagueContext", () => ({
 vi.mock("../../api", () => ({ getSeasonStandings: vi.fn() }));
 vi.mock("../../features/transactions/api", () => ({ getTransactions: vi.fn() }));
 vi.mock("../../features/trades/api", () => ({ getTrades: vi.fn() }));
-vi.mock("../../features/board/api", () => ({ getBoardCards: vi.fn() }));
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -60,14 +58,6 @@ beforeEach(() => {
         acceptingTeam: { id: 7, name: "Demolition Lumber Co.", code: "DLC" },
       } as any,
     ],
-  });
-  vi.mocked(getBoardCards).mockResolvedValue({
-    items: [
-      { id: 11, leagueId: 20, userId: 7, column: "ANNOUNCE", title: "Trade deadline reminder", body: null, type: "POST", metadata: null, pinned: false, periodId: null, expiresAt: null, thumbsUp: 2, thumbsDown: 0, createdAt: new Date().toISOString(), deletedAt: null, user: { id: 7, name: "Commish", avatarUrl: null }, replies: [], myVote: null, replyCount: 0 } as any,
-    ],
-    total: 1,
-    limit: 3,
-    offset: 0,
   });
 });
 
@@ -119,12 +109,11 @@ describe("MobileHome", () => {
     expect(screen.getByText(/Review →/)).toBeInTheDocument();
   });
 
-  it("renders the League Board section with card title and metadata", async () => {
+  it("does not render a League Board section or link to /board", async () => {
     renderHome();
-    // Board card title
-    expect(await screen.findByText("Trade deadline reminder")).toBeInTheDocument();
-    // Author name
-    expect(screen.getByText("Commish")).toBeInTheDocument();
+    await screen.findByTestId("mobile-home-view-roster");
+    expect(screen.queryByText(/League Board/)).not.toBeInTheDocument();
+    expect(document.querySelector('a[href="/board"]')).toBeNull();
   });
 
   it("renders the View roster link to the user's team", async () => {

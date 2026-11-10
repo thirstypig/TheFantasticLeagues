@@ -276,7 +276,7 @@ export default function KeeperSelection() {
             </div>
 
             {/* Sticky Action Footer (Mobile friendly) */}
-            <div className="sticky bottom-4 mx-auto max-w-md rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-4 shadow-2xl backdrop-blur-md">
+            <div style={{ bottom: "calc(var(--shell-bottom-inset, 0px) + 16px)" }} className="sticky mx-auto max-w-md rounded-2xl border border-[var(--lg-border-subtle)] bg-[var(--lg-tint)] p-4 shadow-2xl backdrop-blur-md">
                  <div className="flex items-center justify-between gap-4">
                      <div className="text-sm">
                          <div className="text-[var(--lg-text-muted)]">Keeping</div>

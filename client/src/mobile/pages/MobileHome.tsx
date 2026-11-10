@@ -20,7 +20,6 @@ import { useLeague } from "../../contexts/LeagueContext";
 import { getSeasonStandings } from "../../api";
 import { getTransactions, type TransactionEvent } from "../../features/transactions/api";
 import { getTrades, type TradeProposal } from "../../features/trades/api";
-import { getBoardCards, type BoardCard } from "../../features/board/api";
 import { MobileTopbar } from "../MobileTopbar";
 import {
   MCard,
@@ -96,7 +95,6 @@ export function MobileHome() {
   const [standings, setStandings] = useState<StandingsRow[]>([]);
   const [activity, setActivity] = useState<TransactionEvent[]>([]);
   const [activeTrades, setActiveTrades] = useState<TradeProposal[]>([]);
-  const [boardCards, setBoardCards] = useState<BoardCard[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -107,8 +105,7 @@ export function MobileHome() {
       getSeasonStandings(leagueId),
       getTransactions({ leagueId, take: 6 }),
       getTrades(leagueId, { status: "PROPOSED", limit: 4 }),
-      getBoardCards({ leagueId, limit: 3 }),
-    ]).then(([standingsRes, activityRes, tradesRes, boardRes]) => {
+    ]).then(([standingsRes, activityRes, tradesRes]) => {
       if (canceled) return;
       if (standingsRes.status === "fulfilled") {
         const periodIds = standingsRes.value.periodIds ?? [];
@@ -135,9 +132,6 @@ export function MobileHome() {
       }
       if (tradesRes.status === "fulfilled") {
         setActiveTrades((tradesRes.value.trades ?? []).filter((t) => t.status === "PROPOSED"));
-      }
-      if (boardRes.status === "fulfilled") {
-        setBoardCards(boardRes.value.items ?? []);
       }
     }).finally(() => {
       if (!canceled) setLoading(false);
@@ -438,46 +432,6 @@ export function MobileHome() {
           )}
         </MCard>
       </MSection>
-
-      {boardCards.length > 0 && (
-        <MSection
-          title="✦ League Board"
-          action="See all"
-          onActionClick={() => nav("/board")}
-          style={{ padding: "0 14px 12px" }}
-        >
-          <MCard padded={false}>
-            {boardCards.map((card, i) => (
-              <div
-                key={card.id}
-                onClick={() => nav("/board")}
-                style={{
-                  padding: "10px 14px",
-                  borderTop: i > 0 ? "1px solid var(--am-border)" : "none",
-                  cursor: "pointer",
-                }}
-              >
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--am-text)", marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {card.title}
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  {card.user?.name && (
-                    <span style={{ fontSize: 10, color: "var(--am-text-faint)" }}>{card.user.name}</span>
-                  )}
-                  <span style={{ fontSize: 9, color: "var(--am-text-faint)" }}>·</span>
-                  <span style={{ fontSize: 10, color: "var(--am-text-faint)" }}>{timeAgo(card.createdAt)}</span>
-                  {card.replyCount > 0 && (
-                    <>
-                      <span style={{ fontSize: 9, color: "var(--am-text-faint)" }}>·</span>
-                      <span style={{ fontSize: 10, color: "var(--am-text-faint)" }}>{card.replyCount} {card.replyCount === 1 ? "reply" : "replies"}</span>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-          </MCard>
-        </MSection>
-      )}
 
     </div>
   );

@@ -6,7 +6,6 @@ import { getSeasonStandings } from "../../api";
 import { fetchJsonApi } from "../../api/base";
 import { getTransactions } from "../../features/transactions/api";
 import { getTrades } from "../../features/trades/api";
-import { getBoardCards } from "../../features/board/api";
 
 vi.mock("../../auth/AuthProvider", () => ({
   useAuth: () => ({ me: { user: { id: 1, name: "James" } } }),
@@ -38,10 +37,6 @@ vi.mock("../../features/transactions/api", () => ({
 vi.mock("../../features/trades/api", () => ({
   getTrades: vi.fn(),
   cancelTrade: vi.fn(),
-}));
-
-vi.mock("../../features/board/api", () => ({
-  getBoardCards: vi.fn(),
 }));
 
 vi.mock("../components/MyTeamTodayPanel", () => ({
@@ -116,35 +111,6 @@ beforeEach(() => {
     ],
   } as any);
 
-  vi.mocked(getBoardCards).mockResolvedValue({
-    total: 1,
-    limit: 3,
-    offset: 0,
-    items: [
-      {
-        id: 7,
-        leagueId: 20,
-        userId: 1,
-        column: "banter",
-        title: "Trade block chatter",
-        body: "Looking for steals and saves.",
-        type: "user",
-        metadata: {},
-        pinned: false,
-        periodId: null,
-        expiresAt: null,
-        thumbsUp: 0,
-        thumbsDown: 0,
-        createdAt: "2026-05-01T10:00:00.000Z",
-        deletedAt: null,
-        user: { id: 1, name: "James Chang", avatarUrl: null },
-        replies: [],
-        myVote: null,
-        replyCount: 2,
-      },
-    ],
-  });
-
   vi.mocked(fetchJsonApi).mockResolvedValue({ players: [] });
 });
 
@@ -218,7 +184,7 @@ describe("Depth Charts card", () => {
 });
 
 describe("Home dashboard", () => {
-  it("renders compact league news, board summary, pending trade notice, and expanded quick links", async () => {
+  it("renders compact league news, pending trade notice, and quick links without hidden pages", async () => {
     renderHome();
 
     expect(await screen.findByText(/My Team Today 20/)).toBeInTheDocument();
@@ -231,11 +197,6 @@ describe("Home dashboard", () => {
     // synchronizes the my-team panel. Anchor each panel's first data-driven
     // assertion with findByText so panel render order can't flake under slow CI
     // (precedent: "Trade block chatter" flaked twice in CI, June 9–10).
-    expect(screen.getByText("League board")).toBeInTheDocument();
-    expect(await screen.findByText("Trade block chatter")).toBeInTheDocument();
-    expect(screen.getByText("Looking for steals and saves.")).toBeInTheDocument();
-    expect(screen.getByText("2 replies")).toBeInTheDocument();
-
     expect(await screen.findByText(/Pending trade proposals · 1/)).toBeInTheDocument();
     expect(document.body).toHaveTextContent(/Los Doyers proposed a trade with Demolition Lumber Co\./);
     expect(screen.getByRole("button", { name: "Withdraw" })).toBeInTheDocument();
@@ -244,10 +205,12 @@ describe("Home dashboard", () => {
     expect(await screen.findByText("Dodger Dawgs")).toBeInTheDocument();
     expect(screen.getByText("Claimed Dominic Smith")).toBeInTheDocument();
 
-    expect(screen.getByRole("link", { name: /League Board/ })).toHaveAttribute("href", "/board");
-    expect(screen.getByRole("link", { name: /Draft Report/ })).toHaveAttribute("href", "/draft-report");
     expect(screen.getByRole("link", { name: /Rules/ })).toHaveAttribute("href", "/rules");
 
-    await waitFor(() => expect(getBoardCards).toHaveBeenCalledWith({ leagueId: 20, limit: 3 }));
+    // Hidden pages (Board, AI report, AI hub) are linked only from the admin entry.
+    expect(screen.queryByText("League board")).not.toBeInTheDocument();
+    for (const hidden of ["/board", "/draft-report", "/ai"]) {
+      expect(document.querySelector(`a[href="${hidden}"]`)).toBeNull();
+    }
   });
 });

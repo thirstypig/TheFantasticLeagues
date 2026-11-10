@@ -119,10 +119,10 @@ describe("MobileLayoutGate", () => {
       </MemoryRouter>,
     );
     const dock = screen.getByTestId("mobile-tab-bar");
-    // Unified tab set: role-conditional tabs (AI, Commish) replaced by fixed 5.
-    expect(dock.querySelector('[data-tab-key="Home"]')).not.toBeNull();
-    expect(dock.querySelector('[data-tab-key="MyTeam"]')).not.toBeNull();
-    expect(dock.querySelector('[data-tab-key="More"]')).not.toBeNull();
+    // Four-tab set: role-conditional tabs (AI, Commish) never appear.
+    expect(dock.querySelector('[data-tab-key="today"]')).not.toBeNull();
+    expect(dock.querySelector('[data-tab-key="myTeam"]')).not.toBeNull();
+    expect(dock.querySelector('[data-tab-key="league"]')).not.toBeNull();
     expect(dock.querySelector('[data-tab-key="AI"]')).toBeNull();
     expect(dock.querySelector('[data-tab-key="Commish"]')).toBeNull();
   });

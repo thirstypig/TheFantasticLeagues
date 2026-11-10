@@ -544,13 +544,13 @@
 
 @media (min-width: 768px) {
   .fa-panel {
-    /* Side-dock on desktop. Top offset clears the Aurora header (~72px)
-       plus a small breathing gap; max-height caps it on tall screens. */
-    top: 96px;
+    /* Side-dock on desktop. The desktop shell is a left rail with no top
+       header, so only a 16px gap is needed; max-height caps it on tall screens. */
+    top: 16px;
     right: 16px;
     bottom: 16px;
     width: 380px;
-    max-height: calc(100dvh - 112px);
+    max-height: calc(100dvh - 32px);
     animation: fa-slide-in-side 200ms ease-out;
   }
 }

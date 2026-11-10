@@ -245,6 +245,15 @@ describe("Aurora Team — Watchlist / Trading Block / Wire List cards", () => {
     expect(screen.getByTestId("trading-block-panel-stub")).toBeInTheDocument();
   });
 
+  it("does not link owners to the hidden AI hub from the Lineup Intelligence card", async () => {
+    renderTeam("ACES");
+
+    // The intel slot is the only DOM the stubbed hub renders; wait for it.
+    await screen.findByText(/haven't been generated this week/i);
+    expect(screen.queryByText(/AI Hub/i)).not.toBeInTheDocument();
+    expect(document.querySelector('a[href="/ai"]')).toBeNull();
+  });
+
   it("hides all three cards when the viewer is not the team owner (viewing another owner's team)", async () => {
     // Viewer owns team 11 (BEES); we navigate to ACES (id 10).
     leagueState.myTeamId = 11;

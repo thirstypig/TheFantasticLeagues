@@ -37,7 +37,6 @@ import {
 } from "../features/wire-list/api";
 import { getTransactions, type TransactionEvent } from "../features/transactions/api";
 import { cancelTrade, getTrades, type TradeProposal } from "../features/trades/api";
-import { getBoardCards, type BoardCard } from "../features/board/api";
 import { fetchJsonApi, API_BASE } from "../api/base";
 import type { RosterAlertPlayer } from "./home/types";
 import HistoricalInsightsTab from "./components/HistoricalInsightsTab";
@@ -71,7 +70,6 @@ export default function Home() {
   const [activity, setActivity] = useState<TransactionEvent[]>([]);
   const [activeTrades, setActiveTrades] = useState<TradeProposal[]>([]);
   const [rosterAlerts, setRosterAlerts] = useState<RosterAlertPlayer[]>([]);
-  const [boardCards, setBoardCards] = useState<BoardCard[]>([]);
   const [wirePeriod, setWirePeriod] = useState<WaiverPeriod | null>(null);
   const [wireAddCount, setWireAddCount] = useState(0);
   const [wireDropCount, setWireDropCount] = useState(0);
@@ -99,11 +97,10 @@ export default function Home() {
       // to the server so we don't drag the league's full trade history
       // across the wire (todo #167.1).
       getTrades(leagueId, { status: "PROPOSED", limit: 10 }),
-      getBoardCards({ leagueId, limit: 3 }),
       fetchJsonApi<{ players: RosterAlertPlayer[] }>(
         `${API_BASE}/mlb/roster-status?leagueId=${leagueId}`,
       ),
-    ]).then(([standingsRes, activityRes, tradesRes, boardRes, rosterRes]) => {
+    ]).then(([standingsRes, activityRes, tradesRes, rosterRes]) => {
       if (canceled) return;
 
       if (standingsRes.status === "fulfilled") {
@@ -138,10 +135,6 @@ export default function Home() {
         // Server already filters to PROPOSED — keep the defensive filter
         // in case an older server returns mixed statuses.
         setActiveTrades((tradesRes.value.trades ?? []).filter(t => t.status === "PROPOSED"));
-      }
-
-      if (boardRes.status === "fulfilled") {
-        setBoardCards(boardRes.value.items ?? []);
       }
 
       if (rosterRes.status === "fulfilled") {
@@ -512,51 +505,6 @@ export default function Home() {
     </Glass>
   ) : null;
 
-  const boardCard = (
-    <Glass>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-        <SectionLabel>League board</SectionLabel>
-        <Link to="/board" style={{ textDecoration: "none" }}>
-          <Chip>Open board →</Chip>
-        </Link>
-      </div>
-      <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-        {boardCards.length === 0 ? (
-          <div style={{ fontSize: 12, color: "var(--am-text-muted)", padding: "10px 0" }}>
-            No recent board posts.
-          </div>
-        ) : boardCards.slice(0, 3).map((card) => (
-          <Link
-            key={card.id}
-            to="/board"
-            style={{
-              textDecoration: "none",
-              color: "inherit",
-              display: "block",
-              paddingTop: 8,
-              borderTop: "1px solid var(--am-border)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 750, color: "var(--am-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {card.title}
-              </div>
-              {card.replyCount > 0 && <Chip style={{ fontSize: 9, padding: "1px 6px" }}>{card.replyCount} replies</Chip>}
-            </div>
-            {card.body && (
-              <div style={{ marginTop: 3, fontSize: 11.5, color: "var(--am-text-muted)", lineHeight: 1.35, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                {card.body}
-              </div>
-            )}
-            <div style={{ marginTop: 4, fontSize: 10.5, color: "var(--am-text-faint)" }}>
-              {card.user?.name ?? card.metadata?.teamName ?? "League"} · {new Date(card.createdAt).toLocaleDateString()}
-            </div>
-          </Link>
-        ))}
-      </div>
-    </Glass>
-  );
-
   const injuredListCard = rosterAlerts.length > 0 ? (
     <Glass>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -749,7 +697,6 @@ export default function Home() {
             <AdUnit slot="8629489586" style={{ margin: "4px 0 8px" }} />
             {tradeProposalCard}
             <NewsFeedsPanel compact limit={5} />
-            {boardCard}
             {injuredListCard}
             {depthChartCard}
           </div>
@@ -761,12 +708,9 @@ export default function Home() {
               <div className="home-quick-grid">
                 {[
                   { to: "/players", label: "Browse players", body: "Search the full pool" },
-                  { to: "/board", label: "League Board", body: "Posts and trade block" },
                   { to: "/teams", label: "Teams", body: "All league teams" },
                   { to: "/activity", label: "Activity", body: "Trades, adds, drops" },
-                  { to: "/draft-report", label: "Draft Report", body: "Auction grades" },
                   { to: "/rules", label: "Rules", body: "League settings" },
-                  { to: "/ai", label: "AI Hub", body: "Insights & advice" },
                 ].map(l => (
                   <Link
                     key={l.to}
