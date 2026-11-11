@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const mockLeagueFindUnique = vi.fn();
+const mockLeagueRuleFindMany = vi.fn();
 const mockPeriodFindUnique = vi.fn();
 const mockRosterFindMany = vi.fn();
 const mockPspUpsert = vi.fn();
@@ -16,7 +16,7 @@ const mockMlbGetJson = vi.fn();
 
 vi.mock("../../../db/prisma.js", () => ({
   prisma: {
-    league: { findUnique: (...a: unknown[]) => mockLeagueFindUnique(...a) },
+    leagueRule: { findMany: (...a: unknown[]) => mockLeagueRuleFindMany(...a) },
     period: { findUnique: (...a: unknown[]) => mockPeriodFindUnique(...a) },
     roster: { findMany: (...a: unknown[]) => mockRosterFindMany(...a) },
     playerStatsPeriod: {
@@ -33,6 +33,10 @@ vi.mock("../../../lib/mlbApi.js", () => ({ mlbGetJson: (...a: unknown[]) => mock
 vi.mock("../../../lib/statsChanged.js", () => ({ notifyStatsChanged: vi.fn() }));
 
 import { syncPeriodStats, reconcilePeriodStats } from "../services/mlbStatsSyncService.js";
+import { _clearLeagueRuleCache } from "../../../lib/leagueRuleCache.js";
+
+/** The real Prisma shape: LeagueRule rows, not a JSON blob. */
+const statsSource = (value: string) => [{ category: "overview", key: "stats_source", value }];
 
 /** Liam Hicks (mlbId 689414): Miami (NL) then Tampa Bay (AL) inside one period. */
 const HICKS = {
@@ -49,6 +53,7 @@ const HICKS = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  _clearLeagueRuleCache();
   mockPeriodFindUnique.mockResolvedValue({
     id: 40, leagueId: 20,
     startDate: new Date("2026-08-02T00:00:00Z"), endDate: new Date("2026-08-29T00:00:00Z"),
@@ -59,29 +64,43 @@ beforeEach(() => {
 
 describe("league-scoped stats sync", () => {
   it("an NL league's period stores only the NL line, looked up by the period's league", async () => {
-    mockLeagueFindUnique.mockResolvedValue({ rules: { leagueType: "NL" } });
+    mockLeagueRuleFindMany.mockResolvedValue(statsSource("NL"));
     await syncPeriodStats(40);
-    expect(mockLeagueFindUnique).toHaveBeenCalledWith({ where: { id: 20 }, select: { rules: true } });
+    expect(mockLeagueRuleFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: { leagueId: 20 } }));
     const call = mockPspUpsert.mock.calls.find((c) => c[0].where.playerId_periodId.playerId === 985)!;
     expect(call[0].update).toMatchObject({ AB: 83, H: 23, HR: 2, RBI: 11, SB: 0 });
   });
 
-  it("a league with no leagueType defaults to NL (OGBA today)", async () => {
-    mockLeagueFindUnique.mockResolvedValue({ rules: null });
+  it("a league with no stats_source rule counts everything", async () => {
+    mockLeagueRuleFindMany.mockResolvedValue([]);
     await syncPeriodStats(40);
     const call = mockPspUpsert.mock.calls.find((c) => c[0].where.playerId_periodId.playerId === 985)!;
-    expect(call[0].update).toMatchObject({ H: 23 });
+    expect(call[0].update).toMatchObject({ H: 42 });
   });
 
-  it("a MIXED league's period stores the full aggregate", async () => {
-    mockLeagueFindUnique.mockResolvedValue({ rules: { leagueType: "MIXED" } });
+  it("stats_source ALL (OGBA before the commissioner flips it) counts everything", async () => {
+    mockLeagueRuleFindMany.mockResolvedValue(statsSource("ALL"));
+    await syncPeriodStats(40);
+    const call = mockPspUpsert.mock.calls.find((c) => c[0].where.playerId_periodId.playerId === 985)!;
+    expect(call[0].update).toMatchObject({ H: 42 });
+  });
+
+  it("an AL league's period stores only the AL line", async () => {
+    mockLeagueRuleFindMany.mockResolvedValue(statsSource("AL"));
+    await syncPeriodStats(40);
+    const call = mockPspUpsert.mock.calls.find((c) => c[0].where.playerId_periodId.playerId === 985)!;
+    expect(call[0].update).toMatchObject({ AB: 61, H: 19 });
+  });
+
+  it("an MLB-wide league's period stores the full aggregate", async () => {
+    mockLeagueRuleFindMany.mockResolvedValue(statsSource("MLB"));
     await syncPeriodStats(40);
     const call = mockPspUpsert.mock.calls.find((c) => c[0].where.playerId_periodId.playerId === 985)!;
     expect(call[0].update).toMatchObject({ AB: 144, H: 42, HR: 5, RBI: 23, SB: 1 });
   });
 
   it("the reconciler applies the same filter: an NL-only stored row is not drift", async () => {
-    mockLeagueFindUnique.mockResolvedValue({ rules: { leagueType: "NL" } });
+    mockLeagueRuleFindMany.mockResolvedValue(statsSource("NL"));
     mockPspFindMany.mockResolvedValue([
       { playerId: 985, AB: 83, H: 23, R: 9, HR: 2, RBI: 11, SB: 0, W: 0, SV: 0, K: 0, IP: 0, ER: 0, BB_H: 0 },
     ]);

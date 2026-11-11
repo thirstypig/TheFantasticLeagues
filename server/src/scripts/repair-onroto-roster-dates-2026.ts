@@ -96,6 +96,13 @@ async function verify(db: Prisma.TransactionClient | PrismaClient, item: Item): 
     if (s.kind === "add-release" && r.releasedAt !== null) problems.push(`roster #${s.rosterId} already released ${day(r.releasedAt)}`);
     if (s.kind === "move-release" && r.acquiredAt > d(s.to)) problems.push(`new releasedAt ${s.to} precedes acquiredAt ${day(r.acquiredAt)}`);
     if (s.kind === "add-release" && r.acquiredAt > d(s.to)) problems.push(`new releasedAt ${s.to} precedes acquiredAt ${day(r.acquiredAt)}`);
+    if (s.kind === "move-acquire") {
+      const clash = await db.roster.findFirst({ where: {
+        id: { not: s.rosterId }, playerId: item.playerId, team: { leagueId: LEAGUE_ID },
+        acquiredAt: { lt: d(s.from) }, OR: [{ releasedAt: null }, { releasedAt: { gt: d(s.to) } }],
+      } });
+      if (clash) problems.push(`another league-${LEAGUE_ID} stint #${clash.id} (team ${clash.teamId}) overlaps the new start ${s.to}`);
+    }
     if (s.kind === "move-release" || s.kind === "move-acquire") {
       const t = await db.transactionEvent.findUnique({ where: { id: s.txnId } });
       if (!t || t.playerId !== item.playerId || day(t.effDate) !== s.from)

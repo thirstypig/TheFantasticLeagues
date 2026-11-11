@@ -1,7 +1,9 @@
 // server/src/scripts/rescore-nl-only-2026.ts
 //
 // One-time: re-score OGBA 2026 under the NL-only rule (DOC-040). Stats a player earned
-// on an AL team stop counting. Run AFTER the scoring change is deployed.
+// on an AL team stop counting. Order: deploy the scoring change → turn on "NL players only"
+// in OGBA's Rules → run repair-onroto-roster-dates-2026.ts --apply → then this. It refuses
+// to run if either of the last two hasn't happened.
 //
 // DRY RUN BY DEFAULT: re-fetches every 2026 period through the new filter and lists each
 // stored stat that would change (that is exactly the reconciler's diff). Writes nothing.
@@ -25,7 +27,12 @@ async function main() {
   const apply = process.argv.includes("--apply");
   const scoring = await getLeagueScoringLeague(LEAGUE_ID);
   console.log(`League ${LEAGUE_ID} scores: ${scoring ?? "MIXED (everything)"} games only`);
-  if (scoring !== "NL") throw new Error("expected OGBA to resolve to NL — stop and check League.rules.leagueType");
+  if (scoring !== "NL") {
+    throw new Error('OGBA does not resolve to NL. Turn on "NL players only" (overview.stats_source = NL) on the Rules screen first.');
+  }
+  // The re-score only fetches stats for rostered players, so the roster repair must run first.
+  const webb = await prisma.roster.findFirst({ where: { playerId: 721, team: { leagueId: LEAGUE_ID } } });
+  if (!webb) throw new Error("Jacob Webb has no OGBA roster row — run repair-onroto-roster-dates-2026.ts --apply --items=all first.");
 
   const periods = await prisma.period.findMany({
     where: { leagueId: LEAGUE_ID, startDate: { gte: new Date("2026-01-01") } },

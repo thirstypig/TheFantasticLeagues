@@ -41,9 +41,15 @@ transaction log contradicts that.
 
 ## Decisions (James, 2026-11-11)
 
-1. **Adopt OnRoto's rule.** In an NL-only league (`League.rules.leagueType`, default
-   "NL"), stats earned on an AL team don't count. AL-only works the reverse way; MIXED
-   counts everything. Implemented in the period syncer and the reconciler.
+1. **Adopt OnRoto's rule.** In an NL-only league (the `overview.stats_source` rule, shown on
+   the Rules screen as "NL players only"), stats earned on an AL team don't count. AL-only
+   works the reverse way; "ALL"/"MLB" counts everything. Implemented in the period syncer
+   and the reconciler.
+   - **OGBA's Stats Source is currently "ALL"**, so the commissioner must turn "NL players only"
+     on. That setting also limits the Players search to NL players, which fits an NL-only league.
+   - Found in passing: the teams, auction and keeper screens read a `leagueType` field that is
+     never stored (`League.rules` is the LeagueRule relation), so they always assume NL.
+     Harmless for OGBA; worth fixing before any AL or mixed league exists.
    - Known limit: mid-period ownership windows read daily stat rows, which are shared
      across leagues and not filtered. OGBA's moves are at period boundaries, so it isn't
      affected today.
@@ -54,6 +60,7 @@ transaction log contradicts that.
 ## To apply (prod writes — James)
 
 1. Merge and deploy the scoring change.
+1b. Rules screen → turn on "NL players only" for OGBA (sets `stats_source` to NL). Until then, nothing changes.
 2. Run the roster repair FIRST (the re-score only fetches stats for rostered players, so Webb needs his roster row):
    `./scripts/with-prod-db.sh npx tsx src/scripts/repair-onroto-roster-dates-2026.ts` (dry run), then add `--apply --items=all`.
 3. Re-score 2026: `./scripts/with-prod-db.sh npx tsx src/scripts/rescore-nl-only-2026.ts` (dry run lists every stat that changes), then the same with `--apply`. It re-syncs each period and rebuilds its cached team totals.

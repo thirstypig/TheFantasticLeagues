@@ -35,15 +35,18 @@ export function mlbLeagueOfTeamId(teamId: number | null | undefined): MlbLeague 
 
 /**
  * Which MLB league's stats count for a fantasy league: "NL" for an NL-only league,
- * "AL" for AL-only, null for mixed (everything counts). Reads `League.rules.leagueType`
- * with the same "NL" default the teams, auction and keeper screens already use.
+ * "AL" for AL-only, null when everything counts. Reads the league's
+ * `overview.stats_source` rule (the Rules screen's "NL players only"), the same
+ * setting that already scopes the player pool. A missing rule counts everything.
  * Stats a player earns on a team in the other league do not count (OnRoto's rule,
  * adopted for OGBA 2026-11-11).
+ *
+ * Not `League.rules.leagueType`: `rules` is the LeagueRule relation, and the
+ * create-league form's `leagueType` is never stored.
  */
 export async function getLeagueScoringLeague(leagueId: number): Promise<MlbLeague | null> {
-  const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { rules: true } });
-  const type = (league?.rules as { leagueType?: string } | null)?.leagueType ?? "NL";
-  return type === "NL" || type === "AL" ? type : null;
+  const source = await getLeagueStatsSource(leagueId);
+  return source === "NL" || source === "AL" ? source : null;
 }
 
 /** Returns the set of team abbreviations for a stats_source, or null if no filtering needed. */
