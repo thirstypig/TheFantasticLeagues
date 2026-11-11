@@ -772,7 +772,7 @@ export interface LeagueTradeItem {
   assetType: string;
   playerId: number | null;
   amount: number | null;
-  player?: { id: number; name: string } | null;
+  player?: { id: number; name: string; posPrimary?: string | null; mlbTeam?: string | null } | null;
   sender?: { id: number; name: string } | null;
   recipient?: { id: number; name: string } | null;
 }

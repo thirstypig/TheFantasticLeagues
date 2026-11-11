@@ -163,7 +163,9 @@ function TradesBody({ leagueId }: { leagueId: number }) {
   const done = data.trades.filter((t) => t.status === "PROCESSED");
   const ruleLine = data.rule === "anytime"
     ? "Rule: anytime · every trade waits for you"
-    : "Rule: meeting day only · every trade waits for you";
+    : data.rule === "meeting_day"
+      ? "Rule: meeting day only · every trade waits for you"
+      : "Every trade waits for you";
 
   const counts = new Map((data.check?.teams ?? []).map((t) => [t.teamId, t.activeCount]));
   const cap = data.check?.cap ?? 0;
@@ -210,9 +212,22 @@ function TradesBody({ leagueId }: { leagueId: number }) {
               return (
                 <div key={t.id} style={CARD} data-testid="trade-card">
                   <b style={{ fontSize: 17, color: "var(--am-text)" }}>{pairName(t, nameOf)}</b>
-                  {t.items.map((it, i) => <span key={i} style={{ fontSize: 17, color: "var(--am-text)" }}>{assetLine(it, nameOf)}</span>)}
-                  {data.check && check.lines.map((l, i) => <span key={i} style={{ fontSize: 15, color: TONE[l.tone] }}>{l.text}</span>)}
-                  <span style={SUB}>{`accepted ${fmtShort(t.createdAt)}`}</span>
+                  {t.items.map((it, i) => {
+                    const meta = it.assetType === "PLAYER" ? [it.player?.posPrimary, it.player?.mlbTeam].filter(Boolean).join(" · ") : "";
+                    return (
+                      <div key={i} style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 17, color: "var(--am-text)" }}>{assetLine(it, nameOf)}</span>
+                        {meta && <span style={SUB}>{meta}</span>}
+                      </div>
+                    );
+                  })}
+                  {data.check && check.lines.map((l, i) => (
+                    <span key={i} style={{ fontSize: 15, color: TONE[l.tone] }}>
+                      {l.tone === "good" && <span aria-hidden="true" style={{ marginRight: 6 }}>✓</span>}
+                      <span>{l.text}</span>
+                    </span>
+                  ))}
+                  <span style={SUB}>{`offered ${fmtShort(t.createdAt)}`}</span>
                   {err(t.id)}
                   <div style={btnRow}>
                     <button type="button" style={SECONDARY} disabled={busy} onClick={() => setSheet({ kind: "veto", trade: t })}>Veto</button>

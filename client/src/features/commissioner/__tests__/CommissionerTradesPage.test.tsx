@@ -44,7 +44,7 @@ function renderPage(strict = false) {
 const accepted = {
   id: 1, status: "ACCEPTED", createdAt: "2026-11-02T12:00:00.000Z", processedAt: null, proposerId: 2, proposer: T(2, "Bombers"),
   items: [
-    { senderId: 2, recipientId: 4, assetType: "PLAYER", playerId: 101, amount: null, player: T(101, "Paul Skenes"), sender: T(2, "Bombers"), recipient: T(4, "Los Doyers") },
+    { senderId: 2, recipientId: 4, assetType: "PLAYER", playerId: 101, amount: null, player: { ...T(101, "Paul Skenes"), posPrimary: "SP", mlbTeam: "PIT" }, sender: T(2, "Bombers"), recipient: T(4, "Los Doyers") },
     { senderId: 4, recipientId: 2, assetType: "PLAYER", playerId: 401, amount: null, player: T(401, "Mookie Betts"), sender: T(4, "Los Doyers"), recipient: T(2, "Bombers") },
     { senderId: 4, recipientId: 2, assetType: "BUDGET", playerId: null, amount: 5, player: null, sender: T(4, "Los Doyers"), recipient: T(2, "Bombers") },
   ],
@@ -87,6 +87,10 @@ describe("CommissionerTradesPage", () => {
     expect(screen.getByText("Betts → Bombers")).toBeInTheDocument();
     expect(screen.getByText("$5 → Bombers")).toBeInTheDocument();
     expect(screen.getByText("Both rosters stay at 23")).toBeInTheDocument();
+    expect(screen.getByText("offered Nov 2")).toBeInTheDocument();
+    expect(screen.queryByText(/accepted/)).toBeNull();
+    expect(screen.getByText("SP · PIT")).toBeInTheDocument();
+    expect(screen.getByText("✓")).toBeInTheDocument();
     expect(screen.getByText("Still being discussed")).toBeInTheDocument();
     expect(screen.getByText("Waiting")).toBeInTheDocument();
     expect(screen.getByText("Processed this season")).toBeInTheDocument();
@@ -149,6 +153,33 @@ describe("CommissionerTradesPage", () => {
     expect(await screen.findByText("Trade is not in ACCEPTED status")).toBeInTheDocument();
     expect(mockToast).toHaveBeenCalledWith("Trade is not in ACCEPTED status", "error");
     await waitFor(() => expect(m.listLeagueTrades).toHaveBeenCalledTimes(2));
+  });
+
+  it("sends no date at the close step (period still active, past its end)", async () => {
+    const CLOSING = { ...ACTIVE, startDate: "2019-01-01T12:00:00.000Z", endDate: "2020-01-01T12:00:00.000Z" };
+    m.getLeaguePeriods.mockResolvedValue([DONE, CLOSING, PENDING] as any);
+    renderPage();
+    await screen.findByText("To process · 1");
+    fireEvent.click(screen.getByRole("button", { name: "Process" }));
+    expect(await screen.findByText("Process, effective tomorrow?")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Process trade" }));
+    await waitFor(() => expect(m.processLeagueTrade).toHaveBeenCalledWith(1, undefined));
+  });
+
+  it("an IL player does not change active counts (team at cap stays fine)", async () => {
+    m.getCommissionerRosters.mockResolvedValue([ros(2, 101, "IL"), ros(4, 401)] as any);
+    m.listLeagueTrades.mockResolvedValue([{ ...accepted, items: [accepted.items[0], accepted.items[2]] }] as any);
+    renderPage();
+    expect(await screen.findByText("Both rosters stay at 23")).toBeInTheDocument();
+    expect(screen.queryByText(/would have/)).toBeNull();
+  });
+
+  it("omits the rule half of the header when rules fail to load", async () => {
+    m.getCommissionerRules.mockRejectedValue(new Error("boom"));
+    renderPage();
+    await screen.findByText("To process · 1");
+    expect(screen.queryByText(/Rule:/)).toBeNull();
+    expect(screen.getByText("Every trade waits for you")).toBeInTheDocument();
   });
 
   it("flags a team that would end over the cap", async () => {
