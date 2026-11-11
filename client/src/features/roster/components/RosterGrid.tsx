@@ -63,7 +63,7 @@ interface RosterGridProps {
    * Drop the per-card `h-96` height constraint so each team card grows
    * to fit all rows without internal scroll. Use this when the grid
    * renders ONE team as the primary pane (e.g., the focused single-team
-   * view in CommissionerRosterTool); leave default (false) for the
+   * view on the commissioner team roster page); leave default (false) for the
    * 8-up grid where fixed-height cards keep the layout uniform.
    */
   unbounded?: boolean;

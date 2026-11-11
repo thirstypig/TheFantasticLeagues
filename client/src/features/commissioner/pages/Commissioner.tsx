@@ -26,7 +26,6 @@ import { getLeagueBalances } from "../api";
 import type { TeamBalanceRow } from "@shared/api/commissioner";
 import { getInviteCode, regenerateInviteCode } from "../../leagues/api";
 import { getTransactions, type TransactionEvent } from "../../transactions/api";
-import CommissionerRosterTool from "../components/CommissionerRosterTool";
 import CommissionerControls from "../components/CommissionerControls";
 import CommissionerTradeTool from "../components/CommissionerTradeTool";
 import RosterControls from "../../roster/components/RosterControls";
@@ -280,7 +279,7 @@ function initials(name: string): string {
 }
 
 export type CommissionerTabKey = 'overview' | 'people' | 'settings' | 'ops' | 'finances' | 'archive';
-export type CommissionerOpsSubTab = 'roster' | 'trades' | 'ghost-il' | 'bulk';
+export type CommissionerOpsSubTab = 'trades' | 'bulk';
 
 export interface CommissionerProps {
   /** Seeds the initial top-level tab (section pages render one pane). */
@@ -373,7 +372,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
 
   // Operations sub-tab
   type OpsSubTab = CommissionerOpsSubTab;
-  const [opsSubTab, setOpsSubTab] = useState<OpsSubTab>(initialOpsSubTab ?? 'roster');
+  const [opsSubTab, setOpsSubTab] = useState<OpsSubTab>(initialOpsSubTab ?? 'trades');
 
   // Teams & People sub-tab
   type PeopleSubTab = 'teams' | 'members' | 'invites' | 'invite-code';
@@ -1020,7 +1019,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                                 <div style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>{ghostIl!.totalGhosts} player{ghostIl!.totalGhosts !== 1 ? "s" : ""} need activation</div>
                                 <div style={{ fontSize: 13, color: "var(--am-text-muted)" }}>MLB activated — still in fantasy IL slot</div>
                               </div>
-                              <button className="cm-btn sm danger" onClick={() => { setActiveTab("ops"); setOpsSubTab("ghost-il"); }}>Fix</button>
+                              <Link className="cm-btn sm danger" to={`/commissioner/${lid}/rosters`} style={{ textDecoration: "none" }}>Fix</Link>
                             </div>
                           )}
                           {pendingInvites.length > 0 && (
@@ -1062,9 +1061,9 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                         <button className="cm-btn" style={{ justifyContent: "flex-start", width: "100%" }} onClick={() => { setActiveTab("people"); setPeopleSubTab("members"); }}>
                           + Invite member
                         </button>
-                        <button className="cm-btn" style={{ justifyContent: "flex-start", width: "100%" }} onClick={() => { setActiveTab("ops"); setOpsSubTab("roster"); }}>
+                        <Link to={`/commissioner/${lid}/rosters`} className="cm-btn" style={{ justifyContent: "flex-start", width: "100%", textDecoration: "none", color: "var(--am-text)" }}>
                           Manage rosters
-                        </button>
+                        </Link>
                         <button className="cm-btn" style={{ justifyContent: "flex-start", width: "100%" }} onClick={() => { setActiveTab("settings"); }}>
                           League settings
                         </button>
@@ -1505,22 +1504,20 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
             {activeTab === 'ops' && (
               <div className="cm-col cm-fade-in">
                 {/* Ghost-IL urgent alert */}
-                {ghostIl && ghostIl.totalTeamsWithGhosts > 0 && opsSubTab !== 'ghost-il' && (
+                {ghostIl && ghostIl.totalTeamsWithGhosts > 0 && (
                   <div className="cm-alert warn cm-row" style={{ justifyContent: "space-between" }}>
                     <span style={{ fontSize: 13 }}>
                       <strong>{ghostIl.totalTeamsWithGhosts} team{ghostIl.totalTeamsWithGhosts === 1 ? "" : "s"}</strong>{" "}
                       {ghostIl.totalTeamsWithGhosts === 1 ? "has" : "have"} player{ghostIl.totalGhosts === 1 ? "" : "s"} needing activation — MLB has activated them but they're still in a fantasy IL slot.
                     </span>
-                    <button className="cm-btn sm danger" onClick={() => setOpsSubTab('ghost-il')}>Fix now</button>
+                    <Link className="cm-btn sm danger" to={`/commissioner/${lid}/rosters`} style={{ textDecoration: "none" }}>Fix now</Link>
                   </div>
                 )}
 
                 {/* Sub-tab strip */}
                 <div className="cm-subtabs">
                   {([
-                    { key: 'roster'   as OpsSubTab, label: 'Manual Roster' },
                     { key: 'trades'   as OpsSubTab, label: 'Trade Review' },
-                    { key: 'ghost-il' as OpsSubTab, label: 'Activate Needed', badge: ghostIl?.totalGhosts ?? 0 },
                     { key: 'bulk'     as OpsSubTab, label: 'Bulk',
                       hidden: !gating.canKeepers && !gating.canAuction && gating.isReadOnly },
                   ] as { key: OpsSubTab; label: string; badge?: number; hidden?: boolean }[])
@@ -1536,23 +1533,6 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                     })}
                 </div>
 
-                {/* Sub-tab: Manual Roster */}
-                {opsSubTab === 'roster' && !gating.isReadOnly && (
-                  <div className="cm-card" style={{ padding: 0 }}>
-                    <CommissionerRosterTool
-                      leagueId={lid}
-                      teams={overview.teams}
-                      onUpdate={() => { /* no-op */ }}
-                      showTrades={false}
-                    />
-                  </div>
-                )}
-                {opsSubTab === 'roster' && gating.isReadOnly && (
-                  <div className="cm-card" style={{ textAlign: "center", color: "var(--am-text-muted)", fontSize: 13, padding: 32 }}>
-                    Roster edits are not available in the current season phase.
-                  </div>
-                )}
-
                 {/* Sub-tab: Trade Review */}
                 {opsSubTab === 'trades' && (
                   <div className="cm-card flush">
@@ -1562,56 +1542,6 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                     <div style={{ padding: 14 }}>
                       <CommissionerTradeTool leagueId={lid} teams={overview.teams} />
                     </div>
-                  </div>
-                )}
-
-                {/* Sub-tab: IL & Ghost-IL */}
-                {opsSubTab === 'ghost-il' && (
-                  <div className="cm-col">
-                    {ghostIl === null ? (
-                      <div className="cm-card" style={{ textAlign: "center", color: "var(--am-text-muted)", fontSize: 13, padding: 32 }}>
-                        Loading IL status…
-                      </div>
-                    ) : ghostIl.totalTeamsWithGhosts === 0 ? (
-                      <div className="cm-card" style={{ textAlign: "center", color: "var(--am-text-muted)", fontSize: 13, padding: 32 }}>
-                        No players need activation. All IL slots look clean.
-                      </div>
-                    ) : (
-                      <div className="cm-card flush">
-                        <div className="cm-section-head">
-                          <div className="cm-h2" style={{ color: "var(--am-negative)" }}>
-                            {ghostIl.totalGhosts} player{ghostIl.totalGhosts === 1 ? "" : "s"} need activation across {ghostIl.totalTeamsWithGhosts} team{ghostIl.totalTeamsWithGhosts === 1 ? "" : "s"}
-                          </div>
-                          <div className="cm-spacer" />
-                          <button className="cm-btn sm" onClick={() => setOpsSubTab('roster')}>Fix in Roster tab →</button>
-                        </div>
-                        <div style={{ padding: "6px 0" }}>
-                          <p style={{ padding: "0 14px 8px", fontSize: 13, color: "var(--am-text-muted)" }}>
-                            These players are in fantasy IL slots but their MLB status no longer qualifies them. New IL stashes are blocked until resolved.
-                          </p>
-                          <table className="cm-table">
-                            <thead>
-                              <tr>
-                                <th>Team</th>
-                                <th>Player</th>
-                                <th>MLB Status</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {ghostIl.teams.flatMap(t =>
-                                t.ghosts.map(g => (
-                                  <tr key={`${t.teamId}-${g.playerId}`}>
-                                    <td style={{ fontWeight: 600 }}>{t.teamName}</td>
-                                    <td>{g.playerName}</td>
-                                    <td><span className="cm-chip neg" style={{ fontSize: 13 }}>{g.currentMlbStatus}</span></td>
-                                  </tr>
-                                ))
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
 

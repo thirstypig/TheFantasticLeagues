@@ -70,9 +70,6 @@ vi.mock("../../../contexts/LeagueContext", () => ({
 }));
 
 // ── Child component mocks ────────────────────────────────────────────────────
-vi.mock("../components/CommissionerRosterTool", () => ({
-  default: () => <div data-testid="roster-tool" />,
-}));
 vi.mock("../components/BulkOpsPanel", () => ({
   default: () => <div data-testid="bulk-ops-panel" />,
 }));
@@ -218,7 +215,7 @@ describe("Commissioner — ghost-IL banner on Operations tab", () => {
     await waitFor(() => expect(getGhostIlSummary).toHaveBeenCalledWith(1));
   });
 
-  it("renders the ghost-IL banner when ghosts exist; Fix now switches to the IL sub-tab with player list", async () => {
+  it("renders the ghost-IL banner when ghosts exist; Fix now links to the Rosters screen", async () => {
     vi.mocked(getGhostIlSummary).mockResolvedValue({
       totalTeamsWithGhosts: 2,
       totalGhosts: 3,
@@ -239,13 +236,12 @@ describe("Commissioner — ghost-IL banner on Operations tab", () => {
       ],
     });
     await openOpsTab();
-    // Banner appears with team count; player table is not yet shown
     await waitFor(() => expect(screen.getByText(/2 teams/i)).toBeInTheDocument());
+    expect(screen.getByRole("link", { name: /Fix now/i })).toHaveAttribute("href", "/commissioner/1/rosters");
+    // The legacy Activate Needed sub-tab and its player table are gone.
+    expect(screen.queryByText(/Activate Needed/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Manual Roster/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Mike Trout/)).not.toBeInTheDocument();
-    // "Fix now" switches to the IL & Ghost-IL sub-tab, which renders the table
-    fireEvent.click(screen.getByRole("button", { name: /Fix now/i }));
-    await waitFor(() => expect(screen.getByText(/Mike Trout/)).toBeInTheDocument());
-    expect(screen.getByText(/Aaron Judge/)).toBeInTheDocument();
   });
 
   it("hides the activation-needed banner when no teams have flagged players", async () => {
