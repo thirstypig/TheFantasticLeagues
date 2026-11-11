@@ -14,6 +14,7 @@ vi.mock("../api", () => ({
   getLeaguePeriods: vi.fn(),
   getMovesSinceStart: vi.fn(),
   setPeriodStatus: vi.fn(),
+  getRosterCheck: vi.fn(),
 }));
 
 import * as api from "../api";
@@ -45,6 +46,7 @@ beforeEach(() => {
   m.getLeaguePeriods.mockResolvedValue([period()]);
   m.getMovesSinceStart.mockResolvedValue([]);
   m.setPeriodStatus.mockResolvedValue(period({ status: "active" }));
+  m.getRosterCheck.mockResolvedValue({ cap: 23, teams: [{ teamId: 1, teamName: "Devil Dawgs", activeCount: 23, over: false }, { teamId: 2, teamName: "Skunk Dogs", activeCount: 22, over: false }] });
 });
 
 afterEach(() => {
@@ -70,15 +72,60 @@ describe("StartPeriodPage", () => {
     expect(await screen.findByText("2 days late")).toBeTruthy();
   });
 
-  it("lists moves made while pending with the player name", async () => {
+  it("groups moves by team: adds in positive, drops in negative, link to rosters", async () => {
     m.getMovesSinceStart.mockResolvedValue([
       { id: 1, teamName: "Devil Dawgs", playerName: "Webb", transactionType: "ADD", effDate: "2026-09-30T00:00:00.000Z" },
+      { id: 2, teamName: "Devil Dawgs", playerName: "Sheehan", transactionType: "DROP", effDate: "2026-09-30T00:00:00.000Z" },
+      { id: 3, teamName: "Skunk Dogs", playerName: "Ohtani", transactionType: "ADD", effDate: "2026-10-01T00:00:00.000Z" },
     ]);
     renderAt(URL);
-    expect(await screen.findByText(/1 move made while pending/)).toBeTruthy();
-    expect(screen.getByText(/Webb/)).toBeTruthy();
-    const link = screen.getByText(/Webb/).closest("a");
-    expect(link?.getAttribute("href")).toBe("/commissioner/20/rosters");
+    expect(await screen.findByText("Moves since the start date · 3")).toBeTruthy();
+    const dawgs = screen.getByTestId("team-moves-Devil Dawgs");
+    expect(within(dawgs).getByText("Devil Dawgs")).toBeTruthy();
+    const add = within(dawgs).getByText(/Webb/);
+    const drop = within(dawgs).getByText(/Sheehan/);
+    expect(add.getAttribute("style")).toContain("--am-positive");
+    expect(drop.getAttribute("style")).toContain("--am-negative");
+    expect(within(screen.getByTestId("team-moves-Skunk Dogs")).getByText(/Ohtani/)).toBeTruthy();
+    expect(screen.getByText(/Webb/).closest("a")?.getAttribute("href")).toBe("/commissioner/20/rosters");
+  });
+
+  it("shows the dates with weekday and the day count", async () => {
+    renderAt(URL);
+    expect(await screen.findByText("Tue Sep 29 – Mon Oct 12")).toBeTruthy();
+    expect(screen.getByText("14 days")).toBeTruthy();
+  });
+
+  it("roster check: all within the cap", async () => {
+    renderAt(URL);
+    expect(await screen.findByText("✓ All 2 rosters within 23")).toBeTruthy();
+  });
+
+  it("roster check: over-limit teams link to rosters and do not block Start", async () => {
+    m.getRosterCheck.mockResolvedValue({ cap: 23, teams: [{ teamId: 1, teamName: "Devil Dawgs", activeCount: 25, over: true }] });
+    renderAt(URL);
+    const link = await screen.findByRole("link", { name: /Devil Dawgs 25 \/ 23/ });
+    expect(link.getAttribute("href")).toBe("/commissioner/20/rosters");
+    await waitFor(() => expect((screen.getByRole("button", { name: "Start Period 8" }) as HTMLButtonElement).disabled).toBe(false));
+  });
+
+  it("roster check failure does not block Start", async () => {
+    m.getRosterCheck.mockRejectedValue(new Error("x"));
+    renderAt(URL);
+    expect(await screen.findByText("Couldn’t load roster sizes.")).toBeTruthy();
+    await waitFor(() => expect((screen.getByRole("button", { name: "Start Period 8" }) as HTMLButtonElement).disabled).toBe(false));
+  });
+
+  it("nothing is written until the sheet is confirmed; cancel writes nothing", async () => {
+    renderAt(URL);
+    await screen.findByText("No moves since the start date.");
+    fireEvent.click(screen.getByRole("button", { name: "Start Period 8" }));
+    const sheet = await screen.findByRole("dialog");
+    expect(within(sheet).getByText("Start Period 8?")).toBeTruthy();
+    expect(within(sheet).getByText("Owners see the new rosters right away.")).toBeTruthy();
+    expect(m.setPeriodStatus).not.toHaveBeenCalled();
+    fireEvent.click(within(sheet).getByRole("button", { name: /Cancel/ }));
+    expect(m.setPeriodStatus).not.toHaveBeenCalled();
   });
 
   it("says already started when the period is not pending", async () => {
