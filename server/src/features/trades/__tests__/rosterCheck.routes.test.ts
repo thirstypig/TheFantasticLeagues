@@ -67,6 +67,7 @@ import express from "express";
 import supertest from "supertest";
 import { prisma } from "../../../db/prisma.js";
 import { tradesRouter } from "../routes.js";
+import { sendPushToTeamOwners } from "../../../lib/pushService.js";
 
 const mockPrisma = prisma as any;
 
@@ -254,6 +255,21 @@ describe("POST / (propose) roster checks", () => {
     const res = await supertest(app).post("/").send(body([item(100, 1, 2), item(200, 2, 1)]));
     expect(res.status).toBe(200);
     expect(mockPrisma.trade.create).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("POST / (propose) notifications", () => {
+  it("push notification for a proposal links to /trades", async () => {
+    seedDb(mockPrisma, [...rows(1, 100, 23), ...rows(2, 200, 23)]);
+    mockPrisma.team.findMany.mockResolvedValueOnce(TEAMS.map((t) => ({ ...t, leagueId: 20 })));
+    const res = await supertest(app).post("/").send({ leagueId: 20, proposerTeamId: 1, items: [item(100, 1, 2), item(200, 2, 1)] });
+    expect(res.status).toBe(200);
+    expect(sendPushToTeamOwners).toHaveBeenCalledWith(
+      2,
+      expect.objectContaining({ url: "/trades" }),
+      "tradeProposal",
+      1,
+    );
   });
 });
 

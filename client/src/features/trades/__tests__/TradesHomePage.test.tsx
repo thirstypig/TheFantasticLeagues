@@ -155,6 +155,52 @@ describe("TradesHomePage", () => {
     expect(within(card(12)).queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("only a recipient gets Accept/Reject; a sender-only team sees Waiting", async () => {
+    // Skunk Dogs (4) proposes; I (1) receive from 4 and also send to 3? Use 3 teams: A=4 proposes, 4->1 and 3->4.
+    const THREE = trade(21, "PROPOSED", SKUNK, [pItem(4, 1, player(701, "To Me")), pItem(1, 3, player(702, "Mine Out")), pItem(3, 4, player(703, "To Skunk"))]);
+    // A trade where I only SEND: Skunk proposes, I send to Skunk, Black Sox sends to Skunk... recipient is Skunk only.
+    const SENDER_ONLY = trade(22, "PROPOSED", SKUNK, [pItem(1, 2, player(711, "Sender Only")), pItem(2, 4, player(712, "Elsewhere"))]);
+    m.getTrades.mockResolvedValue({ trades: [THREE, SENDER_ONLY] } as any);
+    renderPage();
+    await screen.findByTestId("trade-21");
+    expect(within(card(21)).getByRole("button", { name: "Accept" })).toBeInTheDocument();
+    expect(within(card(22)).queryByRole("button", { name: "Accept" })).not.toBeInTheDocument();
+    expect(within(card(22)).queryByRole("button", { name: "Reject" })).not.toBeInTheDocument();
+    expect(within(card(22)).getByText("Waiting")).toBeInTheDocument();
+  });
+
+  it("names every other team in the confirm title", async () => {
+    const MULTI = trade(23, "PROPOSED", SKUNK, [pItem(4, 1, player(721, "A")), pItem(2, 1, player(722, "B"))]);
+    m.getTrades.mockResolvedValue({ trades: [MULTI] } as any);
+    renderPage();
+    await screen.findByTestId("trade-23");
+    fireEvent.click(within(card(23)).getByRole("button", { name: "Accept" }));
+    expect(await screen.findByText(/Accept this trade from Bombers and Skunk Dogs\?/)).toBeInTheDocument();
+  });
+
+  it("raises an error toast when an action fails", async () => {
+    m.acceptTrade.mockRejectedValue(new Error("Trade is not in PROPOSED status"));
+    renderPage();
+    await screen.findByTestId("trade-11");
+    fireEvent.click(within(card(11)).getByRole("button", { name: "Accept" }));
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Accept trade" }));
+    await waitFor(() => expect(toast).toHaveBeenCalledWith("Trade is not in PROPOSED status", "error"));
+  });
+
+  it("lists Done newest first and caps at 20", async () => {
+    const many = Array.from({ length: 25 }, (_, i) =>
+      trade(100 + i, "PROCESSED", ME, [pItem(1, 2, player(900 + i, `P${i}`)), pItem(2, 1, player(950 + i, `Q${i}`))],
+        new Date(Date.UTC(2026, 4, 1 + i, 12)).toISOString()));
+    m.getTrades.mockResolvedValue({ trades: many } as any);
+    renderPage();
+    await screen.findByText("Done this season");
+    const ids = screen.getAllByTestId(/^trade-/).map((el) => el.getAttribute("data-testid"));
+    expect(ids).toHaveLength(20);
+    expect(ids[0]).toBe("trade-124"); // newest
+    expect(ids[19]).toBe("trade-105");
+    expect(screen.queryByTestId("trade-104")).not.toBeInTheDocument();
+  });
+
   it("New trade links to /trades/new and reads Continue trade when a draft exists", async () => {
     const { unmount } = renderPage();
     const link = await screen.findByRole("link", { name: "+ New trade" });

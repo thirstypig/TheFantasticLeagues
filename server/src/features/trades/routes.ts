@@ -243,7 +243,7 @@ router.post("/", requireAuth, validateBody(tradeProposalSchema), requireSeasonSt
         title: "Trade Proposal",
         body: `${pTeam?.name ?? "A team"} has proposed a trade in ${lg?.name ?? "your league"}`,
         tag: `trade-${trade.id}`,
-        url: `/activity?leagueId=${leagueId}`,
+        url: "/trades",
       }, "tradeProposal", req.user!.id).catch(err => logger.warn({ err }, "Push notification failed"));
     }
   }

@@ -124,10 +124,20 @@ export default function TradesHomePage() {
     .sort(byNewest);
   const done = mine.filter((t) => DONE_STATUSES.includes(t.status)).sort(byNewest).slice(0, DONE_LIMIT);
 
+  /** Every other team in the trade, A to Z: "Bombers and Skunk Dogs". */
   const counterparty = (t: TradeProposal): string => {
-    const other = t.items.map((i) => (i.senderId === me ? i.recipient : i.sender)).find((x) => x && x.id !== me);
-    return other?.name ?? "another team";
+    const names = new Map<number, string>();
+    for (const i of t.items) {
+      if (i.sender && i.senderId !== me) names.set(i.senderId, i.sender.name);
+      if (i.recipient && i.recipientId !== me) names.set(i.recipientId, i.recipient.name);
+    }
+    const list = [...names.values()].sort((a, b) => a.localeCompare(b));
+    if (list.length === 0) return "another team";
+    if (list.length === 1) return list[0];
+    return `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}`;
   };
+  /** The server lets only a team that receives something accept or reject. */
+  const canAnswer = (t: TradeProposal) => t.items.some((i) => i.recipientId === me);
 
   async function run() {
     if (!pending || busy) return;
@@ -140,7 +150,9 @@ export default function TradesHomePage() {
       else await cancelTrade(id);
       toast(kind === "accept" ? "Trade accepted" : kind === "reject" ? "Trade rejected" : "Offer cancelled", "success");
     } catch (e) {
-      setErrors((x) => ({ ...x, [id]: e instanceof Error ? e.message : "Something went wrong." }));
+      const msg = e instanceof Error ? e.message : "Something went wrong.";
+      setErrors((x) => ({ ...x, [id]: msg }));
+      toast(msg, "error"); // the card message can be replaced by the reload; the toast survives it
     } finally {
       setPending(null);
       setBusy(false);
@@ -175,6 +187,9 @@ export default function TradesHomePage() {
             {lists(t)}
             {win && !win.open && win.message && <p style={{ margin: 0, ...SMALL }}>{win.message}</p>}
             {errorOn(t.id)}
+            {!canAnswer(t) ? (
+              <div><span style={CHIP}>Waiting</span></div>
+            ) : (
             <div style={{ display: "flex", gap: 8 }}>
               <button type="button" style={{ ...BTN, flex: 1 }} onClick={() => setPending({ id: t.id, kind: "reject" })}>Reject</button>
               <button
@@ -185,6 +200,7 @@ export default function TradesHomePage() {
                 Accept
               </button>
             </div>
+            )}
           </div>
         ))}
       </div>
