@@ -178,7 +178,7 @@ describe("RostersPage", () => {
     const phone = await screen.findByTestId("rosters-phone");
     await within(phone).findByText("Black Sox");
     expect(within(phone).getAllByTestId("team-row")).toHaveLength(3);
-    expect(within(phone).getAllByText("–")).toHaveLength(3);
+    expect(within(phone).getAllByText("–")).toHaveLength(2);
     expect(screen.getByText("Couldn’t check roster sizes.")).toBeTruthy();
   });
 
