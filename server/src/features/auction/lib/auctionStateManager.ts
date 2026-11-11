@@ -29,6 +29,12 @@ export const nominationTimers = new Map<number, NodeJS.Timeout>();
 // --- Concurrent Finish Protection ---
 export const finishLocks = new Map<number, boolean>();
 
+// --- Concurrent Nominate Protection ---
+// Held by nominatePlayer from its first line (before any await) until it
+// returns, so a manual /nominate and the turn-timeout auto-put-up can never
+// both create a lot for the same turn.
+export const nominateLocks = new Map<number, boolean>();
+
 export function createDefaultState(leagueId: number): AuctionState {
   return {
     leagueId,
@@ -487,8 +493,10 @@ export async function handleNominationTimeout(leagueId: number, state: AuctionSt
   const candidate = list.length > 0 ? await findFirstEligible(leagueId, state, teamId, list) : null;
 
   // Something may have changed while we were querying (pause, manual
-  // nomination, commissioner skip). Only act if the turn is still ours.
+  // nomination, commissioner skip). Only act if the turn is still ours, and
+  // never skip a turn while a manual nomination for it is mid-flight.
   if (!isStillTurnOf(state, teamId)) return;
+  if (nominateLocks.get(leagueId)) return;
 
   if (candidate) {
     const result = await nominatePlayer(leagueId, state, { ...candidate, nominatorTeamId: teamId, startBid: 1 });
@@ -496,10 +504,12 @@ export async function handleNominationTimeout(leagueId: number, state: AuctionSt
       logger.info({ leagueId, teamId, playerId: candidate.playerId }, "Auto-nominated from list on turn timeout");
       return;
     }
-    // A late check in the core refused it. Fall through to the skip so the
+    // Another nomination got there first, or the turn moved on: nothing to do.
+    if (result.conflict) return;
+    // A late validity check refused it. Fall through to the skip so the
     // auction never stalls on a team.
     logger.warn({ leagueId, teamId, error: result.error }, "Auto-nominate refused; skipping turn");
-    if (!isStillTurnOf(state, teamId)) return;
+    if (!isStillTurnOf(state, teamId) || nominateLocks.get(leagueId)) return;
   }
 
   skipTurnOnTimeout(leagueId, state, teamId);
@@ -573,6 +583,7 @@ function skipTurnOnTimeout(leagueId: number, state: AuctionState, teamId: number
   // Auto-advance queue index (skips full teams)
   if (!advanceQueue(state)) {
     // All teams full — auction complete
+    clearNominationTimer(leagueId);
     state.status = 'completed';
     state.nomination = null;
     state.nominationEndTime = null;
@@ -602,7 +613,14 @@ export interface NominatePlayerInput {
   isPitcher: boolean;
 }
 
-export type NominatePlayerResult = { ok: true } | { ok: false; error: string };
+/**
+ * `conflict: true` means another nomination or a turn change won a race
+ * (route maps it to 409); otherwise the request itself was invalid (400).
+ */
+export type NominatePlayerResult = { ok: true } | { ok: false; error: string; conflict: boolean };
+
+export const NOMINATION_IN_PROGRESS = "Nomination already in progress";
+export const TURN_NO_LONGER_ACTIVE = "Turn no longer active";
 
 /**
  * Put a player up for bids. Holds ONLY the shared mechanics: budget, rostered,
@@ -616,27 +634,62 @@ export async function nominatePlayer(
   state: AuctionState,
   input: NominatePlayerInput,
 ): Promise<NominatePlayerResult> {
+  // Taken synchronously, before the first await (same pattern as finishLocks).
+  if (nominateLocks.get(leagueId)) return { ok: false, error: NOMINATION_IN_PROGRESS, conflict: true };
+  nominateLocks.set(leagueId, true);
+  let result: NominatePlayerResult = { ok: false, error: TURN_NO_LONGER_ACTIVE, conflict: true };
+  try {
+    result = await nominateUnderLock(leagueId, state, input);
+    return result;
+  } finally {
+    nominateLocks.delete(leagueId);
+    // Edge case: the turn clock fired while this (failed) nomination held the
+    // lock, and the timeout handler yielded to it. Re-arm the clock so the
+    // turn can't sit with no clock at all.
+    if (!result.ok && state.status === 'nominating' && !state.paused && !nominationTimers.has(leagueId)) {
+      scheduleNominationTimer(leagueId, state);
+    }
+  }
+}
+
+/** True while it is still `teamId`'s unpaused turn and no lot is up. */
+function turnStillOpenFor(state: AuctionState, teamId: number): boolean {
+  return state.status === 'nominating' && !state.paused && !state.nomination
+    && state.queue[state.queueIndex] === teamId;
+}
+
+async function nominateUnderLock(
+  leagueId: number,
+  state: AuctionState,
+  input: NominatePlayerInput,
+): Promise<NominatePlayerResult> {
   const { nominatorTeamId, playerId, playerName, startBid, positions, team, isPitcher } = input;
 
   const teamObj = state.teams.find(t => t.id === nominatorTeamId);
-  if (!teamObj) return { ok: false, error: "Invalid team" };
-  if (teamObj.maxBid < startBid) return { ok: false, error: "Insufficent funds" };
+  if (!teamObj) return { ok: false, error: "Invalid team", conflict: false };
+  if (teamObj.maxBid < startBid) return { ok: false, error: "Insufficent funds", conflict: false };
 
   // Guard: prevent nominating already-drafted players
   if (soldInThisAuction(state).has(Number(playerId))) {
-    return { ok: false, error: "Player already on a roster" };
+    return { ok: false, error: "Player already on a roster", conflict: false };
   }
   const dbPlayer = await prisma.player.findFirst({ where: { mlbId: Number(playerId) } });
   if (dbPlayer) {
     const existing = await prisma.roster.findFirst({
       where: { playerId: dbPlayer.id, team: { leagueId }, releasedAt: null }
     });
-    if (existing) return { ok: false, error: "Player already on a roster" };
+    if (existing) return { ok: false, error: "Player already on a roster", conflict: false };
   }
 
   // Check position limits for the nominating team
   const nomPosError = checkPositionLimit(nominatorTeamId, isPitcher, state, positions);
-  if (nomPosError) return { ok: false, error: nomPosError };
+  if (nomPosError) return { ok: false, error: nomPosError, conflict: false };
+
+  // The awaits above yielded; re-check the turn right before the first write
+  // (a pause, skip or undo may have landed meanwhile).
+  if (!turnStillOpenFor(state, nominatorTeamId)) {
+    return { ok: false, error: TURN_NO_LONGER_ACTIVE, conflict: true };
+  }
 
   // Clear nomination timer (team is nominating)
   clearNominationTimer(leagueId);

@@ -79,6 +79,10 @@ import {
   clearNominationTimer,
   createDefaultState,
   scheduleNominationTimer,
+  handleNominationTimeout,
+  nominateLocks,
+  NOMINATION_IN_PROGRESS,
+  TURN_NO_LONGER_ACTIVE,
 } from "../lib/auctionStateManager.js";
 import type { AuctionState, AuctionTeam } from "../types.js";
 
@@ -163,6 +167,7 @@ async function flush() {
 beforeEach(() => {
   vi.clearAllMocks();
   auctionStates.clear();
+  nominateLocks.clear();
   owners.clear();
   owners.set(OWNER_A.id, [10]);
   owners.set(OWNER_B.id, [11]);
@@ -486,5 +491,206 @@ describe("turn clock runs out: auto-put-up from the team's list", () => {
     expect(s.nomination).toBeNull();
     expect(mockPrisma.auctionLot.create).not.toHaveBeenCalled();
     expect(mockBroadcast).not.toHaveBeenCalled();
+  });
+});
+
+// ── Fix round 1: nominate race + every state-returning route strips lists ──
+
+/** Poll (real timers) until `cond` holds. */
+async function until(cond: () => boolean) {
+  for (let i = 0; i < 200 && !cond(); i++) await new Promise((r) => setImmediate(r));
+  expect(cond()).toBe(true);
+}
+
+/** Make the next player.findFirst (the nominate core's first await) hang until released. */
+function gateCoreFirstAwait(): () => void {
+  let release!: () => void;
+  const gate = new Promise<void>((r) => { release = r; });
+  mockPrisma.player.findFirst.mockImplementationOnce(async ({ where }: any) => {
+    await gate;
+    return PLAYERS[where?.mlbId] ?? null;
+  });
+  return release;
+}
+
+const manualBody = (playerId: string, positions: string, isPitcher: boolean) => ({
+  leagueId: LEAGUE, nominatorTeamId: 10, playerId, playerName: PLAYERS[Number(playerId)].name,
+  startBid: 1, positions, team: "NYM", isPitcher,
+});
+
+const nominations = (s: AuctionState) => s.log.filter((e) => e.type === "NOMINATION");
+
+describe("nominate race: timeout auto-put-up vs manual /nominate", () => {
+  it("timeout mid-core + concurrent /nominate: the manual call gets 409, exactly one lot and one NOMINATION", async () => {
+    const s = seedNominating({ nominationLists: { 10: [104] } });
+    const release = gateCoreFirstAwait();
+
+    const timeout = handleNominationTimeout(LEAGUE, s);
+    await until(() => mockPrisma.player.findFirst.mock.calls.length === 1);
+
+    const res = await supertest(app).post("/nominate").set(as(OWNER_A)).send(manualBody("105", "SP", true));
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe(NOMINATION_IN_PROGRESS);
+
+    release();
+    await timeout;
+
+    expect(mockPrisma.auctionLot.create).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.auctionLot.create).toHaveBeenCalledWith({ data: { playerId: 4, nominatingTeamId: 10, status: "active" } });
+    expect(nominations(s)).toHaveLength(1);
+    expect(s.status).toBe("bidding");
+    expect(s.nomination?.playerId).toBe("104");
+    expect(nominateLocks.get(LEAGUE)).toBeFalsy();
+  });
+
+  it("manual /nominate mid-core + clock runs out: the timeout neither nominates nor skips; one lot, one NOMINATION", async () => {
+    const s = seedNominating({ nominationLists: { 10: [104] } });
+    const release = gateCoreFirstAwait();
+
+    const manual = supertest(app).post("/nominate").set(as(OWNER_A)).send(manualBody("105", "SP", true)).then((r) => r);
+    await until(() => mockPrisma.player.findFirst.mock.calls.length === 1);
+
+    await handleNominationTimeout(LEAGUE, s);
+    expect(s.queueIndex).toBe(0);
+    expect(s.log.some((e) => e.type === "SKIP")).toBe(false);
+
+    release();
+    const res = await manual;
+    expect(res.status).toBe(200);
+    expect(mockPrisma.auctionLot.create).toHaveBeenCalledTimes(1);
+    expect(nominations(s)).toHaveLength(1);
+    expect(s.nomination?.playerId).toBe("105");
+  });
+
+  it("two concurrent /nominate calls: one 200, one 409, one lot", async () => {
+    const s = seedNominating();
+    const release = gateCoreFirstAwait();
+    const first = supertest(app).post("/nominate").set(as(OWNER_A)).send(manualBody("104", "SS", false)).then((r) => r);
+    await until(() => mockPrisma.player.findFirst.mock.calls.length === 1);
+
+    const second = await supertest(app).post("/nominate").set(as(OWNER_A)).send(manualBody("105", "SP", true));
+    expect(second.status).toBe(409);
+    release();
+    expect((await first).status).toBe(200);
+    expect(mockPrisma.auctionLot.create).toHaveBeenCalledTimes(1);
+    expect(nominations(s)).toHaveLength(1);
+  });
+
+  it("a pause that lands while the core is awaiting: 409 'Turn no longer active', no lot written", async () => {
+    const s = seedNominating();
+    const release = gateCoreFirstAwait();
+    const req = supertest(app).post("/nominate").set(as(OWNER_A)).send(manualBody("104", "SS", false)).then((r) => r);
+    await until(() => mockPrisma.player.findFirst.mock.calls.length === 1);
+
+    s.paused = true;
+    release();
+    const res = await req;
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe(TURN_NO_LONGER_ACTIVE);
+    expect(mockPrisma.auctionLot.create).not.toHaveBeenCalled();
+    expect(s.nomination).toBeNull();
+    expect(s.status).toBe("nominating");
+    expect(nominateLocks.get(LEAGUE)).toBeFalsy();
+  });
+
+  it("a validation failure (400) still releases the lock", async () => {
+    const s = seedNominating();
+    s.teams[0].maxBid = 0;
+    const res = await supertest(app).post("/nominate").set(as(OWNER_A)).send(manualBody("104", "SS", false));
+    expect(res.status).toBe(400);
+    expect(nominateLocks.get(LEAGUE)).toBeFalsy();
+  });
+});
+
+describe("lists are pre-auction prep: they survive /init and /reset", () => {
+  function wireInitReset() {
+    mockPrisma.season.findFirst.mockResolvedValue(null);
+    mockPrisma.leagueRule.findMany.mockResolvedValue([]);
+    mockPrisma.leagueRule.findUnique.mockResolvedValue(null);
+    mockPrisma.team.findMany.mockResolvedValue([]);
+    mockPrisma.roster.deleteMany.mockResolvedValue({ count: 0 });
+  }
+
+  it("/init carries nominationLists into the new state", async () => {
+    wireInitReset();
+    seedNominating({ status: "not_started", nominationLists: { 10: [104, 105] } });
+    const res = await supertest(app).post("/init").set(as(ADMIN)).send({ leagueId: LEAGUE });
+    expect(res.status).toBe(200);
+    expect(auctionStates.get(LEAGUE)?.nominationLists).toEqual({ 10: [104, 105] });
+  });
+
+  it("/reset carries nominationLists into the new state", async () => {
+    wireInitReset();
+    seedNominating({ nominationLists: { 11: [101] } });
+    const res = await supertest(app).post("/reset").set(as(ADMIN)).send({ leagueId: LEAGUE });
+    expect(res.status).toBe(200);
+    expect(auctionStates.get(LEAGUE)?.nominationLists).toEqual({ 11: [101] });
+  });
+});
+
+describe("every route that returns the auction state strips nominationLists", () => {
+  const LISTS = { 10: [104, 105], 11: [101] };
+
+  function seedBiddingWithLists() {
+    const s = seedNominating({ status: "bidding", nominationLists: LISTS });
+    s.nomination = {
+      playerId: "104", playerName: "Good Pick", playerTeam: "ATL", positions: "SS",
+      isPitcher: false, nominatorTeamId: 10, currentBid: 5, highBidderTeamId: 11,
+      endTime: new Date(Date.now() + 10_000).toISOString(), timerDuration: 15, status: "running",
+    };
+    return s;
+  }
+
+  type Case = { name: string; setup: () => void; call: () => supertest.Test };
+  const post = (path: string, user: object, body: object = { leagueId: LEAGUE }) =>
+    () => supertest(app).post(path).set(as(user)).send(body);
+
+  const cases: Case[] = [
+    { name: "GET /state", setup: () => seedNominating({ nominationLists: LISTS }),
+      call: () => supertest(app).get(`/state?leagueId=${LEAGUE}`).set(as(OWNER_A)) },
+    { name: "POST /pause", setup: () => seedNominating({ nominationLists: LISTS }), call: post("/pause", ADMIN) },
+    { name: "POST /resume", setup: () => seedNominating({ paused: true, nominationLists: LISTS }), call: post("/resume", ADMIN) },
+    { name: "POST /undo-finish", setup: () => {
+        seedNominating({ nominationLists: LISTS });
+        mockPrisma.roster.findFirst.mockResolvedValueOnce({
+          id: 77, playerId: 5, price: 12, player: { name: "Sold Guy" }, team: { name: "Alpha" },
+        });
+        mockPrisma.team.findMany.mockResolvedValue([]);
+      }, call: post("/undo-finish", ADMIN) },
+    { name: "POST /init", setup: () => {
+        seedNominating({ status: "not_started", nominationLists: LISTS });
+        mockPrisma.season.findFirst.mockResolvedValue(null);
+        mockPrisma.leagueRule.findMany.mockResolvedValue([]);
+        mockPrisma.leagueRule.findUnique.mockResolvedValue(null);
+        mockPrisma.team.findMany.mockResolvedValue([]);
+      }, call: post("/init", ADMIN) },
+    { name: "POST /reset", setup: () => {
+        seedNominating({ nominationLists: LISTS });
+        mockPrisma.leagueRule.findMany.mockResolvedValue([]);
+        mockPrisma.leagueRule.findUnique.mockResolvedValue(null);
+        mockPrisma.team.findMany.mockResolvedValue([]);
+        mockPrisma.roster.deleteMany.mockResolvedValue({ count: 0 });
+      }, call: post("/reset", ADMIN) },
+    { name: "POST /finish", setup: () => {
+        seedBiddingWithLists();
+        mockPrisma.roster.create.mockResolvedValue({ id: 900 });
+        mockPrisma.team.findMany.mockResolvedValue([]);
+      }, call: post("/finish", ADMIN) },
+    { name: "POST /bid", setup: () => { seedBiddingWithLists(); },
+      call: post("/bid", OWNER_A, { leagueId: LEAGUE, bidderTeamId: 10, amount: 6 }) },
+    { name: "POST /nominate", setup: () => seedNominating({ nominationLists: LISTS }),
+      call: post("/nominate", OWNER_A, manualBody("104", "SS", false)) },
+    { name: "POST /skip-turn", setup: () => seedNominating({ nominationLists: LISTS }), call: post("/skip-turn", ADMIN) },
+  ];
+
+  it.each(cases)("$name", async ({ setup, call }) => {
+    setup();
+    // The live state really does hold a non-empty list before the call
+    expect(Object.keys(auctionStates.get(LEAGUE)?.nominationLists ?? {}).length).toBeGreaterThan(0);
+    const res = await call();
+    expect(res.status).toBe(200);
+    expect(res.body && typeof res.body).toBe("object");
+    expect("leagueId" in res.body).toBe(true); // it IS the state payload
+    expect("nominationLists" in res.body).toBe(false);
   });
 });

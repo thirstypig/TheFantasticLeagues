@@ -62,7 +62,7 @@ router.post("/nominate", requireAuth, validateBody(nominateSchema), requireSeaso
   const result = await nominatePlayer(leagueId, state, {
     nominatorTeamId, playerId, playerName, startBid, positions, team, isPitcher,
   });
-  if (!result.ok) return res.status(400).json({ error: result.error });
+  if (!result.ok) return res.status(result.conflict ? 409 : 400).json({ error: result.error });
 
   res.json(sanitizeStateForBroadcast(state));
 }));

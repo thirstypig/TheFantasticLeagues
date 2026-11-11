@@ -56,7 +56,10 @@ router.post("/init", requireAuth, requireAdmin, asyncHandler(async (req, res) =>
   // Load league sport for sport-aware position checking
   const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { sport: true } });
 
+  // Owners' "my lists" are pre-auction prep: carry them into the new state.
+  const priorLists = (await getState(leagueId)).nominationLists;
   const state = createDefaultState(leagueId);
+  if (priorLists) state.nominationLists = priorLists;
   state.config.sport = league?.sport ?? "baseball";
   state.config.budgetCap = budgetCap;
   state.config.rosterSize = rosterSize;
@@ -298,7 +301,10 @@ router.post("/reset", requireAuth, requireAdmin, asyncHandler(async (req, res) =
     const { budgetCap, rosterSize, pitcherCount, batterCount, bidTimer, nominationTimer } = await loadLeagueConfig(leagueId);
     const positionLimits = await loadPositionLimits(leagueId);
 
+    // Owners' "my lists" survive a reset (they are prep, not auction results).
+    const priorLists = (await getState(leagueId)).nominationLists;
     const state = createDefaultState(leagueId);
+    if (priorLists) state.nominationLists = priorLists;
     state.config.sport = league?.sport ?? "baseball";
     state.config.budgetCap = budgetCap;
     state.config.rosterSize = rosterSize;
