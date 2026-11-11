@@ -93,7 +93,7 @@ describe("StartPeriodPage", () => {
     m.getLeaguePeriods.mockResolvedValue([period({ id: 99 })]);
     renderAt(URL);
     expect(await screen.findByText("No next period set up")).toBeTruthy();
-    expect(screen.getByText(/Set up periods/).closest("a")?.getAttribute("href")).toBe("/commissioner/20/settings");
+    expect(screen.getByText(/Set up periods/).closest("a")?.getAttribute("href")).toBe("/commissioner/20/season");
   });
 
   it("Start is disabled with a reload hint when moves fail to load", async () => {

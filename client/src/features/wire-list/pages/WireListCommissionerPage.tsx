@@ -14,6 +14,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Glass, SectionLabel, Chip } from "../../../components/aurora/atoms";
 import "../wireList.css";
+import { CommissionerOnly } from "../../../components/shared/CommissionerOnly";
 import { ApiError } from "../../../api/base";
 import { getTeams } from "../../../api";
 import {
@@ -38,7 +39,7 @@ interface TeamMeta {
   code: string;
 }
 
-export default function WireListCommissionerPage() {
+function WireListCommissionerPageBody() {
   const { leagueId: leagueIdParam } = useParams<{ leagueId: string }>();
   const leagueId = Number(leagueIdParam);
 
@@ -605,3 +606,8 @@ const selectStyle: React.CSSProperties = {
   background: "var(--am-bg)", color: "var(--am-text)",
   border: "1px solid var(--am-border)", borderRadius: 6,
 };
+
+export default function WireListCommissionerPage() {
+  const leagueId = Number(useParams<{ leagueId: string }>().leagueId);
+  return <CommissionerOnly leagueId={leagueId}><WireListCommissionerPageBody /></CommissionerOnly>;
+}

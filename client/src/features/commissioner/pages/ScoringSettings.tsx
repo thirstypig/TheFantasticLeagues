@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { GripVertical, Trash2, Plus, AlertCircle } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { fetchJsonApi, ApiError } from "../../../api/base";
+import { CommissionerOnly } from "../components/CommissionerOnly";
 
 interface ScoringRule {
   id?: number;
@@ -37,7 +38,7 @@ interface SaveRosterConfigRequest {
   slots: Record<string, number>;
 }
 
-export function ScoringSettings() {
+function ScoringSettingsBody() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const [activeTab, setActiveTab] = useState<"rules" | "roster">("rules");
   const [sport, setSport] = useState<"NFL" | "NBA">("NFL");
@@ -468,4 +469,9 @@ export function ScoringSettings() {
       </div>
     </div>
   );
+}
+
+export function ScoringSettings() {
+  const leagueId = Number(useParams().leagueId);
+  return <CommissionerOnly leagueId={leagueId}><ScoringSettingsBody /></CommissionerOnly>;
 }

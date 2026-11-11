@@ -103,13 +103,13 @@ describe("CommissionerHub", () => {
     expect(within(start).getByText("Close Period 7 first, then start Period 8.")).toBeTruthy();
   });
 
-  it("with no pending period, 'Start next period' links to settings with a hint", async () => {
+  it("with no pending period, 'Start next period' links to Season and periods with a hint", async () => {
     m.getLeaguePeriods.mockResolvedValue([
       { id: 7, name: "Period 7", startDate: day(-14), endDate: day(3), status: "active" },
     ]);
     renderHub();
     const row = await screen.findByRole("link", { name: /Start next period/ });
-    expect(row.getAttribute("href")).toBe("/commissioner/20/settings");
+    expect(row.getAttribute("href")).toBe("/commissioner/20/season");
     expect(within(row).getByText("No next period set up")).toBeTruthy();
   });
 

@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation, Link } from "react-router-dom";
 
+vi.mock("../../../auth/AuthProvider", () => ({
+  useAuth: () => ({ me: { user: { isAdmin: true, memberships: [] } } }),
+}));
+
 // ── Commissioner API mock ─────────────────────────────────────────────────────
 vi.mock("../api", () => ({
   getCommissionerOverview: vi.fn(),

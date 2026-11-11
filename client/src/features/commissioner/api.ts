@@ -582,3 +582,55 @@ export async function saveCommissionerRules(leagueId: number, updates: Array<{ i
     body: JSON.stringify({ updates }),
   });
 }
+
+// --- Season and periods ---
+
+export interface SeasonPeriodRow {
+  id: number;
+  name: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+}
+
+export interface CurrentSeason {
+  id: number;
+  leagueId: number;
+  year: number;
+  status: string;
+  periods: SeasonPeriodRow[];
+}
+
+export async function getCommissionerSeason(leagueId: number): Promise<CurrentSeason | null> {
+  const resp = await fetchJsonApi<{ data: CurrentSeason | null }>(`${API_BASE}/seasons/current?leagueId=${leagueId}`);
+  return resp.data ?? null;
+}
+
+export async function createSeasonPeriod(data: {
+  leagueId: number;
+  seasonId: number;
+  name: string;
+  startDate: string;
+  endDate: string;
+}): Promise<SeasonPeriodRow> {
+  const resp = await fetchJsonApi<{ data: SeasonPeriodRow }>(`${API_BASE}/periods`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  return resp.data;
+}
+
+export async function updateSeasonPeriod(
+  periodId: number,
+  data: { name: string; startDate: string; endDate: string },
+): Promise<SeasonPeriodRow> {
+  const resp = await fetchJsonApi<{ data: SeasonPeriodRow }>(`${API_BASE}/periods/${periodId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+  return resp.data;
+}
+
+export async function deleteSeasonPeriod(periodId: number): Promise<void> {
+  await fetchJsonApi(`${API_BASE}/periods/${periodId}`, { method: "DELETE" });
+}

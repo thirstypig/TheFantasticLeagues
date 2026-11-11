@@ -132,7 +132,7 @@ function CommissionerHubBody() {
               {/* No pending period: send the commissioner to set one up rather than a dead row. */}
               <JobRow
                 label="Start next period"
-                to={startTarget ? `${base}/start/${startTarget.id}` : `${base}/settings`}
+                to={startTarget ? `${base}/start/${startTarget.id}` : `${base}/season`}
                 hint={startTarget ? startTarget.name : "No next period set up"}
               />
               <JobRow label="Fix a roster" to={`${base}/rosters`} />

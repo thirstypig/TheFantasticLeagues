@@ -81,7 +81,7 @@ function StartPeriodPageBody() {
     content = (
       <Glass padded>
         <p style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 600 }}>No next period set up</p>
-        <Link to={`${base}/settings`} style={LINK}>Set up periods ›</Link>
+        <Link to={`${base}/season`} style={LINK}>Set up periods ›</Link>
       </Glass>
     );
   } else if (period.status !== "pending") {
