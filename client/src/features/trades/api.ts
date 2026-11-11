@@ -25,7 +25,7 @@ export interface TradeProposal {
   id: number;
   leagueId: number;
   proposerId: number;
-  status: "PROPOSED" | "ACCEPTED" | "REJECTED" | "PROCESSED" | "PENDING" | "CANCELLED" | "VETOED";
+  status: "PROPOSED" | "ACCEPTED" | "REJECTED" | "PROCESSED" | "PENDING" | "CANCELLED" | "VETOED" | "REVERSED";
   items: TradeItem[];
   createdAt: string;
   aiAnalysis?: TradeAnalysisResult | null;

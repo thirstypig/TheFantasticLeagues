@@ -84,9 +84,11 @@ describe("buildLeagueSections", () => {
     const titles = buildLeagueSections({ ...base, canAuction: true, canAccessCommissioner: true }).map((s) => s.title);
     expect(titles).toEqual(["League", "Draft", "Rules & money", "Commissioner"]);
   });
-  it("lists Standings, Teams, Activity in League, plus Matchup only for H2H", () => {
-    expect(section({}, "League")!.links.map((l) => l.to)).toEqual(["/season", "/teams", "/activity"]);
-    expect(section({ isH2H: true }, "League")!.links.map((l) => l.to)).toEqual(["/season", "/teams", "/activity", "/matchup"]);
+  it("lists Standings, Teams, Activity, Trades in League, plus Matchup only for H2H", () => {
+    expect(section({}, "League")!.links.map((l) => l.to)).toEqual(["/season", "/teams", "/activity", "/trades"]);
+    expect(section({ isH2H: true }, "League")!.links.map((l) => l.to)).toEqual(["/season", "/teams", "/activity", "/trades", "/matchup"]);
+    const links = section({}, "League")!.links;
+    expect(links[links.findIndex((l) => l.label === "Activity") + 1].label).toBe("Trades");
   });
   it("lists Rules, Payouts, Archive under Rules & money", () => {
     expect(section({}, "Rules & money")!.links.map((l) => l.to)).toEqual(["/rules", "/payouts", "/archive"]);

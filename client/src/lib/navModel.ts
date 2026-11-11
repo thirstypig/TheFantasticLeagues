@@ -80,6 +80,7 @@ export function buildLeagueSections(args: {
     { to: "/season", label: "Standings" },
     { to: "/teams", label: "Teams" },
     { to: "/activity", label: "Activity" },
+    { to: "/trades", label: "Trades" },
   ];
   if (isH2H) leagueLinks.push({ to: "/matchup", label: "Matchup" });
 
