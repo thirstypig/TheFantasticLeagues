@@ -32,3 +32,12 @@ describe("players wire-list wrappers", () => {
     expect(fetchJsonApi.mock.calls[0][0]).toMatch(/periods\/3\/adds\?teamId=1$/);
   });
 });
+
+describe("getPlayerSeasonStatsMeta row normalizing", () => {
+  it("keeps the fantasy team name from the server", async () => {
+    fetchJsonApi.mockResolvedValue({ stats: [{ id: 94, mlb_id: "694973", player_name: "Paul Skenes", is_pitcher: true, positions: "P", ogba_team_code: "DOD", ogba_team_name: "Dodger Dawgs", ogba_team_id: 18 }] });
+    const { getPlayerSeasonStatsMeta } = await import("../api");
+    const { stats } = await getPlayerSeasonStatsMeta(987654);
+    expect(stats[0].ogba_team_name).toBe("Dodger Dawgs");
+  });
+});

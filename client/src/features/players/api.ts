@@ -71,6 +71,7 @@ function normalizeTwoWayRow(row: Record<string, any>): PlayerSeasonStat {
     player_name,
     mlb_full_name: String(row?.mlb_full_name ?? "").trim(),
     ogba_team_code: String(row?.ogba_team_code ?? row?.team ?? "").trim(),
+    ogba_team_name: String(row?.ogba_team_name ?? "").trim(),
     ogba_team_id: typeof row?.ogba_team_id === "number" ? row.ogba_team_id : null,
     ogba_slot: typeof row?.ogba_slot === "string" ? row.ogba_slot : null,
     group: role,

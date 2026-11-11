@@ -55,7 +55,7 @@ function mlbLabel(row: PlayerSeasonStat): string {
 function fantasyLabel(row: PlayerSeasonStat): string {
   const code = row.ogba_team_code;
   if (!code) return "Free agent";
-  return OGBA_TEAM_NAMES[code] || row.ogba_team_name || code;
+  return row.ogba_team_name || OGBA_TEAM_NAMES[code] || code;
 }
 
 function displayName(row: PlayerSeasonStat): string {

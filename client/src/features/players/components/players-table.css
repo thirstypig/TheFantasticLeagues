@@ -1,7 +1,7 @@
 .pt-wrap { overflow: visible; }
 .pt-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 15px; color: var(--am-text); }
 .pt-table th { position: sticky; top: 0; z-index: 2; background: var(--am-surface); border-bottom: 1px solid var(--am-border); padding: 6px 8px; text-align: left; font-size: 13px; font-weight: 700; color: var(--am-text-muted); white-space: nowrap; }
-.pt-table td { padding: 6px 8px; line-height: 20px; border-bottom: 1px solid var(--am-border); vertical-align: middle; font-variant-numeric: tabular-nums; }
+.pt-table td { padding: 4px 8px; line-height: 20px; border-bottom: 1px solid var(--am-border); vertical-align: middle; font-variant-numeric: tabular-nums; }
 .pt-c { text-align: center !important; }
 .pt-muted { color: var(--am-text-muted); }
 .pt-sort { display: inline-flex; align-items: center; gap: 4px; background: none; border: 0; padding: 0; min-height: 32px; font: inherit; color: inherit; cursor: pointer; }
@@ -26,3 +26,6 @@
 .pt-field { min-height: 36px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--am-border); background: var(--am-surface); color: var(--am-text); font-family: inherit; font-size: 15px; }
 .pt-search { flex: 1 1 200px; min-width: 0; }
 @media (max-width: 767px) { .pt-field { flex: 1 1 140px; min-width: 0; } .pt-tabs { width: 100%; } .pt-tab { flex: 1; } }
+
+/* Desktop rows stay ~36px: table buttons are 28px (mouse targets); phone rows keep 32px. */
+.pt-table .pt-btn, .pt-table .pt-sort { min-height: 28px; }

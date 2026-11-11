@@ -9,8 +9,8 @@
 .pc-icon { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: var(--am-text); font-size: 24px; cursor: pointer; }
 .pc-body { overflow-y: auto; padding: 16px; }
 .pc-next { font-size: 15px; margin-bottom: 12px; }
-.pc-row { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 12px; }
-.pc-chip { min-height: 44px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--am-border); background: transparent; color: var(--am-text); font-family: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; }
+.pc-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.pc-chip { min-height: 36px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--am-border); background: transparent; color: var(--am-text); font-family: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; }
 .pc-chip[aria-pressed="true"] { background: var(--am-accent); border-color: var(--am-accent); color: var(--am-on-accent); }
 .pc-stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; text-align: center; }
 .pc-stat { display: flex; flex-direction: column; }
