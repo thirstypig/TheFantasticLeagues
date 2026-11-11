@@ -81,7 +81,7 @@ export function MoveEditor({
           sign="−"
           color="var(--am-negative)"
           p={move.drop}
-          detail={move.drop.pos}
+          detail={[move.drop.pos, move.drop.mlbTeam].filter(Boolean).join(" · ")}
           onClick={() => setChoosingDrop(true)}
         />
       ) : (
@@ -110,7 +110,7 @@ export function MoveEditor({
                   <PlayerFace mlbId={p.mlbId} name={p.name} size={40} />
                   <span style={{ display: "grid", gap: 2 }}>
                     <b style={{ fontSize: 17 }}>{p.name}</b>
-                    <small style={SMALL}>{p.pos}</small>
+                    <small style={SMALL}>{[p.pos, p.mlbTeam].filter(Boolean).join(" · ")}</small>
                   </span>
                 </button>
               ))}

@@ -302,6 +302,7 @@ function TeamBody({ leagueId, teamId }: { leagueId: number; teamId: number }) {
       <PlayerFace mlbId={r.player.mlbId ?? null} name={r.player.name} size={40} />
       <span style={{ display: "grid", gap: 2, minWidth: 0 }}>
         <b style={{ fontSize: 17 }}>{`${slotOf(r)} · ${lastName(r.player.name)}`}</b>
+        {r.player.mlbTeam && <small data-testid="mlb-team" style={{ fontSize: 13, color: "var(--am-text-muted)" }}>{r.player.mlbTeam}</small>}
         {isIl(r) && <small style={{ fontSize: 13, color: ghostIds.has(r.player.id) ? "var(--am-warning)" : "var(--am-text-muted)" }}>{status(r)}</small>}
       </span>
     </div>
@@ -343,7 +344,7 @@ function TeamBody({ leagueId, teamId }: { leagueId: number; teamId: number }) {
                   <tr key={r.id} data-testid="team-roster-row" data-player={r.player.name} data-open={panel?.rosterId === r.id}>
                     <td>{slotOf(r)}</td>
                     <td><span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><PlayerFace mlbId={r.player.mlbId ?? null} name={r.player.name} size={30} />{r.player.name}</span></td>
-                    <td>—</td>
+                    <td>{r.player.mlbTeam ?? "—"}</td>
                     <td style={ghostIds.has(r.player.id) ? { color: "var(--am-warning)" } : undefined}>{status(r)}</td>
                     <td>{actionButton(r)}</td>
                   </tr>

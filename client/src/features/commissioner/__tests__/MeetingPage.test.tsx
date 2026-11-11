@@ -67,7 +67,7 @@ beforeEach(() => {
     ],
   });
   m.getCommissionerRosters.mockResolvedValue([
-    { id: 1, teamId: 4, assignedPosition: "1B", player: { id: 41, name: "Pete Alonso", posPrimary: "1B", mlbId: 624413 }, price: 1 },
+    { id: 1, teamId: 4, assignedPosition: "1B", player: { id: 41, name: "Pete Alonso", posPrimary: "1B", mlbId: 624413, mlbTeam: "NYM" }, price: 1 },
     { id: 2, teamId: 4, assignedPosition: "IL", player: { id: 42, name: "Hurt Guy", posPrimary: "P", mlbId: 1 }, price: 1 },
     { id: 3, teamId: 4, assignedPosition: "OF", player: { id: 43, name: "Bench Joe", posPrimary: "OF", mlbId: 2 }, price: 1 },
     { id: 4, teamId: 2, assignedPosition: "OF", player: { id: 51, name: "Tommy Pham", posPrimary: "OF" }, price: 1 },
@@ -106,9 +106,12 @@ describe("MeetingPage", () => {
     expect(m.searchFreeAgents).toHaveBeenCalledWith(20, "fral");
     expect(m.previewMove).not.toHaveBeenCalled();
     fireEvent.click(screen.getByText("Drop: choose a player ›"));
+    expect(within(screen.getByTestId("drop-options")).getByText("1B · NYM")).toBeTruthy();
     fireEvent.click(within(screen.getByTestId("drop-options")).getByText("Pete Alonso"));
     await waitFor(() => expect(m.previewMove).toHaveBeenCalledTimes(1));
     expect(m.previewMove).toHaveBeenCalledWith(20, 4, 101, 41);
+    expect(stored().moves[0].drop?.mlbTeam).toBe("NYM");
+    expect(screen.getByText("1B · NYM")).toBeTruthy();
     expect(await screen.findByText("✓ Roster stays at 23 / 23")).toBeTruthy();
     expect(stored().moves[0].add?.playerId).toBe(101);
     expect(stored().moves[0].drop?.playerId).toBe(41);

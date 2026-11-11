@@ -42,7 +42,7 @@ function renderPage() {
 
 const row = (id: number, teamId: number, name: string, pos: string, slot: string) => ({
   id: id + 1000, teamId, assignedPosition: slot, price: 1,
-  player: { id, name, posPrimary: pos, mlbId: id },
+  player: { id, name, posPrimary: pos, mlbId: id, mlbTeam: id === 1 ? "LAD" : null },
 });
 
 const ROWS = () => [
@@ -103,6 +103,13 @@ describe("TeamRosterPage", () => {
     expect(await screen.findByText("Demolition Lumber")).toBeTruthy();
     expect(await screen.findByText(/Gallen is back from the MLB IL but still in your IL slot\./)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Activate ›" })).toBeTruthy();
+  });
+
+  it("shows the MLB team on the roster rows (desktop column and phone row)", async () => {
+    renderPage();
+    await screen.findByRole("button", { name: "Actions for Harper" });
+    expect(screen.getAllByText("LAD").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByTestId("mlb-team").map((e) => e.textContent)).toEqual(["LAD"]);
   });
 
   it("lists only this team's players, in slot order", async () => {

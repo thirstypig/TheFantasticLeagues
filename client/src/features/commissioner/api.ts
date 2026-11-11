@@ -68,6 +68,7 @@ export interface RosterItem {
     posPrimary: string;
     posList?: string;
     mlbId?: number;
+    mlbTeam?: string | null;
   };
   price: number;
   source?: string;

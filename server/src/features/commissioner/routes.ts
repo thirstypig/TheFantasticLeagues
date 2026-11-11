@@ -895,7 +895,7 @@ router.get(
         },
         include: {
           team: { select: { id: true, code: true, name: true } },
-          player: { select: { id: true, name: true, posPrimary: true, posList: true, mlbId: true } },
+          player: { select: { id: true, name: true, posPrimary: true, posList: true, mlbId: true, mlbTeam: true } },
         },
       });
       return res.json({ rosters });

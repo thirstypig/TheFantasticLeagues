@@ -154,7 +154,7 @@ function MeetingBody({ leagueId, periodId }: { leagueId: number; periodId: numbe
     const droppedElsewhere = new Set(draft.moves.filter((x) => x.id !== move.id && x.drop).map((x) => x.drop!.playerId));
     return rosters.data
       .filter((r) => r.teamId === teamId && r.assignedPosition !== "IL" && !droppedElsewhere.has(r.player.id))
-      .map((r) => ({ playerId: r.player.id, name: r.player.name, pos: r.player.posPrimary, mlbTeam: null, mlbId: r.player.mlbId ?? null }));
+      .map((r) => ({ playerId: r.player.id, name: r.player.name, pos: r.player.posPrimary, mlbTeam: r.player.mlbTeam ?? null, mlbId: r.player.mlbId ?? null }));
   }
 
   function statusFor(teamId: number): React.ReactNode {
