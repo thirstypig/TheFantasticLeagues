@@ -62,6 +62,8 @@ export interface RosterItem {
   id: number;
   teamId: number;
   assignedPosition?: string | null;
+  /** ISO timestamp the player joined this roster (Roster.acquiredAt). */
+  acquiredAt: string;
   player: {
     id: number;
     name: string;

@@ -86,6 +86,7 @@ function MeetingBody({ leagueId, periodId }: { leagueId: number; periodId: numbe
     );
   }
 
+  const meetingDay = period.startDate.slice(0, 10);
   const teams = [...(overview.data.teams ?? [])].sort((a, b) => a.name.localeCompare(b.name));
   const teamNames: Record<number, string> = Object.fromEntries(teams.map((t) => [t.id, t.name]));
   const cap = check.state === "ready" ? check.data.cap : null;
@@ -153,7 +154,8 @@ function MeetingBody({ leagueId, periodId }: { leagueId: number; periodId: numbe
     if (rosters.state !== "ready") return [];
     const droppedElsewhere = new Set(draft.moves.filter((x) => x.id !== move.id && x.drop).map((x) => x.drop!.playerId));
     return rosters.data
-      .filter((r) => r.teamId === teamId && r.assignedPosition !== "IL" && !droppedElsewhere.has(r.player.id))
+      // A drop dated on/before the add would invert the roster window, so skip anyone acquired on or after the meeting date.
+      .filter((r) => r.teamId === teamId && r.assignedPosition !== "IL" && !droppedElsewhere.has(r.player.id) && !(r.acquiredAt && r.acquiredAt.slice(0, 10) >= meetingDay))
       .map((r) => ({ playerId: r.player.id, name: r.player.name, pos: r.player.posPrimary, mlbTeam: r.player.mlbTeam ?? null, mlbId: r.player.mlbId ?? null }));
   }
 

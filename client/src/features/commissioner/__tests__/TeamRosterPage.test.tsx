@@ -120,6 +120,20 @@ describe("TeamRosterPage", () => {
     expect(screen.queryByText(/Other Team Guy/)).toBeNull();
   });
 
+  it("a player who joins in the future shows 'Joins <date>', has no actions, and is not an Activate drop choice", async () => {
+    m.getCommissionerRosters.mockResolvedValue([
+      ...ROWS(),
+      { ...row(7, 4, "Future Fred", "OF", "OF"), acquiredAt: "2099-12-07T00:00:00.000Z" },
+    ] as any);
+    renderPage();
+    await screen.findByRole("button", { name: "Actions for Harper" });
+    expect(screen.getAllByText(/Joins \w{3} Dec 7/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByRole("button", { name: "Actions for Fred" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Open activate for Gallen" }));
+    await screen.findByRole("button", { name: "Drop Harper" });
+    expect(screen.queryByRole("button", { name: "Drop Fred" })).toBeNull();
+  });
+
   it("Move to IL shows IL slot 2 of 2 and fee $15 when one IL slot is used", async () => {
     m.getCommissionerRosters.mockResolvedValue(ROWS().filter((r) => r.player.id !== 5) as any);
     renderPage();

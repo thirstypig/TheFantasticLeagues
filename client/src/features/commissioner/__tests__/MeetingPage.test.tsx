@@ -144,6 +144,21 @@ describe("MeetingPage", () => {
     expect(opts.queryByText("Pete Alonso")).toBeNull();
   });
 
+  it("drop chooser omits players acquired on or after the meeting date", async () => {
+    m.getCommissionerRosters.mockResolvedValue([
+      { id: 1, teamId: 4, assignedPosition: "1B", acquiredAt: "2026-05-01T12:00:00.000Z", player: { id: 41, name: "Pete Alonso", posPrimary: "1B" }, price: 1 },
+      { id: 5, teamId: 4, assignedPosition: "OF", acquiredAt: "2026-06-15T00:00:00.000Z", player: { id: 44, name: "Tonight Tom", posPrimary: "OF" }, price: 1 },
+      { id: 6, teamId: 4, assignedPosition: "OF", acquiredAt: "2026-06-16T00:00:00.000Z", player: { id: 45, name: "Later Larry", posPrimary: "OF" }, price: 1 },
+    ] as any);
+    seed({ ...emptyDraft(20, 9), selectedTeamId: 4, moves: [mv("a", 4, FRALEY, null)] });
+    renderPage();
+    fireEvent.click(await screen.findByText("Drop: choose a player ›"));
+    const opts = within(screen.getByTestId("drop-options"));
+    expect(opts.getByText("Pete Alonso")).toBeTruthy();
+    expect(opts.queryByText("Tonight Tom")).toBeNull();
+    expect(opts.queryByText("Later Larry")).toBeNull();
+  });
+
   it("No moves marks the team Passed and returns to the list", async () => {
     seed({ ...emptyDraft(20, 9), selectedTeamId: 4 });
     renderPage();

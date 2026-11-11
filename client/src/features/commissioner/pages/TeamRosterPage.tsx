@@ -43,6 +43,11 @@ function lastName(full: string): string {
   return parts[parts.length - 1] || full;
 }
 
+/** Moves here are dated tomorrow (UTC), so a row acquired after today has not started yet. */
+const joinsLater = (r: RosterItem) => !!r.acquiredAt && r.acquiredAt.slice(0, 10) > new Date().toISOString().slice(0, 10);
+const joinsLabel = (r: RosterItem) =>
+  `Joins ${new Date(r.acquiredAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }).replace(",", "")}`;
+
 const slotOf = (r: RosterItem) => r.assignedPosition || r.player.posPrimary;
 const isIl = (r: RosterItem) => r.assignedPosition === "IL";
 const slotRank = (r: RosterItem) => {
@@ -189,7 +194,7 @@ function TeamBody({ leagueId, teamId }: { leagueId: number; teamId: number }) {
     }
   }
 
-  const activeChoices = team.filter((r) => !isIl(r));
+  const activeChoices = team.filter((r) => !isIl(r) && !joinsLater(r));
 
   function panelView(): React.ReactNode {
     if (!panel || !target) return null;
@@ -273,9 +278,10 @@ function TeamBody({ leagueId, teamId }: { leagueId: number; teamId: number }) {
     return { title: `Activate ${last}?`, body: `${pick.name} is dropped to make room.`, confirm: "Activate" };
   })();
 
-  const status = (r: RosterItem) => (isIl(r) ? (ghostIds.has(r.player.id) ? "Back from MLB IL" : "IL") : "Active");
+  const status = (r: RosterItem) => (joinsLater(r) ? joinsLabel(r) : isIl(r) ? (ghostIds.has(r.player.id) ? "Back from MLB IL" : "IL") : "Active");
 
   const actionButton = (r: RosterItem) => {
+    if (joinsLater(r)) return null;
     const last = lastName(r.player.name);
     const il = isIl(r);
     return (
@@ -303,7 +309,8 @@ function TeamBody({ leagueId, teamId }: { leagueId: number; teamId: number }) {
       <span style={{ display: "grid", gap: 2, minWidth: 0 }}>
         <b style={{ fontSize: 17 }}>{`${slotOf(r)} · ${lastName(r.player.name)}`}</b>
         {r.player.mlbTeam && <small data-testid="mlb-team" style={{ fontSize: 13, color: "var(--am-text-muted)" }}>{r.player.mlbTeam}</small>}
-        {isIl(r) && <small style={{ fontSize: 13, color: ghostIds.has(r.player.id) ? "var(--am-warning)" : "var(--am-text-muted)" }}>{status(r)}</small>}
+        {joinsLater(r) && <small style={{ fontSize: 13, color: "var(--am-text-muted)" }}>{status(r)}</small>}
+        {!joinsLater(r) && isIl(r) && <small style={{ fontSize: 13, color: ghostIds.has(r.player.id) ? "var(--am-warning)" : "var(--am-text-muted)" }}>{status(r)}</small>}
       </span>
     </div>
   );
