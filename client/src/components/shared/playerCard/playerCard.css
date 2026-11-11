@@ -1,0 +1,26 @@
+.pc { position: fixed; z-index: 60; background: var(--am-surface); color: var(--am-text); font-family: inherit; font-size: 15px; display: flex; flex-direction: column; overflow: hidden; outline: none; box-shadow: 0 -4px 24px rgba(0,0,0,.25); }
+.pc-sheet { left: 0; right: 0; bottom: 0; max-height: 85vh; border-radius: 12px 12px 0 0; border-top: 1px solid var(--am-border); }
+.pc-panel { top: 0; right: 0; bottom: 0; width: 400px; border-left: 1px solid var(--am-border); }
+.pc-backdrop { position: fixed; inset: 0; z-index: 59; background: var(--am-scrim); }
+.pc-head { display: flex; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid var(--am-border); }
+.pc-id { flex: 1; min-width: 0; }
+.pc-name { margin: 0; outline: none; font-size: 17px; font-weight: 700; }
+.pc-sub { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--am-text-muted); }
+.pc-icon { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: var(--am-text); font-size: 24px; cursor: pointer; }
+.pc-body { overflow-y: auto; padding: 16px; }
+.pc-next { font-size: 15px; margin-bottom: 12px; }
+.pc-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.pc-chip { min-height: 36px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--am-border); background: transparent; color: var(--am-text); font-family: inherit; font-size: 13px; white-space: nowrap; cursor: pointer; }
+.pc-chip[aria-pressed="true"] { background: var(--am-accent); border-color: var(--am-accent); color: var(--am-on-accent); }
+.pc-stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; text-align: center; }
+.pc-stat { display: flex; flex-direction: column; }
+.pc-stat-l { font-size: 13px; color: var(--am-text-muted); }
+.pc-stat-v { font-size: 17px; font-weight: 700; }
+.pc-cap { margin: 16px 0 8px; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--am-text-muted); }
+.pc-games { width: 100%; border-collapse: collapse; font-size: 13px; }
+.pc-games th, .pc-games td { padding: 6px 4px; text-align: left; }
+.pc-games th { color: var(--am-text-muted); font-weight: 600; }
+.pc-state { padding: 16px 0; font-size: 15px; color: var(--am-text-muted); }
+.pc-btn { min-height: 44px; padding: 0 16px; border-radius: 6px; border: 1px solid var(--am-accent); background: var(--am-accent); color: var(--am-on-accent); font-family: inherit; font-size: 15px; cursor: pointer; }
+.pc-full { display: inline-flex; align-items: center; min-height: 44px; margin-top: 12px; font-size: 15px; color: var(--am-accent); text-decoration: none; }
+.pc-link { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; text-decoration: underline; text-decoration-color: var(--am-border); }

@@ -103,7 +103,7 @@ fbst/
 - `client/src/components/ui/SortableHeader.tsx` — accessible sortable header (`<button>` in `<th>`, `aria-sort`, generic `<K extends string>`)
 - `client/src/components/ui/ThemedTable.tsx` — ThemedTable supports `density` and `zebra` props
 - `client/src/components/AppShell.tsx` — app shell
-- `client/src/components/shared/PlayerDetailModal.tsx` — shared player detail modal (used by teams, auction, players); includes fielding stats (games by position)
+- `client/src/components/shared/playerCard/` — the player card (bottom sheet on phone, right panel on desktop; NOT a modal). `<PlayerCardProvider>` wraps the app above `MobileLayoutGate`; open it with `usePlayerCard().open(mlbId, { group? })`, `useOpenPlayerCard()` (takes a row with `mlb_id`) or `<PlayerLink mlbId name group? />` (plain text when there is no mlbId). Data from `GET /api/players/:mlbId/card?leagueId=` (windowed splits, last games, next game, fantasy owner). The card root carries `aurora-theme` because it renders outside the shell wrapper. Shared helpers live in `components/shared/playerDetailHelpers.tsx`
 - `client/src/components/shared/RosterAlertAccordion.tsx` — shared IL/Minors accordion (used by Home, Team pages); red for IL, amber for Minors
 - `client/src/hooks/useRosterStatus.ts` — shared hook for roster status (IL + minors players) with proper TypeScript interface
 - `client/src/hooks/usePlayerNews.ts` — shared hook for player news via `GET /api/mlb/player-news` (server-side RSS aggregation)

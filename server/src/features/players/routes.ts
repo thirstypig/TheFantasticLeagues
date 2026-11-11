@@ -1,6 +1,7 @@
 // server/src/features/players/routes.ts
 import { Router } from "express";
-import { requireAuth } from "../../middleware/auth.js";
+import type { RequestHandler } from "express";
+import { requireAuth, requireLeagueMember } from "../../middleware/auth.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { rateLimitPerUser } from "../../middleware/rateLimitPerUser.js";
 import { prisma } from "../../db/prisma.js";
@@ -28,9 +29,15 @@ import {
   type SeasonStatEntry,
   type PlayerValueEntry,
 } from "./services/statsService.js";
+import { buildPlayerCard } from "./services/playerCardService.js";
 import { withPlayersCache } from "./services/playersListCache.js";
 
 const router = Router();
+
+/** Enforce league membership whenever a leagueId is supplied (admins bypass). */
+const requireLeagueMemberIfPresent: RequestHandler = (req, res, next) =>
+  req.query.leagueId ? requireLeagueMember("leagueId")(req, res, next) : next();
+
 
 /**
  * GET /players
@@ -39,7 +46,7 @@ const router = Router();
  *   - type: "all" | "hitters" | "pitchers"
  *   - leagueId: number (required for availability filtering)
  */
-router.get("/", requireAuth, asyncHandler(async (req, res) => {
+router.get("/", requireAuth, requireLeagueMemberIfPresent, asyncHandler(async (req, res) => {
   const availability = String(req.query.availability ?? "all") as
     | "all"
     | "available"
@@ -234,6 +241,35 @@ router.get("/news/transactions", requireAuth, asyncHandler(async (_req, res) => 
   } catch (err) {
     logger.error({ error: String(err) }, "Failed to fetch MLB transactions");
     res.status(502).json({ error: "Unable to fetch MLB transactions" });
+  }
+}));
+
+/**
+ * GET /players/:mlbId/card?leagueId=N
+ * Player card data: windowed splits, recent games, next game, fantasy owner.
+ * Must be registered before GET /:mlbId.
+ */
+router.get("/:mlbId/card", requireAuth, requireLeagueMember("leagueId"), rateLimitPerUser({ capacity: 30, windowMs: 60_000, bucketName: "player-card" }), asyncHandler(async (req, res) => {
+  const mlbId = Number(req.params.mlbId);
+  // Upper bound = Postgres Int4; anything larger would overflow the Prisma lookup.
+  if (!Number.isInteger(mlbId) || mlbId <= 0 || mlbId > 2147483647) {
+    return res.status(400).json({ error: "Invalid MLB ID" });
+  }
+  const leagueId = Number(req.query.leagueId);
+  if (!Number.isInteger(leagueId) || leagueId <= 0) {
+    return res.status(400).json({ error: "leagueId is required" });
+  }
+  // Only known players reach statsapi: an unknown id (404 upstream) would be
+  // retried and could trip the global MLB circuit breaker for everyone.
+  const known = await prisma.player.findFirst({ where: { mlbId }, select: { id: true } });
+  if (!known) {
+    return res.status(404).json({ error: "Not found" });
+  }
+  try {
+    res.json(await buildPlayerCard(mlbId, leagueId, new Date()));
+  } catch (err) {
+    logger.error({ error: String(err), mlbId }, "Failed to build player card");
+    res.status(502).json({ error: "Unable to load player card" });
   }
 }));
 
@@ -446,7 +482,7 @@ const dataRouter = Router();
  * - `take` — clamp the response size (default unbounded; common pickers
  *   pass 50; defensively clamped to 200).
  */
-dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res) => {
+dataRouter.get("/player-season-stats", requireAuth, requireLeagueMemberIfPresent, asyncHandler(async (req, res) => {
   const leagueId = req.query.leagueId ? Number(req.query.leagueId) : null;
   if (!leagueId || !Number.isFinite(leagueId) || leagueId <= 0) {
     return res.status(400).json({ error: "Missing or invalid leagueId" });
@@ -503,9 +539,11 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
     ...(take ? { take } : {}),
   });
 
-  const rosterMap = new Map<number, { teamCode: string; teamName: string; price: number }>();
+  const rosterMap = new Map<number, { teamId: number; slot: string | null; teamCode: string; teamName: string; price: number }>();
   for (const r of rosters) {
     rosterMap.set(r.playerId, {
+      teamId: r.team.id,
+      slot: r.assignedPosition ?? null,
       teamCode: r.team.code ?? r.team.name.substring(0, 3).toUpperCase(),
       teamName: r.team.name,
       price: Number(r.price),
@@ -540,6 +578,11 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
         mlb_full_name: p.name,
         ogba_team_code: roster?.teamCode ?? "",
         ogba_team_name: roster?.teamName ?? "",
+        // Owning team's DB id (null for free agents) — lets the Players table
+        // build /trades/new?team=<id>&get=<playerId> without a second lookup.
+        ogba_team_id: roster?.teamId ?? null,
+        // Roster slot (e.g. "IL"); IL players cannot be traded from New trade.
+        ogba_slot: roster?.slot ?? null,
         positions: p.posList || pv?.pos || p.posPrimary || "",
         is_pitcher: isPitcher,
         G: ss?.G ?? 0,
@@ -574,7 +617,7 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
 }));
 
 /** GET /api/player-period-stats?leagueId=N — player stats for the active period */
-dataRouter.get("/player-period-stats", requireAuth, asyncHandler(async (req, res) => {
+dataRouter.get("/player-period-stats", requireAuth, requireLeagueMemberIfPresent, asyncHandler(async (req, res) => {
   const leagueId = req.query.leagueId ? Number(req.query.leagueId) : null;
   if (!leagueId || !Number.isFinite(leagueId)) return res.json({ stats: [], periods: [] });
 

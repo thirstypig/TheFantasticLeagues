@@ -1,7 +1,7 @@
 {
   "_comment": "Grandfathered cross-feature imports — see docs/engineering/adrs/ADR-015-feature-module-boundaries.md. This list may SHRINK but must never grow. Regenerate only after legitimately removing a violation. Entries are DISTINCT side|file|specifier keys; a file importing one specifier twice counts once.",
   "generated": "2026-11-11",
-  "count": 88,
+  "count": 86,
   "allowed": [
     "client|client/src/features/admin/components/AdminLeagueTools.tsx|../../commissioner/api",
     "client|client/src/features/admin/components/AdminLeagueTools.tsx|../../leagues/api",
@@ -24,8 +24,6 @@
     "client|client/src/features/keeper-prep/__tests__/KeeperSelection.test.tsx|../../leagues/api",
     "client|client/src/features/keeper-prep/pages/KeeperSelection.tsx|../../leagues/api",
     "client|client/src/features/periods/pages/Payouts.tsx|../../standings/api",
-    "client|client/src/features/players/pages/Players.tsx|../../auction/components/PlayerExpandedRow",
-    "client|client/src/features/players/pages/Players.tsx|../../watchlist/api",
     "client|client/src/features/profiles/pages/ProfilePage.tsx|../../notifications",
     "client|client/src/features/roster/components/RosterGrid.tsx|../../commissioner/api",
     "client|client/src/features/teams/components/RosterHub/ManagePanel.tsx|../../../transactions/components/RosterMovesTab/ActivateFromIlPanel",

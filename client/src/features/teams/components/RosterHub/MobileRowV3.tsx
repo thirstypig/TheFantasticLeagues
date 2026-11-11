@@ -26,6 +26,8 @@ import {
   buildRowClasses,
 } from "./rowShared";
 import type { RosterHubPlayer } from "./types";
+import { usePlayerCard } from "../../../../components/shared/playerCard/PlayerCardProvider";
+import { cardMlbId } from "../../../../components/shared/playerDetailHelpers";
 
 const SLOT_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P"] as const;
 
@@ -101,6 +103,8 @@ export function MobileRowV3({
   dnd,
   isShakeRejecting,
 }: MobileRowV3Props) {
+  const { open: openPlayerCard } = usePlayerCard();
+  const cardId = cardMlbId(player.mlbId);
   const className = buildRowClasses({
     base: "am-roster-mobile-row",
     isPending,
@@ -134,9 +138,20 @@ export function MobileRowV3({
         />
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>
-          <PlayerNameContent player={player} isPending={isPending} />
-        </span>
+        {cardId ? (
+          <button
+            type="button"
+            className="pc-link"
+            onClick={() => openPlayerCard(cardId)}
+            style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)", textDecoration: "none" }}
+          >
+            <PlayerNameContent player={player} isPending={isPending} />
+          </button>
+        ) : (
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>
+            <PlayerNameContent player={player} isPending={isPending} />
+          </span>
+        )}
         <PlayerSubtitle player={player} />
         {(() => {
           const secondary = [...slotsFor(player.posList)]

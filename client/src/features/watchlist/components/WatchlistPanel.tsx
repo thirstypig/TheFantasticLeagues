@@ -5,9 +5,8 @@ import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../..
 import { Button } from "../../../components/ui/button";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { useLeague } from "../../../contexts/LeagueContext";
-import PlayerDetailModal from "../../../components/shared/PlayerDetailModal";
+import { PlayerLink } from "../../../components/shared/playerCard/PlayerCardProvider";
 import { displayPos } from "../../../lib/playerDisplay";
-import type { PlayerSeasonStat } from "../../../api/types";
 
 const TAG_OPTIONS = ["trade-target", "add-drop", "monitor"] as const;
 
@@ -36,8 +35,6 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
   const [addTags, setAddTags] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
 
-  // Player detail modal
-  const [selectedMlbId, setSelectedMlbId] = useState<number | null>(null);
 
   // Edit note inline
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -260,14 +257,11 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
               {items.map((item) => (
                 <ThemedTr key={item.id} className="hover:bg-[var(--lg-tint)] transition-colors">
                   <ThemedTd frozen>
-                    <button
-                      type="button"
-                      onClick={() => item.player?.mlbId && setSelectedMlbId(item.player.mlbId)}
-                      className="font-semibold text-xs text-[var(--lg-text-primary)] hover:text-[var(--lg-accent)] transition-colors cursor-pointer text-left"
-                      title="View player details"
-                    >
-                      {item.player?.name ?? "Unknown"}
-                    </button>
+                    <PlayerLink
+                      mlbId={item.player?.mlbId}
+                      name={item.player?.name ?? "Unknown"}
+                      className="font-semibold text-xs text-[var(--lg-text-primary)] hover:text-[var(--lg-accent)] transition-colors text-left"
+                    />
                   </ThemedTd>
                   <ThemedTd>
                     <span className="px-1 py-px rounded text-xs font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
@@ -333,12 +327,6 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
             </tbody>
           </ThemedTable>
         </div>
-      )}
-      {selectedMlbId && (
-        <PlayerDetailModal
-          player={{ mlb_id: String(selectedMlbId) } as PlayerSeasonStat}
-          onClose={() => setSelectedMlbId(null)}
-        />
       )}
     </div>
   );

@@ -45,12 +45,6 @@ vi.mock("../../../lib/sportConfig", () => ({
   } as Record<string, number>,
 }));
 
-// Mock PlayerDetailModal
-vi.mock("../../../components/shared/PlayerDetailModal", () => ({
-  default: ({ player, onClose }: any) =>
-    player ? <div data-testid="player-modal">{player.player_name}</div> : null,
-}));
-
 // Mock PlayerExpandedRow (avoid deep dependency tree)
 vi.mock("../../auction/components/PlayerExpandedRow", () => ({
   default: () => <tr data-testid="expanded-row"><td>expanded</td></tr>,

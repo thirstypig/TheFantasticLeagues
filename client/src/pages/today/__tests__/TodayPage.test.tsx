@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { TodayData } from "../useTodayData";
 import type { MyPlayerToday, PlayerNewsTx, TodayStandingsRow } from "../todayModel";
@@ -9,12 +9,16 @@ const hooks = vi.hoisted(() => ({
   league: null as unknown,
   desktop: false,
 }));
+vi.mock("../../../components/shared/playerCard/PlayerCard", () => ({
+  PlayerCard: ({ mlbId }: { mlbId: number }) => <div data-testid="player-card" data-mlbid={mlbId} />,
+}));
 vi.mock("../useTodayData", () => ({ useTodayData: vi.fn(() => hooks.data) }));
 vi.mock("../../../contexts/LeagueContext", () => ({ useLeague: () => hooks.league }));
 vi.mock("../../../hooks/useMediaQuery", () => ({ useMediaQuery: () => hooks.desktop }));
 
 import { useTodayData } from "../useTodayData";
 import TodayPage from "../TodayPage";
+import { PlayerCardProvider } from "../../../components/shared/playerCard/PlayerCardProvider";
 
 const NOW = new Date(2026, 5, 14, 12, 0, 0); // Sun Jun 14 2026, local
 
@@ -86,7 +90,9 @@ function setLeague(over: Record<string, unknown> = {}) {
 const renderPage = () =>
   render(
     <MemoryRouter>
-      <TodayPage />
+      <PlayerCardProvider>
+        <TodayPage />
+      </PlayerCardProvider>
     </MemoryRouter>,
   );
 
@@ -284,6 +290,14 @@ describe("TodayPage", () => {
     expect(within(section).getByText(/NYM @ ATL · 1-1, HR, RBI/)).toBeInTheDocument();
     expect(within(section).getByText("2 more playing")).toBeInTheDocument();
     expect(within(section).getByRole("link", { name: "All 6 ›" })).toHaveAttribute("href", "/teams/LD");
+  });
+
+  it("tapping a tonight player's name opens the player card for that mlbId", () => {
+    setData({ tonight: ok([player({ playerName: "Pete Alonso", mlbId: 624413 })]) });
+    renderPage();
+    const section = screen.getByRole("region", { name: "Tonight" });
+    fireEvent.click(within(section).getByRole("button", { name: "Pete Alonso" }));
+    expect(screen.getByTestId("player-card")).toHaveAttribute("data-mlbid", "624413");
   });
 
   it("shows the quiet line when none of my players play today", () => {

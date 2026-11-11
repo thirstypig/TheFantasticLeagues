@@ -3,7 +3,7 @@ import { Link, useLocation, useParams } from "react-router-dom";
 
 import { getPlayerSeasonStatsMeta, type PlayerSeasonStat, getTeamDetails, getTeams, getTeamAiInsights, TeamInsightsResult } from "../../../api";
 import { getTeamAiInsightsHistory, getTeamPeriodRoster, type WeeklyInsightEntry, type PeriodRosterEntry } from "../api";
-import PlayerDetailModal from "../../../components/shared/PlayerDetailModal";
+import { useOpenPlayerCard } from "../../../components/shared/playerCard/useOpenPlayerCard";
 import PlayerExpandedRow from "../../auction/components/PlayerExpandedRow";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { getTradeBlock } from "../api";
@@ -92,7 +92,7 @@ export default function Team() {
   const [dbTeamId, setDbTeamId] = useState<number | null>(null);
 
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<PlayerSeasonStat | null>(null);
+  const selectPlayer = useOpenPlayerCard();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Position editing state
@@ -770,7 +770,7 @@ export default function Team() {
                               player={p}
                               isTaken={true}
                               ownerName={teamName}
-                              onViewDetail={setSelected}
+                              onViewDetail={selectPlayer}
                               colSpan={9}
                             />
                           )}
@@ -901,7 +901,7 @@ export default function Team() {
                               player={p}
                               isTaken={true}
                               ownerName={teamName}
-                              onViewDetail={setSelected}
+                              onViewDetail={selectPlayer}
                               colSpan={10}
                             />
                           )}
@@ -1058,7 +1058,6 @@ export default function Team() {
           </div>
         )}
 
-        {selected ? <PlayerDetailModal player={selected} onClose={() => setSelected(null)} /> : null}
       </main>
     </div>
   );

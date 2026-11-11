@@ -120,7 +120,11 @@ Major covered areas (selected):
 - `lib/baseballUtils.test.ts` — 32 (POS_ORDER, sortByPosition, positionToSlots)
 - `lib/mlbStatus.test.ts` — 6 (isMlbIlStatus: real MLB format + legacy form + non-IL + malformed + case sensitivity; mirror of `server/src/lib/__tests__/ilSlotGuard.test.ts`)
 - `hooks/useSessionHeartbeat.test.ts` — 7
-- `features/players/PlayerDetailModal.test.tsx` — 14
+- `components/shared/playerCard/__tests__/PlayerCard.test.tsx` — player card: ranges, pitcher/two-way groups, off-season default, swap/stale guards, scroll lock, focus, `aurora-theme` root, degraded retry, group hint, watchlist star race
+- `components/shared/playerCard/__tests__/useOpenPlayerCard.test.tsx` — row `mlb_id` to card open
+- `features/players/__tests__/PlayersTable.test.tsx` + `Players.test.tsx` — responsive players table, Trade / Wire List actions, name links with stat group
+- `server/src/features/players/__tests__/playerCard.test.ts` — card service windows + card route (404 unknown id before statsapi, 400 out of range, 30/min rate limit, `degraded`)
+- `server/src/lib/__tests__/mlbApi.test.ts` — 4xx not retried / not counted by the circuit breaker; 5xx and 429 still retry and trip it
 - `features/standings/StatsTables.test.tsx` — 22
 - `features/auction/AuctionValuesLegacy.test.tsx` — 10 (rendering, tabs, search, sorting, modal — pinned to legacy code path at `/auction-values-classic`)
 - `features/auction/AuctionValuesAurora.test.tsx` — 3 (Aurora hero copy, `.aurora-theme` wrapper, footer escape link)
@@ -145,7 +149,8 @@ Major covered areas (selected):
 - `pages/today/__tests__/todayModel.test.ts` — 30 (pure Today view-model helpers)
 - `pages/today/__tests__/useTodayData.test.tsx` — 5 (per-source loading/ok/error states of the Today data hook)
 - `mobile/__tests__/MobileTeam.test.tsx` — 23 (roster hub fetch, tab switching, IL tab, hero strip, standings rank, move sheet, IL stash/activate flows, optimistic updates, rollback, refetch-on-success, backdrop dismiss, Hitter Totals row with summed numerators, Pitcher Totals row with rate stats derived from IP/ER/BB_H, IL tab hides totals)
-- `mobile/__tests__/MobilePlayers.test.tsx` — 18 (hitter list default, NL filter, position chip filter, pitchers tab, search, sort direction toggle, watch star rendering, addToWatchlist/removeFromWatchlist, star click doesn't expand, row expand/collapse, career table in expanded panel, pitching career endpoint, Available filter chip, Available hides rostered players, Available restores all, Available persists as avail=1 URL param)
+- `features/players/__tests__/PlayersTable.test.tsx` — 12 (column headers per tab, + Wire List only with a pending period, On Wire List state + inline error, Trade link href, no action on own players or without a team, name opens the card, phone row layout, sort callback)
+- `features/players/__tests__/Players.test.tsx` — 8 (free-agents default, availability filters, search + position + availability combine, pitchers tab, This period range, Wire List add + 409 handling, no Wire List without a pending period)
 - `mobile/__tests__/MobileStandings.test.tsx` — 8 (team rows render, YOU badge in standings row, segmented control switches Hitting/Pitching columns, sort direction toggle, Category Leaders section renders, card per category with key label, top-3 teams with actual stat values, rank numbers 1–3 per card)
 - `features/trades/TradesPage.test.tsx` — 23
 - `features/archive/ArchivePage.test.tsx` — 16

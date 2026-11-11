@@ -34,6 +34,8 @@ import {
   buildRowClasses,
 } from "./rowShared";
 import type { RosterHubPlayer } from "./types";
+import { usePlayerCard } from "../../../../components/shared/playerCard/PlayerCardProvider";
+import { cardMlbId } from "../../../../components/shared/playerDetailHelpers";
 
 const SLOT_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P"] as const;
 
@@ -67,11 +69,9 @@ interface RosterRowV3Props {
   isEligible: boolean;
   isDimmed: boolean;
   isPending: boolean;
-  isExpanded?: boolean;
   isDragSource: boolean;
   isDropTarget: boolean;
   onPillClick: () => void;
-  onToggleExpand?: () => void;
   onRevert?: () => void;
   actions: RowAction[];
   /** When provided, renders a ⋮⋮ grab handle and wires the row as a drop target. */
@@ -102,16 +102,16 @@ export function RosterRowV3({
   isEligible,
   isDimmed,
   isPending,
-  isExpanded,
   isDragSource,
   isDropTarget,
   onPillClick,
-  onToggleExpand,
   onRevert,
   actions,
   dnd,
   isShakeRejecting,
 }: RosterRowV3Props) {
+  const { open: openPlayerCard } = usePlayerCard();
+  const cardId = cardMlbId(player.mlbId);
   const className = buildRowClasses({
     isPending,
     isEligible,
@@ -167,23 +167,28 @@ export function RosterRowV3({
             </button>
           )}
           <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
-            <button
-              type="button"
-              onClick={onToggleExpand}
-              aria-expanded={isExpanded}
-              style={{
-                padding: 0,
-                border: 0,
-                background: "transparent",
-                color: "var(--am-text)",
-                fontSize: 13,
-                fontWeight: 600,
-                textAlign: "left",
-                cursor: onToggleExpand ? "pointer" : "default",
-              }}
-            >
-              <PlayerNameContent player={player} isPending={isPending} />
-            </button>
+            {cardId ? (
+              <button
+                type="button"
+                onClick={() => openPlayerCard(cardId)}
+                style={{
+                  padding: 0,
+                  border: 0,
+                  background: "transparent",
+                  color: "var(--am-text)",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  textAlign: "left",
+                  cursor: "pointer",
+                }}
+              >
+                <PlayerNameContent player={player} isPending={isPending} />
+              </button>
+            ) : (
+              <span style={{ color: "var(--am-text)", fontSize: 13, fontWeight: 600 }}>
+                <PlayerNameContent player={player} isPending={isPending} />
+              </span>
+            )}
             <PlayerSubtitle player={player} />
             {(() => {
               const secondary = [...slotsFor(player.posList)]

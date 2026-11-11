@@ -2,7 +2,7 @@
 // optionally add auction dollars, see the roster check, send. Outside the trade
 // window the draft stays in the browser and the button is disabled.
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { useToast } from "../../../contexts/ToastContext";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
@@ -92,9 +92,21 @@ function NewTradePage() {
   const [loadError, setLoadError] = useState(false);
   const [partnerFailed, setPartnerFailed] = useState<number | null>(null);
 
-  const [draft, setDraft] = useState<TradeDraft>(
-    () => loadTradeDraft(leagueId) ?? { leagueId, partnerId: null, give: [], get: [], giveDollars: 0, getDollars: 0 },
-  );
+  // `?team=<teamId>&get=<playerId>` (the Players table's Trade link) beats a restored
+  // browser draft for the partner and the "you get" list. Read once, on mount.
+  const [searchParams] = useSearchParams();
+  const queryTeam = Number(searchParams.get("team"));
+  const queryGet = Number(searchParams.get("get"));
+  const fromQuery = Number.isInteger(queryTeam) && queryTeam > 0;
+  const pendingGet = useRef<number | null>(fromQuery && Number.isInteger(queryGet) && queryGet > 0 ? queryGet : null);
+
+  const [draft, setDraft] = useState<TradeDraft>(() => {
+    const base = loadTradeDraft(leagueId) ?? { leagueId, partnerId: null, give: [], get: [], giveDollars: 0, getDollars: 0 };
+    if (!fromQuery) return base;
+    return base.partnerId === queryTeam
+      ? { ...base, get: [] }
+      : { ...base, partnerId: queryTeam, get: [], getDollars: 0 };
+  });
   const draftRef = useRef(draft);
   const [showDollars, setShowDollars] = useState(draft.giveDollars > 0 || draft.getDollars > 0);
   const [confirming, setConfirming] = useState(false);
@@ -156,7 +168,13 @@ function NewTradePage() {
     if (!mine || !theirs) return;
     const d = draftRef.current;
     const give = d.give.filter((id) => mine.rows.some((r) => r.playerId === id && !isIL(r)));
-    const get = d.get.filter((id) => theirs.rows.some((r) => r.playerId === id && !isIL(r)));
+    let get = d.get.filter((id) => theirs.rows.some((r) => r.playerId === id && !isIL(r)));
+    // Tick the player the Trade link named, once the partner's roster is in (never an IL player).
+    const want = pendingGet.current;
+    if (want != null && theirs.id === d.partnerId) {
+      pendingGet.current = null;
+      if (theirs.rows.some((r) => r.playerId === want && !isIL(r)) && !get.includes(want)) get = [...get, want];
+    }
     const whole = (n: number, budget: number) => Math.min(budget, Math.max(0, Math.floor(n) || 0));
     const giveDollars = whole(d.giveDollars, mine.budget);
     const getDollars = whole(d.getDollars, theirs.budget);

@@ -8,7 +8,7 @@ import { extractServerError } from "../../../../lib/extractServerError";
 import { isSlotCode, slotsFor, type SlotCode } from "../../../../lib/positionEligibility";
 import { isPitcher, fmtRate } from "../../../../lib/sports/baseball";
 import { getPlayerCareerStats, type CareerHittingRow, type CareerPitchingRow, type HOrP } from "../../../../api";
-import { CareerTable } from "../../../../components/shared/PlayerDetailModal";
+import { CareerTable } from "../../../../components/shared/playerDetailHelpers";
 import { previewClaim, type AppliedReassignment } from "../../api";
 import type { RosterMovesPlayer } from "./types";
 

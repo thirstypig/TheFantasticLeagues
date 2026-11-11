@@ -10,7 +10,7 @@
  * This slice is read-only. Lineup edit (drag-to-bench → long-press
  * menu per spec), claim/drop, IL stash/activate — all follow as a
  * separate PR. Tap row → `/players/:mlbId` for the desktop player
- * detail page (same as MobilePlayers).
+ * detail page (same as the Players page).
  *
  * Hero strip: team initials avatar + name + budget · FAAB · MV · PTS
  * compact stat strip per the design canvas. PTS comes from the

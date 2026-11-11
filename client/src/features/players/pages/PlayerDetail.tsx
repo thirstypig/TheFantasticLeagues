@@ -2,9 +2,9 @@
  * PlayerDetail — Aurora port (PR — Aurora screen #5 of 8).
  *
  * Full-page Aurora bento layout for an individual player. Replaces the
- * modal-only experience for the Players Index "Full Profile" button —
- * `PlayerDetailModal` continues to exist for inline use elsewhere
- * (Auction, Team, Trading Block, Watchlist, Board, Draft Report).
+ * modal-only experience for the Players Index "Full Profile" button.
+ * The player card (components/shared/playerCard) is the inline peek
+ * everywhere else (Auction, Team, Trading Block, Watchlist, Board, Draft Report).
  *
  * Why a page (not just a reskinned modal):
  *   - Shareable URLs (`/players/:mlbId`) — modals vanish on reload
@@ -58,7 +58,7 @@ import {
   formatRelativeDate,
   formatTransactionDate,
   transactionBadgeClass,
-} from "../../../components/shared/PlayerDetailModal";
+} from "../../../components/shared/playerDetailHelpers";
 import { usePlayerNews } from "../../../hooks/usePlayerNews";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { mapPosition, resolveRealMlbId } from "../../../lib/sportConfig";
