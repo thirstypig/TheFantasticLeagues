@@ -151,6 +151,19 @@ describe("ClosePeriodPage: one checklist page", () => {
     expect((await closeBtn()).disabled).toBe(false);
   });
 
+  it("?bill=later in the URL does not change the default or the PATCH body", async () => {
+    renderAt([`${URL}?step=5&bill=later`]);
+    expect((await billNow()).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(await closeBtn());
+    confirmClose(screen.getByRole("dialog"));
+    await waitFor(() => expect(m.setPeriodStatus).toHaveBeenCalledWith(7, { status: "completed", billFees: true }));
+  });
+
+  it("keeps the note that rosters are checked as they are now", async () => {
+    renderAt([URL]);
+    expect(await screen.findByText("This checks rosters as they are now, not every day of the period.")).toBeTruthy();
+  });
+
   it("a load failure for the period shows an error and a hub link, no Close button", async () => {
     m.getCloseReadiness.mockRejectedValue(new Error("boom"));
     renderAt([URL]);
@@ -270,7 +283,7 @@ describe("ClosePeriodPage: IL fees panel", () => {
     expect(within(screen.getByTestId("fee-team-3")).getByText("$0")).toBeTruthy();
   });
 
-  it("zero fees: no control, 'No IL fees this period'", async () => {
+  it("zero preview rows: no control, 'No IL fees this period'", async () => {
     m.previewIlFees.mockResolvedValue(feesOf([]));
     renderAt([URL]);
     expect(await screen.findByText("No IL fees this period")).toBeTruthy();
@@ -341,15 +354,54 @@ describe("ClosePeriodPage: the close write", () => {
     await waitFor(() => expect(m.setPeriodStatus).toHaveBeenCalledWith(7, { status: "completed", billFees: false }));
   });
 
-  it("zero fees: the no-fees copy and billFees:false", async () => {
+  it("zero preview rows: the no-fees copy, Close enabled, and billFees:true (no stuck bill-later reminder)", async () => {
     m.previewIlFees.mockResolvedValue(feesOf([]));
     renderAt([URL]);
     await screen.findByText("No IL fees this period");
+    expect((await closeBtn()).disabled).toBe(false);
     fireEvent.click(await closeBtn());
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByText("Standings lock. There are no IL fees to bill. You can't undo this.")).toBeTruthy();
     confirmClose(dialog);
-    await waitFor(() => expect(m.setPeriodStatus).toHaveBeenCalledWith(7, { status: "completed", billFees: false }));
+    await waitFor(() => expect(m.setPeriodStatus).toHaveBeenCalledWith(7, { status: "completed", billFees: true }));
+  });
+
+  describe("offsetting rows (+10 / -10, net 0)", () => {
+    const offset = () =>
+      m.previewIlFees.mockResolvedValue(
+        feesOf([
+          { action: "add", teamId: 2, playerId: 101, playerName: "Webb", rank: 1, amount: 10 },
+          { action: "void", teamId: 3, playerId: 104, playerName: "Old", rank: 1, amount: -10 },
+        ]),
+      );
+
+    it("shows the per-team lines and requires a choice", async () => {
+      offset();
+      renderAt([URL]);
+      expect(await screen.findByTestId("fee-team-2")).toBeTruthy();
+      expect(screen.getByTestId("fee-team-3")).toBeTruthy();
+      expect(screen.queryByText("No IL fees this period")).toBeNull();
+      expect((await closeBtn()).disabled).toBe(true);
+      expect(screen.getByText("Choose Bill now or Bill later to close.")).toBeTruthy();
+    });
+
+    it("Bill later sends billFees:false", async () => {
+      offset();
+      renderAt([URL]);
+      fireEvent.click(await screen.findByRole("button", { name: "Bill later" }));
+      fireEvent.click(await closeBtn());
+      confirmClose(screen.getByRole("dialog"));
+      await waitFor(() => expect(m.setPeriodStatus).toHaveBeenCalledWith(7, { status: "completed", billFees: false }));
+    });
+
+    it("Bill now sends billFees:true", async () => {
+      offset();
+      renderAt([URL]);
+      fireEvent.click(await billNow());
+      fireEvent.click(await closeBtn());
+      confirmClose(screen.getByRole("dialog"));
+      await waitFor(() => expect(m.setPeriodStatus).toHaveBeenCalledWith(7, { status: "completed", billFees: true }));
+    });
   });
 
   it("a negative net needs an explicit choice, reads as a credit, and bills now only when chosen", async () => {

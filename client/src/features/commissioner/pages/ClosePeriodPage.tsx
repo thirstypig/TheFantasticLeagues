@@ -158,22 +158,31 @@ function ClosePeriodPageBody() {
     );
   }
 
-  // Billing: "now" needs a known amount. Zero fees and a failed preview both send billFees:false.
+  // Billing: "now" needs a known amount. A failed preview sends billFees:false (bill later from Money).
+  // "No fees" means the preview has no lines at all (not a net of 0): those close with billFees:true,
+  // because billFees:false would leave a period-close "bill later" reminder that never clears.
   const total = fees.state === "ready" ? fees.data.total : null;
-  const noFees = total === 0;
+  const noFees = fees.state === "ready" && fees.data.teams.length === 0;
   const feesFailed = fees.state === "error";
-  const choice: Bill | null = noFees || feesFailed ? "later" : picked ?? (total !== null && total > 0 ? "now" : null);
-  const billNow = choice === "now" && total !== null && !noFees;
+  const choice: Bill | null = noFees
+    ? "now"
+    : feesFailed
+      ? "later"
+      : picked ?? (total !== null && total > 0 ? "now" : null);
+  const billNow = choice === "now" && (noFees || total !== null);
+  const needsChoice = fees.state === "ready" && choice === null;
   const canClose = r.ready && choice !== null && fees.state !== "loading" && !busy;
 
   const net = total ?? 0;
-  const sheetBody = !billNow
-    ? noFees
-      ? "Standings lock. There are no IL fees to bill. You can't undo this."
-      : "Standings lock — IL fees stay unbilled until you bill them. You can't undo this."
-    : net > 0
-      ? `Standings lock and ${money(net)} in IL fees are billed. You can't undo this.`
-      : `Standings lock and a ${dollars(net)} IL fee credit is applied. You can't undo this.`;
+  const sheetBody = noFees
+    ? "Standings lock. There are no IL fees to bill. You can't undo this."
+    : !billNow
+      ? "Standings lock — IL fees stay unbilled until you bill them. You can't undo this."
+      : net > 0
+        ? `Standings lock and ${money(net)} in IL fees are billed. You can't undo this.`
+        : net === 0
+          ? "Standings lock and the IL fees, which net to $0, are billed. You can't undo this."
+          : `Standings lock and a ${dollars(net)} IL fee credit is applied. You can't undo this.`;
 
   async function confirm() {
     if (inFlight.current) return;
@@ -246,6 +255,7 @@ function ClosePeriodPageBody() {
               </CheckRow>
             )}
           </Glass>
+          <p style={{ margin: 0, ...MUTED }}>This checks rosters as they are now, not every day of the period.</p>
 
           <SectionLabel>Standings at close</SectionLabel>
           <Glass padded={false}>
@@ -276,12 +286,16 @@ function ClosePeriodPageBody() {
             ) : noFees ? (
               <div style={ROW}>No IL fees this period</div>
             ) : (
-              <FeePreviewRows preview={fees.data} headline={feeHeadline(fees.data.total, "This close would bill")} />
+              <FeePreviewRows
+                preview={fees.data}
+                headline={fees.data.total === 0 ? "IL fees net to $0" : feeHeadline(fees.data.total, "This close would bill")}
+              />
             )}
           </Glass>
           {fees.state !== "loading" && !noFees && (
             <BillChoice value={choice} nowDisabled={feesFailed} onChange={setPicked} />
           )}
+          {needsChoice && <p style={{ margin: 0, ...MUTED }}>Choose Bill now or Bill later to close.</p>}
           {choice === "later" && !noFees && (
             <p style={{ margin: 0, ...MUTED }}>“Bill later” keeps a reminder in Needs you until you bill.</p>
           )}
