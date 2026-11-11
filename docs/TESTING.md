@@ -145,7 +145,8 @@ Major covered areas (selected):
 - `pages/today/__tests__/todayModel.test.ts` — 30 (pure Today view-model helpers)
 - `pages/today/__tests__/useTodayData.test.tsx` — 5 (per-source loading/ok/error states of the Today data hook)
 - `mobile/__tests__/MobileTeam.test.tsx` — 23 (roster hub fetch, tab switching, IL tab, hero strip, standings rank, move sheet, IL stash/activate flows, optimistic updates, rollback, refetch-on-success, backdrop dismiss, Hitter Totals row with summed numerators, Pitcher Totals row with rate stats derived from IP/ER/BB_H, IL tab hides totals)
-- `mobile/__tests__/MobilePlayers.test.tsx` — 18 (hitter list default, NL filter, position chip filter, pitchers tab, search, sort direction toggle, watch star rendering, addToWatchlist/removeFromWatchlist, star click doesn't expand, row expand/collapse, career table in expanded panel, pitching career endpoint, Available filter chip, Available hides rostered players, Available restores all, Available persists as avail=1 URL param)
+- `features/players/__tests__/PlayersTable.test.tsx` — 12 (column headers per tab, + Wire List only with a pending period, On Wire List state + inline error, Trade link href, no action on own players or without a team, name opens the card, phone row layout, sort callback)
+- `features/players/__tests__/Players.test.tsx` — 8 (free-agents default, availability filters, search + position + availability combine, pitchers tab, This period range, Wire List add + 409 handling, no Wire List without a pending period)
 - `mobile/__tests__/MobileStandings.test.tsx` — 8 (team rows render, YOU badge in standings row, segmented control switches Hitting/Pitching columns, sort direction toggle, Category Leaders section renders, card per category with key label, top-3 teams with actual stat values, rank numbers 1–3 per card)
 - `features/trades/TradesPage.test.tsx` — 23
 - `features/archive/ArchivePage.test.tsx` — 16

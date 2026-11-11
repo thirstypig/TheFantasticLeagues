@@ -38,7 +38,7 @@ function eligibleSlots(player: RosterHubRow, outfieldMode: string): Set<string> 
     if (!tok) continue;
     set.add(mapPosition(tok, outfieldMode));
   }
-  // P chip implies SP+RP for pitchers (mirrors MobilePlayers filter logic).
+  // P chip implies SP+RP for pitchers (mirrors the Players page filter logic).
   if (set.has("P") && player.isPitcher) {
     set.add("SP");
     set.add("RP");

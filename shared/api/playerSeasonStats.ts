@@ -32,6 +32,8 @@ export const PlayerSeasonStatSchema = z.object({
   mlb_full_name: z.string().optional(),
   ogba_team_code: z.string().optional(),
   ogba_team_name: z.string().optional(),
+  /** Owning team's DB id; null for free agents. Optional so older payloads still parse. */
+  ogba_team_id: z.number().nullable().optional(),
   group: z.enum(["H", "P"]).optional(),
   // Per todo #144 — narrowed to boolean. Server emits a real boolean
   // (`players/routes.ts:105, 432`); CSV-import paths coerce via `toBool`

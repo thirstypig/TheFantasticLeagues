@@ -71,6 +71,7 @@ function normalizeTwoWayRow(row: Record<string, any>): PlayerSeasonStat {
     player_name,
     mlb_full_name: String(row?.mlb_full_name ?? "").trim(),
     ogba_team_code: String(row?.ogba_team_code ?? row?.team ?? "").trim(),
+    ogba_team_id: typeof row?.ogba_team_id === "number" ? row.ogba_team_id : null,
     group: role,
     is_pitcher,
     positions,
@@ -190,6 +191,26 @@ export async function getPlayerPeriodStatsMeta(leagueId?: number): Promise<Perio
     })());
   }
   return _periodStatsCache.get(key)!;
+}
+
+/**
+ * Id of the league's wire-list period when it is still editable (PENDING),
+ * else null. Local copy of the wire-list lookup — ADR-015 forbids importing
+ * from features/wire-list.
+ */
+export async function getPendingWirePeriodId(leagueId: number): Promise<number | null> {
+  const resp = await fetchJsonApi<{ period: { id: number; status: string } | null }>(
+    `${API_BASE}/wire-list/periods/active?leagueId=${leagueId}`,
+  );
+  return resp?.period?.status === "PENDING" ? resp.period.id : null;
+}
+
+/** Add a free agent to the owner's Wire List for a pending period. */
+export async function addToWireList(periodId: number, playerId: number, teamId: number): Promise<void> {
+  await fetchJsonApi(`${API_BASE}/wire-list/periods/${periodId}/adds`, {
+    method: "POST",
+    body: JSON.stringify({ teamId, playerId }),
+  });
 }
 
 export async function getPlayerPeriodStats(leagueId?: number): Promise<PeriodStatRow[]> {

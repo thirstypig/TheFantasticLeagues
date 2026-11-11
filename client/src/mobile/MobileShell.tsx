@@ -20,7 +20,6 @@ import { AccountSheet } from "./AccountSheet";
 import { Glyph } from "./atoms/Glyph";
 import { MobileTabBar } from "./MobileTabBar";
 import TodayPage from "../pages/today/TodayPage";
-import { MobilePlayers } from "./pages/MobilePlayers";
 import { MobileStandings } from "./pages/MobileStandings";
 import { MobileTeam } from "./pages/MobileTeam";
 import { MobileWireList } from "./pages/MobileWireList";
@@ -29,7 +28,6 @@ import { MobileWireList } from "./pages/MobileWireList";
 function pickMobilePage(pathname: string): React.ReactElement | null {
   if (pathname === "/") return <TodayPage />;
   if (pathname === "/season" || pathname.startsWith("/season/")) return <MobileStandings />;
-  if (pathname === "/players") return <MobilePlayers />;
   const teamMatch = pathname.match(/^\/teams\/([^/]+)\/?$/);
   if (teamMatch) return <MobileTeam teamCode={teamMatch[1]} />;
   const wireListMatch = pathname.match(/^\/teams\/([^/]+)\/wire-list\/?$/);

@@ -526,9 +526,10 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
     ...(take ? { take } : {}),
   });
 
-  const rosterMap = new Map<number, { teamCode: string; teamName: string; price: number }>();
+  const rosterMap = new Map<number, { teamId: number; teamCode: string; teamName: string; price: number }>();
   for (const r of rosters) {
     rosterMap.set(r.playerId, {
+      teamId: r.team.id,
       teamCode: r.team.code ?? r.team.name.substring(0, 3).toUpperCase(),
       teamName: r.team.name,
       price: Number(r.price),
@@ -563,6 +564,9 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
         mlb_full_name: p.name,
         ogba_team_code: roster?.teamCode ?? "",
         ogba_team_name: roster?.teamName ?? "",
+        // Owning team's DB id (null for free agents) — lets the Players table
+        // build /trades/new?team=<id>&get=<playerId> without a second lookup.
+        ogba_team_id: roster?.teamId ?? null,
         positions: p.posList || pv?.pos || p.posPrimary || "",
         is_pitcher: isPitcher,
         G: ss?.G ?? 0,

@@ -44,9 +44,9 @@ const THEIRS = {
   ],
 };
 
-function renderPage() {
+function renderPage(url = "/trades/new") {
   return render(
-    <MemoryRouter initialEntries={["/trades/new"]}>
+    <MemoryRouter initialEntries={[url]}>
       <Routes>
         <Route path="/trades/new" element={<NewTradePage />} />
         <Route path="/trades" element={<div>TRADES STUB</div>} />
@@ -78,6 +78,39 @@ async function pickBombers() {
 }
 
 describe("NewTradePage", () => {
+  it("preselects team and player from ?team=&get=", async () => {
+    renderPage("/trades/new?team=2&get=202");
+    await screen.findByText("Pete Alonso");
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: /Pete Alonso/ })).toBeChecked());
+    expect(screen.getByRole("checkbox", { name: /Bryce Harper/ })).not.toBeChecked();
+    expect(screen.getByRole("button", { name: "Bombers" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("the query overrides a restored draft's partner and get list", async () => {
+    saveTradeDraft({ leagueId: 20, partnerId: 3, give: [101], get: [999], giveDollars: 0, getDollars: 0 });
+    renderPage("/trades/new?team=2&get=203");
+    await screen.findByText("Elly De La Cruz");
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: /Elly De La Cruz/ })).toBeChecked());
+    expect(screen.getByRole("checkbox", { name: /Tatis/ })).toBeChecked(); // my give side survives
+    expect(loadTradeDraft(20)?.partnerId).toBe(2);
+    expect(loadTradeDraft(20)?.get).toEqual([203]);
+  });
+
+  it("selects the partner but not a player who is not on their roster", async () => {
+    renderPage("/trades/new?team=2&get=555");
+    await screen.findByText("Bryce Harper");
+    for (const box of screen.getAllByRole("checkbox")) expect(box).not.toBeChecked();
+  });
+
+  it("does not tick an IL player from the query", async () => {
+    m.getTradeTeamRoster.mockImplementation(async (id: number) =>
+      (id === 1 ? MINE : { ...THEIRS, currentRoster: [row(201, "Bryce Harper", "1B", "PHI"), row(204, "Hurt Guy", "OF", "NYM", "IL")] }) as any);
+    renderPage("/trades/new?team=2&get=204");
+    await screen.findByText("Bryce Harper");
+    expect(screen.getByRole("checkbox", { name: /Hurt Guy/ })).not.toBeChecked();
+    expect(loadTradeDraft(20)?.get ?? []).toEqual([]);
+  });
+
   it("lists every team but mine A to Z as pills", async () => {
     renderPage();
     const pills = await screen.findAllByTestId("partner-pill");
