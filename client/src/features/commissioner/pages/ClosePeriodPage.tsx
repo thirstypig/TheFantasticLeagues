@@ -1,14 +1,15 @@
-// Close a period: a 5-step guided route. The step lives in ?step=1..5 and
-// moving forward pushes history, so browser Back returns to the previous step.
-// Each step fetches its own data on mount (no cross-step cache) so a reload on
-// any step is safe. Nothing is written until the confirm sheet on step 5.
+// Close a period from one checklist page: what to check before closing,
+// the standings that will lock, the IL fee choice, and the Close button.
+// Every data call is the same as the old 5-step flow. Nothing is written
+// until the confirm sheet; the write is PATCH /api/periods/:id with
+// { status: "completed", billFees }.
 import React, { useRef, useState } from "react";
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 import { ConfirmSheet } from "../../../components/shared/ConfirmSheet";
 import { useToast } from "../../../contexts/ToastContext";
-import { CardError, LINK, MUTED, PRIMARY, ROW, SECONDARY, Skeleton, useLoad, type Load } from "../components/cardParts";
-import { FeePreviewRows, NO_FEES, dollars, feeHeadline, money, useFeePreview } from "../components/feePreview";
+import { CardError, LINK, MUTED, PRIMARY, ROW, Skeleton, useLoad } from "../components/cardParts";
+import { FeePreviewRows, dollars, feeHeadline, money, useFeePreview } from "../components/feePreview";
 import {
   getCloseReadiness,
   getGhostIlSummary,
@@ -18,256 +19,170 @@ import {
   setPeriodStatus,
   teamsUnderInnings,
   toTeamTotals,
-  type CloseReadiness,
 } from "../api";
+import { CommissionerOnly } from "../components/CommissionerOnly";
+import "../commissioner.css";
 
-const STEP_LABELS = ["nothing is final until step 5", "rosters", "standings preview", "IL fees", "confirm"];
+type Bill = "now" | "later";
+type ChipKind = "ready" | "review" | "waiting";
+
+const CHIP_LABEL: Record<ChipKind, string> = { ready: "Ready", review: "Review", waiting: "Waiting" };
+const CHIP_COLOR: Record<ChipKind, string> = {
+  ready: "var(--am-positive)",
+  review: "var(--am-warning)",
+  waiting: "var(--am-text-muted)",
+};
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "none yet";
-  return new Date(iso).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
-// ─── Steps ───────────────────────────────────────────────────────────
-
-function Step1({ readiness, base, onNext }: { readiness: Load<CloseReadiness>; base: string; onNext: () => void }) {
-  if (readiness.state === "loading") return <Glass padded={false}><Skeleton /></Glass>;
-  if (readiness.state === "error") {
-    return (
-      <Glass padded={false}>
-        <CardError>Couldn’t load this period.</CardError>
-        <div style={{ padding: "0 16px 8px" }}><Link to={base} style={LINK}>Back to Commissioner</Link></div>
-      </Glass>
-    );
-  }
-  const r = readiness.data;
-  const closed = r.status === "completed";
+function StatusChip({ kind }: { kind: ChipKind }) {
   return (
-    <>
-      <Glass padded={false}>
-        <div style={ROW}>
-          <span>Final stats are in?</span>
-          <strong style={{ color: r.ready ? "var(--am-positive)" : "var(--am-warning)" }}>{r.ready ? "✓ yes" : "not yet"}</strong>
-        </div>
-        <div style={ROW}><span>Period ends</span><span>{fmtDate(r.endDate)}</span></div>
-        <div style={{ ...ROW, borderBottom: "none" }}><span>Last stat date</span><span>{fmtDate(r.lastStatDate)}</span></div>
-      </Glass>
-      {closed ? (
-        <div>
-          <p style={{ margin: "0 0 4px", fontSize: 17 }}>This period is already closed.</p>
-          <Link to={base} style={LINK}>Back to Commissioner</Link>
-        </div>
-      ) : r.ready ? (
-        <button type="button" style={PRIMARY} onClick={onNext}>Next</button>
-      ) : (
-        <div>
-          <p style={{ margin: "0 0 4px", fontSize: 17 }}>Come back after tomorrow morning's stats sync.</p>
-          <Link to={base} style={LINK}>Back to Commissioner</Link>
-        </div>
-      )}
-    </>
+    <span
+      style={{
+        flex: "none", fontSize: 13, fontWeight: 600, padding: "2px 8px", borderRadius: 10,
+        border: `1px solid ${CHIP_COLOR[kind]}`, color: CHIP_COLOR[kind],
+      }}
+    >
+      {CHIP_LABEL[kind]}
+    </span>
   );
 }
 
-function Step2({ leagueId, base, onNext }: { leagueId: number; base: string; onNext: () => void }) {
-  const ghost = useLoad(() => getGhostIlSummary(leagueId), [leagueId]);
-  const roster = useLoad(() => getRosterCheck(leagueId), [leagueId]);
+/** One "Before you close" row: title and detail lines on the left, status chip on the right. */
+function CheckRow({ title, chip, last, children }: { title: string; chip: ChipKind; last?: boolean; children?: React.ReactNode }) {
+  return (
+    <div style={{ ...ROW, minHeight: 56, alignItems: "flex-start", borderBottom: last ? "none" : ROW.borderBottom }}>
+      <div style={{ display: "grid", gap: 2 }}>
+        <span>{title}</span>
+        {children}
+      </div>
+      <StatusChip kind={chip} />
+    </div>
+  );
+}
+
+const SUB: React.CSSProperties = { fontSize: 15, color: "var(--am-text-muted)" };
+const SUB_LINK: React.CSSProperties = { fontSize: 15, color: "var(--am-warning)", display: "flex", alignItems: "center", minHeight: 44 };
+
+function BillChoice({ value, nowDisabled, onChange }: { value: Bill | null; nowDisabled: boolean; onChange: (b: Bill) => void }) {
+  const opts: Array<{ v: Bill; label: string; disabled: boolean }> = [
+    { v: "now", label: "Bill now", disabled: nowDisabled },
+    { v: "later", label: "Bill later", disabled: false },
+  ];
+  return (
+    <div
+      role="group"
+      aria-label="IL fees"
+      style={{ display: "flex", border: "1px solid var(--am-field-line)", borderRadius: 22, overflow: "hidden", background: "var(--am-field)" }}
+    >
+      {opts.map((o) => {
+        const on = o.v === value;
+        return (
+          <button
+            key={o.v}
+            type="button"
+            aria-pressed={on}
+            disabled={o.disabled}
+            onClick={() => !on && onChange(o.v)}
+            style={{
+              flex: 1, minHeight: 44, padding: "0 14px", border: 0, fontSize: 15, fontWeight: 600, fontFamily: "inherit",
+              cursor: o.disabled ? "default" : "pointer",
+              background: on ? "var(--am-accent)" : "transparent",
+              color: on ? "var(--am-on-accent)" : "var(--am-text)",
+              opacity: o.disabled ? 0.5 : 1,
+            }}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ClosePeriodPageBody() {
+  const params = useParams();
+  const leagueId = Number(params.leagueId);
+  const periodId = Number(params.periodId);
+  const base = `/commissioner/${leagueId}`;
   const rosters = `${base}/rosters`;
-  return (
-    <>
-      <SectionLabel>Rosters right now</SectionLabel>
-      <Glass padded={false}>
-        {roster.state === "loading" ? (
-          <Skeleton />
-        ) : roster.state === "error" ? (
-          <CardError>Couldn’t load roster sizes.</CardError>
-        ) : roster.data.teams.some((t) => t.over) ? (
-          roster.data.teams.filter((t) => t.over).map((t) => (
-            <Link key={t.teamId} to={rosters} style={{ ...ROW, color: "var(--am-warning)" }}>
-              <span>⚠ {t.teamName} · {t.activeCount} active (cap {roster.data.cap})</span>
-              <span aria-hidden="true">›</span>
-            </Link>
-          ))
-        ) : (
-          <div style={ROW}>
-            <span>✓ Roster sizes</span>
-            <span style={MUTED}>All {roster.data.teams.length} at or under {roster.data.cap}</span>
-          </div>
-        )}
-        {ghost.state === "loading" ? (
-          <Skeleton />
-        ) : ghost.state === "error" ? (
-          <CardError>Couldn’t load ghost IL check.</CardError>
-        ) : ghost.data.totalGhosts === 0 ? (
-          <div style={ROW}><span>✓ Ghost IL</span><span style={MUTED}>None</span></div>
-        ) : (
-          ghost.data.teams.flatMap((t) =>
-            t.ghosts.map((g) => (
-              <Link key={g.rosterId} to={rosters} style={{ ...ROW, color: "var(--am-warning)" }}>
-                <span>⚠ {t.teamName} · Ghost IL: {g.playerName} is off the MLB IL</span>
-                <span aria-hidden="true">›</span>
-              </Link>
-            )),
-          )
-        )}
-      </Glass>
-      <p style={{ margin: 0, ...MUTED }}>This checks rosters as they are now, not every day of the period.</p>
-      <button type="button" style={PRIMARY} onClick={onNext}>Next</button>
-    </>
-  );
-}
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
-function Step3({ leagueId, periodId, name, onNext }: { leagueId: number; periodId: number; name: string; onNext: () => void }) {
-  const preview = useLoad(async () => {
+  const readiness = useLoad(() => getCloseReadiness(leagueId, periodId), [leagueId, periodId]);
+  const roster = useLoad(() => getRosterCheck(leagueId), [leagueId]);
+  const ghost = useLoad(() => getGhostIlSummary(leagueId), [leagueId]);
+  const standings = useLoad(async () => {
     const resp = await getPeriodStandingsPreview(leagueId, periodId);
     return { totals: toTeamTotals(resp), under: teamsUnderInnings(resp) };
   }, [leagueId, periodId]);
-  const totals = preview.state === "ready" ? { state: "ready" as const, data: preview.data.totals } : preview;
-  const under = preview.state === "ready" ? preview.data.under : [];
-  return (
-    <>
-      <SectionLabel>{name} points · not final</SectionLabel>
-      <Glass padded={false}>
-        {totals.state === "loading" ? (
-          <Skeleton />
-        ) : totals.state === "error" ? (
-          <CardError>Couldn’t load the standings preview.</CardError>
-        ) : totals.data.length === 0 ? (
-          <p style={{ ...ROW, margin: 0, ...MUTED }}>No standings yet.</p>
-        ) : (
-          totals.data.map((t, i) => (
-            <div key={t.teamName} style={ROW}>
-              <span><span style={MUTED}>{i + 1}.</span> <span>{t.teamName}</span></span>
-              <strong>{t.points}</strong>
-            </div>
-          ))
-        )}
-      </Glass>
-      {under.length > 0 && (
-        <>
-          <SectionLabel>Innings minimum</SectionLabel>
-          <Glass padded={false}>
-            {under.map((t) => (
-              <div key={t.teamName} style={ROW}>
-                <span>{t.teamName} · {formatInnings(t.ip)} of {t.min} IP</span>
-                <strong style={{ fontSize: 15, color: "var(--am-negative)" }}>Review</strong>
-              </div>
-            ))}
-          </Glass>
-          <p style={{ margin: 0, ...MUTED }}>You decide what happens; closing isn't blocked.</p>
-        </>
-      )}
-      <button type="button" style={PRIMARY} onClick={onNext}>Next</button>
-    </>
-  );
-}
-
-function Step4({ leagueId, periodId, onChoose }: { leagueId: number; periodId: number; onChoose: (bill: "now" | "later") => void }) {
   const fees = useFeePreview(leagueId, periodId);
-  return (
-    <>
-      <Glass padded={false}>
-        {fees.state === "loading" ? (
-          <Skeleton />
-        ) : fees.state === "error" ? (
-          <CardError>Couldn’t load the IL fee preview.</CardError>
-        ) : (
-          <FeePreviewRows preview={fees.data} headline={feeHeadline(fees.data.total, "This close would bill")} />
-        )}
-      </Glass>
-      {fees.state !== "loading" && (
-        <div style={{ display: "grid", gap: 8 }}>
-          {/* Billing now needs a known amount; "later" is always available. */}
-          {fees.state === "ready" && (
-            <button type="button" style={PRIMARY} onClick={() => onChoose("now")}>Close &amp; bill now</button>
-          )}
-          <button type="button" style={SECONDARY} onClick={() => onChoose("later")}>Close, bill later</button>
-          <p style={{ margin: 0, ...MUTED }}>“Bill later” keeps a reminder in Needs you until you bill.</p>
-        </div>
-      )}
-    </>
-  );
-}
 
-/**
- * Steps 4 and 5 lead to the irreversible close, so they re-check readiness
- * instead of trusting the URL: a deep link to ?step=5 on a period whose final
- * stats aren't in (or that never started) gets the step-1 copy, not a button.
- */
-function ReadinessGate({
-  readiness,
-  base,
-  children,
-}: {
-  readiness: Load<CloseReadiness>;
-  base: string;
-  children: (r: CloseReadiness) => React.ReactNode;
-}) {
-  if (readiness.state === "loading") return <Glass padded={false}><Skeleton /></Glass>;
-  if (readiness.state === "error") {
-    return (
-      <Glass padded={false}>
-        <CardError>Couldn’t load this period.</CardError>
-        <div style={{ padding: "0 16px 8px" }}><Link to={base} style={LINK}>Back to Commissioner</Link></div>
-      </Glass>
-    );
-  }
-  const r = readiness.data;
-  if (r.status === "completed" || !r.ready) {
-    return (
-      <Glass padded>
-        <p style={{ margin: "0 0 4px", fontSize: 17 }}>
-          {r.status === "completed" ? "This period is already closed." : "Come back after tomorrow morning's stats sync."}
-        </p>
-        <Link to={base} style={LINK}>Back to Commissioner</Link>
-      </Glass>
-    );
-  }
-  return <>{children(r)}</>;
-}
-
-function Step5({
-  leagueId,
-  periodId,
-  base,
-  period: r,
-  bill,
-}: {
-  leagueId: number;
-  periodId: number;
-  base: string;
-  period: CloseReadiness;
-  bill: "now" | "later" | null;
-}) {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const fees = useFeePreview(leagueId, periodId);
+  const [picked, setPicked] = useState<Bill | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   // Synchronous guard: state updates can lag a fast double-tap.
   const inFlight = useRef(false);
 
-  if (bill === null) {
+  const backLink = <Link to={base} style={LINK}>‹ Commissioner</Link>;
+
+  if (readiness.state === "loading") {
+    return <div style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 32px" }}>{backLink}<Glass padded={false}><Skeleton /></Glass></div>;
+  }
+  if (readiness.state === "error") {
     return (
-      <Glass padded>
-        <p style={{ margin: "0 0 4px", fontSize: 17 }}>Pick whether to bill IL fees now or later first.</p>
-        <Link to="?step=4" style={LINK}>Choose how to bill ›</Link>
-      </Glass>
+      <div style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 32px", display: "grid", gap: 8 }}>
+        {backLink}
+        <Glass padded={false}>
+          <CardError>Couldn’t load this period.</CardError>
+          <div style={{ padding: "0 16px 8px" }}><Link to={base} style={LINK}>Back to Commissioner</Link></div>
+        </Glass>
+      </div>
     );
   }
 
-  const billNow = bill === "now";
+  const r = readiness.data;
+  if (r.status === "completed") {
+    return (
+      <div style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 32px", display: "grid", gap: 8 }}>
+        {backLink}
+        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "var(--am-text)" }}>Close {r.name}</h1>
+        <Glass padded>
+          <p style={{ margin: "0 0 4px", fontSize: 17 }}>This period is already closed.</p>
+          <Link to={base} style={LINK}>Back to Commissioner</Link>
+        </Glass>
+      </div>
+    );
+  }
+
+  // Billing: "now" needs a known amount. A failed preview sends billFees:false (bill later from Money).
+  // "No fees" means the preview has no lines at all (not a net of 0): those close with billFees:true,
+  // because billFees:false would leave a period-close "bill later" reminder that never clears.
   const total = fees.state === "ready" ? fees.data.total : null;
-  // Billing now must state the dollar amount before the commissioner confirms.
-  const canClose = !billNow || total !== null;
+  const noFees = fees.state === "ready" && fees.data.teams.length === 0;
+  const feesFailed = fees.state === "error";
+  const choice: Bill | null = noFees
+    ? "now"
+    : feesFailed
+      ? "later"
+      : picked ?? (total !== null && total > 0 ? "now" : null);
+  const billNow = choice === "now" && (noFees || total !== null);
+  const needsChoice = fees.state === "ready" && choice === null;
+  const canClose = r.ready && choice !== null && fees.state !== "loading" && !busy;
+
   const net = total ?? 0;
-  const body = !billNow
-    ? "Standings lock — IL fees stay unbilled until you bill them. You can't undo this."
-    : net > 0
-      ? `Standings lock and ${money(net)} in IL fees are billed. You can't undo this.`
-      : net === 0
-        ? "Standings lock. There are no IL fees to bill. You can't undo this."
-        : `Standings lock and a ${dollars(net)} IL fee credit is applied. You can't undo this.`;
+  const sheetBody = noFees
+    ? "Standings lock. There are no IL fees to bill. You can't undo this."
+    : !billNow
+      ? "Standings lock — IL fees stay unbilled until you bill them. You can't undo this."
+      : net > 0
+        ? `Standings lock and about ${money(net)} in IL fees will be billed. You can't undo this.`
+        : net === 0
+          ? "Standings lock, and the IL fee charges and credits (net $0) are applied. You can't undo this."
+          : `Standings lock and a ${dollars(net)} IL fee credit is applied. You can't undo this.`;
 
   async function confirm() {
     if (inFlight.current) return;
@@ -285,102 +200,125 @@ function Step5({
     }
   }
 
+  const under = standings.state === "ready" ? standings.data.under : [];
+  const overTeams = roster.state === "ready" ? roster.data.teams.filter((t) => t.over) : [];
+  const ghosts = ghost.state === "ready" ? ghost.data.teams.flatMap((t) => t.ghosts.map((g) => ({ ...g, teamName: t.teamName }))) : [];
+
   return (
-    <>
-      <SectionLabel>Summary</SectionLabel>
-      <Glass padded={false}>
-        <div style={ROW}><span>Standings</span><span>Locked at close</span></div>
-        <div style={{ ...ROW, borderBottom: "none" }}>
-          <span>IL fees</span>
-          <span>
-            {fees.state === "loading"
-              ? "…"
-              : fees.state === "error"
-                ? "couldn’t load"
-                : fees.data.total === 0
-                  ? NO_FEES
-                  : `${money(fees.data.total)} ${!billNow ? "left unbilled" : fees.data.total < 0 ? "applied now" : "billed now"}`}
-          </span>
+    <div style={{ maxWidth: 1040, margin: "0 auto", padding: "16px 16px 32px", display: "grid", gap: 16 }}>
+      <header>
+        {backLink}
+        <h1 style={{ margin: "4px 0 0", fontSize: 24, fontWeight: 700, color: "var(--am-text)" }}>Close {r.name}</h1>
+        <p style={{ margin: "2px 0 0", ...MUTED }}>Ends {fmtDate(r.endDate)}</p>
+      </header>
+
+      <div className="close-cols">
+        <div style={{ display: "grid", gap: 16 }}>
+          <SectionLabel>Before you close</SectionLabel>
+          <Glass padded={false}>
+            <CheckRow title="Final stats are in" chip={r.ready ? "ready" : "waiting"}>
+              <span style={SUB}>
+                Last stat date {fmtDate(r.lastStatDate)} · period ended {fmtDate(r.endDate)}
+                {r.ready ? "" : r.status === "pending" ? ". This period hasn't started." : ". Come back after tomorrow morning's stats sync."}
+              </span>
+            </CheckRow>
+            <CheckRow
+              title="Rosters at the limit"
+              chip={roster.state === "loading" ? "waiting" : roster.state === "error" || overTeams.length > 0 ? "review" : "ready"}
+            >
+              {roster.state === "error" && <span style={SUB}>Couldn’t load roster sizes.</span>}
+              {roster.state === "ready" && overTeams.length === 0 && (
+                <span style={SUB}>{roster.data.teams.length} of {roster.data.teams.length} teams within {roster.data.cap}</span>
+              )}
+              {overTeams.map((t) => (
+                <Link key={t.teamId} to={rosters} style={SUB_LINK}>
+                  {t.teamName} {t.activeCount} / {roster.state === "ready" ? roster.data.cap : ""} ›
+                </Link>
+              ))}
+            </CheckRow>
+            <CheckRow
+              title="IL players back from MLB IL"
+              chip={ghost.state === "loading" ? "waiting" : ghost.state === "error" || ghosts.length > 0 ? "review" : "ready"}
+              last={under.length === 0}
+            >
+              {ghost.state === "error" && <span style={SUB}>Couldn’t load the IL check.</span>}
+              {ghost.state === "ready" && ghosts.length === 0 && <span style={SUB}>None</span>}
+              {ghosts.map((g) => (
+                <Link key={g.rosterId} to={rosters} style={SUB_LINK}>{g.teamName} · {g.playerName} is off the MLB IL ›</Link>
+              ))}
+            </CheckRow>
+            {under.length > 0 && (
+              <CheckRow title="Innings minimum" chip="review" last>
+                {under.map((t) => (
+                  <span key={t.teamName} style={SUB}>{t.teamName} {formatInnings(t.ip)} of {t.min} IP · you decide</span>
+                ))}
+              </CheckRow>
+            )}
+          </Glass>
+          <p style={{ margin: 0, ...MUTED }}>This checks rosters as they are now, not every day of the period.</p>
+
+          <SectionLabel>Standings at close</SectionLabel>
+          <Glass padded={false}>
+            {standings.state === "loading" ? (
+              <Skeleton />
+            ) : standings.state === "error" ? (
+              <CardError>Couldn’t load the standings preview.</CardError>
+            ) : standings.data.totals.length === 0 ? (
+              <p style={{ ...ROW, margin: 0, ...MUTED }}>No standings yet.</p>
+            ) : (
+              standings.data.totals.map((t, i) => (
+                <div key={t.teamName} style={ROW}>
+                  <span><span style={MUTED}>{i + 1}.</span> <span>{t.teamName}</span></span>
+                  <strong>{t.points}</strong>
+                </div>
+              ))
+            )}
+          </Glass>
         </div>
-      </Glass>
-      {fees.state === "error" && billNow && (
-        <CardError>Couldn’t load the IL fee amount, so billing now is unavailable. Reload, or go back and choose bill later.</CardError>
-      )}
-      {canClose && (
-        <button type="button" style={PRIMARY} onClick={() => setSheetOpen(true)} disabled={busy}>
-          Close {r.name}
-        </button>
-      )}
+
+        <div style={{ display: "grid", gap: 16 }}>
+          <SectionLabel>IL fees for {r.name}</SectionLabel>
+          <Glass padded={false}>
+            {fees.state === "loading" ? (
+              <Skeleton />
+            ) : fees.state === "error" ? (
+              <CardError>Couldn’t load the fee preview; you can bill later from Money</CardError>
+            ) : noFees ? (
+              <div style={ROW}>No IL fees this period</div>
+            ) : (
+              <FeePreviewRows
+                preview={fees.data}
+                headline={fees.data.total === 0 ? "IL fees net to $0" : feeHeadline(fees.data.total, "This close would bill")}
+              />
+            )}
+          </Glass>
+          {fees.state !== "loading" && !noFees && (
+            <BillChoice value={choice} nowDisabled={feesFailed} onChange={setPicked} />
+          )}
+          {needsChoice && <p style={{ margin: 0, ...MUTED }}>Choose Bill now or Bill later to close.</p>}
+          {choice === "later" && !noFees && (
+            <p style={{ margin: 0, ...MUTED }}>“Bill later” keeps a reminder in Needs you until you bill.</p>
+          )}
+          <button type="button" style={{ ...PRIMARY, opacity: canClose ? 1 : 0.5, cursor: canClose ? "pointer" : "default" }} disabled={!canClose} onClick={() => setSheetOpen(true)}>
+            Close {r.name}
+          </button>
+        </div>
+      </div>
+
       <ConfirmSheet
         open={sheetOpen}
         title={`Close ${r.name}?`}
-        body={body}
+        body={sheetBody}
         confirmLabel="Close period"
         busy={busy}
         onConfirm={confirm}
         onCancel={() => setSheetOpen(false)}
       />
-    </>
+    </div>
   );
 }
 
-// ─── Page ────────────────────────────────────────────────────────────
-
 export default function ClosePeriodPage() {
-  const params = useParams();
-  const leagueId = Number(params.leagueId);
-  const periodId = Number(params.periodId);
-  const base = `/commissioner/${leagueId}`;
-  const [search] = useSearchParams();
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const raw = Number(search.get("step"));
-  const step = Number.isInteger(raw) && raw >= 1 && raw <= 5 ? raw : 1;
-  const billParam = search.get("bill");
-  const bill = billParam === "now" || billParam === "later" ? billParam : null;
-
-  // Re-fetched on every step change: it carries the period name for the header
-  // and the readiness/status checks steps 1, 4 and 5 act on.
-  const readiness = useLoad(() => getCloseReadiness(leagueId, periodId), [leagueId, periodId, step]);
-  const name = readiness.state === "ready" ? readiness.data.name : "period";
-
-  /** Forward moves push history; the state lets the in-page back use it. */
-  const go = (to: number, extra = "") => navigate(`?step=${to}${extra}`, { state: { fromStep: step } });
-
-  const back = () => {
-    const fromStep = (location.state as { fromStep?: number } | null)?.fromStep;
-    if (fromStep === step - 1) navigate(-1);
-    else navigate(`?step=${step - 1}`, { replace: true });
-  };
-
-  return (
-    <div style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 32px", display: "grid", gap: 16 }}>
-      <header>
-        {step === 1 ? (
-          <Link to={base} style={LINK}>‹ Commissioner</Link>
-        ) : (
-          <button type="button" onClick={back} style={{ ...LINK, border: "none", background: "none", padding: 0, cursor: "pointer" }}>
-            ‹ Step {step - 1}
-          </button>
-        )}
-        <h1 style={{ margin: "4px 0 0", fontSize: 24, fontWeight: 700, color: "var(--am-text)" }}>Close {name}</h1>
-        <p style={{ margin: "2px 0 0", ...MUTED }}>Step {step} of 5 · {STEP_LABELS[step - 1]}</p>
-      </header>
-
-      {step === 1 && <Step1 key={step} readiness={readiness} base={base} onNext={() => go(2)} />}
-      {step === 2 && <Step2 key={step} leagueId={leagueId} base={base} onNext={() => go(3)} />}
-      {step === 3 && <Step3 key={step} leagueId={leagueId} periodId={periodId} name={readiness.state === "ready" ? readiness.data.name : "Period"} onNext={() => go(4)} />}
-      {step === 4 && (
-        <ReadinessGate key={step} readiness={readiness} base={base}>
-          {() => <Step4 leagueId={leagueId} periodId={periodId} onChoose={(b) => go(5, `&bill=${b}`)} />}
-        </ReadinessGate>
-      )}
-      {step === 5 && (
-        <ReadinessGate key={step} readiness={readiness} base={base}>
-          {(r) => <Step5 leagueId={leagueId} periodId={periodId} base={base} period={r} bill={bill} />}
-        </ReadinessGate>
-      )}
-    </div>
-  );
+  const leagueId = Number(useParams().leagueId);
+  return <CommissionerOnly leagueId={leagueId}><ClosePeriodPageBody /></CommissionerOnly>;
 }

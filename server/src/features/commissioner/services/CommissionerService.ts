@@ -16,10 +16,18 @@ const MUTABLE_ANY_TIME_CATEGORIES = new Set<string>(["transactions"]);
 
 const TRADE_WINDOW_VALUES = new Set(["anytime", "meeting_day"]);
 
+/** Thrown by assertValidRuleValue; routes map it to HTTP 400. */
+export class InvalidRuleValueError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidRuleValueError";
+  }
+}
+
 /** Throws if the value is not allowed for transactions.trade_window; no-op for other rules. */
 export function assertValidRuleValue(category: string, key: string, value: string): void {
   if (category === "transactions" && key === "trade_window" && !TRADE_WINDOW_VALUES.has(value)) {
-    throw new Error("When trades are allowed must be anytime or meeting_day");
+    throw new InvalidRuleValueError("When trades are allowed must be anytime or meeting_day");
   }
 }
 
@@ -614,7 +622,12 @@ export class CommissionerService {
     });
     if (!team || team.leagueId !== leagueId) throw new Error("Team not found");
 
-    if (team.ownerships.length >= 2)
+    // A legacy-only owner (Team.ownerUserId with no TeamOwnership row) still has
+    // team access, so it counts toward the cap.
+    const legacyOnlyOwnerId =
+      team.ownerships.length === 0 ? team.ownerUserId ?? null : null;
+    const ownerCount = team.ownerships.length + (legacyOnlyOwnerId != null ? 1 : 0);
+    if (ownerCount >= 2)
       throw new Error("Team already has 2 owners. Remove one first.");
 
     let userId: number;
@@ -632,50 +645,58 @@ export class CommissionerService {
     }
 
     // Check existing
-    if (team.ownerships.some((o) => o.userId === userId)) {
+    if (
+      team.ownerships.some((o) => o.userId === userId) ||
+      legacyOnlyOwnerId === userId
+    ) {
       throw new Error("User is already an owner of this team");
     }
 
-    // Ensure league membership
-    await prisma.leagueMembership.upsert({
-      where: { leagueId_userId: { leagueId, userId } },
-      create: { leagueId, userId, role: "OWNER" },
-      update: {},
-    });
-
-    // Ensure franchise membership
     const league = await prisma.league.findUnique({
       where: { id: leagueId },
       select: { franchiseId: true },
     });
-    if (league) {
-      await prisma.franchiseMembership.upsert({
-        where: {
-          franchiseId_userId: { franchiseId: league.franchiseId, userId },
-        },
-        create: {
-          franchiseId: league.franchiseId,
-          userId,
-          role: "OWNER",
-        },
+
+    // One transaction so a failure can't leave a half state (e.g. the legacy
+    // owner backfilled but the new owner missing).
+    await prisma.$transaction(async (tx) => {
+      await tx.leagueMembership.upsert({
+        where: { leagueId_userId: { leagueId, userId } },
+        create: { leagueId, userId, role: "OWNER" },
         update: {},
       });
-    }
 
-    await prisma.teamOwnership.create({
-      data: { teamId, userId },
+      if (league) {
+        await tx.franchiseMembership.upsert({
+          where: {
+            franchiseId_userId: { franchiseId: league.franchiseId, userId },
+          },
+          create: { franchiseId: league.franchiseId, userId, role: "OWNER" },
+          update: {},
+        });
+      }
+
+      if (legacyOnlyOwnerId != null) {
+        // Keep the existing owner's access: give them a real row and leave
+        // Team.ownerUserId untouched.
+        await tx.teamOwnership.create({
+          data: { teamId, userId: legacyOnlyOwnerId },
+        });
+      }
+
+      await tx.teamOwnership.create({ data: { teamId, userId } });
+
+      // First owner on a team with no owner at all: set the legacy fields.
+      if (team.ownerships.length === 0 && legacyOnlyOwnerId == null) {
+        await tx.team.update({
+          where: { id: teamId },
+          data: {
+            ownerUserId: userId,
+            owner: ownerName || undefined,
+          },
+        });
+      }
     });
-
-    // Update legacy fields if first owner
-    if (team.ownerships.length === 0) {
-      await prisma.team.update({
-        where: { id: teamId },
-        data: {
-          ownerUserId: userId,
-          owner: ownerName || undefined,
-        },
-      });
-    }
 
     return this.getTeam(teamId);
   }
@@ -1047,6 +1068,11 @@ export class CommissionerService {
   }
 
   async updateRules(leagueId: number, updates: { id: number; value: string }[]) {
+      return (await this.updateRulesWithChanges(leagueId, updates)).count;
+  }
+
+  /** Same as updateRules, but also returns what changed (category/key/value) for the audit log. */
+  async updateRulesWithChanges(leagueId: number, updates: { id: number; value: string }[]) {
       // Verify all rule IDs belong to this league (prevent IDOR). Also pull
       // the category so we can decide which updates bypass the lock checks.
       const ruleIds = updates.map(u => u.id);
@@ -1077,7 +1103,13 @@ export class CommissionerService {
         )
       );
       invalidateLeagueRules(leagueId);
-      return results.length;
+      return {
+        count: results.length,
+        changes: updates.map((u) => {
+          const r = byId.get(u.id)!;
+          return { category: r.category, key: r.key, value: u.value };
+        }),
+      };
   }
 
   async lockRules(leagueId: number) {

@@ -7,12 +7,58 @@ import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 import { ConfirmSheet } from "../../../components/shared/ConfirmSheet";
 import { useToast } from "../../../contexts/ToastContext";
 import { CardError, LINK, MUTED, PRIMARY, ROW, Skeleton, useLoad } from "../components/cardParts";
-import { getLeaguePeriods, getMovesSinceStart, setPeriodStatus } from "../api";
+import { getLeaguePeriods, getMovesSinceStart, getRosterCheck, setPeriodStatus } from "../api";
+import type { MoveSinceStart } from "../api";
+import { CommissionerOnly } from "../components/CommissionerOnly";
 
 const DAY_MS = 86_400_000;
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+}
+
+/** "Mon Jun 15" */
+function fmtLong(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }).replace(",", "");
+}
+
+/** Inclusive day count of the period. */
+function spanDays(startIso: string, endIso: string): number {
+  return Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / DAY_MS) + 1;
+}
+
+const SUB: React.CSSProperties = { fontSize: 15, color: "var(--am-text-muted)" };
+
+function groupByTeam(list: MoveSinceStart[]): Array<[string, MoveSinceStart[]]> {
+  const map = new Map<string, MoveSinceStart[]>();
+  for (const mv of list) {
+    const k = mv.teamName ?? "Unknown team";
+    map.set(k, [...(map.get(k) ?? []), mv]);
+  }
+  return [...map.entries()];
+}
+
+function moveColor(type: string | null): string {
+  if (type === "ADD") return "var(--am-positive)";
+  if (type === "DROP") return "var(--am-negative)";
+  return "var(--am-text)";
+}
+
+const MOVE_VERBS: Record<string, string> = {
+  ADD: "Added",
+  DROP: "Dropped",
+  IL_STASH: "Moved to IL",
+  IL_ACTIVATE: "Back from IL",
+  IL_RELEASE: "Released from IL",
+  SLOT_CHANGE: "Position change",
+};
+
+function moveLabel(mv: MoveSinceStart): string {
+  const verb = (mv.transactionType && MOVE_VERBS[mv.transactionType]) ?? mv.transactionType ?? "Move";
+  const name = `${verb} ${mv.playerName ?? "Unknown player"}`;
+  // A missing or unparseable date shows no date rather than "Invalid Date".
+  const when = mv.effDate && !Number.isNaN(new Date(mv.effDate).getTime()) ? fmtDate(mv.effDate) : null;
+  return when ? `${name} · ${when}` : name;
 }
 
 /** Whole UTC days between the start date and today; <= 0 means on time. */
@@ -31,7 +77,7 @@ function lateBadge(startIso: string): string | null {
   return `${n} ${n === 1 ? "day" : "days"} late`;
 }
 
-export default function StartPeriodPage() {
+function StartPeriodPageBody() {
   const params = useParams();
   const leagueId = Number(params.leagueId);
   const periodId = Number(params.periodId);
@@ -41,6 +87,7 @@ export default function StartPeriodPage() {
 
   const periods = useLoad(() => getLeaguePeriods(leagueId), [leagueId]);
   const moves = useLoad(() => getMovesSinceStart(leagueId, periodId), [leagueId, periodId]);
+  const roster = useLoad(() => getRosterCheck(leagueId), [leagueId]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   // Synchronous guard: state updates can lag a fast double-tap.
@@ -80,7 +127,7 @@ export default function StartPeriodPage() {
     content = (
       <Glass padded>
         <p style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 600 }}>No next period set up</p>
-        <Link to={`${base}/settings`} style={LINK}>Set up periods ›</Link>
+        <Link to={`${base}/season`} style={LINK}>Set up periods ›</Link>
       </Glass>
     );
   } else if (period.status !== "pending") {
@@ -94,6 +141,7 @@ export default function StartPeriodPage() {
     const badge = lateBadge(period.startDate);
     const list = moves.state === "ready" ? moves.data : [];
     const movesReady = moves.state === "ready";
+    const overTeams = roster.state === "ready" ? roster.data.teams.filter((t) => t.over) : [];
     // Start-day overlap: warn (don't block) while the previous period is open.
     const stillActive = periods.data.find((p) => p.status === "active" && p.id !== period.id);
     content = (
@@ -106,61 +154,83 @@ export default function StartPeriodPage() {
             <Link to={`${base}/close/${stillActive.id}`} style={LINK}>Close {stillActive.name} ›</Link>
           </Glass>
         )}
-        <Glass padded={false}>
-          <div style={{ ...ROW, borderBottom: "none" }}>
-            <span>{fmtDate(period.startDate)} – {fmtDate(period.endDate)}</span>
-            {badge && (
-              <strong style={{ color: daysLate(period.startDate) > 0 ? "var(--am-warning)" : "var(--am-positive)" }}>{badge}</strong>
-            )}
+        <div className="close-cols">
+          <div style={{ display: "grid", gap: 16 }}>
+            <SectionLabel>Moves since the start date{movesReady ? ` · ${list.length}` : ""}</SectionLabel>
+            <Glass padded={false}>
+              {moves.state === "loading" ? (
+                <Skeleton />
+              ) : moves.state === "error" ? (
+                <CardError>Couldn’t load moves.</CardError>
+              ) : list.length === 0 ? (
+                <p style={{ ...ROW, margin: 0, borderBottom: "none", ...MUTED }}>No moves since the start date.</p>
+              ) : (
+                groupByTeam(list).map(([team, rows]) => (
+                  <div key={team} data-testid={`team-moves-${team}`} style={{ borderBottom: "1px solid var(--am-border)" }}>
+                    <p style={{ margin: 0, padding: "10px 16px 0", fontSize: 17, fontWeight: 600, color: "var(--am-text)" }}>{team}</p>
+                    {rows.map((mv) => (
+                      <Link
+                        key={mv.id}
+                        to={`${base}/rosters`}
+                        style={{ ...ROW, minHeight: 56, borderBottom: "none", fontSize: 15 }}
+                      >
+                        <span style={{ color: moveColor(mv.transactionType) }}>{moveLabel(mv)}</span>
+                        <span aria-hidden="true">›</span>
+                      </Link>
+                    ))}
+                  </div>
+                ))
+              )}
+            </Glass>
           </div>
-        </Glass>
 
-        <SectionLabel>Moves since the start date</SectionLabel>
-        <Glass padded={false}>
-          {moves.state === "loading" ? (
-            <Skeleton />
-          ) : moves.state === "error" ? (
-            <CardError>Couldn’t load moves.</CardError>
-          ) : list.length === 0 ? (
-            <p style={{ ...ROW, margin: 0, borderBottom: "none", ...MUTED }}>No moves since the start date.</p>
-          ) : (
-            <>
-              <div style={{ ...ROW, fontWeight: 700, color: "var(--am-warning)" }}>
-                ⚠ {list.length} {list.length === 1 ? "move" : "moves"} made while pending
-              </div>
-              {list.map((mv) => (
-                <Link key={mv.id} to={`${base}/rosters`} style={ROW}>
-                  <span>
-                    {mv.playerName ?? "Unknown player"}
-                    <span style={{ ...MUTED, display: "block" }}>
-                      {[mv.teamName, mv.transactionType, fmtDate(mv.effDate)].filter(Boolean).join(" · ")}
-                    </span>
-                  </span>
-                  <span aria-hidden="true">›</span>
+          <div style={{ display: "grid", gap: 16, alignContent: "start" }}>
+            <Glass padded>
+              <p style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--am-text)" }}>{period.name}</p>
+              <p style={{ margin: "4px 0 0", ...SUB }}>
+                {fmtLong(period.startDate)} – {fmtLong(period.endDate)}
+              </p>
+              <p style={{ margin: "4px 0 0", ...SUB }}>{spanDays(period.startDate, period.endDate)} days</p>
+              {badge && (
+                <strong style={{ display: "block", marginTop: 4, fontSize: 15, color: daysLate(period.startDate) > 0 ? "var(--am-warning)" : "var(--am-positive)" }}>{badge}</strong>
+              )}
+            </Glass>
+
+            <Glass padded>
+              {roster.state === "loading" && <span style={SUB}>Checking rosters…</span>}
+              {roster.state === "error" && <span style={SUB}>Couldn’t load roster sizes.</span>}
+              {roster.state === "ready" && overTeams.length === 0 && (
+                <span style={{ ...SUB, color: "var(--am-positive)" }}>
+                  ✓ All {roster.data.teams.length} rosters within {roster.data.cap}
+                </span>
+              )}
+              {roster.state === "ready" && overTeams.map((t) => (
+                <Link key={t.teamId} to={`${base}/rosters`} style={{ ...LINK, fontSize: 15, color: "var(--am-negative)", display: "flex" }}>
+                  {t.teamName} {t.activeCount} / {roster.data.cap} ›
                 </Link>
               ))}
-            </>
-          )}
-        </Glass>
+            </Glass>
 
-        {/* The moves list is the sanity check before starting — no start without it. */}
-        <button
-          type="button"
-          style={{ ...PRIMARY, opacity: movesReady ? 1 : 0.6, cursor: movesReady ? "pointer" : "not-allowed" }}
-          onClick={() => setSheetOpen(true)}
-          disabled={busy || !movesReady}
-        >
-          Start {period.name}
-        </button>
-        {!movesReady && (
-          <p style={{ margin: 0, ...MUTED }}>
-            {moves.state === "error" ? "Couldn’t load moves — reload before starting" : "Loading moves…"}
-          </p>
-        )}
+            {/* The moves list is the sanity check before starting — no start without it. */}
+            <button
+              type="button"
+              style={{ ...PRIMARY, opacity: movesReady ? 1 : 0.6, cursor: movesReady ? "pointer" : "not-allowed" }}
+              onClick={() => setSheetOpen(true)}
+              disabled={busy || !movesReady}
+            >
+              Start {period.name}
+            </button>
+            {!movesReady && (
+              <p style={{ margin: 0, ...MUTED }}>
+                {moves.state === "error" ? "Couldn’t load moves — reload before starting" : "Loading moves…"}
+              </p>
+            )}
+          </div>
+        </div>
         <ConfirmSheet
           open={sheetOpen}
           title={`Start ${period.name}?`}
-          body="The period becomes active and stats start counting. Moves made while pending stay as they are."
+          body="Owners see the new rosters right away."
           confirmLabel="Start period"
           busy={busy}
           onConfirm={confirm}
@@ -171,9 +241,14 @@ export default function StartPeriodPage() {
   }
 
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto", padding: "16px 16px 32px", display: "grid", gap: 16 }}>
+    <div style={{ maxWidth: 960, margin: "0 auto", padding: "16px 16px 32px", display: "grid", gap: 16 }}>
       {header(period ? `Start ${period.name}` : "Start period")}
       {content}
     </div>
   );
+}
+
+export default function StartPeriodPage() {
+  const leagueId = Number(useParams().leagueId);
+  return <CommissionerOnly leagueId={leagueId}><StartPeriodPageBody /></CommissionerOnly>;
 }

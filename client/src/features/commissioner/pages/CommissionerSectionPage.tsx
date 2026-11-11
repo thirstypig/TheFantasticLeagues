@@ -2,6 +2,7 @@
 // /commissioner/:leagueId/:section, without the top-level tab strip.
 import React from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
+import { CommissionerOnly } from "../components/CommissionerOnly";
 import Commissioner, { type CommissionerProps } from "./Commissioner";
 
 const SECTIONS: Record<string, Pick<CommissionerProps, "section" | "opsSubTab">> = {
@@ -14,7 +15,7 @@ const SECTIONS: Record<string, Pick<CommissionerProps, "section" | "opsSubTab">>
   archive:  { section: "archive" },
 };
 
-export default function CommissionerSectionPage() {
+function CommissionerSectionPageBody() {
   const { leagueId, section } = useParams();
   const props = section && Object.prototype.hasOwnProperty.call(SECTIONS, section) ? SECTIONS[section] : null;
   if (!props) return <Navigate to={`/commissioner/${leagueId}`} replace />;
@@ -30,4 +31,9 @@ export default function CommissionerSectionPage() {
       <Commissioner key={section} {...props} hideTabs />
     </>
   );
+}
+
+export default function CommissionerSectionPage() {
+  const leagueId = Number(useParams().leagueId);
+  return <CommissionerOnly leagueId={leagueId}><CommissionerSectionPageBody /></CommissionerOnly>;
 }

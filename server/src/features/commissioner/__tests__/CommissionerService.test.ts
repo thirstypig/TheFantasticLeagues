@@ -25,6 +25,7 @@ const { mockPrisma } = vi.hoisted(() => ({
     },
     leagueMembership: {
       create: vi.fn(),
+      upsert: vi.fn(),
     },
     user: {
       findUnique: vi.fn(),
@@ -32,13 +33,18 @@ const { mockPrisma } = vi.hoisted(() => ({
     },
     team: {
       findMany: vi.fn(),
+      findUnique: vi.fn(),
+      update: vi.fn(),
       createMany: vi.fn(),
     },
+    franchiseMembership: { upsert: vi.fn() },
+    $transaction: vi.fn(),
     roster: {
       deleteMany: vi.fn(),
     },
     teamOwnership: {
       create: vi.fn(),
+      deleteMany: vi.fn(),
     },
   },
 }));
@@ -300,5 +306,55 @@ describe("CommissionerService.getRules backfill", () => {
 
     expect(mockPrisma.leagueRule.createMany).not.toHaveBeenCalled();
     expect(result).toBe(existing);
+  });
+});
+
+
+describe("CommissionerService.addTeamOwner (legacy owner protection)", () => {
+  const baseTeam = { id: 5, leagueId: 7, ownerUserId: null as number | null, owner: null as string | null, ownerships: [] as Array<{ userId: number }> };
+
+  beforeEach(() => {
+    mockPrisma.$transaction.mockImplementation(async (cb: (tx: unknown) => unknown) => cb(mockPrisma));
+    mockPrisma.league.findUnique.mockResolvedValue({ franchiseId: 1 });
+  });
+
+  it("legacy-only team + add Y: backfills X's row, creates Y's row, leaves ownerUserId alone", async () => {
+    mockPrisma.team.findUnique.mockResolvedValue({ ...baseTeam, ownerUserId: 11, owner: "Xavier" });
+    await service.addTeamOwner(7, 5, { userId: 22, ownerName: "Yolanda" });
+
+    expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.teamOwnership.create.mock.calls.map((c) => c[0])).toEqual([
+      { data: { teamId: 5, userId: 11 } },
+      { data: { teamId: 5, userId: 22 } },
+    ]);
+    expect(mockPrisma.team.update).not.toHaveBeenCalled();
+  });
+
+  it("legacy-only team: legacy owner counts toward the 2-owner cap (second ok, third refused)", async () => {
+    mockPrisma.team.findUnique.mockResolvedValue({ ...baseTeam, ownerUserId: 11 });
+    await expect(service.addTeamOwner(7, 5, { userId: 22 })).resolves.toBeDefined();
+
+    mockPrisma.teamOwnership.create.mockClear();
+    mockPrisma.team.findUnique.mockResolvedValue({ ...baseTeam, ownerUserId: 11, ownerships: [{ userId: 11 }, { userId: 22 }] });
+    await expect(service.addTeamOwner(7, 5, { userId: 33 })).rejects.toThrow(/2 owners/);
+    expect(mockPrisma.teamOwnership.create).not.toHaveBeenCalled();
+  });
+
+  it("null-owner team behaves as before: one row, legacy fields set", async () => {
+    mockPrisma.team.findUnique.mockResolvedValue({ ...baseTeam });
+    await service.addTeamOwner(7, 5, { userId: 22, ownerName: "Yolanda" });
+
+    expect(mockPrisma.teamOwnership.create.mock.calls.map((c) => c[0])).toEqual([{ data: { teamId: 5, userId: 22 } }]);
+    expect(mockPrisma.team.update).toHaveBeenCalledWith({
+      where: { id: 5 },
+      data: { ownerUserId: 22, owner: "Yolanda" },
+    });
+  });
+
+  it("refuses to re-add the legacy owner and writes nothing", async () => {
+    mockPrisma.team.findUnique.mockResolvedValue({ ...baseTeam, ownerUserId: 11 });
+    await expect(service.addTeamOwner(7, 5, { userId: 11 })).rejects.toThrow(/already an owner/);
+    expect(mockPrisma.teamOwnership.create).not.toHaveBeenCalled();
+    expect(mockPrisma.team.update).not.toHaveBeenCalled();
   });
 });

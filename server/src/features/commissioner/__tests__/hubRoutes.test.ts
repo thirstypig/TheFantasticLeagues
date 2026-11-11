@@ -243,23 +243,22 @@ describe("GET /api/commissioner/:leagueId/recent-changes", () => {
     expect((await supertest(app).get("/api/commissioner/x/recent-changes")).status).toBe(400);
   });
 
-  it("reads the latest 500 rows newest first with user name, keeps only this league, maps fields", async () => {
+  it("filters by league in the database (metadata JSON path, newest first, take = limit) and maps fields", async () => {
     m.auditLog.findMany.mockResolvedValue([
       row(5, 20),
-      row(4, 21),
-      row(3, 20, { user: null, metadata: { leagueId: "20" } }),
-      row(2, 20, { metadata: null }),
-      row(1, 20, { metadata: { leagueId: 20, billed: true } }),
+      row(3, 20, { user: null }),
+      row(2, 20, { metadata: { leagueId: 20, billed: true } }),
     ]);
     const res = await supertest(app).get("/api/commissioner/20/recent-changes");
     expect(res.status).toBe(200);
 
     const args = m.auditLog.findMany.mock.calls[0][0];
-    expect(args.take).toBe(500);
+    expect(args.where).toEqual({ metadata: { path: ["leagueId"], equals: 20 } });
+    expect(args.take).toBe(50);
     expect(args.orderBy).toEqual({ createdAt: "desc" });
     expect(args.include).toEqual({ user: { select: { name: true } } });
 
-    expect(res.body.changes.map((c: any) => c.id)).toEqual([5, 3, 1]);
+    expect(res.body.changes.map((c: any) => c.id)).toEqual([5, 3, 2]);
     expect(res.body.changes[0]).toEqual({
       id: 5,
       action: "PERIOD_START",
@@ -272,11 +271,24 @@ describe("GET /api/commissioner/:leagueId/recent-changes", () => {
     expect(res.body.changes[1].userName).toBeNull();
   });
 
-  it("limit=2 returns 2; default caps at 50; max 100", async () => {
-    m.auditLog.findMany.mockResolvedValue(Array.from({ length: 120 }, (_, i) => row(i + 1, 20)));
-    expect((await supertest(app).get("/api/commissioner/20/recent-changes?limit=2")).body.changes).toHaveLength(2);
-    expect((await supertest(app).get("/api/commissioner/20/recent-changes")).body.changes).toHaveLength(50);
-    expect((await supertest(app).get("/api/commissioner/20/recent-changes?limit=1000")).body.changes).toHaveLength(100);
+  it("scopes the where clause to the requested league", async () => {
+    m.auditLog.findMany.mockResolvedValue([]);
+    await supertest(app).get("/api/commissioner/21/recent-changes");
+    expect(m.auditLog.findMany.mock.calls[0][0].where).toEqual({ metadata: { path: ["leagueId"], equals: 21 } });
+  });
+
+  it("passes take = limit: default 50, explicit 2, 200 allowed, clamped to 200", async () => {
+    m.auditLog.findMany.mockResolvedValue([]);
+    const takeFor = async (qs: string) => {
+      m.auditLog.findMany.mockClear();
+      await supertest(app).get(`/api/commissioner/20/recent-changes${qs}`);
+      return m.auditLog.findMany.mock.calls[0][0].take;
+    };
+    expect(await takeFor("")).toBe(50);
+    expect(await takeFor("?limit=2")).toBe(2);
+    expect(await takeFor("?limit=200")).toBe(200);
+    expect(await takeFor("?limit=1000")).toBe(200);
+    expect(await takeFor("?limit=abc")).toBe(50);
   });
 });
 

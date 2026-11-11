@@ -26,6 +26,9 @@ export interface CommissionerTeam {
   budget?: number | null;
   owner?: string | null;
   owners?: Array<{ userId: number; user: CommissionerUser }>;
+  ownerUserId?: number | null;
+  ownerUser?: CommissionerUser | null;
+  ownerships?: Array<{ id: number; userId: number; user: CommissionerUser }>;
 }
 
 export interface CommissionerLeague {
@@ -33,6 +36,8 @@ export interface CommissionerLeague {
   name: string;
   season: number;
   draftMode?: string;
+  entryFee?: number | null;
+  entryFeeNote?: string | null;
 }
 
 export interface CommissionerOverviewResponse {
@@ -206,6 +211,16 @@ export async function assignTeamOwner(leagueId: number, teamId: number, userId: 
 
 export async function removeTeamOwner(leagueId: number, teamId: number, userId: number): Promise<void> {
   await fetchJsonApi(`${API_BASE}/commissioner/${leagueId}/teams/${teamId}/owner/${userId}`, { method: "DELETE" });
+}
+
+export async function getLeagueInviteCode(leagueId: number): Promise<string | null> {
+  const resp = await fetchJsonApi<{ inviteCode: string | null }>(`${API_BASE}/leagues/${leagueId}/invite-code`);
+  return resp.inviteCode ?? null;
+}
+
+export async function regenerateLeagueInviteCode(leagueId: number): Promise<string> {
+  const resp = await fetchJsonApi<{ inviteCode: string }>(`${API_BASE}/leagues/${leagueId}/invite-code/regenerate`, { method: "POST" });
+  return resp.inviteCode;
 }
 
 export async function assignRosterKeeper(leagueId: number, data: {
@@ -581,4 +596,56 @@ export async function saveCommissionerRules(leagueId: number, updates: Array<{ i
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ updates }),
   });
+}
+
+// --- Season and periods ---
+
+export interface SeasonPeriodRow {
+  id: number;
+  name: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+}
+
+export interface CurrentSeason {
+  id: number;
+  leagueId: number;
+  year: number;
+  status: string;
+  periods: SeasonPeriodRow[];
+}
+
+export async function getCommissionerSeason(leagueId: number): Promise<CurrentSeason | null> {
+  const resp = await fetchJsonApi<{ data: CurrentSeason | null }>(`${API_BASE}/seasons/current?leagueId=${leagueId}`);
+  return resp.data ?? null;
+}
+
+export async function createSeasonPeriod(data: {
+  leagueId: number;
+  seasonId: number;
+  name: string;
+  startDate: string;
+  endDate: string;
+}): Promise<SeasonPeriodRow> {
+  const resp = await fetchJsonApi<{ data: SeasonPeriodRow }>(`${API_BASE}/periods`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  return resp.data;
+}
+
+export async function updateSeasonPeriod(
+  periodId: number,
+  data: { name: string; startDate: string; endDate: string },
+): Promise<SeasonPeriodRow> {
+  const resp = await fetchJsonApi<{ data: SeasonPeriodRow }>(`${API_BASE}/periods/${periodId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+  return resp.data;
+}
+
+export async function deleteSeasonPeriod(periodId: number): Promise<void> {
+  await fetchJsonApi(`${API_BASE}/periods/${periodId}`, { method: "DELETE" });
 }

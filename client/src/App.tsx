@@ -30,6 +30,9 @@ const CommissionerSectionPage = React.lazy(() => import("./features/commissioner
 const ClosePeriodPage = React.lazy(() => import("./features/commissioner/pages/ClosePeriodPage"));
 const StartPeriodPage = React.lazy(() => import("./features/commissioner/pages/StartPeriodPage"));
 const RulesPage = React.lazy(() => import("./features/commissioner/pages/RulesPage"));
+const SeasonPage = React.lazy(() => import("./features/commissioner/pages/SeasonPage"));
+const OwnersPage = React.lazy(() => import("./features/commissioner/pages/OwnersPage"));
+const MoneyPage = React.lazy(() => import("./features/commissioner/pages/MoneyPage"));
 const BillPeriodPage = React.lazy(() => import("./features/commissioner/pages/BillPeriodPage"));
 const ScoringSettings = React.lazy(() => import("./features/commissioner/pages/ScoringSettings").then(m => ({ default: m.ScoringSettings })));
 const Admin = React.lazy(() => import("./features/admin/pages/Admin"));
@@ -193,8 +196,11 @@ export default function App() {
                     <Route path="/commissioner/:leagueId/close/:periodId" element={<ErrorBoundary name="commissioner-close"><ClosePeriodPage /></ErrorBoundary>} />
                     <Route path="/commissioner/:leagueId/start/:periodId" element={<ErrorBoundary name="commissioner-start"><StartPeriodPage /></ErrorBoundary>} />
                     <Route path="/commissioner/:leagueId/bill/:periodId" element={<ErrorBoundary name="commissioner-bill"><BillPeriodPage /></ErrorBoundary>} />
+                    <Route path="/commissioner/:leagueId/season" element={<ErrorBoundary name="commissioner-season"><SeasonPage /></ErrorBoundary>} />
                     <Route path="/commissioner/:leagueId/rules" element={<ErrorBoundary name="commissioner-rules"><RulesPage /></ErrorBoundary>} />
                     {/* Section pages. Literal sub-routes (recent, close/:periodId, start/:periodId, bill/:periodId, ...) must be declared ABOVE this catch. */}
+                    <Route path="/commissioner/:leagueId/owners" element={<ErrorBoundary name="commissioner-owners"><OwnersPage /></ErrorBoundary>} />
+                    <Route path="/commissioner/:leagueId/money" element={<ErrorBoundary name="commissioner-money"><MoneyPage /></ErrorBoundary>} />
                     <Route path="/commissioner/:leagueId/:section" element={<ErrorBoundary name="commissioner-section"><CommissionerSectionPage /></ErrorBoundary>} />
                     {/* Canonical "My Team" — resolves myTeamCode from league
                         context, redirects to /teams/:code. Sidebar's My Team

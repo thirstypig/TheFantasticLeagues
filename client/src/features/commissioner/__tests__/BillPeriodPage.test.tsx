@@ -6,6 +6,9 @@ import { resolve } from "node:path";
 import { ApiError } from "../../../api/base";
 
 const mockToast = vi.fn();
+const auth = vi.hoisted(() => ({ user: { isAdmin: false, memberships: [{ leagueId: "20", role: "COMMISSIONER" }] } as any }));
+vi.mock("../../../auth/AuthProvider", () => ({ useAuth: () => ({ me: { user: auth.user } }) }));
+
 vi.mock("../../../contexts/ToastContext", () => ({
   useToast: () => ({ toast: mockToast, confirm: vi.fn() }),
 }));
