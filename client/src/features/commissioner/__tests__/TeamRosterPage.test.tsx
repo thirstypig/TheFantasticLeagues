@@ -50,7 +50,6 @@ const ROWS = () => [
   row(2, 4, "Bryce Harper", "1B", "1B"),
   row(3, 4, "Gerrit Cole", "SP", "SP"),
   row(4, 4, "Zac Gallen", "SP", "IL"),
-  row(5, 4, "Pete Alonso", "1B", "IL"),
   row(6, 4, "Catcher Joe", "C", "C"),
   row(99, 7, "Other Team Guy", "OF", "OF"),
 ];
@@ -110,7 +109,7 @@ describe("TeamRosterPage", () => {
     renderPage();
     await screen.findByRole("button", { name: "Actions for Harper" });
     const names = screen.getAllByTestId("team-roster-row").map((r) => r.getAttribute("data-player"));
-    expect(names).toEqual(["Catcher Joe", "Bryce Harper", "Shohei Ohtani", "Gerrit Cole", "Zac Gallen", "Pete Alonso"]);
+    expect(names).toEqual(["Catcher Joe", "Bryce Harper", "Shohei Ohtani", "Gerrit Cole", "Zac Gallen"]);
     expect(screen.queryByText(/Other Team Guy/)).toBeNull();
   });
 
@@ -233,5 +232,68 @@ describe("TeamRosterPage", () => {
     m.getCommissionerRosters.mockRejectedValue(new Error("x"));
     renderPage();
     expect(await screen.findByText("Couldn’t load this roster.")).toBeTruthy();
+  });
+
+  it("uses il.slot_count for 'of N'", async () => {
+    m.getCommissionerRules.mockResolvedValue([{ id: 3, category: "il", key: "slot_count", value: "3", label: "", isLocked: false }] as any);
+    m.getCommissionerRosters.mockResolvedValue(ROWS().filter((r) => r.player.id !== 5) as any);
+    renderPage();
+    await openActions("Harper");
+    fireEvent.click(screen.getByRole("button", { name: "Move to IL ›" }));
+    expect(screen.getByText("IL slot 2 of 3 · fee $15 per period")).toBeTruthy();
+  });
+
+  it("when all IL slots are full, says so and offers no search or move button", async () => {
+    m.getCommissionerRosters.mockResolvedValue([...ROWS(), row(5, 4, "Pete Alonso", "1B", "IL")] as any);
+    renderPage();
+    await openActions("Harper");
+    fireEvent.click(screen.getByRole("button", { name: "Move to IL ›" }));
+    expect(screen.getByText("All 2 IL slots are full. Activate or drop an IL player first.")).toBeTruthy();
+    expect(screen.queryByLabelText("Add a replacement: search NL free agents")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Move Harper to IL" })).toBeNull();
+  });
+
+  it("shows a $0 fee as $0", async () => {
+    m.getCommissionerRules.mockResolvedValue([{ id: 2, category: "il", key: "il_slot_2_cost", value: "0", label: "", isLocked: false }] as any);
+    m.getCommissionerRosters.mockResolvedValue(ROWS().filter((r) => r.player.id !== 5) as any);
+    renderPage();
+    await openActions("Harper");
+    fireEvent.click(screen.getByRole("button", { name: "Move to IL ›" }));
+    expect(screen.getByText("IL slot 2 of 2 · fee $0 per period")).toBeTruthy();
+  });
+
+  async function readyToConfirmStash() {
+    m.getCommissionerRosters.mockResolvedValue(ROWS().filter((r) => r.player.id !== 5) as any);
+    renderPage();
+    await openActions("Harper");
+    fireEvent.click(screen.getByRole("button", { name: "Move to IL ›" }));
+    await pickFa("Add a replacement: search NL free agents");
+    await waitFor(() => expect((screen.getByRole("button", { name: "Move Harper to IL" }) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByRole("button", { name: "Move Harper to IL" }));
+    await screen.findByRole("dialog");
+  }
+
+  it("a failed mutation shows the server error and re-enables the button", async () => {
+    m.commissionerIlStash.mockRejectedValue(new Error("Player already on a roster."));
+    await readyToConfirmStash();
+    confirmInSheet();
+    expect(await screen.findByText("Player already on a roster.")).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect((screen.getByRole("button", { name: "Move Harper to IL" }) as HTMLButtonElement).disabled).toBe(false);
+    expect(m.commissionerIlStash).toHaveBeenCalledTimes(1);
+  });
+
+  it("success closes the panel and reloads rosters", async () => {
+    await readyToConfirmStash();
+    confirmInSheet();
+    await waitFor(() => expect(screen.queryByTestId("team-action-panel")).toBeNull());
+    await waitFor(() => expect(m.getCommissionerRosters).toHaveBeenCalledTimes(2));
+  });
+
+  it("notes when the reload after a save fails", async () => {
+    await readyToConfirmStash();
+    m.getCommissionerRosters.mockRejectedValue(new Error("x"));
+    confirmInSheet();
+    expect(await screen.findByText("Saved. Couldn’t refresh the roster — reload the page.")).toBeTruthy();
   });
 });

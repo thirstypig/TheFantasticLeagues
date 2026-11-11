@@ -33,6 +33,11 @@ const SUB: React.CSSProperties = { fontSize: 15, color: "var(--am-text-muted)" }
 const OK: React.CSSProperties = { margin: 0, fontSize: 15, color: "var(--am-positive)" };
 const BAD: React.CSSProperties = { margin: 0, fontSize: 15, color: "var(--am-negative)" };
 
+/** Blank or missing is NaN, never 0. */
+function numRule(raw: string | null | undefined): number {
+  return raw === undefined || raw === null || String(raw).trim() === "" ? NaN : Number(raw);
+}
+
 function lastName(full: string): string {
   const parts = full.trim().split(/\s+/);
   return parts[parts.length - 1] || full;
@@ -65,6 +70,7 @@ function TeamBody({ leagueId, teamId }: { leagueId: number; teamId: number }) {
   if (rostersLoad.state === "ready") lastRosters.current = rostersLoad.data;
   const rosterRows = lastRosters.current;
 
+  const [savedOnce, setSavedOnce] = useState(false);
   const [panel, setPanel] = useState<Panel | null>(null);
   const [pick, setPick] = useState<{ id: number; name: string } | null>(null);
   const [verdict, setVerdict] = useState<Check | null>(null);
@@ -96,10 +102,16 @@ function TeamBody({ leagueId, teamId }: { leagueId: number; teamId: number }) {
   );
   const ruleCost = (key: string, fallback: number) => {
     if (rules.state !== "ready") return fallback;
-    const n = Number(rules.data.find((r) => r.key === key)?.value);
-    return Number.isFinite(n) && n > 0 ? n : fallback;
+    const n = numRule(rules.data.find((r) => r.key === key)?.value);
+    return Number.isFinite(n) && n >= 0 ? n : fallback; // $0 is a valid fee
   };
+  const slotCount = (() => {
+    if (rules.state !== "ready") return 2;
+    const n = numRule(rules.data.find((r) => r.key === "slot_count" && r.category === "il")?.value);
+    return Number.isFinite(n) && n >= 0 ? n : 2;
+  })();
   const slot = ilUsed + 1;
+  const slotsFull = slot > slotCount;
   const fee = slot === 1 ? ruleCost("il_slot_1_cost", 10) : ruleCost("il_slot_2_cost", 15);
 
   const target = panel ? team.find((r) => r.id === panel.rosterId) ?? null : null;
@@ -165,6 +177,7 @@ function TeamBody({ leagueId, teamId }: { leagueId: number; teamId: number }) {
         "success",
       );
       close();
+      setSavedOnce(true);
       setVersion((v) => v + 1);
     } catch (e) {
       if (!alive.current) return;
@@ -202,8 +215,14 @@ function TeamBody({ leagueId, teamId }: { leagueId: number; teamId: number }) {
     return (
       <div data-testid="team-action-panel" style={{ display: "grid", gap: 12, padding: 16, background: "var(--am-surface-alt)", borderBottom: "1px solid var(--am-border)" }}>
         <b style={{ fontSize: 17, color: "var(--am-text)" }}>{heading}</b>
-        {panel.kind === "il" && <p style={{ margin: 0, ...SUB }}>{`IL slot ${slot} of 2 · fee $${fee} per period`}</p>}
-        {panel.kind === "activate" ? (
+        {panel.kind === "il" && !slotsFull && <p style={{ margin: 0, ...SUB }}>{`IL slot ${slot} of ${slotCount} · fee $${fee} per period`}</p>}
+        {panel.kind === "il" && slotsFull && (
+          <>
+            <p style={{ margin: 0, fontSize: 15, color: "var(--am-warning)" }}>{`All ${slotCount} IL slots are full. Activate or drop an IL player first.`}</p>
+            <button type="button" style={SECONDARY} onClick={close}>Cancel</button>
+          </>
+        )}
+        {panel.kind === "il" && slotsFull ? null : panel.kind === "activate" ? (
           <div style={{ display: "grid", gap: 8 }}>
             <p style={{ margin: 0, ...SUB }}>Choose who to drop to make room.</p>
             {activeChoices.map((r) => (
@@ -228,6 +247,7 @@ function TeamBody({ leagueId, teamId }: { leagueId: number; teamId: number }) {
             onPick={(fa: FreeAgent) => choose(fa.playerId, fa.name)}
           />
         )}
+        {panel.kind === "il" && slotsFull ? null : <>
         {pick && panel.kind !== "activate" && <p style={{ margin: 0, ...SUB }}>{`Adding ${pick.name}`}</p>}
         {shownOk && (
           <p style={OK}>
@@ -240,6 +260,7 @@ function TeamBody({ leagueId, teamId }: { leagueId: number; teamId: number }) {
           {label}
         </button>
         <button type="button" style={SECONDARY} onClick={close}>Cancel</button>
+        </>}
       </div>
     );
   }
@@ -296,6 +317,10 @@ function TeamBody({ leagueId, teamId }: { leagueId: number; teamId: number }) {
           {desktop && cap !== null ? `${teamName} · ${active} / ${cap}` : teamName}
         </h1>
       </header>
+
+      {savedOnce && rostersLoad.state === "error" && (
+        <p role="status" style={{ margin: 0, ...SUB }}>Saved. Couldn’t refresh the roster — reload the page.</p>
+      )}
 
       {ghostLines.map((r) => (
         <div key={r.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", padding: "8px 16px", border: "1px solid var(--am-warning)", borderRadius: 6, background: "var(--am-surface)", fontSize: 15, color: "var(--am-text)" }}>
