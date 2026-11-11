@@ -97,11 +97,37 @@ describe("CommissionerTradesPage", () => {
     expect(screen.getByRole("link", { name: /Record a past trade/ })).toHaveAttribute("href", "/commissioner/20/trade-record");
   });
 
-  it("proposed trade has no buttons", async () => {
+  it("a proposed trade has only a Veto button", async () => {
     renderPage();
     await screen.findByText("Still being discussed");
     const card = screen.getByText("Los Doyers → Skunk Dogs").closest("[data-testid='trade-card']") as HTMLElement;
-    expect(within(card).queryAllByRole("button")).toHaveLength(0);
+    const buttons = within(card).getAllByRole("button");
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]).toHaveTextContent("Veto");
+  });
+
+  it("veto on a proposed offer confirms, then calls the veto endpoint", async () => {
+    renderPage();
+    await screen.findByText("Still being discussed");
+    const card = screen.getByText("Los Doyers → Skunk Dogs").closest("[data-testid='trade-card']") as HTMLElement;
+    fireEvent.click(within(card).getByRole("button", { name: "Veto" }));
+    expect(await screen.findByText("Veto this offer?")).toBeInTheDocument();
+    expect(screen.getByText("Both teams are told.")).toBeInTheDocument();
+    expect(m.vetoLeagueTrade).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Veto offer" }));
+    await waitFor(() => expect(m.vetoLeagueTrade).toHaveBeenCalledWith(2));
+    expect(mockToast).toHaveBeenCalledWith("Offer vetoed", "success");
+    await waitFor(() => expect(m.listLeagueTrades).toHaveBeenCalledTimes(2));
+  });
+
+  it("a player who left the sender shows a bad line and no green check", async () => {
+    // Skenes is on no Bombers row at all (not active, not IL).
+    m.getCommissionerRosters.mockResolvedValue([ros(4, 401)] as any);
+    renderPage();
+    await screen.findByText("To process · 1");
+    expect(screen.getByText("Paul Skenes is no longer on Bombers")).toBeInTheDocument();
+    expect(screen.queryByText("✓")).toBeNull();
+    expect(screen.queryByText(/Both rosters stay/)).toBeNull();
   });
 
   it("process sends the pending period start date between periods", async () => {
@@ -127,7 +153,8 @@ describe("CommissionerTradesPage", () => {
   it("veto calls the veto endpoint", async () => {
     renderPage();
     await screen.findByText("To process · 1");
-    fireEvent.click(screen.getByRole("button", { name: "Veto" }));
+    const card = screen.getByText("Bombers ↔ Los Doyers").closest("[data-testid='trade-card']") as HTMLElement;
+    fireEvent.click(within(card).getByRole("button", { name: "Veto" }));
     fireEvent.click(await screen.findByRole("button", { name: "Veto trade" }));
     await waitFor(() => expect(m.vetoLeagueTrade).toHaveBeenCalledWith(1));
   });

@@ -10,16 +10,26 @@ export function checkAcceptedTrade(args: {
   items: LeagueTradeItem[];
   /** teamId -> active (non-IL) playerIds */
   active: Map<number, Set<number>>;
+  /** teamId -> every rostered playerId, IL included */
+  held: Map<number, Set<number>>;
   /** teamId -> active count from the roster check */
   counts: Map<number, number>;
   names: (teamId: number) => string;
   cap: number;
 }): { ok: boolean; lines: CheckLine[] } {
-  const { items, active, counts, names, cap } = args;
+  const { items, active, held, counts, names, cap } = args;
+  const lines: CheckLine[] = [];
+  let ok = true;
   const delta = new Map<number, number>();
   for (const it of items) {
     if (it.assetType !== "PLAYER" || it.playerId == null) continue;
-    if (!active.get(it.senderId)?.has(it.playerId)) continue; // IL or missing: no active change
+    if (!held.get(it.senderId)?.has(it.playerId)) {
+      // Process would refuse this trade with the same words.
+      ok = false;
+      lines.push({ tone: "bad", text: `${it.player?.name ?? "A player"} is no longer on ${names(it.senderId)}` });
+      continue;
+    }
+    if (!active.get(it.senderId)?.has(it.playerId)) continue; // IL: no active change
     delta.set(it.senderId, (delta.get(it.senderId) ?? 0) - 1);
     delta.set(it.recipientId, (delta.get(it.recipientId) ?? 0) + 1);
   }
@@ -28,8 +38,6 @@ export function checkAcceptedTrade(args: {
     return { id, name: names(id), before, after: before + (delta.get(id) ?? 0) };
   });
 
-  const lines: CheckLine[] = [];
-  let ok = true;
   for (const t of teams) {
     if (t.after > t.before && t.after > cap) {
       ok = false;
@@ -39,7 +47,7 @@ export function checkAcceptedTrade(args: {
   for (const t of teams) {
     if (t.after < t.before) lines.push({ tone: "note", text: `${t.name} goes to ${t.after} and fills the spot at the meeting` });
   }
-  if (teams.length > 0 && teams.every((t) => t.after === t.before)) {
+  if (ok && teams.length > 0 && teams.every((t) => t.after === t.before)) {
     const [a, b] = teams;
     lines.push({
       tone: "good",

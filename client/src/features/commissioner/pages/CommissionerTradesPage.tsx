@@ -45,7 +45,14 @@ const TONE: Record<"good" | "bad" | "note", string> = {
   note: "var(--am-text-muted)",
 };
 
-type SheetKind = "process" | "veto" | "reverse";
+type SheetKind = "process" | "veto" | "vetoOffer" | "reverse";
+
+const TOAST: Record<SheetKind, string> = {
+  process: "Trade processed",
+  veto: "Trade vetoed",
+  vetoOffer: "Offer vetoed",
+  reverse: "Trade reversed",
+};
 
 interface Data {
   trades: LeagueTrade[];
@@ -118,14 +125,18 @@ function TradesBody({ leagueId }: { leagueId: number }) {
     return state.next ? state.next.startDate : undefined;
   }, [data]);
 
-  const active = useMemo(() => {
-    const map = new Map<number, Set<number>>();
+  const { active, held } = useMemo(() => {
+    const active = new Map<number, Set<number>>();
+    const held = new Map<number, Set<number>>();
+    const add = (map: Map<number, Set<number>>, teamId: number, playerId: number) => {
+      if (!map.has(teamId)) map.set(teamId, new Set());
+      map.get(teamId)!.add(playerId);
+    };
     for (const r of data?.rosters ?? []) {
-      if (r.assignedPosition === "IL") continue;
-      if (!map.has(r.teamId)) map.set(r.teamId, new Set());
-      map.get(r.teamId)!.add(r.player.id);
+      add(held, r.teamId, r.player.id);
+      if (r.assignedPosition !== "IL") add(active, r.teamId, r.player.id);
     }
-    return map;
+    return { active, held };
   }, [data]);
 
   async function confirm() {
@@ -135,10 +146,10 @@ function TradesBody({ leagueId }: { leagueId: number }) {
     const { kind, trade } = sheet;
     try {
       if (kind === "process") await processLeagueTrade(trade.id, effectiveDate ? effectiveDate.slice(0, 10) : undefined);
-      else if (kind === "veto") await vetoLeagueTrade(trade.id);
+      else if (kind === "veto" || kind === "vetoOffer") await vetoLeagueTrade(trade.id);
       else await reverseLeagueTrade(trade.id);
       if (alive.current) setErrors((e) => { const { [trade.id]: _drop, ...rest } = e; return rest; });
-      toast(kind === "process" ? "Trade processed" : kind === "veto" ? "Trade vetoed" : "Trade reversed", "success");
+      toast(TOAST[kind], "success");
     } catch (err) {
       const msg = err instanceof Error && err.message ? err.message : "Couldn’t update this trade.";
       if (alive.current) setErrors((e) => ({ ...e, [trade.id]: msg }));
@@ -187,6 +198,9 @@ function TradesBody({ leagueId }: { leagueId: number }) {
     if (kind === "veto") {
       return { title: "Veto this trade?", body: "Nothing moves and both owners are told it was vetoed.", confirmLabel: "Veto trade", cancelLabel: "Keep it" };
     }
+    if (kind === "vetoOffer") {
+      return { title: "Veto this offer?", body: "Both teams are told.", confirmLabel: "Veto offer", cancelLabel: "Keep it" };
+    }
     return {
       title: "Reverse this trade?",
       body: "Players and dollars go back, effective tomorrow.",
@@ -208,7 +222,7 @@ function TradesBody({ leagueId }: { leagueId: number }) {
           <Glass padded={false}>
             {toProcess.length === 0 && <p style={{ margin: 0, padding: 16, fontSize: 17, color: "var(--am-text-muted)" }}>Nothing waiting for you.</p>}
             {toProcess.map((t) => {
-              const check = checkAcceptedTrade({ items: t.items, active, counts, names: nameOf, cap });
+              const check = checkAcceptedTrade({ items: t.items, active, held, counts, names: nameOf, cap });
               return (
                 <div key={t.id} style={CARD} data-testid="trade-card">
                   <b style={{ fontSize: 17, color: "var(--am-text)" }}>{pairName(t, nameOf)}</b>
@@ -253,6 +267,10 @@ function TradesBody({ leagueId }: { leagueId: number }) {
                       <span style={{ ...SUB, fontWeight: 600 }}>Waiting</span>
                     </div>
                     <span style={SUB}>{`Offered ${fmtShort(t.createdAt)}, not answered`}</span>
+                    {err(t.id)}
+                    <div style={btnRow}>
+                      <button type="button" style={SECONDARY} disabled={busy} onClick={() => setSheet({ kind: "vetoOffer", trade: t })}>Veto</button>
+                    </div>
                   </div>
                 );
               })}
