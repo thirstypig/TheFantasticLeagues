@@ -21,24 +21,24 @@ updated: 2026-11-11
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-11 from 1,918 git-tracked files.*
+*Generated 2026-11-11 from 1,936 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 629 | 108,803 |
-| `.tsx` | 360 | 97,571 |
-| `.md` | 557 | 70,222 |
-| `.json` | 36 | 40,134 |
+| `.ts` | 635 | 109,884 |
+| `.tsx` | 369 | 96,988 |
+| `.md` | 558 | 70,395 |
+| `.json` | 36 | 40,132 |
 | `.sql` | 40 | 2,153 |
-| `.css` | 10 | 1,927 |
+| `.css` | 12 | 1,986 |
 | `.prisma` | 1 | 1,767 |
 | `.mjs` | 9 | 1,745 |
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,914** | **368,608** |
+| **All tracked** | **1,932** | **369,336** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -46,18 +46,18 @@ updated: 2026-11-11
 
 | Measure | Count |
 |---|---:|
-| API routes | 289 |
+| API routes | 290 |
 | Prisma models | 66 |
 | Prisma migrations | 38 |
 | Server feature modules | 33 |
 | Client feature modules | 28 |
-| Cross-feature imports (ADR-015 baseline) | 88 |
+| Cross-feature imports (ADR-015 baseline) | 86 |
 
 ## Docs
 
-**213** board-scope markdown files (`docs/` plus the four root docs), of which **146** carry frontmatter.
+**214** board-scope markdown files (`docs/` plus the four root docs), of which **147** carry frontmatter.
 
-*561 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
+*562 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
 unrelated frontmatter vocabularies and are deliberately excluded from the tables below.*
 
 > **67 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
@@ -66,7 +66,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | Type | Docs | In vocabulary? |
 |---|---:|---|
 | `feat` | 20 | ❌ off-vocabulary |
-| `plan` | 10 | ✅ |
+| `plan` | 11 | ✅ |
 | `fix` | 6 | ❌ off-vocabulary |
 | `refactor` | 3 | ❌ off-vocabulary |
 | `tech-spec` | 3 | ✅ |
@@ -104,7 +104,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 | Status | Docs | In vocabulary? |
 |---|---:|---|
-| `active` | 58 | ✅ |
+| `active` | 59 | ✅ |
 | `draft` | 6 | ✅ |
 | `completed` | 4 | ❌ off-vocabulary |
 | `resolved` | 4 | ❌ off-vocabulary |
