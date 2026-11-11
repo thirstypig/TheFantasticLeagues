@@ -176,6 +176,7 @@ function ReviewBody({ leagueId, periodId }: { leagueId: number; periodId: number
       {outcome && (
         <div role="alert" style={{ padding: 12, border: "1px solid var(--am-negative)", borderRadius: 6, display: "grid", gap: 4 }}>
           <b style={{ fontSize: 17, color: "var(--am-text)" }}>{`Saved ${outcome.saved} of ${outcome.total} moves. The rest need a look.`}</b>
+          <span style={SUB}>If a move says the player is already on the roster, it may have saved — check the team.</span>
           {failed.map((mv) => (
             <span key={mv.id} style={SUB}>{`${nameOf(mv.teamId)}: + ${mv.add ? lastName(mv.add.name) : "?"} · − ${mv.drop ? lastName(mv.drop.name) : "?"}`}</span>
           ))}

@@ -181,6 +181,15 @@ describe("MeetingReviewPage", () => {
     expect(d.marks[3]).toBe("done");
   });
 
+  it("partial-failure banner tells the commissioner to check the team if a move says already on the roster", async () => {
+    seed(THREE());
+    m.saveMove.mockImplementation(async (_l, _t, a) => { if (a === 101) throw new Error("x"); });
+    renderPage();
+    await openSheet();
+    fireEvent.click(screen.getByRole("button", { name: "Save moves" }));
+    expect(await screen.findByText("If a move says the player is already on the roster, it may have saved — check the team.")).toBeTruthy();
+  });
+
   it("a save that throws keeps the move with the server message and continues", async () => {
     seed(THREE());
     m.saveMove.mockImplementation(async (_l, _t, a) => { if (a === 101) throw new Error("Roster is full."); });
