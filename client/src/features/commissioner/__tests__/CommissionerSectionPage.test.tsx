@@ -74,14 +74,14 @@ vi.mock("../../../contexts/LeagueContext", () => ({
 }));
 
 // ── Child component mocks ────────────────────────────────────────────────────
-vi.mock("../components/CommissionerRosterTool", () => ({
-  default: () => <div data-testid="roster-tool" />,
-}));
 vi.mock("../components/BulkOpsPanel", () => ({
   default: () => <div data-testid="bulk-ops-panel" />,
 }));
 vi.mock("../components/CommissionerControls", () => ({
   default: () => <div data-testid="controls" />,
+}));
+vi.mock("../components/CommissionerRosterTool", () => ({
+  default: () => <div data-testid="roster-tool" />,
 }));
 vi.mock("../components/CommissionerTradeTool", () => ({
   default: () => <div data-testid="trade-tool" />,
@@ -187,11 +187,30 @@ describe("CommissionerSectionPage", () => {
     expect(screen.queryByText("Prize Pool")).toBeNull();
   });
 
-  it("rosters -> trades slug change (same section, different sub-tab) switches sub-pane", async () => {
-    renderWithNav("/commissioner/20/rosters");
+  it("roster-advanced renders the Manual Roster (backdated fixes) panel with no sub-tab button", async () => {
+    renderAt("/commissioner/20/roster-advanced");
     await waitFor(() => expect(screen.getByTestId("roster-tool")).toBeInTheDocument());
+    expect(screen.queryByTestId("trade-tool")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Manual Roster" })).toBeNull();
+  });
+
+  it("roster-setup renders the legacy Bulk panel", async () => {
+    renderAt("/commissioner/20/roster-setup");
+    await waitFor(() => expect(screen.getByTestId("bulk-ops-panel")).toBeInTheDocument());
+    expect(screen.queryByTestId("trade-tool")).toBeNull();
+  });
+
+  it("roster-setup -> trades slug change (same section, different sub-tab) switches sub-pane", async () => {
+    renderWithNav("/commissioner/20/roster-setup");
+    await waitFor(() => expect(screen.getByTestId("bulk-ops-panel")).toBeInTheDocument());
     fireEvent.click(screen.getByText("go-trades"));
     await waitFor(() => expect(screen.getByTestId("trade-tool")).toBeInTheDocument());
-    expect(screen.queryByTestId("roster-tool")).toBeNull();
+    expect(screen.queryByTestId("bulk-ops-panel")).toBeNull();
+  });
+
+  it("rosters is no longer a section slug (redirects to the hub)", async () => {
+    renderAt("/commissioner/20/rosters");
+    await waitFor(() => expect(screen.getByTestId("loc")).toHaveTextContent("/commissioner/20"));
+    expect(screen.getByTestId("loc").textContent).toBe("/commissioner/20");
   });
 });

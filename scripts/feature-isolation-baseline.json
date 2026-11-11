@@ -1,6 +1,6 @@
 {
   "_comment": "Grandfathered cross-feature imports — see docs/engineering/adrs/ADR-015-feature-module-boundaries.md. This list may SHRINK but must never grow. Regenerate only after legitimately removing a violation. Entries are DISTINCT side|file|specifier keys; a file importing one specifier twice counts once.",
-  "generated": "2026-07-24",
+  "generated": "2026-11-11",
   "count": 88,
   "allowed": [
     "client|client/src/features/admin/components/AdminLeagueTools.tsx|../../commissioner/api",

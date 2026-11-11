@@ -121,8 +121,12 @@ hubRouter.get(
     const period = await loadLeaguePeriod(leagueId, periodId);
     if (!period) return res.status(404).json({ error: "Period not found" });
 
+    // Periods are stored at T12:00Z but moves are dated at UTC midnight of
+    // their day, so compare from the start of the start day.
+    const s = period.startDate;
+    const startOfDay = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate()));
     const events = await prisma.transactionEvent.findMany({
-      where: { leagueId, effDate: { gte: period.startDate } },
+      where: { leagueId, effDate: { gte: startOfDay } },
       orderBy: { effDate: "asc" },
       include: {
         team: { select: { name: true } },

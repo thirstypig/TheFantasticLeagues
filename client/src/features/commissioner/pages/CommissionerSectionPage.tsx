@@ -6,7 +6,8 @@ import { CommissionerOnly } from "../components/CommissionerOnly";
 import Commissioner, { type CommissionerProps } from "./Commissioner";
 
 const SECTIONS: Record<string, Pick<CommissionerProps, "section" | "opsSubTab">> = {
-  rosters:  { section: "ops", opsSubTab: "roster" },
+  "roster-setup": { section: "ops", opsSubTab: "bulk" },
+  "roster-advanced": { section: "ops", opsSubTab: "roster" },
   trades:   { section: "ops", opsSubTab: "trades" },
   money:    { section: "finances" },
   settings: { section: "settings" },

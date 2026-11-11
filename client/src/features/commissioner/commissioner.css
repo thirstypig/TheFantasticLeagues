@@ -116,3 +116,46 @@
 @media (min-width: 1024px) {
   .close-cols { grid-template-columns: 3fr 2fr; }
 }
+
+/* Rosters home: team rows on phones, the table from 1024px. */
+.rosters-desk { display: none; }
+@media (min-width: 1024px) {
+  .rosters-phone { display: none; }
+  .rosters-desk { display: block; }
+}
+
+/* Meeting moves entry: phone shows the team list OR one team's editor; from
+   1024px the list, editor and tonight's moves sit side by side. */
+.mt-grid { display: grid; gap: 16px; }
+.mt-grid[data-picked="true"] .mt-list, .mt-grid[data-picked="true"] .mt-tonight { display: none; }
+.mt-grid[data-picked="false"] .mt-editor { display: none; }
+.mt-phone-back { display: inline-flex; }
+@media (min-width: 1024px) {
+  .mt-grid { grid-template-columns: 260px minmax(0, 1fr) 280px; align-items: start; }
+  .mt-grid[data-picked="true"] .mt-list, .mt-grid[data-picked="true"] .mt-tonight,
+  .mt-grid[data-picked="false"] .mt-editor { display: block; }
+  .mt-phone-back { display: none; }
+}
+
+/* Meeting review: stacked rows on phones; table-like columns from 1024px. */
+.rv-head { display: none; }
+.rv-row { display: grid; gap: 4px; padding: 10px 16px; border-bottom: 1px solid var(--am-border); min-height: 56px; align-content: center; }
+.rv-count { display: none; }
+@media (min-width: 1024px) {
+  .rv-count { display: block; }
+  .rv-head, .rv-row { grid-template-columns: 1.2fr 1.5fr 1.5fr 80px; align-items: center; gap: 12px; }
+  .rv-head { display: grid; padding: 10px 16px; border-bottom: 1px solid var(--am-border); font-size: 13px; color: var(--am-text-muted); }
+  .rv-grid { grid-template-columns: minmax(0, 1fr) 300px; align-items: start; }
+}
+.rv-grid { display: grid; gap: 16px; }
+
+/* One team (screen 15): phone stacks rows with the action panel under the row;
+   from 1024px the roster table and the action panel sit in two columns. */
+.tr-cols { display: grid; gap: 16px; }
+@media (min-width: 1024px) {
+  .tr-cols { grid-template-columns: minmax(0, 1fr) 340px; align-items: start; }
+}
+.tr-table { width: 100%; border-collapse: collapse; }
+.tr-table th { text-align: left; padding: 10px 16px; font-size: 13px; font-weight: 600; color: var(--am-text-muted); border-bottom: 1px solid var(--am-border); }
+.tr-table td { padding: 8px 16px; font-size: 15px; min-height: 56px; height: 56px; color: var(--am-text); border-bottom: 1px solid var(--am-border); }
+.tr-table tr[data-open="true"] td { background: var(--am-surface-alt); }

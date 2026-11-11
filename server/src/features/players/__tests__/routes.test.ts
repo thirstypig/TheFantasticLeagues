@@ -425,6 +425,32 @@ describe("GET /player-season-stats — FA filter pushdown (todo #164)", () => {
     expect(mockPrisma.player.findMany.mock.calls[1][0].take).toBe(200);
   });
 
+  // `take` used to clamp BEFORE the in-memory NL/AL filter, so an NL league's
+  // picker could get 20 AL rows, filter them all out, and show nothing.
+  it("pushes the league's NL/AL team filter into the query when freeAgentsOnly, so `take` counts eligible rows", async () => {
+    const { getTeamsForSource } = await import("../../../lib/mlbTeams.js");
+    (getTeamsForSource as any).mockReturnValueOnce(new Set(["NYM", "CIN"]));
+    mockPrisma.player.findMany.mockResolvedValue([]);
+    mockPrisma.roster.findMany.mockResolvedValue([]);
+
+    await supertest(app).get("/player-season-stats?leagueId=1&freeAgentsOnly=true&q=a&take=20");
+    const args = mockPrisma.player.findMany.mock.calls[0][0];
+    expect(args.take).toBe(20);
+    expect(args.where.AND).toContainEqual({
+      OR: [{ mlbTeam: null }, { mlbTeam: "" }, { mlbTeam: "FA" }, { mlbTeam: { in: ["NYM", "CIN"] } }],
+    });
+  });
+
+  it("does not push the team filter for non-FA callers (rostered players from any team still listed)", async () => {
+    const { getTeamsForSource } = await import("../../../lib/mlbTeams.js");
+    (getTeamsForSource as any).mockReturnValueOnce(new Set(["NYM"]));
+    mockPrisma.player.findMany.mockResolvedValue([]);
+    mockPrisma.roster.findMany.mockResolvedValue([]);
+
+    await supertest(app).get("/player-season-stats?leagueId=1");
+    expect(mockPrisma.player.findMany.mock.calls[0][0].where.AND).toBeUndefined();
+  });
+
   it("does not change default behavior when freeAgentsOnly is omitted", async () => {
     mockPrisma.player.findMany.mockResolvedValue([]);
     mockPrisma.roster.findMany.mockResolvedValue([
