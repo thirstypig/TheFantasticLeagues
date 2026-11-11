@@ -787,33 +787,84 @@ router.post("/:id/reverse", requireAuth, asyncHandler(async (req, res) => {
     return res.status(400).json({ error: err instanceof Error ? err.message : "Invalid effectiveDate" });
   }
 
-  // Reverse each item in a transaction (swap sender/recipient)
+  // Reverse each item in a transaction (swap sender/recipient).
+  try {
   await prisma.$transaction(async (tx) => {
+    // Re-check status under row lock so two concurrent reverses cannot both run.
+    const locked = await tx.$queryRaw<{ status: string }[]>`
+      SELECT status FROM "Trade" WHERE id = ${id} FOR UPDATE
+    `;
+    if (!locked[0] || locked[0].status !== "PROCESSED") {
+      throw new TradeValidationError("Can only reverse PROCESSED trades");
+    }
+
+    // Validate everything before any write. Each player must still be on the
+    // team that received them; each dollar amount must still be there to return.
+    const playerMoves: {
+      item: (typeof trade.items)[number];
+      row: { id: number; acquiredAt: Date; price: number; assignedPosition: string | null };
+    }[] = [];
     for (const item of trade.items) {
-      if (item.assetType === "PLAYER" && item.playerId) {
-        // Release from recipient (who received the player)
-        await tx.roster.updateMany({
-          where: { teamId: item.recipientId, playerId: item.playerId, releasedAt: null },
-          data: { releasedAt: reverseEffective, source: "TRADE_REVERSE" },
-        });
-        // Create new roster entry on original sender
-        await tx.roster.create({
-          data: {
-            teamId: item.senderId,
-            playerId: item.playerId,
-            price: item.amount || 0,
-            source: "TRADE_REVERSE",
-            acquiredAt: reverseEffective,
-          },
-        });
-      } else if (item.assetType === "BUDGET") {
+      if (item.assetType !== "PLAYER" || !item.playerId) continue;
+      const row = await tx.roster.findFirst({
+        where: { teamId: item.recipientId, playerId: item.playerId, releasedAt: null },
+      });
+      if (!row) {
+        throw new TradeValidationError(
+          `${item.player?.name ?? `Player #${item.playerId}`} is no longer on ${item.recipient?.name ?? `Team #${item.recipientId}`}`,
+        );
+      }
+      playerMoves.push({ item, row });
+    }
+    for (const item of trade.items) {
+      if (item.assetType !== "BUDGET") continue;
+      const amount = item.amount || 0;
+      const recipientTeam = await tx.team.findUnique({ where: { id: item.recipientId }, select: { budget: true } });
+      if (!recipientTeam || recipientTeam.budget < amount) {
+        throw new TradeValidationError(
+          `Cannot reverse: recipient has insufficient budget ($${recipientTeam?.budget ?? 0}, needs $${amount})`,
+        );
+      }
+    }
+
+    for (const { item, row } of playerMoves) {
+      const playerId = item.playerId as number;
+      // Never end a row before it starts: process may have dated the trade to
+      // a future period start.
+      const effective = row.acquiredAt > reverseEffective ? row.acquiredAt : reverseEffective;
+      await tx.roster.update({
+        where: { id: row.id },
+        data: { releasedAt: effective, source: "TRADE_REVERSE" },
+      });
+      // Window-aware availability: excludes the just-released recipient row.
+      await assertNoOwnershipConflict(tx, {
+        leagueId: trade.leagueId,
+        playerId,
+        acquiredAt: effective,
+        releasedAt: null,
+        excludeRosterIds: [row.id],
+      });
+      // Same slot rule as process (and CommissionerService.executeTrade).
+      const tradedPlayer = await tx.player.findUnique({ where: { id: playerId }, select: { posPrimary: true } });
+      await tx.roster.create({
+        data: {
+          teamId: item.senderId,
+          playerId,
+          source: "TRADE_REVERSE",
+          acquiredAt: effective,
+          price: row.price,
+          assignedPosition: rosterSlotFor({
+            assignedPosition: row.assignedPosition,
+            posPrimary: tradedPlayer?.posPrimary,
+          }),
+        },
+      });
+    }
+
+    for (const item of trade.items) {
+      if (item.assetType === "BUDGET") {
         const amount = item.amount || 0;
-        // Verify recipient has sufficient budget to return before reversing
-        const recipientTeam = await tx.team.findUnique({ where: { id: item.recipientId }, select: { budget: true } });
-        if (!recipientTeam || recipientTeam.budget < amount) {
-          throw new Error(`Cannot reverse: recipient has insufficient budget ($${recipientTeam?.budget ?? 0}, needs $${amount})`);
-        }
-        // Reverse: take from recipient, give to sender
+        // Reverse: take from recipient, give to sender (checked above, under the lock)
         await tx.team.update({ where: { id: item.recipientId }, data: { budget: { decrement: amount } } });
         await tx.team.update({ where: { id: item.senderId }, data: { budget: { increment: amount } } });
       } else if (item.assetType === "WAIVER_PRIORITY") {
@@ -834,6 +885,16 @@ router.post("/:id/reverse", requireAuth, asyncHandler(async (req, res) => {
       data: { status: "REVERSED" },
     });
   }, { timeout: 30_000 });
+  } catch (err: unknown) {
+    if (err instanceof TradeValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    const msg = err instanceof Error ? err.message : "Trade reverse failed";
+    if (msg.includes("Ownership conflict")) {
+      return res.status(400).json({ error: msg });
+    }
+    throw err;
+  }
 
   writeAuditLog({
     userId: req.user!.id,
