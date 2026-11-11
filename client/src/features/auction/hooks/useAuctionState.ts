@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchJsonApi, API_BASE } from '../../../api/base';
 import { supabase } from '../../../lib/supabase';
 import { track } from '../../../lib/posthog';
+import { fetchMyList, saveMyList } from '../lib/myListApi';
 
 // Types redefined locally to avoid build issues importing from server
 export type AuctionStatus = "not_started" | "nominating" | "bidding" | "paused" | "completed";
@@ -20,7 +21,25 @@ export interface AuctionTeam {
   pitcherCount?: number;
   hitterCount?: number;
   positionCounts?: Record<string, number>;
-  roster: { id: number; playerId: number; mlbId?: number | null; playerName?: string | null; price: number; assignedPosition?: string | null; source?: string | null }[];
+  roster: AuctionRosterEntry[];
+}
+
+/**
+ * One rostered player. The server's `AuctionState` type omits posPrimary /
+ * posList / mlbTeam, but `refreshTeams` does send them at runtime.
+ */
+export interface AuctionRosterEntry {
+  id: number;
+  playerId: number;
+  mlbId?: number | null;
+  playerName?: string | null;
+  price: number;
+  /** Auction wins set this to the player's primary MLB position (e.g. "LF", "SP"), not a lineup slot. */
+  assignedPosition?: string | null;
+  source?: string | null;
+  posPrimary?: string | null;
+  posList?: string | null;
+  mlbTeam?: string | null;
 }
 
 export interface NominationState {
@@ -45,6 +64,10 @@ export interface ClientAuctionState {
   teams: AuctionTeam[];
   queue: number[];
   queueIndex: number;
+  /** ISO time the current team's turn clock runs out; null when no turn clock is running. */
+  nominationEndTime?: string | null;
+  /** True between pause and resume, in both the nominating and bidding phases. */
+  paused?: boolean;
   config: {
     bidTimer: number;
     nominationTimer: number;
@@ -59,7 +82,7 @@ export interface ClientAuctionState {
 }
 
 export interface AuctionLogEvent {
-  type: 'NOMINATION' | 'BID' | 'WIN' | 'PAUSE' | 'RESUME' | 'UNDO';
+  type: 'NOMINATION' | 'BID' | 'WIN' | 'PAUSE' | 'RESUME' | 'UNDO' | 'SKIP' | 'ASSIGN' | 'END';
   teamId?: number;
   teamName?: string;
   playerId?: string;
@@ -67,6 +90,8 @@ export interface AuctionLogEvent {
   amount?: number;
   timestamp: number;
   message: string;
+  /** Why a turn was skipped (SKIP only). */
+  reason?: 'commissioner' | 'timeout';
 }
 
 export interface ChatMessage {
@@ -315,6 +340,19 @@ export function useAuctionState(leagueId?: number | null) {
             pause: async () => { await fetchJsonApi(`${API_BASE}/auction/pause`, { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
             resume: async () => { await fetchJsonApi(`${API_BASE}/auction/resume`, { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
             reset: async () => { await fetchJsonApi(`${API_BASE}/auction/reset`, { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
+            getMyList: (teamId: number): Promise<number[]> => {
+                const lid = leagueIdRef.current;
+                return lid ? fetchMyList(lid, teamId) : Promise.resolve([]);
+            },
+            setMyList: async (teamId: number, mlbIds: number[]): Promise<number[]> => {
+                const lid = leagueIdRef.current;
+                return lid ? saveMyList(lid, teamId, mlbIds) : [];
+            },
+            skipTurn: async () => { await fetchJsonApi(`${API_BASE}/auction/skip-turn`, { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
+            /** Undo the most recent sale (server route is /undo-finish). Same call as undoFinish. */
+            undoLastSale: async () => { await fetchJsonApi(`${API_BASE}/auction/undo-finish`, { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
+            /** End the auction now (server route is /complete). Commissioner or admin. */
+            endAuction: async () => { await fetchJsonApi(`${API_BASE}/auction/complete`, { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
             undoFinish: async () => { await fetchJsonApi(`${API_BASE}/auction/undo-finish`, { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
             refetch: fetchState,
         }
