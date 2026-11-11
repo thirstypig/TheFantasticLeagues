@@ -27,9 +27,9 @@ updated: 2026-11-11
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 637 | 110,170 |
+| `.ts` | 637 | 110,244 |
 | `.tsx` | 371 | 97,081 |
-| `.md` | 559 | 70,488 |
+| `.md` | 559 | 70,491 |
 | `.json` | 36 | 40,132 |
 | `.sql` | 40 | 2,153 |
 | `.css` | 12 | 2,019 |
@@ -38,7 +38,7 @@ updated: 2026-11-11
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,937** | **369,841** |
+| **All tracked** | **1,937** | **369,918** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -104,7 +104,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 | Status | Docs | In vocabulary? |
 |---|---:|---|
-| `active` | 60 | ✅ |
+| `active` | 59 | ✅ |
 | `draft` | 6 | ✅ |
 | `completed` | 4 | ❌ off-vocabulary |
 | `resolved` | 4 | ❌ off-vocabulary |
@@ -112,6 +112,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `phases-1-3-complete` | 1 | ❌ off-vocabulary |
 | `implemented` | 1 | ❌ off-vocabulary |
 | `locked` | 1 | ✅ |
+| `deprecated` | 1 | ✅ |
 | `fixed` | 1 | ❌ off-vocabulary |
 
 **12 docs use a `status` outside `draft|active|locked|done|deprecated`.** The board's "done" filter cannot see them.

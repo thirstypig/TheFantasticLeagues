@@ -14,6 +14,38 @@ const AL_TEAMS = new Set([
   "NYY", "ATH", "OAK", "SEA", "TB", "TEX", "TOR", "CWS",
 ]);
 
+export type MlbLeague = "NL" | "AL";
+
+/**
+ * MLB team id → league, as statsapi reports it (`/teams?sportId=1`, league 104 = NL,
+ * 103 = AL; verified 2026-11-11). byDateRange splits carry the team id but no league,
+ * so scoring needs this table to tell an NL line from an AL one.
+ */
+const LEAGUE_BY_MLB_TEAM_ID: Record<number, MlbLeague> = {
+  109: "NL", 112: "NL", 113: "NL", 115: "NL", 119: "NL", 120: "NL", 121: "NL", 134: "NL",
+  135: "NL", 137: "NL", 138: "NL", 143: "NL", 144: "NL", 146: "NL", 158: "NL",
+  108: "AL", 110: "AL", 111: "AL", 114: "AL", 116: "AL", 117: "AL", 118: "AL", 133: "AL",
+  136: "AL", 139: "AL", 140: "AL", 141: "AL", 142: "AL", 145: "AL", 147: "AL",
+};
+
+/** The league of an MLB team id, or null when the id is unknown. */
+export function mlbLeagueOfTeamId(teamId: number | null | undefined): MlbLeague | null {
+  return teamId == null ? null : LEAGUE_BY_MLB_TEAM_ID[teamId] ?? null;
+}
+
+/**
+ * Which MLB league's stats count for a fantasy league: "NL" for an NL-only league,
+ * "AL" for AL-only, null for mixed (everything counts). Reads `League.rules.leagueType`
+ * with the same "NL" default the teams, auction and keeper screens already use.
+ * Stats a player earns on a team in the other league do not count (OnRoto's rule,
+ * adopted for OGBA 2026-11-11).
+ */
+export async function getLeagueScoringLeague(leagueId: number): Promise<MlbLeague | null> {
+  const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { rules: true } });
+  const type = (league?.rules as { leagueType?: string } | null)?.leagueType ?? "NL";
+  return type === "NL" || type === "AL" ? type : null;
+}
+
 /** Returns the set of team abbreviations for a stats_source, or null if no filtering needed. */
 export function getTeamsForSource(source: string): Set<string> | null {
   if (source === "NL") return NL_TEAMS;

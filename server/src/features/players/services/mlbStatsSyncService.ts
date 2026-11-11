@@ -3,6 +3,7 @@ import { logger } from "../../../lib/logger.js";
 import { classifyPeriodAudit, type PeriodAuditEntry } from "./closedPeriodAudit.js";
 import { mlbGetJson } from "../../../lib/mlbApi.js";
 import { chunk, parseIP } from "../../../lib/utils.js";
+import { getLeagueScoringLeague, mlbLeagueOfTeamId, type MlbLeague } from "../../../lib/mlbTeams.js";
 import * as errorBuffer from "../../../lib/errorBuffer.js";
 import { notifyStatsChanged } from "../../../lib/statsChanged.js";
 
@@ -59,7 +60,9 @@ export async function syncPeriodStats(periodId: number): Promise<{
   // Shared fetch path with reconcilePeriodStats — the reconciler must compare
   // against EXACTLY what the syncer would write (single source of fetch/parse
   // semantics; see docs ADR-014).
-  const fresh = await fetchFreshPeriodStats(playerMap, startDate!, endDate!);
+  // NL-only / AL-only leagues don't score games played for the other league.
+  const onlyLeague = period.leagueId ? await getLeagueScoringLeague(period.leagueId) : null;
+  const fresh = await fetchFreshPeriodStats(playerMap, startDate!, endDate!, onlyLeague);
   const skipped = fresh.skipped;
   const errors = fresh.errors;
 
@@ -169,11 +172,62 @@ function selectTotalSplit(splits: any[] | undefined): any | undefined {
   return aggregate ?? splits[0];
 }
 
+const SUMMED_FIELDS = [
+  "gamesPlayed", "atBats", "hits", "runs", "homeRuns", "rbi", "stolenBases", "baseOnBalls",
+  "hitByPitch", "sacFlies", "totalBases", "doubles", "triples", "strikeOuts", "grandSlams",
+  "wins", "saves", "earnedRuns", "losses", "gamesStarted", "battersFaced", "shutouts",
+] as const;
+
+/** "6.2" (MLB notation: 6 innings + 2 outs) → 20 outs. */
+const ipToOuts = (ip: unknown) => {
+  const [whole, frac] = String(ip ?? "0").split(".");
+  return (Number(whole) || 0) * 3 + (Number(frac) || 0);
+};
+
+/** Sum several per-team stat lines into one, recomputing the rate stats. */
+function combineStatLines(lines: any[]): any {
+  const out: Record<string, number | string> = {};
+  for (const f of SUMMED_FIELDS) out[f] = lines.reduce((a, l) => a + (Number(l?.[f]) || 0), 0);
+  const outs = lines.reduce((a, l) => a + ipToOuts(l?.inningsPitched), 0);
+  out.inningsPitched = `${Math.floor(outs / 3)}.${outs % 3}`;
+  const n = (k: string) => out[k] as number;
+  const pa = n("atBats") + n("baseOnBalls") + n("hitByPitch") + n("sacFlies");
+  const obp = pa ? (n("hits") + n("baseOnBalls") + n("hitByPitch")) / pa : 0;
+  const slg = n("atBats") ? n("totalBases") / n("atBats") : 0;
+  out.obp = obp; out.slg = slg; out.ops = obp + slg;
+  out.strikeoutsPer9Inn = outs ? (n("strikeOuts") * 27) / outs : 0;
+  out.walksPer9Inn = outs ? (n("baseOnBalls") * 27) / outs : 0;
+  return out;
+}
+
+/**
+ * The stat line that counts for a league restricted to one MLB league
+ * (`onlyLeague`), or the whole aggregate when unrestricted. Per-team splits are
+ * the sport.id 1 rows; a split whose team id is unknown is kept (and logged)
+ * rather than silently dropped.
+ */
+function selectCountingStat(splits: any[] | undefined, onlyLeague?: MlbLeague | null): any | undefined {
+  if (!onlyLeague) return selectTotalSplit(splits)?.stat;
+  const perTeam = (splits ?? []).filter((s) => s?.sport?.id === 1 && s?.team?.id != null);
+  if (perTeam.length === 0) return selectTotalSplit(splits)?.stat;
+  const counted = perTeam.filter((s) => {
+    const lg = mlbLeagueOfTeamId(s.team.id);
+    if (!lg) logger.warn({ teamId: s.team.id }, "Unknown MLB team id in stats split — counting it");
+    return lg === null || lg === onlyLeague;
+  });
+  if (counted.length === perTeam.length) return selectTotalSplit(splits)?.stat;
+  if (counted.length === 0) return undefined;
+  if (counted.length === 1) return counted[0].stat;
+  return combineStatLines(counted.map((s) => s.stat));
+}
+
 /**
  * Parse hitting + pitching stats from an MLB API person response.
  * Extracts both core fantasy stats and extended stats for MVP/Cy Young tracking.
+ * `onlyLeague` restricts scoring to games played for teams in that MLB league
+ * (NL-only / AL-only fantasy leagues); omit it for mixed leagues.
  */
-export function parsePlayerStats(person: any) {
+export function parsePlayerStats(person: any, onlyLeague?: MlbLeague | null) {
   const result = {
     // Core batting
     AB: 0, H: 0, R: 0, HR: 0, RBI: 0, SB: 0,
@@ -194,7 +248,7 @@ export function parsePlayerStats(person: any) {
 
   for (const statGroup of person.stats) {
     const groupName = statGroup.group?.displayName?.toLowerCase();
-    const split = selectTotalSplit(statGroup.splits)?.stat;
+    const split = selectCountingStat(statGroup.splits, onlyLeague);
     if (!split) continue;
 
     if (groupName === "hitting") {
@@ -459,6 +513,7 @@ async function fetchFreshPeriodStats(
   playerMap: Map<number, number>, // mlbId -> playerId
   startDate: string,
   endDate: string,
+  onlyLeague: MlbLeague | null = null,
 ): Promise<{ statsByPlayerId: Map<number, ReturnType<typeof parsePlayerStats>>; skipped: number; errors: number }> {
   const statsByPlayerId = new Map<number, ReturnType<typeof parsePlayerStats>>();
   let skipped = 0;
@@ -478,7 +533,7 @@ async function fetchFreshPeriodStats(
           skipped++;
           continue;
         }
-        statsByPlayerId.set(playerId, parsePlayerStats(person));
+        statsByPlayerId.set(playerId, parsePlayerStats(person, onlyLeague));
       }
       // Polite delay between batches
       await new Promise((r) => setTimeout(r, 100));
@@ -515,7 +570,9 @@ export async function reconcilePeriodStats(periodId: number): Promise<PeriodReco
     if (r.player.mlbId) playerMap.set(r.player.mlbId, r.player.id);
   }
 
-  const fresh = await fetchFreshPeriodStats(playerMap, startDate, endDate);
+  // Must apply the same league filter the syncer writes with (ADR-014: one fetch/parse path).
+  const onlyLeague = period.leagueId ? await getLeagueScoringLeague(period.leagueId) : null;
+  const fresh = await fetchFreshPeriodStats(playerMap, startDate, endDate, onlyLeague);
 
   // Expected = fresh + two-way mirror transform (in memory, mirrors mirrorTwoWayPitcherStats).
   const expected = new Map(fresh.statsByPlayerId);
