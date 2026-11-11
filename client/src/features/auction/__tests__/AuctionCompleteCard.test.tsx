@@ -46,7 +46,11 @@ const auctionState = {
   teams: [
     {
       id: 5, name: "Doyers", code: "DOY", budget: 100, maxBid: 50, rosterCount: 1, spotsLeft: 0,
-      roster: [{ id: 1, playerId: 11, playerName: "Test Hitter", price: 20, assignedPosition: "OF", source: "auction" }],
+      roster: [
+        { id: 1, playerId: 11, playerName: "Test Hitter", price: 20, assignedPosition: "OF", source: "auction" },
+        { id: 2, playerId: 77, playerName: "No Stats Guy", price: 5, assignedPosition: "OF", source: "auction" },
+        { id: 3, playerId: 88, mlbId: 543037, playerName: "Id Only Guy", price: 3, assignedPosition: "OF", source: "auction" },
+      ],
     },
   ],
 } as never;
@@ -67,5 +71,25 @@ describe.each([
     fireEvent.click(screen.getByText("Test Hitter"));
     fireEvent.click(await screen.findByRole("button", { name: "view detail" }));
     expect(openCard).toHaveBeenCalledWith(660271);
+  });
+
+  it("a roster player with no stats row never opens the card with the Prisma playerId", async () => {
+    const C = Component as React.ComponentType<{ auctionState: never }>;
+    render(<C auctionState={auctionState} />);
+    fireEvent.click(await screen.findByText("Doyers"));
+    await new Promise((r) => setTimeout(r, 0));
+    fireEvent.click(await screen.findByText("No Stats Guy"));
+    fireEvent.click(await screen.findByRole("button", { name: "view detail" }));
+    expect(openCard).not.toHaveBeenCalled();
+  });
+
+  it("a roster player with no stats row but a roster mlbId opens the card with that mlbId", async () => {
+    const C = Component as React.ComponentType<{ auctionState: never }>;
+    render(<C auctionState={auctionState} />);
+    fireEvent.click(await screen.findByText("Doyers"));
+    await new Promise((r) => setTimeout(r, 0));
+    fireEvent.click(await screen.findByText("Id Only Guy"));
+    fireEvent.click(await screen.findByRole("button", { name: "view detail" }));
+    expect(openCard).toHaveBeenCalledWith(543037);
   });
 });

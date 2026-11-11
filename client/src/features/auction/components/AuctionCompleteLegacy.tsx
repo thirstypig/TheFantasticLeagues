@@ -30,7 +30,7 @@ interface TeamResult {
   totalSpent: number;
   keeperSpend: number;
   auctionSpend: number;
-  roster: { playerId: string; rosterId?: number; playerName: string; price: number; positions: string; isPitcher: boolean; mlbTeam?: string; isKeeper?: boolean; posList?: string; assignedPosition?: string }[];
+  roster: { playerId: string; mlbId?: number | null; rosterId?: number; playerName: string; price: number; positions: string; isPitcher: boolean; mlbTeam?: string; isKeeper?: boolean; posList?: string; assignedPosition?: string }[];
 }
 
 interface DraftGrade {
@@ -230,6 +230,7 @@ export default function AuctionCompleteLegacy({ auctionState, myTeamId, onRefres
 
         return {
           playerId: String(r.playerId),
+          mlbId: r.mlbId ?? null,
           rosterId: r.id,
           playerName: (r as any).playerName || `Player #${r.playerId}`,
           price: r.price || 0,
@@ -556,7 +557,7 @@ export default function AuctionCompleteLegacy({ auctionState, myTeamId, onRefres
                           })();
                           const rowKey = `${team.id}-${player.playerId}-H`;
                           const isRowExpanded = expandedPlayerId === rowKey;
-                          const playerObj = stats || ({ mlb_id: player.playerId, player_name: player.playerName, positions: player.positions, is_pitcher: false } as unknown as PlayerSeasonStat);
+                          const playerObj = stats || ({ mlb_id: player.mlbId ?? null, player_name: player.playerName, positions: player.positions, is_pitcher: false } as unknown as PlayerSeasonStat);
                           return (
                             <React.Fragment key={rowKey}>
                             <ThemedTr
@@ -620,7 +621,7 @@ export default function AuctionCompleteLegacy({ auctionState, myTeamId, onRefres
                           const stats = getPlayerStats(player.playerName || '', true);
                           const rowKey = `${team.id}-${player.playerId}-P`;
                           const isRowExpanded = expandedPlayerId === rowKey;
-                          const playerObj = stats || ({ mlb_id: player.playerId, player_name: player.playerName, positions: 'P', is_pitcher: true } as unknown as PlayerSeasonStat);
+                          const playerObj = stats || ({ mlb_id: player.mlbId ?? null, player_name: player.playerName, positions: 'P', is_pitcher: true } as unknown as PlayerSeasonStat);
                           return (
                             <React.Fragment key={rowKey}>
                             <ThemedTr
