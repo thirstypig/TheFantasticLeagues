@@ -5,8 +5,9 @@ import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 import { getLeaguePeriods, getRecentChanges, type HubPeriod, type RecentChange } from "../api";
 import { describeChange } from "../lib/recentChangeCopy";
 import { MUTED } from "../components/cardParts";
+import { CommissionerOnly } from "../components/CommissionerOnly";
 
-export default function RecentChangesPage() {
+function RecentChangesPageBody() {
   const leagueId = Number(useParams().leagueId);
   const [changes, setChanges] = useState<RecentChange[] | null>(null);
   const [periods, setPeriods] = useState<HubPeriod[]>([]);
@@ -52,4 +53,9 @@ export default function RecentChangesPage() {
       </p>
     </div>
   );
+}
+
+export default function RecentChangesPage() {
+  const leagueId = Number(useParams().leagueId);
+  return <CommissionerOnly leagueId={leagueId}><RecentChangesPageBody /></CommissionerOnly>;
 }

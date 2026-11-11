@@ -10,6 +10,7 @@ import { useToast } from "../../../contexts/ToastContext";
 import { CardError, LINK, PRIMARY, Skeleton, useLoad } from "../components/cardParts";
 import { FeePreviewRows, dollars, feeHeadline, money, useFeePreview } from "../components/feePreview";
 import { billIlFees, getLeaguePeriods, getUnbilledPeriods } from "../api";
+import { CommissionerOnly } from "../components/CommissionerOnly";
 
 function BillPreview({ leagueId, periodId, name, base }: { leagueId: number; periodId: number; name: string; base: string }) {
   const navigate = useNavigate();
@@ -73,7 +74,7 @@ function BillPreview({ leagueId, periodId, name, base }: { leagueId: number; per
   );
 }
 
-export default function BillPeriodPage() {
+function BillPeriodPageBody() {
   const params = useParams();
   const leagueId = Number(params.leagueId);
   const periodId = Number(params.periodId);
@@ -109,4 +110,9 @@ export default function BillPeriodPage() {
       {content}
     </div>
   );
+}
+
+export default function BillPeriodPage() {
+  const leagueId = Number(useParams().leagueId);
+  return <CommissionerOnly leagueId={leagueId}><BillPeriodPageBody /></CommissionerOnly>;
 }

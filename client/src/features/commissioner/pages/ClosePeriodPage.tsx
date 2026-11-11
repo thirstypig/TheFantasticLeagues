@@ -20,6 +20,7 @@ import {
   toTeamTotals,
   type CloseReadiness,
 } from "../api";
+import { CommissionerOnly } from "../components/CommissionerOnly";
 
 const STEP_LABELS = ["nothing is final until step 5", "rosters", "standings preview", "IL fees", "confirm"];
 
@@ -326,7 +327,7 @@ function Step5({
 
 // ─── Page ────────────────────────────────────────────────────────────
 
-export default function ClosePeriodPage() {
+function ClosePeriodPageBody() {
   const params = useParams();
   const leagueId = Number(params.leagueId);
   const periodId = Number(params.periodId);
@@ -383,4 +384,9 @@ export default function ClosePeriodPage() {
       )}
     </div>
   );
+}
+
+export default function ClosePeriodPage() {
+  const leagueId = Number(useParams().leagueId);
+  return <CommissionerOnly leagueId={leagueId}><ClosePeriodPageBody /></CommissionerOnly>;
 }

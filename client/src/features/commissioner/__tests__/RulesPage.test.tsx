@@ -2,14 +2,18 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
-const league = vi.hoisted(() => ({ seasonStatus: "IN_SEASON" as string }));
+const league = vi.hoisted(() => ({ seasonStatus: "IN_SEASON" as string, contextLeagueId: 20 }));
+const auth = vi.hoisted(() => ({ user: { isAdmin: false, memberships: [{ leagueId: "20", role: "COMMISSIONER" }] } as any }));
+vi.mock("../../../auth/AuthProvider", () => ({ useAuth: () => ({ me: { user: auth.user } }) }));
+
 vi.mock("../../../contexts/LeagueContext", () => ({
-  useLeague: () => ({ leagueId: 20, seasonStatus: league.seasonStatus }),
+  useLeague: () => ({ leagueId: league.contextLeagueId, seasonStatus: league.seasonStatus }),
 }));
 
 vi.mock("../api", () => ({
   getCommissionerRules: vi.fn(),
   saveCommissionerRules: vi.fn(),
+  getLockedFields: vi.fn(),
 }));
 
 import * as api from "../api";
@@ -56,8 +60,54 @@ function rowOf(label: string): HTMLElement {
 beforeEach(() => {
   vi.clearAllMocks();
   league.seasonStatus = "IN_SEASON";
+  league.contextLeagueId = 20;
+  auth.user = { isAdmin: false, memberships: [{ leagueId: "20", role: "COMMISSIONER" }] };
   m.getCommissionerRules.mockResolvedValue(ROWS.map((r) => ({ ...r })));
   m.saveCommissionerRules.mockResolvedValue(undefined);
+});
+
+describe("RulesPage commissioner gate and polish", () => {
+  it("a non-commissioner sees 'Commissioners only.' and no controls", async () => {
+    auth.user = { isAdmin: false, memberships: [{ leagueId: "20", role: "OWNER" }] };
+    renderPage();
+    expect(screen.getByText("Commissioners only.")).toBeTruthy();
+    expect(screen.queryByRole("switch")).toBeNull();
+    expect(m.getCommissionerRules).not.toHaveBeenCalled();
+  });
+
+  it("an admin passes without a membership", async () => {
+    auth.user = { isAdmin: true, memberships: [] };
+    renderPage();
+    expect(await screen.findByRole("switch", { name: "Owners make their own moves" })).toBeTruthy();
+  });
+
+  it("a locked value is plain text: no border or background", async () => {
+    renderPage();
+    await screen.findByText("IL fee, 1st player on IL");
+    const v = within(rowOf("IL fee, 1st player on IL")).getByText("$10");
+    expect(v.style.border).toBe("");
+    expect(v.style.background).toBe("");
+    expect(v.style.fontWeight).toBe("600");
+  });
+
+  it("uses the fetched season status when the URL's league isn't the selected one", async () => {
+    league.contextLeagueId = 99;
+    m.getLockedFields.mockResolvedValue({ seasonStatus: "SETUP", lockedFields: [] });
+    m.getCommissionerRules.mockResolvedValue(ROWS.map((r) => ({ ...r, isLocked: false })));
+    renderPage();
+    await screen.findByText("Roster size");
+    await waitFor(() => expect(within(rowOf("IL fee, 1st player on IL")).queryByText("Locked for the season")).toBeNull());
+    expect(m.getLockedFields).toHaveBeenCalledWith(20);
+  });
+
+  it("treats the league as locked when that fetch fails", async () => {
+    league.contextLeagueId = 99;
+    m.getLockedFields.mockRejectedValue(new Error("nope"));
+    m.getCommissionerRules.mockResolvedValue(ROWS.map((r) => ({ ...r, isLocked: false })));
+    renderPage();
+    await screen.findByText("Roster size");
+    expect(within(rowOf("IL fee, 1st player on IL")).getByText("Locked for the season")).toBeTruthy();
+  });
 });
 
 describe("RulesPage", () => {

@@ -8,6 +8,7 @@ import { ConfirmSheet } from "../../../components/shared/ConfirmSheet";
 import { useToast } from "../../../contexts/ToastContext";
 import { CardError, LINK, MUTED, PRIMARY, ROW, Skeleton, useLoad } from "../components/cardParts";
 import { getLeaguePeriods, getMovesSinceStart, setPeriodStatus } from "../api";
+import { CommissionerOnly } from "../components/CommissionerOnly";
 
 const DAY_MS = 86_400_000;
 
@@ -31,7 +32,7 @@ function lateBadge(startIso: string): string | null {
   return `${n} ${n === 1 ? "day" : "days"} late`;
 }
 
-export default function StartPeriodPage() {
+function StartPeriodPageBody() {
   const params = useParams();
   const leagueId = Number(params.leagueId);
   const periodId = Number(params.periodId);
@@ -176,4 +177,9 @@ export default function StartPeriodPage() {
       {content}
     </div>
   );
+}
+
+export default function StartPeriodPage() {
+  const leagueId = Number(useParams().leagueId);
+  return <CommissionerOnly leagueId={leagueId}><StartPeriodPageBody /></CommissionerOnly>;
 }

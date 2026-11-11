@@ -5,10 +5,11 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ApiError } from "../../../api/base";
 import { useLeague } from "../../../contexts/LeagueContext";
-import { getCommissionerRules, saveCommissionerRules, type CommissionerRuleRow } from "../api";
-import { RuleChip, RuleSegmented, RuleSwitch } from "../components/rules/RuleControls";
+import { getCommissionerRules, getLockedFields, saveCommissionerRules, type CommissionerRuleRow } from "../api";
+import { RuleSegmented, RuleSwitch } from "../components/rules/RuleControls";
 import { CardError, LINK, Skeleton } from "../components/cardParts";
 import "../rules.css";
+import { CommissionerOnly } from "../components/CommissionerOnly";
 
 type RowStatus = { kind: "saved" } | { kind: "error"; message: string };
 
@@ -34,11 +35,26 @@ function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : "Could not save";
 }
 
-export default function RulesPage() {
+function RulesPageBody() {
   const params = useParams();
   const leagueId = Number(params.leagueId);
   const base = `/commissioner/${leagueId}`;
-  const { seasonStatus } = useLeague();
+  const { leagueId: contextLeagueId, seasonStatus: contextStatus } = useLeague();
+  // Season status for the URL's league. When it isn't the selected league, fetch it;
+  // until that lands (or if it fails) the league counts as locked.
+  const [fetchedStatus, setFetchedStatus] = useState<string | null>(null);
+  const sameLeague = contextLeagueId === leagueId;
+  useEffect(() => {
+    if (sameLeague) return;
+    let live = true;
+    setFetchedStatus(null);
+    getLockedFields(leagueId).then(
+      (r) => live && setFetchedStatus(r.seasonStatus),
+      () => live && setFetchedStatus(null),
+    );
+    return () => { live = false; };
+  }, [leagueId, sameLeague]);
+  const seasonStatus = sameLeague ? contextStatus : fetchedStatus;
 
   const [rules, setRules] = useState<CommissionerRuleRow[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -151,7 +167,10 @@ export default function RulesPage() {
           borderBottom: "1px solid var(--am-border)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flex: 1 }}>
+        <div
+          className={spec.id === "payouts" ? "rule-line rule-line--stack" : "rule-line"}
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flex: 1 }}
+        >
           <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 17, fontWeight: 600, color: "var(--am-text)" }}>{spec.label}</div>
             {subs.map((s) => (
@@ -166,7 +185,11 @@ export default function RulesPage() {
               onChange={(next) => save(rule, next ? "true" : "false")}
             />
           )}
-          {spec.value !== undefined && <RuleChip>{spec.value}</RuleChip>}
+          {spec.value !== undefined && (
+            <span style={{ flex: "none", fontSize: 15, fontWeight: 600, color: "var(--am-text)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+              {spec.value}
+            </span>
+          )}
         </div>
         {spec.control === "segmented" && (
           <RuleSegmented
@@ -212,4 +235,9 @@ export default function RulesPage() {
       </div>
     </div>
   );
+}
+
+export default function RulesPage() {
+  const leagueId = Number(useParams().leagueId);
+  return <CommissionerOnly leagueId={leagueId}><RulesPageBody /></CommissionerOnly>;
 }

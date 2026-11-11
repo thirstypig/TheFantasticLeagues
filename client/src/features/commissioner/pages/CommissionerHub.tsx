@@ -16,6 +16,7 @@ import {
 } from "../api";
 import { deriveNeedsYou, type NeedsYouItem } from "../lib/needsYou";
 import { describeChange } from "../lib/recentChangeCopy";
+import { CommissionerOnly } from "../components/CommissionerOnly";
 
 function JobRow({ to, label, hint }: { to: string | null; label: string; hint?: string }) {
   const body = (
@@ -33,7 +34,7 @@ function JobRow({ to, label, hint }: { to: string | null; label: string; hint?: 
   return <Link to={to} style={ROW}>{body}</Link>;
 }
 
-export default function CommissionerHub() {
+function CommissionerHubBody() {
   const leagueId = Number(useParams().leagueId);
   const base = `/commissioner/${leagueId}`;
 
@@ -187,4 +188,9 @@ export default function CommissionerHub() {
       </section>
     </div>
   );
+}
+
+export default function CommissionerHub() {
+  const leagueId = Number(useParams().leagueId);
+  return <CommissionerOnly leagueId={leagueId}><CommissionerHubBody /></CommissionerOnly>;
 }

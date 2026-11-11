@@ -3,3 +3,8 @@
 @media (min-width: 1024px) {
   .rules-cols { grid-template-columns: 1fr 1fr; }
 }
+
+/* Payouts: on phones the long value sits on its own line under the label. */
+@media (max-width: 767px) {
+  .rule-line--stack { flex-direction: column; align-items: flex-start !important; gap: 4px !important; }
+}

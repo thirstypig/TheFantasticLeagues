@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { prisma } from "../../db/prisma.js";
-import { CommissionerService } from "../commissioner/services/CommissionerService.js";
+import { CommissionerService, RulesLockedError, InvalidRuleValueError } from "../commissioner/services/CommissionerService.js";
 import { requireAuth, requireAdmin, requireCommissionerOrAdmin, requireLeagueMember } from "../../middleware/auth.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { validateBody } from "../../middleware/validate.js";
@@ -43,7 +43,14 @@ router.put("/:id/rules", requireAuth, requireCommissionerOrAdmin("id"), validate
   const leagueId = parseInt(req.params.id);
   const { updates } = req.body; // Array of { id, value } objects
 
-  const count = await commissionerService.updateRules(leagueId, updates);
+  let count: number;
+  try {
+    count = await commissionerService.updateRules(leagueId, updates);
+  } catch (err) {
+    if (err instanceof RulesLockedError) return res.status(403).json({ error: err.message });
+    if (err instanceof InvalidRuleValueError) return res.status(400).json({ error: err.message });
+    throw err;
+  }
 
   writeAuditLog({
     userId: req.user!.id,

@@ -16,10 +16,18 @@ const MUTABLE_ANY_TIME_CATEGORIES = new Set<string>(["transactions"]);
 
 const TRADE_WINDOW_VALUES = new Set(["anytime", "meeting_day"]);
 
+/** Thrown by assertValidRuleValue; routes map it to HTTP 400. */
+export class InvalidRuleValueError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidRuleValueError";
+  }
+}
+
 /** Throws if the value is not allowed for transactions.trade_window; no-op for other rules. */
 export function assertValidRuleValue(category: string, key: string, value: string): void {
   if (category === "transactions" && key === "trade_window" && !TRADE_WINDOW_VALUES.has(value)) {
-    throw new Error("When trades are allowed must be anytime or meeting_day");
+    throw new InvalidRuleValueError("When trades are allowed must be anytime or meeting_day");
   }
 }
 

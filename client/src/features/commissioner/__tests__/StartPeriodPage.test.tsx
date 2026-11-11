@@ -3,6 +3,9 @@ import { render, screen, fireEvent, waitFor, within } from "@testing-library/rea
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 const mockToast = vi.fn();
+const auth = vi.hoisted(() => ({ user: { isAdmin: false, memberships: [{ leagueId: "20", role: "COMMISSIONER" }] } as any }));
+vi.mock("../../../auth/AuthProvider", () => ({ useAuth: () => ({ me: { user: auth.user } }) }));
+
 vi.mock("../../../contexts/ToastContext", () => ({
   useToast: () => ({ toast: mockToast, confirm: vi.fn() }),
 }));
