@@ -83,8 +83,8 @@ describe("CommissionerTradesPage", () => {
     await screen.findByText("To process · 1");
     expect(screen.getByText(/Rule: meeting day only · every trade waits for you/)).toBeInTheDocument();
     expect(screen.getByText("Bombers ↔ Los Doyers")).toBeInTheDocument();
-    expect(screen.getByText("Skenes → Los Doyers")).toBeInTheDocument();
-    expect(screen.getByText("Betts → Bombers")).toBeInTheDocument();
+    expect(screen.getByText("Paul Skenes → Los Doyers")).toBeInTheDocument();
+    expect(screen.getByText("Mookie Betts → Bombers")).toBeInTheDocument();
     expect(screen.getByText("$5 → Bombers")).toBeInTheDocument();
     expect(screen.getByText("Both rosters stay at 23")).toBeInTheDocument();
     expect(screen.getByText("offered Nov 2")).toBeInTheDocument();
@@ -165,7 +165,7 @@ describe("CommissionerTradesPage", () => {
     expect(screen.getByText(/1 player/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Reverse" }));
     expect(await screen.findByText("Reverse this trade?")).toBeInTheDocument();
-    expect(screen.getByText("Players and dollars go back, effective tomorrow.")).toBeInTheDocument();
+    expect(screen.getByText("Players and dollars go back to their old teams.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Reverse trade" }));
     await waitFor(() => expect(m.reverseLeagueTrade).toHaveBeenCalledWith(3));
     expect(m.reverseLeagueTrade.mock.calls[0]).toHaveLength(1);

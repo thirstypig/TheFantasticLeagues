@@ -32,10 +32,6 @@ function fmtLong(iso: string): string {
 function fmtShort(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
-function lastName(full: string): string {
-  const parts = full.trim().split(/\s+/);
-  return parts[parts.length - 1] || full;
-}
 
 const SUB: React.CSSProperties = { fontSize: 15, color: "var(--am-text-muted)" };
 const CARD: React.CSSProperties = { padding: 16, borderBottom: "1px solid var(--am-border)", display: "grid", gap: 6 };
@@ -65,7 +61,7 @@ interface Data {
 
 function assetLine(it: LeagueTradeItem, nameOf: (id: number) => string): string {
   const to = it.recipient?.name ?? nameOf(it.recipientId);
-  if (it.assetType === "PLAYER") return `${it.player ? lastName(it.player.name) : "A player"} → ${to}`;
+  if (it.assetType === "PLAYER") return `${it.player ? it.player.name : "A player"} → ${to}`;
   if (it.assetType === "BUDGET") return `$${it.amount ?? 0} → ${to}`;
   return `${it.assetType.toLowerCase().replace(/_/g, " ")} → ${to}`;
 }
@@ -203,7 +199,7 @@ function TradesBody({ leagueId }: { leagueId: number }) {
     }
     return {
       title: "Reverse this trade?",
-      body: "Players and dollars go back, effective tomorrow.",
+      body: "Players and dollars go back to their old teams.",
       confirmLabel: "Reverse trade",
       cancelLabel: "Keep it",
     };
