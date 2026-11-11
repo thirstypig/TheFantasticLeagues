@@ -33,8 +33,8 @@ function renderPage() {
   );
 }
 
-const P8 = { id: 8, name: "Period 8", startDate: "2026-06-01T00:00:00.000Z", endDate: "2026-06-14T00:00:00.000Z", status: "completed" };
-const P9 = { id: 9, name: "Period 9", startDate: "2026-06-15T00:00:00.000Z", endDate: "2026-06-28T00:00:00.000Z", status: "pending" };
+const P8 = { id: 8, name: "Period 8", startDate: "2026-06-01T12:00:00.000Z", endDate: "2026-06-14T12:00:00.000Z", status: "completed" };
+const P9 = { id: 9, name: "Period 9", startDate: "2026-06-15T12:00:00.000Z", endDate: "2026-06-28T12:00:00.000Z", status: "pending" };
 
 const FRALEY = { playerId: 101, name: "Jake Fraley", pos: "OF", mlbTeam: "CIN", mlbId: 641584 };
 const CASAS = { playerId: 102, name: "Triston Casas", pos: "1B", mlbTeam: "BOS", mlbId: 671213 };
