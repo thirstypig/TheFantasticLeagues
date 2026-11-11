@@ -3,8 +3,9 @@ import { render, screen, fireEvent, waitFor, within } from "@testing-library/rea
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 vi.mock("../../../contexts/LeagueContext", () => ({
-  useLeague: () => ({ leagueId: 20, myTeamId: 1 }),
+  useLeague: () => ({ leagueId: 20, myTeamId: leagueState.myTeamId, myTeamResolved: leagueState.myTeamResolved }),
 }));
+const leagueState = vi.hoisted(() => ({ myTeamId: 1 as number | null, myTeamResolved: true }));
 const toast = vi.fn();
 vi.mock("../../../contexts/ToastContext", () => ({
   useToast: () => ({ toast, confirm: vi.fn() }),
@@ -59,6 +60,8 @@ const tick = (name: string) => fireEvent.click(screen.getByRole("checkbox", { na
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
+  leagueState.myTeamId = 1;
+  leagueState.myTeamResolved = true;
   m.getTradeWindow.mockResolvedValue({ open: true, message: null, rosterCap: 3 });
   m.getTradeLeagueTeams.mockResolvedValue([
     { id: 2, name: "Bombers", code: "BOM" },
@@ -191,5 +194,91 @@ describe("NewTradePage", () => {
     renderPage();
     await screen.findAllByTestId("partner-pill");
     expect(screen.queryByText(/You give ·/)).not.toBeInTheDocument();
+  });
+
+  it("caps the give side at my budget and the get side at theirs", async () => {
+    renderPage();
+    await pickBombers();
+    fireEvent.click(screen.getByRole("button", { name: "+ Add auction dollars" }));
+    fireEvent.change(screen.getByLabelText("You give $"), { target: { value: "99" } });
+    expect(screen.getByLabelText("You give $")).toHaveValue(40);
+    expect(screen.getByLabelText("You give $")).toHaveAttribute("max", "40");
+    expect(screen.getByText("of $40")).toBeInTheDocument();
+    expect(screen.getByLabelText("You get $")).toHaveAttribute("max", "12");
+    expect(screen.getByText("of $12")).toBeInTheDocument();
+  });
+
+  it("clamps a restored draft's dollars to each side's own budget", async () => {
+    saveTradeDraft({ leagueId: 20, partnerId: 2, give: [], get: [], giveDollars: 30, getDollars: 30 });
+    renderPage();
+    await screen.findByText("Bryce Harper");
+    expect(screen.getByLabelText("You give $")).toHaveValue(30); // under my 40
+    expect(screen.getByLabelText("You get $")).toHaveValue(12); // over their 12
+    expect(loadTradeDraft(20)).toMatchObject({ giveDollars: 30, getDollars: 12 });
+  });
+
+  it("turns negative or fractional restored dollars into whole non-negative numbers", async () => {
+    localStorage.setItem("fbst.tradeDraft.v1.20", JSON.stringify({ leagueId: 20, partnerId: 2, give: [], get: [], giveDollars: -5, getDollars: 2.7 }));
+    renderPage();
+    await screen.findByText("Bryce Harper");
+    expect(loadTradeDraft(20)).toMatchObject({ giveDollars: 0, getDollars: 2 });
+  });
+
+  it("drops a restored partner that is not in the league without fetching its roster", async () => {
+    m.getTradeTeamRoster.mockImplementation(async (id: number) => {
+      if (id === 1) return MINE as any;
+      if (id === 77) throw new Error("Team not found");
+      return THEIRS as any;
+    });
+    saveTradeDraft({ leagueId: 20, partnerId: 77, give: [101], get: [], giveDollars: 0, getDollars: 0 });
+    renderPage();
+    await screen.findAllByTestId("partner-pill");
+    expect(m.getTradeTeamRoster).not.toHaveBeenCalledWith(77);
+    expect(screen.queryByText(/Couldn.t load the trade screen/)).not.toBeInTheDocument();
+    expect(loadTradeDraft(20)?.partnerId).toBeNull();
+  });
+
+  it("a failed partner roster load is an inline error that picking another team clears", async () => {
+    m.getTradeTeamRoster.mockImplementation(async (id: number) => {
+      if (id === 1) return MINE as any;
+      if (id === 3) throw new Error("Team not found");
+      return THEIRS as any;
+    });
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Black Sox" }));
+    expect(await screen.findByText(/Couldn.t load Black Sox/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Bombers" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Bombers" }));
+    await screen.findByText("Bryce Harper");
+    expect(screen.queryByText(/Couldn.t load Black Sox/)).not.toBeInTheDocument();
+  });
+
+  it("a slow roster for a previous partner does not overwrite the current one", async () => {
+    let releaseSlow: (v: any) => void = () => {};
+    const slow = new Promise((r) => { releaseSlow = r; });
+    m.getTradeTeamRoster.mockImplementation((id: number) =>
+      id === 1 ? Promise.resolve(MINE as any) : id === 3 ? (slow as any) : Promise.resolve(THEIRS as any));
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Black Sox" }));
+    fireEvent.click(screen.getByRole("button", { name: "Bombers" }));
+    await screen.findByText("Bryce Harper");
+    releaseSlow({ team: { id: 3, name: "Black Sox", owner: "x", budget: 1 }, currentRoster: [row(301, "Late Guy", "C", "NYY")] });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(screen.queryByText("Late Guy")).not.toBeInTheDocument();
+    expect(screen.getByText("Bryce Harper")).toBeInTheDocument();
+  });
+
+  it("does not say you need a team while your team is still resolving", async () => {
+    leagueState.myTeamId = null;
+    leagueState.myTeamResolved = false;
+    renderPage();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(screen.queryByText(/You need a team/)).not.toBeInTheDocument();
+  });
+
+  it("says you need a team once resolution finished with none", async () => {
+    leagueState.myTeamId = null;
+    renderPage();
+    expect(await screen.findByText(/You need a team/)).toBeInTheDocument();
   });
 });

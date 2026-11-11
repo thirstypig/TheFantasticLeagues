@@ -55,4 +55,11 @@ describe("checkTrade", () => {
     const r = checkTrade({ ...base, mineActive: 23, theirsActive: 23, give: 0, get: 1 });
     expect(r.ok).toBe(false); // me 24 > cap
   });
+
+  it("a team going up to exactly the cap is fine", () => {
+    // cap 23: they go 22 -> 23, I go 24 -> 23 (shrinking).
+    const r = checkTrade({ ...base, mineActive: 24, theirsActive: 22, give: 2, get: 1 });
+    expect(r.ok).toBe(true);
+    expect(r.lines.some((l) => l.tone === "bad")).toBe(false);
+  });
 });

@@ -16,12 +16,12 @@ import { clearTradeDraft, loadTradeDraft, saveTradeDraft } from "../lib/tradeDra
 import type { TradeDraft } from "../lib/tradeDraft";
 
 type RosterRow = TeamDetailResponse["currentRoster"][number];
-type Roster = { name: string; budget: number; rows: RosterRow[] };
+type Roster = { id: number; name: string; budget: number; rows: RosterRow[] };
 
 const isIL = (r: RosterRow) => r.assignedPosition === "IL";
 
 function toRoster(res: TeamDetailResponse): Roster {
-  return { name: res.team.name, budget: res.team.budget ?? 0, rows: res.currentRoster ?? [] };
+  return { id: res.team.id, name: res.team.name, budget: res.team.budget ?? 0, rows: res.currentRoster ?? [] };
 }
 
 const CAP: React.CSSProperties = {
@@ -80,7 +80,7 @@ function PlayerList({ rows, ticked, onToggle }: { rows: RosterRow[]; ticked: num
 }
 
 function NewTradePage() {
-  const { leagueId, myTeamId } = useLeague();
+  const { leagueId, myTeamId, myTeamResolved } = useLeague();
   const navigate = useNavigate();
   const { toast } = useToast();
   const desktop = useMediaQuery("(min-width: 1024px)");
@@ -90,6 +90,7 @@ function NewTradePage() {
   const [mine, setMine] = useState<Roster | null>(null);
   const [theirs, setTheirs] = useState<Roster | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [partnerFailed, setPartnerFailed] = useState<number | null>(null);
 
   const [draft, setDraft] = useState<TradeDraft>(
     () => loadTradeDraft(leagueId) ?? { leagueId, partnerId: null, give: [], get: [], giveDollars: 0, getDollars: 0 },
@@ -123,18 +124,24 @@ function NewTradePage() {
   }, [myTeamId]);
 
   const partnerId = draft.partnerId;
-  useEffect(() => {
-    setTheirs(null);
-    if (partnerId == null) return;
-    let live = true;
-    getTradeTeamRoster(partnerId).then((r) => live && setTheirs(toRoster(r)), () => live && setLoadError(true));
-    return () => { live = false; };
-  }, [partnerId]);
-
   const partners = useMemo(
     () => (teams ?? []).filter((t) => t.id !== myTeamId).sort((a, b) => a.name.localeCompare(b.name)),
     [teams, myTeamId],
   );
+
+  // Only fetch a partner the league actually lists; a restored draft may name a team that is gone.
+  const partnerValid = partnerId != null && partners.some((t) => t.id === partnerId);
+  useEffect(() => {
+    setTheirs(null);
+    setPartnerFailed(null);
+    if (partnerId == null || !partnerValid) return;
+    let live = true;
+    getTradeTeamRoster(partnerId).then(
+      (r) => live && setTheirs(toRoster(r)),
+      () => live && setPartnerFailed(partnerId),
+    );
+    return () => { live = false; };
+  }, [partnerId, partnerValid]);
 
   // A restored draft: forget a partner that no longer exists, and anything no longer on the rosters.
   useEffect(() => {
@@ -150,8 +157,9 @@ function NewTradePage() {
     const d = draftRef.current;
     const give = d.give.filter((id) => mine.rows.some((r) => r.playerId === id && !isIL(r)));
     const get = d.get.filter((id) => theirs.rows.some((r) => r.playerId === id && !isIL(r)));
-    const giveDollars = Math.min(d.giveDollars, mine.budget);
-    const getDollars = Math.min(d.getDollars, theirs.budget);
+    const whole = (n: number, budget: number) => Math.min(budget, Math.max(0, Math.floor(n) || 0));
+    const giveDollars = whole(d.giveDollars, mine.budget);
+    const getDollars = whole(d.getDollars, theirs.budget);
     if (give.length !== d.give.length || get.length !== d.get.length || giveDollars !== d.giveDollars || getDollars !== d.getDollars) {
       update({ give, get, giveDollars, getDollars });
     }
@@ -164,7 +172,7 @@ function NewTradePage() {
   if (loadError) {
     return <div style={wrap}>{backLink}<p style={{ fontSize: 17 }}>Couldn’t load the trade screen. Try again in a moment.</p></div>;
   }
-  if (myTeamId == null && teams) {
+  if (myTeamId == null && myTeamResolved && teams) {
     return <div style={wrap}>{backLink}<p style={{ fontSize: 17 }}>You need a team in this league to propose a trade.</p></div>;
   }
   if (!teams || !win || !mine) {
@@ -173,7 +181,7 @@ function NewTradePage() {
 
   const partner = partners.find((t) => t.id === partnerId) ?? null;
   const partnerName = partner?.name ?? "";
-  const ready = !!partner && !!theirs;
+  const ready = !!partner && !!theirs && theirs.id === partnerId;
 
   const giveTicked = draft.give;
   const getTicked = draft.get;
@@ -378,7 +386,11 @@ function NewTradePage() {
 
       {!ready && (
         <div style={{ marginTop: 16 }}>
-          {partnerId != null && <p style={{ fontSize: 15, color: "var(--am-text-muted)" }}>Loading…</p>}
+          {partnerFailed != null && partnerFailed === partnerId ? (
+            <p role="alert" style={{ fontSize: 15, color: "var(--am-negative)" }}>{`Couldn’t load ${partnerName}’s roster. Pick another team or try again.`}</p>
+          ) : (
+            partnerValid && <p style={{ fontSize: 15, color: "var(--am-text-muted)" }}>Loading…</p>
+          )}
           {button}
         </div>
       )}
