@@ -5,10 +5,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("../../../db/prisma.js", () => ({
   prisma: {
     team: { findUnique: vi.fn() },
-    period: { findFirst: vi.fn() },
+    period: { findFirst: vi.fn(), findMany: vi.fn() },
     teamStatsPeriod: { findMany: vi.fn(), findUnique: vi.fn() },
     roster: { findMany: vi.fn() },
     playerStatsPeriod: { findMany: vi.fn() },
+    transactionEvent: { findMany: vi.fn() },
   },
 }));
 
@@ -24,6 +25,8 @@ beforeEach(() => {
   mockPrisma.teamStatsPeriod.findMany.mockResolvedValue([]);
   mockPrisma.teamStatsPeriod.findUnique.mockResolvedValue(null);
   mockPrisma.playerStatsPeriod.findMany.mockResolvedValue([]);
+  mockPrisma.transactionEvent.findMany.mockResolvedValue([]);
+  mockPrisma.period.findMany.mockResolvedValue([]);
 });
 
 // ── Player.mlbStatus → TeamDetailResponse.currentRoster[].mlbStatus ─
@@ -388,5 +391,62 @@ describe("TeamService.buildGamesByPos", () => {
   it("real posGames with a single position is returned verbatim", () => {
     const result = TeamService.buildGamesByPos("C", "C", { C: 58 });
     expect(result).toEqual({ C: 58 });
+  });
+});
+
+
+describe("TeamService.getTeamRosterHub — ilSince", () => {
+  function setupIl() {
+    mockPrisma.team.findUnique.mockResolvedValue({ id: 10, leagueId: 1, name: "T", owner: "o", budget: 260 });
+    const mk = (id: number, playerId: number, slot: string) => ({
+      id, playerId, teamId: 10, assignedPosition: slot, isKeeper: false, price: 1,
+      acquiredAt: new Date("2026-04-01"), releasedAt: null, source: "auction",
+      player: { id: playerId, mlbId: 700000 + playerId, name: `P${playerId}`, posPrimary: "OF", posList: "OF", mlbTeam: "NYM", mlbStatus: "Active" },
+    });
+    mockPrisma.roster.findMany.mockImplementation((args: any) =>
+      Promise.resolve(args?.where?.releasedAt === null ? [mk(1, 31, "IL"), mk(2, 32, "IL"), mk(3, 33, "IL"), mk(4, 34, "OF")] : []),
+    );
+  }
+
+  it("IL roster rows carry ilSince from the IL windows (current open stint only)", async () => {
+    setupIl();
+    mockPrisma.transactionEvent.findMany.mockResolvedValue([
+      // 31: stash, activate, stash again -> open stint starts at the SECOND stash
+      { playerId: 31, transactionType: "IL_STASH", effDate: new Date("2026-04-10T00:00:00Z") },
+      { playerId: 31, transactionType: "IL_ACTIVATE", effDate: new Date("2026-04-20T00:00:00Z") },
+      { playerId: 31, transactionType: "IL_STASH", effDate: new Date("2026-05-02T00:00:00Z") },
+      // 32: single open stint
+      { playerId: 32, transactionType: "IL_STASH", effDate: new Date("2026-04-15T00:00:00Z") },
+      // 33: no events at all
+    ]);
+    const hub = await new TeamService().getTeamRosterHub(10);
+    const byId = Object.fromEntries(hub.ilPlayers.map((r) => [r.playerId, r.ilSince]));
+    expect(byId[31]).toBe("2026-05-02T00:00:00.000Z");
+    expect(byId[32]).toBe("2026-04-15T00:00:00.000Z");
+    expect(byId[33]).toBeNull();
+    expect(mockPrisma.period.findMany).toHaveBeenCalledWith({
+      where: { leagueId: 1 },
+      select: { id: true, name: true, status: true, startDate: true, endDate: true },
+      orderBy: { startDate: "asc" },
+    });
+    // query args: league-scoped, only IL players, only IL event types, asc order
+    expect(mockPrisma.transactionEvent.findMany).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.transactionEvent.findMany).toHaveBeenCalledWith({
+      where: {
+        leagueId: 1,
+        playerId: { in: [31, 32, 33] },
+        transactionType: { in: ["IL_STASH", "IL_ACTIVATE"] },
+        effDate: { not: null },
+      },
+      select: { playerId: true, transactionType: true, effDate: true },
+      orderBy: { effDate: "asc" },
+    });
+  });
+
+  it("does not query IL events when nobody is on the IL", async () => {
+    mockPrisma.team.findUnique.mockResolvedValue({ id: 10, leagueId: 1, name: "T", owner: "o", budget: 260 });
+    mockPrisma.roster.findMany.mockResolvedValue([]);
+    await new TeamService().getTeamRosterHub(10);
+    expect(mockPrisma.transactionEvent.findMany).not.toHaveBeenCalled();
   });
 });

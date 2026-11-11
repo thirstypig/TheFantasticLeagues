@@ -55,6 +55,8 @@ export const RosterHubRowSchema = z.object({
   posGamesSource: z.enum(["real", "synthetic"]).optional(),
   /** Verbatim MLB statsapi status — drives the ghost-IL chip. Null when unknown. */
   mlbStatus: z.string().nullable().optional(),
+  /** IL rows only: ISO start of the player's current open IL stint (from ilWindows); null when unknown. */
+  ilSince: z.string().nullable().optional(),
   // ---- Hitter stats ----
   AB: NumOrUndef,
   H: NumOrUndef,
@@ -117,6 +119,15 @@ export const RosterHubDroppedPlayerSchema = z.object({
 });
 export type RosterHubDroppedPlayer = z.infer<typeof RosterHubDroppedPlayerSchema>;
 
+export const RosterHubLeaguePeriodSchema = z.object({
+  id: z.number(),
+  name: z.string().nullable().optional(),
+  status: z.string().nullable().optional(),
+  startDate: z.coerce.date().nullable().optional(),
+  endDate: z.coerce.date().nullable().optional(),
+});
+export type RosterHubLeaguePeriod = z.infer<typeof RosterHubLeaguePeriodSchema>;
+
 /**
  * Top-level response from `GET /api/teams/:id/hub-roster`. The four row
  * arrays are partitioned server-side so the client never has to re-filter:
@@ -132,6 +143,8 @@ export const RosterHubResponseSchema = z.object({
   pitchers: z.array(RosterHubRowSchema),
   ilPlayers: z.array(RosterHubRowSchema),
   droppedPlayers: z.array(RosterHubDroppedPlayerSchema),
+  /** League periods (only populated when the team has IL rows) — lets the client map `ilSince` to a period. */
+  leaguePeriods: z.array(RosterHubLeaguePeriodSchema).optional(),
   /** Monotonic counter incremented on every roster mutation. Client sends as `If-Match` header. */
   rosterVersion: z.number().int(),
 });
