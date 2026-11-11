@@ -816,10 +816,16 @@ router.post("/:id/reverse", requireAuth, asyncHandler(async (req, res) => {
       }
       playerMoves.push({ item, row });
     }
+    // Sum what each team must give back across ALL its BUDGET items (gross, not
+    // net of what it gets back, so every conditional decrement below can succeed
+    // in any order).
+    const giveBack = new Map<number, number>();
     for (const item of trade.items) {
       if (item.assetType !== "BUDGET") continue;
-      const amount = item.amount || 0;
-      const recipientTeam = await tx.team.findUnique({ where: { id: item.recipientId }, select: { budget: true } });
+      giveBack.set(item.recipientId, (giveBack.get(item.recipientId) ?? 0) + (item.amount || 0));
+    }
+    for (const [teamId, amount] of giveBack) {
+      const recipientTeam = await tx.team.findUnique({ where: { id: teamId }, select: { budget: true } });
       if (!recipientTeam || recipientTeam.budget < amount) {
         throw new TradeValidationError(
           `Cannot reverse: recipient has insufficient budget ($${recipientTeam?.budget ?? 0}, needs $${amount})`,
@@ -864,8 +870,17 @@ router.post("/:id/reverse", requireAuth, asyncHandler(async (req, res) => {
     for (const item of trade.items) {
       if (item.assetType === "BUDGET") {
         const amount = item.amount || 0;
-        // Reverse: take from recipient, give to sender (checked above, under the lock)
-        await tx.team.update({ where: { id: item.recipientId }, data: { budget: { decrement: amount } } });
+        // Reverse: take from recipient, give to sender. Checked above under the
+        // trade lock; the decrement is conditional too, so it can never go negative.
+        const taken = await tx.team.updateMany({
+          where: { id: item.recipientId, budget: { gte: amount } },
+          data: { budget: { decrement: amount } },
+        });
+        if (taken.count === 0) {
+          throw new TradeValidationError(
+            `Cannot reverse: ${item.recipient?.name ?? `Team #${item.recipientId}`} no longer has $${amount}`,
+          );
+        }
         await tx.team.update({ where: { id: item.senderId }, data: { budget: { increment: amount } } });
       } else if (item.assetType === "WAIVER_PRIORITY") {
         // Re-swap waiver priority overrides back to original

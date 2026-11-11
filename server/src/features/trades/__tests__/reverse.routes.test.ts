@@ -5,7 +5,7 @@ const { mockTx, mockOwnership } = vi.hoisted(() => ({
   mockTx: {
     $queryRaw: vi.fn(),
     roster: { findFirst: vi.fn(), findMany: vi.fn(), update: vi.fn(), updateMany: vi.fn(), create: vi.fn() },
-    team: { findUnique: vi.fn(), update: vi.fn() },
+    team: { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     player: { findUnique: vi.fn() },
     trade: { update: vi.fn() },
   },
@@ -114,6 +114,7 @@ beforeEach(() => {
   mockTx.player.findUnique.mockResolvedValue({ posPrimary: "SS" });
   mockTx.team.findUnique.mockResolvedValue({ budget: 50 });
   mockTx.team.update.mockResolvedValue({});
+  mockTx.team.updateMany.mockResolvedValue({ count: 1 });
   mockTx.trade.update.mockResolvedValue({});
   mockOwnership.mockResolvedValue(undefined);
 });
@@ -123,6 +124,7 @@ function noWrites() {
   expect(mockTx.roster.updateMany).not.toHaveBeenCalled();
   expect(mockTx.roster.create).not.toHaveBeenCalled();
   expect(mockTx.team.update).not.toHaveBeenCalled();
+  expect(mockTx.team.updateMany).not.toHaveBeenCalled();
   expect(mockTx.trade.update).not.toHaveBeenCalled();
 }
 
@@ -210,6 +212,40 @@ describe("POST /:id/reverse", () => {
     const res = await supertest(app).post("/9/reverse").send({});
     expect(res.status).toBe(400);
     noWrites();
+  });
+
+  it("reverse sums two BUDGET items from one team before any write", async () => {
+    // Alpha received $30 twice and now has $50: each item fits, the sum does not.
+    const thirty = (id: number) => ({ ...budgetItem, id, amount: 30 });
+    mockPrisma.trade.findUnique.mockResolvedValue(processed([thirty(71), thirty(72)]));
+    mockTx.team.findUnique.mockResolvedValue({ budget: 50 });
+    const res = await supertest(app).post("/9/reverse").send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("Cannot reverse: recipient has insufficient budget ($50, needs $60)");
+    expect(mockTx.team.findUnique).toHaveBeenCalledWith({ where: { id: 1 }, select: { budget: true } });
+    noWrites();
+  });
+
+  it("reverse moves dollars with a conditional decrement", async () => {
+    mockPrisma.trade.findUnique.mockResolvedValue(processed([budgetItem]));
+    mockTx.team.findUnique.mockResolvedValue({ budget: 50 });
+    const res = await supertest(app).post("/9/reverse").send({});
+    expect(res.status).toBe(200);
+    expect(mockTx.team.updateMany).toHaveBeenCalledWith({
+      where: { id: 1, budget: { gte: 5 } },
+      data: { budget: { decrement: 5 } },
+    });
+    expect(mockTx.team.update).toHaveBeenCalledWith({ where: { id: 2 }, data: { budget: { increment: 5 } } });
+  });
+
+  it("reverse refuses (400) when the conditional decrement matches no row", async () => {
+    mockPrisma.trade.findUnique.mockResolvedValue(processed([budgetItem]));
+    mockTx.team.findUnique.mockResolvedValue({ budget: 50 });
+    mockTx.team.updateMany.mockResolvedValue({ count: 0 }); // budget spent under us
+    const res = await supertest(app).post("/9/reverse").send({});
+    expect(res.status).toBe(400);
+    expect(mockTx.team.update).not.toHaveBeenCalled();
+    expect(mockTx.trade.update).not.toHaveBeenCalled();
   });
 
   it("reverse refuses (400) on an ownership conflict", async () => {
