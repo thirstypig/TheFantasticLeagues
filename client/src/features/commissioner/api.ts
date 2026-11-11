@@ -1,4 +1,4 @@
-import { fetchJsonApi, API_BASE } from "../../api/base";
+import { fetchJsonApi, API_BASE, ApiError } from "../../api/base";
 import type { TeamBalanceRow, LeagueBalancesResponse } from "@shared/api/commissioner";
 
 // --- Types ---
@@ -648,4 +648,115 @@ export async function updateSeasonPeriod(
 
 export async function deleteSeasonPeriod(periodId: number): Promise<void> {
   await fetchJsonApi(`${API_BASE}/periods/${periodId}`, { method: "DELETE" });
+}
+
+// --- Step C: roster moves + meeting ---
+// Local wrappers over the existing transactions endpoints (no import from
+// features/transactions, ADR-015). Previews never throw on rule failures.
+
+export interface PreviewResult { ok: boolean; error?: string; code?: string }
+export interface FreeAgent {
+  playerId: number;
+  name: string;
+  pos: string;
+  mlbTeam: string | null;
+  mlbId: number | null;
+}
+
+const PREVIEW_GENERIC_ERROR = "Couldn't check this move. Try again.";
+
+function errorBody(e: unknown): { error?: string; code?: string } | null {
+  if (e instanceof ApiError && e.body && typeof e.body === "object") {
+    return e.body as { error?: string; code?: string };
+  }
+  return null;
+}
+
+async function postPreview(path: string, body: Record<string, unknown>): Promise<PreviewResult> {
+  try {
+    const res = await fetchJsonApi<{ ok?: boolean }>(`${API_BASE}${path}`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    return { ...res, ok: res?.ok !== false };
+  } catch (e) {
+    if (e instanceof ApiError && (e.status === 400 || e.status === 404)) {
+      const b = errorBody(e);
+      if (b?.error) return { ok: false, error: b.error, code: b.code };
+    }
+    return { ok: false, error: PREVIEW_GENERIC_ERROR };
+  }
+}
+
+async function postMutation(path: string, body: Record<string, unknown>): Promise<void> {
+  try {
+    await fetchJsonApi(`${API_BASE}${path}`, { method: "POST", body: JSON.stringify(body) });
+  } catch (e) {
+    throw new Error(errorBody(e)?.error ?? "Save failed");
+  }
+}
+
+interface FreeAgentRow {
+  id: number;
+  mlb_id?: string | null;
+  player_name: string;
+  positions?: string | null;
+  mlb_team?: string | null;
+}
+
+export async function searchFreeAgents(leagueId: number, q: string): Promise<FreeAgent[]> {
+  const text = q.trim();
+  if (!text) return [];
+  const params = new URLSearchParams({ leagueId: String(leagueId), freeAgentsOnly: "true", q: text, take: "20" });
+  const res = await fetchJsonApi<{ stats: FreeAgentRow[] }>(`${API_BASE}/player-season-stats?${params}`);
+  const seen = new Set<number>();
+  const out: FreeAgent[] = [];
+  for (const r of res.stats ?? []) {
+    if (seen.has(r.id)) continue; // two-way players come back as two rows
+    seen.add(r.id);
+    const mlbId = Number(r.mlb_id);
+    out.push({
+      playerId: r.id,
+      name: r.player_name,
+      pos: r.positions ?? "",
+      mlbTeam: r.mlb_team || null,
+      mlbId: Number.isFinite(mlbId) && r.mlb_id ? mlbId : null,
+    });
+  }
+  return out;
+}
+
+const claimBody = (leagueId: number, teamId: number, addId: number, dropId: number) =>
+  ({ leagueId, teamId, playerId: addId, dropPlayerId: dropId });
+
+export function previewMove(leagueId: number, teamId: number, addId: number, dropId: number): Promise<PreviewResult> {
+  return postPreview("/transactions/claim/preview", claimBody(leagueId, teamId, addId, dropId));
+}
+
+/** Meeting save: always carries effectiveDate. Callers must preview first. */
+export function saveMove(leagueId: number, teamId: number, addId: number, dropId: number, effectiveDate: string): Promise<void> {
+  return postMutation("/transactions/claim", { ...claimBody(leagueId, teamId, addId, dropId), effectiveDate });
+}
+
+export function previewCommissionerIlStash(leagueId: number, teamId: number, stashPlayerId: number, addPlayerId: number): Promise<PreviewResult> {
+  return postPreview("/transactions/il-stash/preview", { leagueId, teamId, stashPlayerId, addPlayerId });
+}
+
+export function commissionerIlStash(leagueId: number, teamId: number, stashPlayerId: number, addPlayerId: number): Promise<void> {
+  return postMutation("/transactions/il-stash", { leagueId, teamId, stashPlayerId, addPlayerId });
+}
+
+export function previewCommissionerIlActivate(leagueId: number, teamId: number, activatePlayerId: number, dropPlayerId: number): Promise<PreviewResult> {
+  return postPreview("/transactions/il-activate/preview", { leagueId, teamId, activatePlayerId, dropPlayerId });
+}
+
+export function commissionerIlActivate(leagueId: number, teamId: number, activatePlayerId: number, dropPlayerId: number): Promise<void> {
+  return postMutation("/transactions/il-activate", { leagueId, teamId, activatePlayerId, dropPlayerId });
+}
+
+export const previewOneOffSwap = previewMove;
+
+/** One-off swap from the roster screen: claim WITHOUT effectiveDate. */
+export function oneOffSwap(leagueId: number, teamId: number, addId: number, dropId: number): Promise<void> {
+  return postMutation("/transactions/claim", claimBody(leagueId, teamId, addId, dropId));
 }
