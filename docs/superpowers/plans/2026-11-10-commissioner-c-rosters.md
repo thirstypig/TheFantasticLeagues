@@ -133,10 +133,10 @@ export interface FreeAgent { playerId: number; name: string; pos: string; mlbTea
 export function searchFreeAgents(leagueId: number, q: string): Promise<FreeAgent[]>   // freeAgentsOnly=true&take=20; q trimmed; "" → []
 export function previewMove(leagueId: number, teamId: number, addId: number, dropId: number): Promise<PreviewResult>
 export function saveMove(leagueId: number, teamId: number, addId: number, dropId: number, effectiveDate: string): Promise<void>
-export function previewIlStash(leagueId: number, teamId: number, stashPlayerId: number, addPlayerId: number): Promise<PreviewResult>
-export function ilStash(leagueId: number, teamId: number, stashPlayerId: number, addPlayerId: number): Promise<void>
-export function previewIlActivate(leagueId: number, teamId: number, activatePlayerId: number, dropPlayerId: number): Promise<PreviewResult>
-export function ilActivate(leagueId: number, teamId: number, activatePlayerId: number, dropPlayerId: number): Promise<void>
+export function previewCommissionerIlStash(leagueId: number, teamId: number, stashPlayerId: number, addPlayerId: number): Promise<PreviewResult>
+export function commissionerIlStash(leagueId: number, teamId: number, stashPlayerId: number, addPlayerId: number): Promise<void>
+export function previewCommissionerIlActivate(leagueId: number, teamId: number, activatePlayerId: number, dropPlayerId: number): Promise<PreviewResult>
+export function commissionerIlActivate(leagueId: number, teamId: number, activatePlayerId: number, dropPlayerId: number): Promise<void>
 export function previewOneOffSwap(leagueId: number, teamId: number, addId: number, dropId: number): Promise<PreviewResult> // same as previewMove
 export function oneOffSwap(leagueId: number, teamId: number, addId: number, dropId: number): Promise<void>                 // claim WITHOUT effectiveDate
 ```
@@ -238,12 +238,12 @@ Behavior:
 - Ghost banner for each ghost: "<Last> is back from the MLB IL but still in your IL slot." + "Activate ›" (opens the Activate flow).
 - Roster grouped Hitters / Pitchers / IL (phone) or one table Slot, Player, MLB, Status, Action (desktop), slot order C, 1B, 2B, 3B, SS, MI, CM, OF, DH, P, SP, RP, BN, IL.
 - Row "Actions" opens an inline action panel under the row (phone) or the right column (desktop) — not a modal — with "Move to IL ›", "Drop ›". IL rows show "Activate".
-- **Move to IL:** heading "<Last>: move to IL", line "IL slot <k> of 2 · fee $<fee> per period" (fee = `il_slot_1_cost` for slot 1, `il_slot_2_cost` for slot 2; defaults 10/15), `PlayerSearch` "Add a replacement: search NL free agents", check line from `previewIlStash` ("✓ Roster stays at 23 / 23" or the server error). Button "Move <Last> to IL" → `ConfirmSheet` → `ilStash`. Cancel closes the panel.
+- **Move to IL:** heading "<Last>: move to IL", line "IL slot <k> of 2 · fee $<fee> per period" (fee = `il_slot_1_cost` for slot 1, `il_slot_2_cost` for slot 2; defaults 10/15), `PlayerSearch` "Add a replacement: search NL free agents", check line from `previewCommissionerIlStash` ("✓ Roster stays at 23 / 23" or the server error). Button "Move <Last> to IL" → `ConfirmSheet` → `commissionerIlStash`. Cancel closes the panel.
 - **Drop:** `PlayerSearch` for the add, `previewOneOffSwap`, button "Drop <Last>, add <Last>" → `ConfirmSheet` → `oneOffSwap`.
-- **Activate:** choose a drop from active players, `previewIlActivate`, button "Activate <Last>" → `ConfirmSheet` → `ilActivate`.
+- **Activate:** choose a drop from active players, `previewCommissionerIlActivate`, button "Activate <Last>" → `ConfirmSheet` → `commissionerIlActivate`.
 - After any success: toast, reload rosters, close the panel.
 
-- [ ] **Step 1: Failing tests:** ghost banner copy; rows in slot order; Move to IL shows "IL slot 2 of 2 · fee $15 per period" when one IL slot is already used; replacement pick calls `previewIlStash` with the right ids; confirm calls `ilStash` with a body that has no `effectiveDate`; preview failure shows the server error and disables the button; Drop and Activate flows call the right functions; non-commissioner sees "Commissioners only."
+- [ ] **Step 1: Failing tests:** ghost banner copy; rows in slot order; Move to IL shows "IL slot 2 of 2 · fee $15 per period" when one IL slot is already used; replacement pick calls `previewCommissionerIlStash` with the right ids; confirm calls `commissionerIlStash` with a body that has no `effectiveDate`; preview failure shows the server error and disables the button; Drop and Activate flows call the right functions; non-commissioner sees "Commissioners only."
 - [ ] **Step 2:** Run → FAIL.
 - [ ] **Step 3:** Implement.
 - [ ] **Step 4:** Run → PASS.
