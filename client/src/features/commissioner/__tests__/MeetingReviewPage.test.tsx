@@ -35,7 +35,7 @@ function renderPage() {
   );
 }
 
-const P9 = { id: 9, name: "Period 9", startDate: "2026-06-15T00:00:00.000Z", endDate: "2026-06-28T00:00:00.000Z", status: "pending" };
+const P9 = { id: 9, name: "Period 9", startDate: "2026-06-15T12:00:00.000Z", endDate: "2026-06-28T12:00:00.000Z", status: "pending" };
 const pl = (playerId: number, name: string, pos = "OF") => ({ playerId, name, pos, mlbTeam: null, mlbId: null });
 const mv = (id: string, teamId: number, add: any, drop: any, error?: string) => ({ id, teamId, add, drop, ...(error ? { error } : {}) });
 
@@ -80,9 +80,39 @@ describe("MeetingReviewPage", () => {
     renderPage();
     expect(await screen.findByText("Bombers: Needs a drop")).toBeTruthy();
     expect(screen.getByText("Skunk Dogs: Casas was claimed by another team.")).toBeTruthy();
+    // The rule flag (Bombers needs a drop) blocks Save; the stored error alone would not.
     const save = screen.getByRole("button", { name: /Save 2 moves for 1 team/ }) as HTMLButtonElement;
     expect(save.disabled).toBe(true);
     expect(screen.getByText("Fix the flagged move first.")).toBeTruthy();
+  });
+
+  it("a stored error with no rule flags shows but does not block, and saving re-previews it", async () => {
+    seed([mv("b", 4, pl(102, "Triston Casas", "1B"), pl(41, "Pete Alonso", "1B"), "Casas was claimed by another team.")]);
+    renderPage();
+    expect(await screen.findByText("Skunk Dogs: Casas was claimed by another team.")).toBeTruthy();
+    expect(screen.queryByText("Fix the flagged move first.")).toBeNull();
+    const save = screen.getByRole("button", { name: "Save 1 move for 1 team" }) as HTMLButtonElement;
+    expect(save.disabled).toBe(false);
+    fireEvent.click(save);
+    fireEvent.click(screen.getByRole("button", { name: "Save moves" }));
+    await screen.findByText("START STUB");
+    expect(m.previewMove).toHaveBeenCalledWith(20, 4, 102, 41);
+    expect(m.saveMove).toHaveBeenCalledWith(20, 4, 102, 41, "2026-06-15");
+  });
+
+  it("removes each saved move from storage immediately and freezes the sheet title", async () => {
+    seed(THREE());
+    let release!: (v: any) => void;
+    m.previewMove.mockImplementation((_l, _t, a) =>
+      a === 102 ? new Promise((r) => { release = r; }) : Promise.resolve({ ok: true } as any));
+    renderPage();
+    await openSheet();
+    fireEvent.click(screen.getByRole("button", { name: "Save moves" }));
+    await waitFor(() => expect(m.previewMove).toHaveBeenCalledTimes(2));
+    expect(stored().moves.map((x) => x.id)).toEqual(["b", "c"]); // move a gone while b is pending
+    expect(screen.getByText("Save 3 moves for 2 teams?")).toBeTruthy();
+    release({ ok: true });
+    await screen.findByText("START STUB");
   });
 
   it("renders the confirm sheet copy exactly", async () => {
@@ -127,7 +157,7 @@ describe("MeetingReviewPage", () => {
     expect(d.moves[0].id).toBe("b");
     expect(d.moves[0].error).toBe("Casas is on Bombers.");
     expect(screen.getAllByText(/Casas is on Bombers\./).length).toBeGreaterThan(0);
-    expect((screen.getByRole("button", { name: /Save 1 move for 1 team/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: /Save 1 move for 1 team/ }) as HTMLButtonElement).disabled).toBe(false);
     expect(screen.queryByText("START STUB")).toBeNull();
   });
 

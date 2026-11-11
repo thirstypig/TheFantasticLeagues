@@ -53,6 +53,7 @@ function ReviewBody({ leagueId, periodId }: { leagueId: number; periodId: number
   const [sheetOpen, setSheetOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [frozen, setFrozen] = useState<{ moves: number; teams: number } | null>(null);
   const [outcome, setOutcome] = useState<{ saved: number; total: number } | null>(null);
 
   /** Every change goes through here so state and storage never drift. */
@@ -92,8 +93,9 @@ function ReviewBody({ leagueId, periodId }: { leagueId: number; periodId: number
   const nameOf = (id: number) => teamNames[id] ?? `Team ${id}`;
   const moves = [...draft.moves].sort((a, b) => nameOf(a.teamId).localeCompare(nameOf(b.teamId)));
 
+  const ruleFlags = flagMoves(draft, teamNames);
   const flagRows = [
-    ...flagMoves(draft, teamNames).map((f) => ({ moveId: f.moveId, text: f.message })),
+    ...ruleFlags.map((f) => ({ moveId: f.moveId, text: f.message })),
     ...draft.moves.filter((mv) => mv.error).map((mv) => ({ moveId: mv.id, text: mv.error as string })),
   ].map((f) => {
     const mv = draft.moves.find((x) => x.id === f.moveId);
@@ -103,8 +105,10 @@ function ReviewBody({ leagueId, periodId }: { leagueId: number; periodId: number
   const complete = completeMoves(draft);
   const teamCount = new Set(complete.map((mv) => mv.teamId)).size;
   const n = complete.length;
-  const label = `Save ${n} ${n === 1 ? "move" : "moves"} for ${teamCount} ${teamCount === 1 ? "team" : "teams"}`;
-  const blocked = flagRows.length > 0 || n === 0;
+  const labelFor = (moves: number, teams: number) => `Save ${moves} ${moves === 1 ? "move" : "moves"} for ${teams} ${teams === 1 ? "team" : "teams"}`;
+  const label = labelFor(n, teamCount);
+  // Stored errors are shown but never block; only rule flags do.
+  const blocked = ruleFlags.length > 0 || n === 0;
   const failed = outcome ? draft.moves.filter((mv) => mv.error) : [];
 
   function fix(mv: DraftMove) {
@@ -117,6 +121,7 @@ function ReviewBody({ leagueId, periodId }: { leagueId: number; periodId: number
     setSaving(true);
     setOutcome(null);
     const batch = completeMoves(draftRef.current); // snapshot, draft order
+    setFrozen({ moves: batch.length, teams: new Set(batch.map((mv) => mv.teamId)).size });
     let saved = 0;
     setProgress({ done: 0, total: batch.length });
     for (let i = 0; i < batch.length; i++) {
@@ -144,13 +149,13 @@ function ReviewBody({ leagueId, periodId }: { leagueId: number; periodId: number
       }
     }
     inFlight.current = false;
+    if (!alive.current) return; // per-move storage writes already happened; no navigation or toast
     if (saved === batch.length) {
       clearDraft(leagueId, periodId);
       toast(`Saved ${saved} ${saved === 1 ? "move" : "moves"}`, "success");
       navigate(`${base}/start/${periodId}`);
       return;
     }
-    if (!alive.current) return;
     setSaving(false);
     setSheetOpen(false);
     setProgress(null);
@@ -221,7 +226,7 @@ function ReviewBody({ leagueId, periodId }: { leagueId: number; periodId: number
           >
             {label}
           </button>
-          {flagRows.length > 0 && <p style={{ margin: 0, fontSize: 15, color: "var(--am-negative)" }}>Fix the flagged move first.</p>}
+          {ruleFlags.length > 0 && <p style={{ margin: 0, fontSize: 15, color: "var(--am-negative)" }}>Fix the flagged move first.</p>}
           {saving && progress && (
             <p role="status" style={{ margin: 0, fontSize: 15, color: "var(--am-text)" }}>
               {`Saving ${Math.min(progress.done + 1, progress.total)} of ${progress.total}…`}
@@ -232,7 +237,7 @@ function ReviewBody({ leagueId, periodId }: { leagueId: number; periodId: number
 
       <ConfirmSheet
         open={sheetOpen}
-        title={`${label}?`}
+        title={`${saving && frozen ? labelFor(frozen.moves, frozen.teams) : label}?`}
         body={saving && progress ? `Saving ${Math.min(progress.done + 1, progress.total)} of ${progress.total}…` : `Rosters change effective ${fmtLong(period.startDate)}. Owners see the moves in Activity.`}
         confirmLabel="Save moves"
         cancelLabel="Keep reviewing"
