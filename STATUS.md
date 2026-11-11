@@ -33,10 +33,10 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 
 ## In progress
 - UX step F: auction screens, plus deleting about 2,900 lines of dead legacy auction code
-- 2026 re-score, run by the commissioner: turn on "NL players only" → repair script → rescore script → re-audit
+- 2026 re-score: code is live in prod; the commissioner runs it (turn on "NL players only" → repair script → rescore script → re-audit)
 
 ## Open bugs / known issues
-- OGBA Period 7 is still `active`. Closing it auto-bills contested IL fees.
+- OGBA Period 7 is still `active` (season over). Closing it auto-bills contested IL fees.
 - `ALERT_EMAIL_TO` is unset, so nightly audit alarms only log.
 - One stale P6 stat (Perdomo hits 31 vs MLB 30; 0 points)
 - OGBA trade window is still "anytime" (the decision was meeting day only)
@@ -54,8 +54,4 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - 2026-11-10: trade window setting (anytime / meeting day only)
 - 2026-11-10: Sofia Sans replaces Inter
 
-**Where the repo contradicts CLAUDE.md** (resolved from code):
-- "Inter only" → `index.html` loads Sofia Sans
-- "97 grandfathered violations" → the baseline file has 86
-- "#485 in flight" → merged
-- Generated phase "In-Season 2026" → the season is over
+**Known doc drift:** the generated "Current status" phase block in CLAUDE.md/README still says "In-Season 2026" — its source `server/data/planning.json` is stale.
