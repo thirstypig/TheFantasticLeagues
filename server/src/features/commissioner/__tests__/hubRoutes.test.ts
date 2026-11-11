@@ -190,7 +190,7 @@ describe("GET /api/commissioner/:leagueId/periods/:periodId/moves-since-start", 
     expect(res.status).toBe(400);
   });
 
-  it("queries by league and effDate >= startDate, ordered asc, and maps names with raw fallbacks", async () => {
+  it("queries by league and effDate >= UTC midnight of the start day, ordered asc, and maps names with raw fallbacks", async () => {
     m.period.findUnique.mockResolvedValue({ id: 5, leagueId: 20, startDate });
     m.transactionEvent.findMany.mockResolvedValue([
       {
@@ -217,7 +217,9 @@ describe("GET /api/commissioner/:leagueId/periods/:periodId/moves-since-start", 
     expect(res.status).toBe(200);
 
     const args = m.transactionEvent.findMany.mock.calls[0][0];
-    expect(args.where).toEqual({ leagueId: 20, effDate: { gte: startDate } });
+    // Periods are stored at T12:00Z; moves (meeting saves included) are dated at
+    // UTC midnight of their day, so the start-day moves must count.
+    expect(args.where).toEqual({ leagueId: 20, effDate: { gte: new Date("2026-09-15T00:00:00Z") } });
     expect(args.orderBy).toEqual({ effDate: "asc" });
 
     expect(res.body.moves).toEqual([
