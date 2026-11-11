@@ -227,9 +227,9 @@ function MeetingBody({ leagueId, periodId }: { leagueId: number; periodId: numbe
         <div className="mt-editor" style={{ display: "grid", gap: 12, alignContent: "start" }}>
           {selected ? (
             <>
-              <button type="button" className="mt-phone-back" onClick={() => select(null)} style={{ ...LINK, background: "transparent", border: 0, padding: 0, cursor: "pointer", fontFamily: "inherit" }}>
+              {!desktop && <button type="button" className="mt-phone-back" onClick={() => select(null)} style={{ ...LINK, background: "transparent", border: 0, padding: 0, cursor: "pointer", fontFamily: "inherit" }}>
                 {`‹ ${period.name} moves`}
-              </button>
+              </button>}
               <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "var(--am-text)" }}>
                 {countAfter !== null && cap !== null ? `${selected.name} · ${countAfter} / ${cap}` : selected.name}
               </h2>
