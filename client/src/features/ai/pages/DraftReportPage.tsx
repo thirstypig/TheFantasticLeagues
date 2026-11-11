@@ -8,8 +8,7 @@ import { ThemedTable, ThemedThead, ThemedTbody, ThemedTr, ThemedTd } from "../..
 import { SortableHeader } from "../../../components/ui/SortableHeader";
 import { isPitcher as isPitcherPos, mapPosition, positionToSlots, POS_ORDER } from "../../../lib/sportConfig";
 import PlayerExpandedRow from "../../auction/components/PlayerExpandedRow";
-import { usePlayerCard } from "../../../components/shared/playerCard/PlayerCardProvider";
-import { cardMlbId } from "../../../components/shared/playerDetailHelpers";
+import { useOpenPlayerCard } from "../../../components/shared/playerCard/useOpenPlayerCard";
 
 /* ── Types ───────────────────────────────────────────────────────── */
 
@@ -402,11 +401,7 @@ export default function DraftReportPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [playerStats, setPlayerStats] = useState<PlayerSeasonStat[]>([]);
-  const { open: openPlayerCard } = usePlayerCard();
-  const selectPlayer = (p: PlayerSeasonStat) => {
-    const id = cardMlbId(p.mlb_id);
-    if (id) openPlayerCard(id);
-  };
+  const selectPlayer = useOpenPlayerCard();
   const loadingMessages = [
     "Analyzing 8 teams across 184 roster spots...",
     "Cross-referencing projected values with auction prices...",

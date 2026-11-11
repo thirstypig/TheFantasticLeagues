@@ -23,8 +23,7 @@ import {
   type BoardCard,
 } from "../api";
 import { useAuth } from "../../../auth/AuthProvider";
-import { usePlayerCard } from "../../../components/shared/playerCard/PlayerCardProvider";
-import { cardMlbId } from "../../../components/shared/playerDetailHelpers";
+import { useOpenPlayerCard } from "../../../components/shared/playerCard/useOpenPlayerCard";
 
 /* -- Column config -------------------------------------------------------- */
 
@@ -757,7 +756,7 @@ export default function LeagueBoard({ leagueId }: { leagueId: number }) {
   const [selectedCard, setSelectedCard] = useState<BoardCard | null>(null);
   const [mobileExpandedId, setMobileExpandedId] = useState<number | null>(null);
   const [showDesktopForm, setShowDesktopForm] = useState(false);
-  const { open: openPlayerCard } = usePlayerCard();
+  const openPlayerCard = useOpenPlayerCard();
 
   const loadCards = useCallback(async () => {
     if (!leagueId) return;
@@ -847,8 +846,7 @@ export default function LeagueBoard({ leagueId }: { leagueId: number }) {
     const card = cards.find(
       (c) => c.column === "trade_block" && c.metadata?.playerId === playerId
     );
-    const mlbId = cardMlbId(card?.metadata?.mlbId);
-    if (mlbId) openPlayerCard(mlbId);
+    openPlayerCard({ mlb_id: card?.metadata?.mlbId });
   }, [cards, openPlayerCard]);
 
   const cardsByColumn = (col: ColumnId) => cards.filter((c) => c.column === col);

@@ -68,6 +68,28 @@ describe("Aurora AuctionValues", () => {
     expect(screen.getByTestId("player-card")).toHaveAttribute("data-mlbid", "660271");
   });
 
+  it("rows are keyboard operable: Enter and Space open the card", async () => {
+    vi.mocked(api.getAuctionValues).mockResolvedValueOnce([
+      { mlb_id: "660271", player_name: "Test Hitter", positions: "OF", is_pitcher: false, dollar_value: 30 },
+    ] as never);
+    renderWithRouter();
+    const row = (await screen.findByText("Test Hitter")).closest("tr") as HTMLElement;
+    expect(row).toHaveAttribute("tabindex", "0");
+    expect(row).toHaveAttribute("role", "button");
+    fireEvent.keyDown(row, { key: "Enter" });
+    expect(screen.getByTestId("player-card")).toHaveAttribute("data-mlbid", "660271");
+  });
+
+  it("Space on a row opens the card", async () => {
+    vi.mocked(api.getAuctionValues).mockResolvedValueOnce([
+      { mlb_id: "660271", player_name: "Test Hitter", positions: "OF", is_pitcher: false, dollar_value: 30 },
+    ] as never);
+    renderWithRouter();
+    const row = (await screen.findByText("Test Hitter")).closest("tr") as HTMLElement;
+    fireEvent.keyDown(row, { key: " " });
+    expect(screen.getByTestId("player-card")).toHaveAttribute("data-mlbid", "660271");
+  });
+
   it("a row with no usable mlbId does not open the card", async () => {
     vi.mocked(api.getAuctionValues).mockResolvedValueOnce([
       { mlb_id: "", player_name: "No Id Guy", positions: "OF", is_pitcher: false, dollar_value: 5 },

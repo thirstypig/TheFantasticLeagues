@@ -30,8 +30,7 @@ import { toNum } from "../../../api/base";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { useSeasonGating } from "../../../hooks/useSeasonGating";
 import { mapPosition } from "../../../lib/sportConfig";
-import { usePlayerCard } from "../../../components/shared/playerCard/PlayerCardProvider";
-import { cardMlbId } from "../../../components/shared/playerDetailHelpers";
+import { useOpenPlayerCard } from "../../../components/shared/playerCard/useOpenPlayerCard";
 import { DataFreshness } from "../../../components/shared/DataFreshness";
 
 function norm(v: any) {
@@ -82,11 +81,7 @@ export default function AuctionValues() {
     debounceRef.current = setTimeout(() => setDebouncedQuery(value), 250);
   };
 
-  const { open: openPlayerCard } = usePlayerCard();
-  const selectPlayer = (p: PlayerSeasonStat) => {
-    const id = cardMlbId(p.mlb_id);
-    if (id) openPlayerCard(id);
-  };
+  const selectPlayer = useOpenPlayerCard();
   const [computedAt, setComputedAt] = useState<string | null>(null);
 
   useEffect(() => {
@@ -252,6 +247,14 @@ export default function AuctionValues() {
                       <tr
                         key={(p as any).row_id ?? `${p.mlb_id}-${rowIsPitcher(p) ? "P" : "H"}`}
                         onClick={() => selectPlayer(p)}
+                        tabIndex={0}
+                        role="button"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            selectPlayer(p);
+                          }
+                        }}
                         style={{ cursor: "pointer", transition: "background 200ms ease" }}
                         className="hover:bg-[var(--am-surface-faint)]"
                       >

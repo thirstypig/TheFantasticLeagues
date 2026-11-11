@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 // ── Root API module ──────────────────────────────────────────────────────────
@@ -56,6 +56,7 @@ vi.mock("../../../../lib/playerDisplay", () => ({
 
 vi.mock("../../../../lib/sportConfig", () => ({
   mapPosition: (pos: string) => pos,
+  resolveRealMlbId: (id: string) => id,
   positionToSlots: (pos: string) => [pos],
   POS_SCORE: {} as Record<string, number>,
 }));
@@ -69,8 +70,15 @@ vi.mock("../../../../hooks/useRosterStatus", () => ({
   useRosterStatus: () => ({ ilPlayers: [], minorsPlayers: [], allPlayers: [] }),
 }));
 
+const openCard = vi.fn();
+vi.mock("../../../../components/shared/playerCard/PlayerCardProvider", () => ({
+  usePlayerCard: () => ({ open: openCard, close: vi.fn() }),
+  PlayerLink: ({ name }: { name: string }) => <span>{name}</span>,
+}));
 vi.mock("../../../auction/components/PlayerExpandedRow", () => ({
-  default: () => null,
+  default: ({ player, onViewDetail }: any) => (
+    <tr><td><button onClick={() => onViewDetail(player)}>view detail</button></td></tr>
+  ),
 }));
 vi.mock("../../../../components/shared/RosterAlertAccordion", () => ({
   default: () => null,
@@ -140,5 +148,12 @@ describe("TeamLegacy smoke tests", () => {
     await waitFor(() => {
       expect(screen.getByRole("heading", { name: /aces/i })).toBeInTheDocument();
     });
+  });
+
+  it("View detail on an expanded roster row opens the player card for its mlbId", async () => {
+    renderTeamLegacy();
+    fireEvent.click(await screen.findByText("Mike Trout"));
+    fireEvent.click(await screen.findByRole("button", { name: "view detail" }));
+    expect(openCard).toHaveBeenCalledWith(100);
   });
 });

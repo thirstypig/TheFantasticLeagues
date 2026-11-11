@@ -34,20 +34,16 @@ function wrap(ui: React.ReactElement) {
 }
 
 describe("roster hub name taps open the player card", () => {
-  it("desktop row: name opens the card for the row's mlbId, not the accordion", () => {
-    const onToggleExpand = vi.fn();
-    wrap(<RosterRowV3 {...common} player={player()} role="hitter" onToggleExpand={onToggleExpand} />);
+  it("desktop row: name opens the card for the row's mlbId", () => {
+    wrap(<RosterRowV3 {...common} player={player()} role="hitter" />);
     fireEvent.click(screen.getByRole("button", { name: "Shohei Ohtani" }));
     expect(screen.getByTestId("player-card")).toHaveAttribute("data-mlbid", "660271");
-    expect(onToggleExpand).not.toHaveBeenCalled();
   });
 
-  it("desktop row without an mlbId falls back to the expand toggle", () => {
-    const onToggleExpand = vi.fn();
-    wrap(<RosterRowV3 {...common} player={player({ mlbId: null })} role="hitter" onToggleExpand={onToggleExpand} />);
-    fireEvent.click(screen.getByRole("button", { name: "Shohei Ohtani" }));
-    expect(screen.queryByTestId("player-card")).toBeNull();
-    expect(onToggleExpand).toHaveBeenCalled();
+  it("desktop row without an mlbId renders the name as plain text", () => {
+    wrap(<RosterRowV3 {...common} player={player({ mlbId: null })} role="hitter" />);
+    expect(screen.queryByRole("button", { name: "Shohei Ohtani" })).toBeNull();
+    expect(screen.getByText("Shohei Ohtani")).toBeInTheDocument();
   });
 
   it("mobile row: name opens the card; no mlbId renders plain text", () => {

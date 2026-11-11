@@ -3,8 +3,7 @@ import { Link, useLocation, useParams } from "react-router-dom";
 
 import { getPlayerSeasonStatsMeta, type PlayerSeasonStat, getTeamDetails, getTeams, getTeamAiInsights, TeamInsightsResult } from "../../../api";
 import { getTeamAiInsightsHistory, getTeamPeriodRoster, type WeeklyInsightEntry, type PeriodRosterEntry } from "../api";
-import { usePlayerCard } from "../../../components/shared/playerCard/PlayerCardProvider";
-import { cardMlbId } from "../../../components/shared/playerDetailHelpers";
+import { useOpenPlayerCard } from "../../../components/shared/playerCard/useOpenPlayerCard";
 import PlayerExpandedRow from "../../auction/components/PlayerExpandedRow";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { getTradeBlock } from "../api";
@@ -93,11 +92,7 @@ export default function Team() {
   const [dbTeamId, setDbTeamId] = useState<number | null>(null);
 
   const [error, setError] = useState<string | null>(null);
-  const { open: openPlayerCard } = usePlayerCard();
-  const selectPlayer = (p: PlayerSeasonStat) => {
-    const id = cardMlbId(p.mlb_id);
-    if (id) openPlayerCard(id);
-  };
+  const selectPlayer = useOpenPlayerCard();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Position editing state

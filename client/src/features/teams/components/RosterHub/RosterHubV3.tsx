@@ -33,8 +33,6 @@
 import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { Glass, SectionLabel } from "../../../../components/aurora/atoms";
-import { getPlayerCareerStats, type CareerHittingRow, type CareerPitchingRow, type HOrP } from "../../../../api";
-import { CareerTable } from "../../../../components/shared/playerDetailHelpers";
 import { PendingChangeBar } from "./PendingChangeBar";
 import { RosterRowV3, type RosterRowDnd } from "./RosterRowV3";
 import { MobileRowV3, type MobileRowDnd } from "./MobileRowV3";
@@ -393,7 +391,6 @@ export function RosterHubV3({
 }: RosterHubV3Props) {
   const isMobile = useIsMobile(forceMobile);
   const dropIds = dropTargetIds ?? new Set<number>();
-  const [expandedRosterId, setExpandedRosterId] = useState<number | null>(null);
 
   const dimmedFor = (rosterId: number, role: "hitter" | "pitcher"): boolean => {
     if (dimSection === "hitters" && role === "hitter") return true;
@@ -547,18 +544,13 @@ export function RosterHubV3({
                           isEligible={eligibleRosterIds.has(p.rosterId)}
                           isDimmed={dimmedFor(p.rosterId, "hitter")}
                           isPending={pendingRosterIds.has(p.rosterId)}
-                          isExpanded={expandedRosterId === p.rosterId}
                           isDragSource={dragSim?.rosterId === p.rosterId}
                           isDropTarget={dropIds.has(p.rosterId)}
                           onPillClick={() => onPillClick(p.rosterId)}
-                          onToggleExpand={() => setExpandedRosterId((cur) => (cur === p.rosterId ? null : p.rosterId))}
                           onRevert={onRevert ? () => onRevert(p.rosterId) : undefined}
                           actions={buildActions(p)}
                           isShakeRejecting={shakeRowId === p.rosterId}
                         />
-                        {expandedRosterId === p.rosterId && (
-                          <CareerStatsAccordionRow player={p} colSpan={HITTER_COLS.length} />
-                        )}
                       </Fragment>
                     ))}
                     {hitters.length > 0 && <HitterTotalsRow players={hitters} />}
@@ -602,18 +594,13 @@ export function RosterHubV3({
                           isEligible={eligibleRosterIds.has(p.rosterId)}
                           isDimmed={dimmedFor(p.rosterId, "pitcher")}
                           isPending={pendingRosterIds.has(p.rosterId)}
-                          isExpanded={expandedRosterId === p.rosterId}
                           isDragSource={dragSim?.rosterId === p.rosterId}
                           isDropTarget={dropIds.has(p.rosterId)}
                           onPillClick={() => onPillClick(p.rosterId)}
-                          onToggleExpand={() => setExpandedRosterId((cur) => (cur === p.rosterId ? null : p.rosterId))}
                           onRevert={onRevert ? () => onRevert(p.rosterId) : undefined}
                           actions={buildActions(p)}
                           isShakeRejecting={shakeRowId === p.rosterId}
                         />
-                        {expandedRosterId === p.rosterId && (
-                          <CareerStatsAccordionRow player={p} colSpan={PITCHER_COLS.length} />
-                        )}
                       </Fragment>
                     ))}
                     {pitchers.length > 0 && <PitcherTotalsRow players={pitchers} />}
@@ -665,133 +652,6 @@ export function RosterHubV3({
         </div>
       )}
     </div>
-  );
-}
-
-function CareerStatsAccordionRow({
-  player,
-  colSpan,
-}: {
-  player: RosterHubPlayer;
-  colSpan: number;
-}) {
-  const [rows, setRows] = useState<Array<CareerHittingRow | CareerPitchingRow>>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const mode: HOrP = player.isPitcher ? "pitching" : "hitting";
-  const mlbId = String(player.mlbId ?? "").trim();
-
-  useEffect(() => {
-    if (!mlbId) {
-      setRows([]);
-      setError("No MLB id is available for this player.");
-      return;
-    }
-    let canceled = false;
-    setLoading(true);
-    setError(null);
-    getPlayerCareerStats(mlbId, mode)
-      .then((res) => {
-        if (!canceled) setRows(res.rows ?? []);
-      })
-      .catch((err) => {
-        if (!canceled) setError(err instanceof Error ? err.message : "Unable to load career stats.");
-      })
-      .finally(() => {
-        if (!canceled) setLoading(false);
-      });
-    return () => {
-      canceled = true;
-    };
-  }, [mlbId, mode]);
-
-  return (
-    <tr>
-      <td colSpan={colSpan} style={{ padding: 0, borderBottom: "1px solid var(--am-border)" }}>
-        <div
-          style={{
-            padding: "14px 16px 16px",
-            background: "var(--am-surface-faint)",
-            borderTop: "1px solid var(--am-border)",
-          }}
-        >
-          <div style={{ display: "grid", gap: 12, marginBottom: 14 }}>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "minmax(180px, 1fr) minmax(220px, 2fr)",
-                gap: 12,
-                alignItems: "start",
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 700,
-                    letterSpacing: 1.2,
-                    textTransform: "uppercase",
-                    color: "var(--am-text-faint)",
-                    marginBottom: 5,
-                  }}
-                >
-                  Player
-                </div>
-                <div style={{ color: "var(--am-text)", fontWeight: 750, fontSize: 13 }}>
-                  {player.name}
-                </div>
-                <div style={{ color: "var(--am-text-muted)", fontSize: 13, marginTop: 2 }}>
-                  {player.mlbTeam || "MLB team unknown"} · assigned to {formatSlotInstance(player)}
-                </div>
-              </div>
-
-              <div>
-                <div
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 700,
-                    letterSpacing: 1.2,
-                    textTransform: "uppercase",
-                    color: "var(--am-text-faint)",
-                    marginBottom: 6,
-                  }}
-                >
-                  Eligibility detail
-                </div>
-                <EligibilityChips player={player} />
-              </div>
-            </div>
-
-            <div
-              style={{
-                fontSize: 13,
-                fontWeight: 700,
-                letterSpacing: 1.2,
-                textTransform: "uppercase",
-                color: "var(--am-text-faint)",
-              }}
-            >
-              Career stats
-            </div>
-          </div>
-          {loading ? (
-            <div style={{ padding: 18, fontSize: 13, color: "var(--am-text-muted)" }}>
-              Loading career stats…
-            </div>
-          ) : error ? (
-            <div style={{ padding: 18, fontSize: 13, color: "var(--am-negative)" }}>
-              {error}
-            </div>
-          ) : rows.length ? (
-            <CareerTable rows={rows} mode={mode} />
-          ) : (
-            <div style={{ padding: 18, fontSize: 13, color: "var(--am-text-muted)" }}>
-              No career stats available.
-            </div>
-          )}
-        </div>
-      </td>
-    </tr>
   );
 }
 
@@ -860,12 +720,10 @@ interface DraggableDesktopRowAdapterProps {
   isEligible: boolean;
   isDimmed: boolean;
   isPending: boolean;
-  isExpanded?: boolean;
   isDragSource: boolean;
   isDropTarget: boolean;
   isShakeRejecting: boolean;
   onPillClick: () => void;
-  onToggleExpand?: () => void;
   onRevert?: () => void;
   actions: RowAction[];
 }

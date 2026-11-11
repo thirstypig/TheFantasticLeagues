@@ -13,8 +13,7 @@ import { getTradeBlock, saveTradeBlock, getLeagueTradeBlocks } from '../../teams
 import BidHistoryChart from './BidHistoryChart';
 import DraftReport from './DraftReport';
 import PlayerExpandedRow from './PlayerExpandedRow';
-import { usePlayerCard } from '../../../components/shared/playerCard/PlayerCardProvider';
-import { cardMlbId } from '../../../components/shared/playerDetailHelpers';
+import { useOpenPlayerCard } from '../../../components/shared/playerCard/useOpenPlayerCard';
 import { StatsUpdated } from '../../../components/shared/StatsTables';
 
 interface AuctionCompleteLegacyProps {
@@ -44,11 +43,7 @@ interface DraftGrade {
 export default function AuctionCompleteLegacy({ auctionState, myTeamId, onRefresh }: AuctionCompleteLegacyProps) {
   const [expandedTeamId, setExpandedTeamId] = useState<number | null>(null);
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
-  const { open: openPlayerCard } = usePlayerCard();
-  const selectPlayer = (p: PlayerSeasonStat) => {
-    const id = cardMlbId(p.mlb_id);
-    if (id) openPlayerCard(id);
-  };
+  const selectPlayer = useOpenPlayerCard();
   const [rosterSort, setRosterSort] = useState<string>("position");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const toggleSort = (col: string) => {
