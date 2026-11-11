@@ -617,3 +617,36 @@ describe("league membership gating (final fix wave)", () => {
     expect(res.body).toEqual({ stats: [], periods: [] });
   });
 });
+
+describe("GET /players league membership gating", () => {
+  beforeEach(() => {
+    mockPrisma.player.findMany.mockResolvedValue([]);
+    mockPrisma.roster.findMany.mockResolvedValue([]);
+  });
+
+  it("non-member gets 403 and nothing is loaded", async () => {
+    mockPrisma.leagueMembership.findUnique.mockResolvedValue(null);
+    const res = await supertest(app).get("/players?leagueId=9201").set("x-test-user", "81");
+    expect(res.status).toBe(403);
+    expect(mockPrisma.player.findMany).not.toHaveBeenCalled();
+  });
+
+  it("a cached response is not served to a non-member", async () => {
+    mockPrisma.leagueMembership.findUnique.mockResolvedValue({ role: "OWNER" });
+    expect((await supertest(app).get("/players?leagueId=9202").set("x-test-user", "82")).status).toBe(200);
+    mockPrisma.leagueMembership.findUnique.mockResolvedValue(null);
+    const res = await supertest(app).get("/players?leagueId=9202").set("x-test-user", "83");
+    expect(res.status).toBe(403);
+  });
+
+  it("member gets 200", async () => {
+    const res = await supertest(app).get("/players?leagueId=9203").set("x-test-user", "84");
+    expect(res.status).toBe(200);
+  });
+
+  it("no leagueId keeps today's behavior", async () => {
+    const res = await supertest(app).get("/players");
+    expect(res.status).toBe(200);
+    expect(mockPrisma.leagueMembership.findUnique).not.toHaveBeenCalled();
+  });
+});

@@ -7,12 +7,14 @@ vi.mock("../../../db/prisma.js", () => ({
     roster: { findMany: vi.fn(), findFirst: vi.fn() },
     period: { findMany: vi.fn() },
     playerStatsPeriod: { findMany: vi.fn() },
+    leagueMembership: { findUnique: vi.fn() },
   },
 }));
 vi.mock("../../../lib/logger.js", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));
-vi.mock("../../../middleware/auth.js", () => ({
+vi.mock("../../../middleware/auth.js", async (importActual) => ({
+  ...(await importActual<typeof import("../../../middleware/auth.js")>()),
   requireAuth: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()),
 }));
 vi.mock("../../../middleware/asyncHandler.js", () => ({
@@ -46,7 +48,7 @@ const mockGet = mlbGetJson as unknown as ReturnType<typeof vi.fn>;
 const app = express();
 app.use(express.json());
 app.use((req: any, _res: any, next: NextFunction) => {
-  req.user = { id: 1, isAdmin: false };
+  req.user = { id: Number(req.get("x-test-user") ?? 1), isAdmin: false };
   next();
 });
 app.use("/players", playersRouter);
@@ -88,6 +90,7 @@ beforeEach(() => {
   _resetRateLimitPerUserBuckets();
   mockPrisma.roster.findFirst.mockResolvedValue(null);
   mockPrisma.player.findFirst.mockResolvedValue({ id: 11 });
+  mockPrisma.leagueMembership.findUnique.mockResolvedValue({ role: "OWNER" });
 });
 
 describe("buildPlayerCard", () => {
@@ -412,5 +415,19 @@ describe("final fix wave: card route hardening", () => {
     route();
     const good = await buildPlayerCard(100, 1, TODAY);
     expect(good.degraded).toBe(false);
+  });
+
+  it("non-member of the league gets 403 on the card and statsapi is never called", async () => {
+    mockPrisma.leagueMembership.findUnique.mockResolvedValue(null);
+    const res = await supertest(app).get("/players/100/card?leagueId=9301").set("x-test-user", "91");
+    expect(res.status).toBe(403);
+    expect(mockGet).not.toHaveBeenCalled();
+    expect(mockPrisma.player.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("member gets 200 on the card", async () => {
+    route();
+    const res = await supertest(app).get("/players/100/card?leagueId=9302").set("x-test-user", "92");
+    expect(res.status).toBe(200);
   });
 });

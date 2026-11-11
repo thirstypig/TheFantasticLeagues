@@ -34,6 +34,11 @@ import { withPlayersCache } from "./services/playersListCache.js";
 
 const router = Router();
 
+/** Enforce league membership whenever a leagueId is supplied (admins bypass). */
+const requireLeagueMemberIfPresent: RequestHandler = (req, res, next) =>
+  req.query.leagueId ? requireLeagueMember("leagueId")(req, res, next) : next();
+
+
 /**
  * GET /players
  * Optional query params:
@@ -41,7 +46,7 @@ const router = Router();
  *   - type: "all" | "hitters" | "pitchers"
  *   - leagueId: number (required for availability filtering)
  */
-router.get("/", requireAuth, asyncHandler(async (req, res) => {
+router.get("/", requireAuth, requireLeagueMemberIfPresent, asyncHandler(async (req, res) => {
   const availability = String(req.query.availability ?? "all") as
     | "all"
     | "available"
@@ -244,7 +249,7 @@ router.get("/news/transactions", requireAuth, asyncHandler(async (_req, res) => 
  * Player card data: windowed splits, recent games, next game, fantasy owner.
  * Must be registered before GET /:mlbId.
  */
-router.get("/:mlbId/card", requireAuth, rateLimitPerUser({ capacity: 30, windowMs: 60_000, bucketName: "player-card" }), asyncHandler(async (req, res) => {
+router.get("/:mlbId/card", requireAuth, requireLeagueMember("leagueId"), rateLimitPerUser({ capacity: 30, windowMs: 60_000, bucketName: "player-card" }), asyncHandler(async (req, res) => {
   const mlbId = Number(req.params.mlbId);
   // Upper bound = Postgres Int4; anything larger would overflow the Prisma lookup.
   if (!Number.isInteger(mlbId) || mlbId <= 0 || mlbId > 2147483647) {
@@ -462,10 +467,6 @@ router.get("/:mlbId/news", requireAuth, asyncHandler(async (req, res) => {
 // --- Player data endpoints (now served from DB) ---
 
 const dataRouter = Router();
-
-/** Enforce league membership whenever a leagueId is supplied (admins bypass). */
-const requireLeagueMemberIfPresent: RequestHandler = (req, res, next) =>
-  req.query.leagueId ? requireLeagueMember("leagueId")(req, res, next) : next();
 
 /**
  * GET /api/player-season-stats?leagueId=N[&freeAgentsOnly=true&q=&take=50]
