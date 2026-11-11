@@ -25,7 +25,7 @@ import { useLeague } from "../../../contexts/LeagueContext";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { reportError } from "../../../lib/errorBus";
 import { PlayersTable } from "../components/PlayersTable";
-import { addToWireList, getPendingWirePeriodId } from "../api";
+import { addToWireList, getPendingWirePeriodId, getWireListAddedPlayerIds } from "../api";
 import "../components/players-table.css";
 
 type Avail = "free" | "all" | "taken";
@@ -112,7 +112,16 @@ export default function Players() {
     if (myTeamId == null) { setPendingPeriodId(null); return; }
     let alive = true;
     getPendingWirePeriodId(leagueId).then(
-      (id) => alive && setPendingPeriodId(id),
+      (id) => {
+        if (!alive) return;
+        setPendingPeriodId(id);
+        if (id == null) return;
+        // Seed "On Wire List" from what the owner already listed this period.
+        getWireListAddedPlayerIds(id, myTeamId).then(
+          (ids) => alive && setListedIds(new Set(ids)),
+          (err) => reportError(err, { source: "players-wire-list-load" }),
+        );
+      },
       () => alive && setPendingPeriodId(null),
     );
     return () => { alive = false; };
@@ -123,8 +132,10 @@ export default function Players() {
     try {
       await addToWireList(pendingPeriodId, row.id, myTeamId);
     } catch (err) {
-      // 409: the player is already on this Wire List.
-      if (!(err instanceof ApiError && err.status === 409)) {
+      // Only DUPLICATE_PLAYER means the player is already on this Wire List.
+      const dup = err instanceof ApiError && err.status === 409
+        && (err.body as { code?: string } | null)?.code === "DUPLICATE_PLAYER";
+      if (!dup) {
         reportError(err, { source: "players-wire-list-add" });
         throw err;
       }

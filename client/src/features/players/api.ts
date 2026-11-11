@@ -72,6 +72,7 @@ function normalizeTwoWayRow(row: Record<string, any>): PlayerSeasonStat {
     mlb_full_name: String(row?.mlb_full_name ?? "").trim(),
     ogba_team_code: String(row?.ogba_team_code ?? row?.team ?? "").trim(),
     ogba_team_id: typeof row?.ogba_team_id === "number" ? row.ogba_team_id : null,
+    ogba_slot: typeof row?.ogba_slot === "string" ? row.ogba_slot : null,
     group: role,
     is_pitcher,
     positions,
@@ -203,6 +204,14 @@ export async function getPendingWirePeriodId(leagueId: number): Promise<number |
     `${API_BASE}/wire-list/periods/active?leagueId=${leagueId}`,
   );
   return resp?.period?.status === "PENDING" ? resp.period.id : null;
+}
+
+/** Prisma player ids already on the team's Add list for the period. */
+export async function getWireListAddedPlayerIds(periodId: number, teamId: number): Promise<number[]> {
+  const resp = await fetchJsonApi<{ entries: Array<{ playerId?: number; player?: { id: number } }> }>(
+    `${API_BASE}/wire-list/periods/${periodId}/adds?teamId=${teamId}`,
+  );
+  return (resp?.entries ?? []).map((e) => e.player?.id ?? e.playerId).filter((x): x is number => typeof x === "number");
 }
 
 /** Add a free agent to the owner's Wire List for a pending period. */

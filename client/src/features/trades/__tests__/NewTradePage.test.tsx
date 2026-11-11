@@ -96,6 +96,18 @@ describe("NewTradePage", () => {
     expect(loadTradeDraft(20)?.get).toEqual([203]);
   });
 
+  it("applies ?get= once: an untick survives a later roster refresh", async () => {
+    renderPage("/trades/new?team=2&get=202");
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: /Pete Alonso/ })).toBeChecked());
+    fireEvent.click(screen.getByRole("checkbox", { name: /Pete Alonso/ }));
+    expect(screen.getByRole("checkbox", { name: /Pete Alonso/ })).not.toBeChecked();
+    // Re-pick the same partner after another: roster reloads for the same team id.
+    fireEvent.click(screen.getByRole("button", { name: "Black Sox" }));
+    fireEvent.click(screen.getByRole("button", { name: "Bombers" }));
+    await screen.findByText("Bryce Harper");
+    expect(screen.getByRole("checkbox", { name: /Pete Alonso/ })).not.toBeChecked();
+  });
+
   it("selects the partner but not a player who is not on their roster", async () => {
     renderPage("/trades/new?team=2&get=555");
     await screen.findByText("Bryce Harper");

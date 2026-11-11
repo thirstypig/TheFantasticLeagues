@@ -1,27 +1,28 @@
 .pt-wrap { overflow: visible; }
 .pt-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 15px; color: var(--am-text); }
-.pt-table th { position: sticky; top: 0; z-index: 2; background: var(--am-surface); border-bottom: 1px solid var(--am-border); padding: 8px; text-align: left; font-size: 13px; font-weight: 700; color: var(--am-text-muted); white-space: nowrap; }
-.pt-table td { padding: 8px; border-bottom: 1px solid var(--am-border); vertical-align: middle; font-variant-numeric: tabular-nums; }
+.pt-table th { position: sticky; top: 0; z-index: 2; background: var(--am-surface); border-bottom: 1px solid var(--am-border); padding: 6px 8px; text-align: left; font-size: 13px; font-weight: 700; color: var(--am-text-muted); white-space: nowrap; }
+.pt-table td { padding: 6px 8px; line-height: 20px; border-bottom: 1px solid var(--am-border); vertical-align: middle; font-variant-numeric: tabular-nums; }
 .pt-c { text-align: center !important; }
 .pt-muted { color: var(--am-text-muted); }
 .pt-sort { display: inline-flex; align-items: center; gap: 4px; background: none; border: 0; padding: 0; min-height: 32px; font: inherit; color: inherit; cursor: pointer; }
 .pt-name { font-weight: 600; color: var(--am-text); }
-.pt-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--am-accent); background: transparent; color: var(--am-accent); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; white-space: nowrap; }
+.pt-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--am-accent); background: transparent; color: var(--am-accent); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; white-space: nowrap; }
 .pt-btn:disabled { cursor: default; opacity: .75; }
 .pt-btn-done { border-color: var(--am-border); color: var(--am-text-muted); }
 .pt-action { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 .pt-error { font-size: 13px; color: var(--am-negative); }
 .pt-list { list-style: none; margin: 0; padding: 0; }
-.pt-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--am-border); }
-.pt-item-main { flex: 1; min-width: 0; }
-.pt-item-main .pt-name { font-size: 15px; }
-.pt-sub { font-size: 13px; color: var(--am-text-muted); margin-top: 2px; }
+.pt-item { padding: 8px 0; border-bottom: 1px solid var(--am-border); }
+.pt-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; }
+.pt-id { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; overflow: hidden; white-space: nowrap; }
+.pt-id .pt-name { font-size: 15px; flex: none; max-width: 60%; overflow: hidden; text-overflow: ellipsis; }
+.pt-sub { font-size: 13px; color: var(--am-text-muted); overflow: hidden; text-overflow: ellipsis; }
 .pt-stats { font-size: 13px; color: var(--am-text); margin-top: 2px; font-variant-numeric: tabular-nums; }
 .pt-item-action { flex: none; }
 .pt-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .pt-tabs { display: inline-flex; border: 1px solid var(--am-border); border-radius: 6px; overflow: hidden; }
-.pt-tab { min-height: 44px; padding: 0 16px; border: 0; background: transparent; color: var(--am-text); font-family: inherit; font-size: 15px; cursor: pointer; }
+.pt-tab { min-height: 36px; padding: 0 16px; border: 0; background: transparent; color: var(--am-text); font-family: inherit; font-size: 15px; cursor: pointer; }
 .pt-tab[aria-pressed="true"] { background: var(--am-accent); color: var(--am-on-accent); }
-.pt-field { min-height: 44px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--am-border); background: var(--am-surface); color: var(--am-text); font-family: inherit; font-size: 15px; }
+.pt-field { min-height: 36px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--am-border); background: var(--am-surface); color: var(--am-text); font-family: inherit; font-size: 15px; }
 .pt-search { flex: 1 1 200px; min-width: 0; }
 @media (max-width: 767px) { .pt-field { flex: 1 1 140px; min-width: 0; } .pt-tabs { width: 100%; } .pt-tab { flex: 1; } }

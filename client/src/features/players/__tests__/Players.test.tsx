@@ -18,6 +18,7 @@ vi.mock("../../../api", async (orig) => ({
 vi.mock("../api", () => ({
   getPendingWirePeriodId: vi.fn(),
   addToWireList: vi.fn(),
+  getWireListAddedPlayerIds: vi.fn(),
 }));
 
 import * as rootApi from "../../../api";
@@ -54,6 +55,7 @@ beforeEach(() => {
   });
   vi.mocked(localApi.getPendingWirePeriodId).mockResolvedValue(3);
   vi.mocked(localApi.addToWireList).mockResolvedValue(undefined);
+  vi.mocked(localApi.getWireListAddedPlayerIds).mockResolvedValue([]);
 });
 
 const renderPage = () => render(<MemoryRouter initialEntries={["/players"]}><Players /></MemoryRouter>);
@@ -122,14 +124,71 @@ describe("Players page", () => {
     expect(await within(row).findByRole("button", { name: "On Wire List" })).toBeDisabled();
   });
 
-  it("an already-listed 409 is treated as On Wire List", async () => {
+  const apiErr = async (status: number, code?: string) => {
     const { ApiError } = await import("../../../api/base");
-    vi.mocked(localApi.addToWireList).mockRejectedValue(new ApiError({ message: "dup", status: 409, url: "", requestId: null, body: null }));
+    return new ApiError({ message: "boom", status, url: "", requestId: null, body: code ? { code } : null });
+  };
+  const clickAdd = async () => {
     renderPage();
     await screen.findByText("Free Outfielder");
     const row = screen.getByText("Free Outfielder").closest("tr")!;
     fireEvent.click(await within(row).findByRole("button", { name: "+ Wire List" }));
+    return row;
+  };
+
+  it("409 DUPLICATE_PLAYER is treated as On Wire List", async () => {
+    vi.mocked(localApi.addToWireList).mockRejectedValue(await apiErr(409, "DUPLICATE_PLAYER"));
+    const row = await clickAdd();
     expect(await within(row).findByRole("button", { name: "On Wire List" })).toBeDisabled();
+  });
+
+  it("409 DUPLICATE_PRIORITY shows the error and leaves the button usable", async () => {
+    vi.mocked(localApi.addToWireList).mockRejectedValue(await apiErr(409, "DUPLICATE_PRIORITY"));
+    const row = await clickAdd();
+    expect(await within(row).findByRole("alert")).toBeInTheDocument();
+    expect(within(row).getByRole("button", { name: "+ Wire List" })).toBeEnabled();
+    expect(within(row).queryByRole("button", { name: "On Wire List" })).toBeNull();
+  });
+
+  it("a 500 shows the error and leaves the button usable", async () => {
+    vi.mocked(localApi.addToWireList).mockRejectedValue(await apiErr(500));
+    const row = await clickAdd();
+    expect(await within(row).findByRole("alert")).toBeInTheDocument();
+    expect(within(row).getByRole("button", { name: "+ Wire List" })).toBeEnabled();
+  });
+
+  it("seeds On Wire List from the owner's existing adds after a reload", async () => {
+    vi.mocked(localApi.getWireListAddedPlayerIds).mockResolvedValue([1]);
+    renderPage();
+    await screen.findByText("Free Outfielder");
+    const row = screen.getByText("Free Outfielder").closest("tr")!;
+    expect(await within(row).findByRole("button", { name: "On Wire List" })).toBeDisabled();
+    expect(localApi.getWireListAddedPlayerIds).toHaveBeenCalledWith(3, 1);
+  });
+
+  it("search matches mlb_full_name", async () => {
+    season.mockResolvedValue({
+      stats: [{ ...H(7, "Short Name", "OF", "ATL"), mlb_full_name: "Fullname Longform" }] as any,
+      computedAt: null,
+    });
+    renderPage();
+    await screen.findByText("Fullname Longform");
+    fireEvent.change(screen.getByLabelText("Search players"), { target: { value: "longform" } });
+    expect(screen.getByText("Fullname Longform")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Search players"), { target: { value: "zzz" } });
+    expect(screen.queryByText("Fullname Longform")).toBeNull();
+  });
+
+  it("hides unrostered players with 0 games unless searching", async () => {
+    season.mockResolvedValue({
+      stats: [{ ...H(8, "Minor Leaguer", "OF", "ATL"), G: 0 }, H(9, "Regular Guy", "OF", "ATL")] as any,
+      computedAt: null,
+    });
+    renderPage();
+    await screen.findByText("Regular Guy");
+    expect(screen.queryByText("Minor Leaguer")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Search players"), { target: { value: "minor" } });
+    expect(screen.getByText("Minor Leaguer")).toBeInTheDocument();
   });
 
   it("no + Wire List when no pending period", async () => {

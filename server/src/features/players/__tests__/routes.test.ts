@@ -365,7 +365,7 @@ describe("GET /player-season-stats", () => {
       { id: 2, mlbId: 592450, name: "Aaron Judge", posPrimary: "RF", posList: "RF", mlbTeam: "NYY" },
     ]);
     mockPrisma.roster.findMany.mockResolvedValue([
-      { playerId: 1, price: 10, team: { id: 77, code: "ABC", name: "Abc Team" } },
+      { playerId: 1, price: 10, assignedPosition: "IL", team: { id: 77, code: "ABC", name: "Abc Team" } },
     ]);
 
     const res = await supertest(app).get("/player-season-stats?leagueId=1");
@@ -375,6 +375,8 @@ describe("GET /player-season-stats", () => {
     expect(trout.ogba_team_id).toBe(77);
     expect(trout.ogba_team_code).toBe("ABC");
     expect(judge.ogba_team_id).toBeNull();
+    expect(trout.ogba_slot).toBe("IL");
+    expect(judge.ogba_slot).toBeNull();
   });
 
   it.skip("OBSOLETE: Ohtani split — expands Ohtani into hitter + pitcher rows in season stats", async () => {

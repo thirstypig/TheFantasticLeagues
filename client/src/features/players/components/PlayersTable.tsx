@@ -95,7 +95,7 @@ function Action({
   }
 
   const mine = row.ogba_team_id != null ? row.ogba_team_id === myTeamId : !!myTeamCode && row.ogba_team_code === myTeamCode;
-  if (mine || row.ogba_team_id == null) return null;
+  if (mine || row.ogba_team_id == null || row.ogba_slot === "IL") return null;
   return (
     <Link className="pt-btn pt-btn-link" to={`/trades/new?team=${row.ogba_team_id}&get=${row.id}`}>Trade</Link>
   );
@@ -132,12 +132,14 @@ export function PlayersTable(props: PlayersTableProps) {
       <ul className="pt-list" aria-label="Players">
         {rows.map((row) => (
           <li key={row.row_id ?? `${row.mlb_id}-${row.id}`} className="pt-item">
-            <div className="pt-item-main">
-              <PlayerLink mlbId={cardMlbId(row.mlb_id)} name={displayName(row)} className="pt-name" />
-              <div className="pt-sub">{`${posLabel(row)} · ${mlbLabel(row)} · ${fantasyLabel(row)}`}</div>
-              <div className="pt-stats">{cols.map((c) => (c.key === "AVG" ? fmtStat(c.key, row) : `${c.label} ${fmtStat(c.key, row)}`)).join(" · ")}</div>
+            <div className="pt-line">
+              <div className="pt-id">
+                <PlayerLink mlbId={cardMlbId(row.mlb_id)} name={displayName(row)} className="pt-name" />
+                <span className="pt-sub">{`${posLabel(row)} · ${mlbLabel(row)} · ${fantasyLabel(row)}`}</span>
+              </div>
+              <div className="pt-item-action"><Action row={row} {...actionProps} /></div>
             </div>
-            <div className="pt-item-action"><Action row={row} {...actionProps} /></div>
+            <div className="pt-stats">{cols.map((c) => (c.key === "AVG" ? fmtStat(c.key, row) : `${c.label} ${fmtStat(c.key, row)}`)).join(" · ")}</div>
           </li>
         ))}
       </ul>
