@@ -189,7 +189,7 @@ router.post("/", requireAuth, validateBody(tradeProposalSchema), requireSeasonSt
   }
 
   try {
-    await assertTradeRosters(prisma as any, leagueId, items);
+    await assertTradeRosters(prisma as any, leagueId, items, { rejectIl: true });
   } catch (err) {
     if (err instanceof TradeValidationError) return res.status(400).json({ error: err.message });
     throw err;

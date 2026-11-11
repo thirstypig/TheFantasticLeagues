@@ -139,6 +139,21 @@ describe("POST /:id/process roster checks", () => {
     expect(mockTx.trade.update).toHaveBeenCalled();
   });
 
+  it("process allows a trade with an IL player", async () => {
+    mockPrisma.trade.findUnique.mockResolvedValue(trade([item(900, 1, 2), item(200, 2, 1)]));
+    seedProcess();
+    seedDb(mockTx, [
+      ...rows(1, 100, 22),
+      { teamId: 1, playerId: 900, assignedPosition: "IL" },
+      ...rows(2, 200, 23),
+    ]);
+    mockTx.roster.findFirst.mockResolvedValue({ id: 5, assignedPosition: "IL", price: 10 });
+    const res = await supertest(app).post("/9/process").send({});
+    expect(res.status).toBe(200);
+    expect(mockTx.roster.update).toHaveBeenCalled();
+    expect(mockTx.trade.update).toHaveBeenCalled();
+  });
+
   it("process rejects a trade whose player left the sender", async () => {
     mockPrisma.trade.findUnique.mockResolvedValue(trade(oneForOne));
     seedProcess();
@@ -254,6 +269,18 @@ describe("POST /:id/accept re-checks the cap", () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toBe("Beta would have 24 players (limit 23)");
     expect(mockPrisma.trade.update).not.toHaveBeenCalled();
+  });
+
+  it("accept allows a trade with an IL player", async () => {
+    mockPrisma.trade.findUnique.mockResolvedValue(proposed([item(900, 1, 2)]));
+    seedDb(mockPrisma, [
+      ...rows(1, 100, 23),
+      { teamId: 1, playerId: 900, assignedPosition: "IL" },
+      ...rows(2, 200, 23),
+    ]);
+    mockPrisma.trade.update.mockResolvedValue({ id: 9, status: "ACCEPTED" });
+    const res = await supertest(app).post("/9/accept");
+    expect(res.status).toBe(200);
   });
 
   it("accept fails when a player has left the sender", async () => {

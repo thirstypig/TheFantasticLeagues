@@ -62,14 +62,15 @@ type Db = {
 };
 
 /**
- * Throws TradeValidationError if any PLAYER item is not on the sender's
- * active roster (gone, or on the IL) or if the trade pushes a team over the
+ * Throws TradeValidationError if any PLAYER item is no longer on the sender's
+ * roster (or, with rejectIl, is on the IL) or if the trade pushes a team over the
  * league cap. Reads only; call before any write.
  */
 export async function assertTradeRosters(
   db: Db,
   leagueId: number,
   items: TradeItemLike[],
+  opts: { rejectIl: boolean } = { rejectIl: false },
 ): Promise<void> {
   const playerItems = items.filter((i) => i.assetType === "PLAYER" && i.playerId != null);
   if (playerItems.length === 0) return;
@@ -102,7 +103,10 @@ export async function assertTradeRosters(
   for (const item of playerItems) {
     const pid = item.playerId as number;
     if (onIl.get(item.senderId)?.has(pid)) {
-      throw new TradeValidationError(`${playerName(pid)} is on the IL`);
+      // IL players are refused only when an offer is made; an accepted trade
+      // that holds one stays processable (they move without an active change).
+      if (opts.rejectIl) throw new TradeValidationError(`${playerName(pid)} is on the IL`);
+      continue;
     }
     if (!active.get(item.senderId)?.has(pid)) {
       throw new TradeValidationError(`${playerName(pid)} is no longer on ${teamName(item.senderId)}`);
