@@ -1,7 +1,7 @@
 import type { HubPeriod } from "../api";
 import { CLOSE_READY_HOUR_UTC } from "./needsYou";
 
-export type PeriodStep = "play" | "close" | "meeting" | "start" | "setup";
+export type PeriodStep = "play" | "close" | "meeting" | "start" | "setup" | "preseason";
 
 export interface PeriodState {
   step: PeriodStep;
@@ -31,6 +31,8 @@ export function derivePeriodState(periods: HubPeriod[], now: Date): PeriodState 
   }
   const due = pending.find((p) => utcDay(new Date(p.startDate)) <= utcDay(now));
   if (due) return { step: "start", period: due, next: due };
+  // Season not begun: a future pending period and nothing completed or active.
+  if (!lastCompleted && pending.length > 0) return { step: "preseason", period: null, next: pending[0] };
   if (lastCompleted || pending.length > 0) {
     return { step: "meeting", period: lastCompleted ?? null, next: pending[0] ?? null };
   }

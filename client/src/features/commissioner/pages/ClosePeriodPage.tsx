@@ -179,9 +179,9 @@ function ClosePeriodPageBody() {
     : !billNow
       ? "Standings lock — IL fees stay unbilled until you bill them. You can't undo this."
       : net > 0
-        ? `Standings lock and ${money(net)} in IL fees are billed. You can't undo this.`
+        ? `Standings lock and about ${money(net)} in IL fees will be billed. You can't undo this.`
         : net === 0
-          ? "Standings lock and the IL fees, which net to $0, are billed. You can't undo this."
+          ? "Standings lock, and the IL fee charges and credits (net $0) are applied. You can't undo this."
           : `Standings lock and a ${dollars(net)} IL fee credit is applied. You can't undo this.`;
 
   async function confirm() {
@@ -219,7 +219,7 @@ function ClosePeriodPageBody() {
             <CheckRow title="Final stats are in" chip={r.ready ? "ready" : "waiting"}>
               <span style={SUB}>
                 Last stat date {fmtDate(r.lastStatDate)} · period ended {fmtDate(r.endDate)}
-                {r.ready ? "" : ". Come back after tomorrow morning's stats sync."}
+                {r.ready ? "" : r.status === "pending" ? ". This period hasn't started." : ". Come back after tomorrow morning's stats sync."}
               </span>
             </CheckRow>
             <CheckRow

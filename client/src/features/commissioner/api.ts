@@ -27,6 +27,7 @@ export interface CommissionerTeam {
   owner?: string | null;
   owners?: Array<{ userId: number; user: CommissionerUser }>;
   ownerUserId?: number | null;
+  ownerUser?: CommissionerUser | null;
   ownerships?: Array<{ id: number; userId: number; user: CommissionerUser }>;
 }
 

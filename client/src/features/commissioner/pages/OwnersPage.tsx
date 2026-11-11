@@ -144,11 +144,26 @@ function OwnersPageBody() {
     return { title: `Cancel the invite for ${pending.invite.email}?`, body: "The invite stops working.", confirmLabel: "Cancel invite" };
   })();
 
+  // Anyone who owns any team here (ownership rows or the legacy ownerUserId) is
+  // not offered again: the server doesn't stop one user owning two teams.
+  const ownsSomeTeam = new Set<number>();
+  for (const t of teams) {
+    for (const o of t.ownerships ?? []) ownsSomeTeam.add(o.userId);
+    if (t.ownerUserId != null) ownsSomeTeam.add(t.ownerUserId);
+  }
+
   const teamRow = (team: NonNullable<typeof teams>[number]) => {
-    const owners = (team.ownerships ?? []).map((o) => o.user);
+    const rowOwners = (team.ownerships ?? []).map((o) => o.user);
+    // Legacy-only owner: no ownership rows, but Team.ownerUserId still grants access.
+    let legacyOwner: CommissionerUser | null = null;
+    if (rowOwners.length === 0 && (team.ownerUser || team.ownerUserId != null)) {
+      const member = members.find((mem) => mem.userId === team.ownerUserId)?.user;
+      legacyOwner = team.ownerUser ?? member
+        ?? { id: team.ownerUserId as number, email: "", name: team.owner || "Owner" };
+    }
+    const owners = legacyOwner ? [legacyOwner] : rowOwners;
     const isOpen = open === team.id;
-    const ownerIds = new Set(owners.map((o) => o.id));
-    const choices = members.filter((mem) => !ownerIds.has(mem.userId));
+    const choices = members.filter((mem) => !ownsSomeTeam.has(mem.userId));
     return (
       <div key={team.id} data-testid="team-row" style={{ borderBottom: "1px solid var(--am-border)", padding: "10px 16px", minHeight: 56 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, minHeight: 44 }}>
@@ -178,14 +193,20 @@ function OwnersPageBody() {
             {owners.map((o) => (
               <div key={o.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, minHeight: 44 }}>
                 <span style={{ fontSize: 15, color: "var(--am-text)" }}>{who(o)}</span>
-                <button
-                  type="button"
-                  style={{ ...SMALL_BTN, color: "var(--am-negative)" }}
-                  aria-label={`Remove ${who(o)}`}
-                  onClick={() => setPending({ kind: "owner", teamId: team.id, user: o })}
-                >
-                  Remove
-                </button>
+                {legacyOwner ? (
+                  <span style={{ fontSize: 13, color: "var(--am-text-muted)", textAlign: "right" }}>
+                    Owner set on the team record — change it from the old Owners page.
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    style={{ ...SMALL_BTN, color: "var(--am-negative)" }}
+                    aria-label={`Remove ${who(o)}`}
+                    onClick={() => setPending({ kind: "owner", teamId: team.id, user: o })}
+                  >
+                    Remove
+                  </button>
+                )}
               </div>
             ))}
             {owners.length < MAX_OWNERS && (

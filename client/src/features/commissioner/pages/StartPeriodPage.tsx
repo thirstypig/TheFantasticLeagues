@@ -44,9 +44,21 @@ function moveColor(type: string | null): string {
   return "var(--am-text)";
 }
 
+const MOVE_VERBS: Record<string, string> = {
+  ADD: "Added",
+  DROP: "Dropped",
+  IL_STASH: "Moved to IL",
+  IL_ACTIVATE: "Back from IL",
+  IL_RELEASE: "Released from IL",
+  SLOT_CHANGE: "Position change",
+};
+
 function moveLabel(mv: MoveSinceStart): string {
-  const verb = mv.transactionType === "ADD" ? "Added" : mv.transactionType === "DROP" ? "Dropped" : (mv.transactionType ?? "Move");
-  return `${verb} ${mv.playerName ?? "Unknown player"} · ${fmtDate(mv.effDate)}`;
+  const verb = (mv.transactionType && MOVE_VERBS[mv.transactionType]) ?? mv.transactionType ?? "Move";
+  const name = `${verb} ${mv.playerName ?? "Unknown player"}`;
+  // A missing or unparseable date shows no date rather than "Invalid Date".
+  const when = mv.effDate && !Number.isNaN(new Date(mv.effDate).getTime()) ? fmtDate(mv.effDate) : null;
+  return when ? `${name} · ${when}` : name;
 }
 
 /** Whole UTC days between the start date and today; <= 0 means on time. */

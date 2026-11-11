@@ -32,7 +32,7 @@ function RecentChangesPageBody() {
   const [periods, setPeriods] = useState<HubPeriod[]>([]);
   const [error, setError] = useState(false);
   const [chip, setChip] = useState<HistoryChip>("All");
-  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
 
   useEffect(() => {
     let live = true;
@@ -53,7 +53,7 @@ function RecentChangesPageBody() {
     if (groups.length === 0) {
       return (
         <p style={{ padding: 16, margin: 0, fontSize: 17, color: "var(--am-text-muted)" }}>
-          {chip === "All" ? "Nothing yet." : "Nothing in this group yet."}
+          {chip === "All" ? "Nothing yet." : "Nothing in this group in the latest 200 changes."}
         </p>
       );
     }
@@ -99,7 +99,7 @@ function RecentChangesPageBody() {
       >
         ‹ Commissioner
       </Link>
-      <h1 style={{ fontSize: 24, margin: "0 0 12px", color: "var(--am-text)" }}>History</h1>
+      <h1 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 12px", color: "var(--am-text)" }}>History</h1>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
         {HISTORY_CHIPS.map((name) => {
           const on = chip === name;

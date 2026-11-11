@@ -90,6 +90,23 @@ describe("StartPeriodPage", () => {
     expect(screen.getByText(/Webb/).closest("a")?.getAttribute("href")).toBe("/commissioner/20/rosters");
   });
 
+  it("uses friendly labels for IL and slot moves and hides bad dates", async () => {
+    m.getMovesSinceStart.mockResolvedValue([
+      { id: 1, teamName: "Devil Dawgs", playerName: "A", transactionType: "IL_STASH", effDate: "2026-09-30T00:00:00.000Z" },
+      { id: 2, teamName: "Devil Dawgs", playerName: "B", transactionType: "IL_ACTIVATE", effDate: "2026-09-30T00:00:00.000Z" },
+      { id: 3, teamName: "Devil Dawgs", playerName: "C", transactionType: "IL_RELEASE", effDate: "2026-09-30T00:00:00.000Z" },
+      { id: 4, teamName: "Devil Dawgs", playerName: "D", transactionType: "SLOT_CHANGE", effDate: null },
+      { id: 5, teamName: "Devil Dawgs", playerName: "E", transactionType: "ADD", effDate: "garbage" },
+    ] as any);
+    renderAt(URL);
+    expect(await screen.findByText("Moved to IL A · Sep 30")).toBeTruthy();
+    expect(screen.getByText("Back from IL B · Sep 30")).toBeTruthy();
+    expect(screen.getByText("Released from IL C · Sep 30")).toBeTruthy();
+    expect(screen.getByText("Position change D")).toBeTruthy();
+    expect(screen.getByText("Added E")).toBeTruthy();
+    expect(screen.queryByText(/Invalid Date/)).toBeNull();
+  });
+
   it("shows the dates with weekday and the day count", async () => {
     renderAt(URL);
     expect(await screen.findByText("Tue Sep 29 – Mon Oct 12")).toBeTruthy();

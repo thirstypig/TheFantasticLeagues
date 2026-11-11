@@ -42,4 +42,15 @@ describe("derivePeriodState", () => {
     expect(s.step).toBe("meeting");
     expect(s.next).toBeNull();
   });
+
+  it("future pending only, nothing completed or active -> preseason", () => {
+    const s = derivePeriodState([p(8, "pending", "2026-06-20", "2026-06-28")], new Date("2026-06-10T10:00:00Z"));
+    expect(s.step).toBe("preseason");
+    expect(s.period).toBeNull();
+    expect(s.next?.id).toBe(8);
+  });
+
+  it("pending whose start has arrived with nothing completed is still start", () => {
+    expect(derivePeriodState([p(8, "pending", "2026-06-10", "2026-06-28")], new Date("2026-06-10T10:00:00Z")).step).toBe("start");
+  });
 });

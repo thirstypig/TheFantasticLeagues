@@ -113,6 +113,22 @@ describe("CommissionerHub tracker", () => {
     expect(screen.getByTestId("step-meeting").getAttribute("aria-current")).toBe("step");
   });
 
+  it("preseason: no step highlighted, starts-on caption, secondary Start link", async () => {
+    m.getLeaguePeriods.mockResolvedValue([P(8, "pending", "2026-06-20", "2026-06-28")]);
+    renderHub();
+    expect(await screen.findByText("Period 8 starts Jun 20")).toBeTruthy();
+    expect(screen.getByText("Set up rosters, then start the season.")).toBeTruthy();
+    for (const id of ["play", "close", "meeting", "start"]) {
+      const el = screen.getByTestId(`step-${id}`);
+      expect(el.getAttribute("aria-current")).toBeNull();
+      expect(el.textContent).not.toContain("\u2713");
+    }
+    const link = screen.getByTestId("tracker-action");
+    expect(link.textContent).toBe("Start Period 8");
+    expect(link.getAttribute("href")).toBe("/commissioner/20/start/8");
+    expect(link.getAttribute("style")).not.toContain("var(--am-accent);");
+  });
+
   it("meeting with nothing pending: Add the next period -> season", async () => {
     m.getLeaguePeriods.mockResolvedValue([P(7, "completed", "2026-06-01", "2026-06-14")]);
     renderHub();
@@ -262,6 +278,19 @@ describe("RecentChangesPage (History)", () => {
     expect(screen.getByText("Older actions from before this feature may not appear.")).toBeTruthy();
   });
 
+  it("uses the table layout from 1024px and bold h1", async () => {
+    setDesktop(true);
+    const { unmount } = renderHistory();
+    await screen.findByText("Processed trade #55");
+    expect(document.querySelector("table")).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "History" }).getAttribute("style")).toContain("font-weight: 700");
+    unmount();
+    setDesktop(false);
+    renderHistory();
+    await screen.findByText("Processed trade #55");
+    expect(document.querySelector("table")).toBeNull();
+  });
+
   it("groups rows by day under caption headers with time and who below", async () => {
     renderHistory();
     await screen.findByText("Processed trade #55");
@@ -294,7 +323,7 @@ describe("RecentChangesPage (History)", () => {
     renderHistory();
     await screen.findByText("Processed trade #55");
     fireEvent.click(screen.getByRole("button", { name: "Money" }));
-    expect(screen.getByText("Nothing in this group yet.")).toBeTruthy();
+    expect(screen.getByText("Nothing in this group in the latest 200 changes.")).toBeTruthy();
   });
 
   it("chips are at least 44px tall", async () => {

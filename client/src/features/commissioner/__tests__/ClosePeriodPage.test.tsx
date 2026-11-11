@@ -190,6 +190,8 @@ describe("ClosePeriodPage: readiness gating", () => {
     notReady("pending");
     renderAt([URL]);
     expect((await closeBtn()).disabled).toBe(true);
+    expect(screen.getByText(/This period hasn't started\./)).toBeTruthy();
+    expect(screen.queryByText(/Come back after tomorrow morning's stats sync\./)).toBeNull();
   });
 
   it("ready: Ready chip on the stats row and Close is enabled", async () => {
@@ -323,7 +325,7 @@ describe("ClosePeriodPage: the close write", () => {
     const dialog = screen.getByRole("dialog");
     expect(m.setPeriodStatus).not.toHaveBeenCalled();
     expect(within(dialog).getByText("Close Period 7?")).toBeTruthy();
-    expect(within(dialog).getByText("Standings lock and $40 in IL fees are billed. You can't undo this.")).toBeTruthy();
+    expect(within(dialog).getByText("Standings lock and about $40 in IL fees will be billed. You can't undo this.")).toBeTruthy();
     confirmClose(dialog);
     await waitFor(() => expect(m.setPeriodStatus).toHaveBeenCalledTimes(1));
     expect(m.setPeriodStatus).toHaveBeenCalledWith(7, { status: "completed", billFees: true });
@@ -402,6 +404,21 @@ describe("ClosePeriodPage: the close write", () => {
       confirmClose(screen.getByRole("dialog"));
       await waitFor(() => expect(m.setPeriodStatus).toHaveBeenCalledWith(7, { status: "completed", billFees: true }));
     });
+  });
+
+  it("a net-$0 Bill now sheet says charges and credits are applied", async () => {
+    m.previewIlFees.mockResolvedValue(
+      feesOf([
+        { action: "add", teamId: 1, playerId: 101, playerName: "A", rank: 1, amount: 10 },
+        { action: "void", teamId: 3, playerId: 104, playerName: "Old", rank: 1, amount: -10 },
+      ]),
+    );
+    renderAt([URL]);
+    expect(await screen.findByText("IL fees net to $0")).toBeTruthy();
+    fireEvent.click(await billNow());
+    fireEvent.click(await closeBtn());
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Standings lock, and the IL fee charges and credits (net $0) are applied. You can't undo this.")).toBeTruthy();
   });
 
   it("a negative net needs an explicit choice, reads as a credit, and bills now only when chosen", async () => {

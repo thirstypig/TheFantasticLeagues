@@ -25,7 +25,7 @@ import { describeChange } from "../lib/recentChangeCopy";
 import { CommissionerOnly } from "../components/CommissionerOnly";
 
 const DAY_MS = 86_400_000;
-const STEPS: Array<{ id: Exclude<PeriodStep, "setup">; label: string }> = [
+const STEPS: Array<{ id: Exclude<PeriodStep, "setup" | "preseason">; label: string }> = [
   { id: "play", label: "Play" },
   { id: "close", label: "Close" },
   { id: "meeting", label: "Meeting" },
@@ -99,6 +99,12 @@ function trackerCopy(s: PeriodState, base: string, now: Date) {
         sentence: "Review rosters, then start the period.",
         action: { label: `Start ${next!.name}`, to: `${base}/start/${next!.id}` },
       };
+    case "preseason":
+      return {
+        caption: `${next!.name} starts ${dateFmt(next!.startDate)}`,
+        sentence: "Set up rosters, then start the season.",
+        action: { label: `Start ${next!.name}`, to: `${base}/start/${next!.id}`, secondary: true },
+      };
     default:
       return {
         caption: "No periods yet",
@@ -146,7 +152,13 @@ function Tracker({ state, base, now }: { state: PeriodState; base: string; now: 
           {copy.action.label}
         </button>
       ) : (
-        <Link to={copy.action.to} data-testid="tracker-action" style={BTN}>{copy.action.label}</Link>
+        <Link
+          to={copy.action.to}
+          data-testid="tracker-action"
+          style={"secondary" in copy.action && copy.action.secondary
+            ? { ...BTN, background: "transparent", color: "var(--am-text)", border: "1px solid var(--am-border)" }
+            : BTN}
+        >{copy.action.label}</Link>
       )}
     </section>
   );

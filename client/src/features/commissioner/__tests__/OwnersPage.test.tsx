@@ -112,8 +112,8 @@ describe("OwnersPage", () => {
     fireEvent.click(within(bats).getByRole("button", { name: /Manage/ }));
     const select = within(bats).getByLabelText("Add owner") as HTMLSelectElement;
     const labels = Array.from(select.options).map((o) => o.textContent);
-    expect(labels).toEqual(expect.arrayContaining(["Ann Lee", "u6@x.com", "Cal Roe"]));
-    expect(labels.filter((l) => l && l !== "Choose a member")).toHaveLength(3);
+    // Ann and u6 already own teams (Aces, Cubs); only Cal is free.
+    expect(labels.filter((l) => l && l !== "Choose a member")).toEqual(["Cal Roe"]);
     expect(m.getAvailableUsers).not.toHaveBeenCalled();
     fireEvent.change(select, { target: { value: "7" } });
     fireEvent.click(within(bats).getByRole("button", { name: "Add owner" }));
@@ -157,5 +157,76 @@ describe("OwnersPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
     await waitFor(() => expect(m.inviteMember).toHaveBeenCalledWith(20, "new@x.com", "COMMISSIONER"));
     expect(await screen.findByText("Invite sent to new@x.com.")).toBeTruthy();
+  });
+
+  describe("legacy owner (Team.ownerUserId with no ownership rows)", () => {
+    const legacyOverview = (extra: any = {}) => {
+      const o = JSON.parse(JSON.stringify(OVERVIEW));
+      o.teams[1] = { id: 2, name: "Bats", code: "BAT", ownerships: [], ownerUserId: 7, ownerUser: u(7, "Cal Roe"), owner: "Cal Roe", ...extra };
+      return o;
+    };
+
+    it("shows the legacy owner, Joined, and not No owner", async () => {
+      m.getCommissionerOverview.mockResolvedValue(legacyOverview());
+      renderPage();
+      const bats = (await screen.findByText("Bats")).closest("[data-testid='team-row']") as HTMLElement;
+      expect(within(bats).getByText("Cal Roe")).toBeTruthy();
+      expect(within(bats).getByText("Joined")).toBeTruthy();
+      expect(within(bats).queryByText("No owner")).toBeNull();
+    });
+
+    it("falls back to the owner name when only ownerUserId is returned", async () => {
+      m.getCommissionerOverview.mockResolvedValue(legacyOverview({ ownerUser: null }));
+      renderPage();
+      const bats = (await screen.findByText("Bats")).closest("[data-testid='team-row']") as HTMLElement;
+      expect(within(bats).getByText("Cal Roe")).toBeTruthy();
+      expect(within(bats).queryByText("No owner")).toBeNull();
+    });
+
+    it("has no Remove, shows the muted line, and still allows one more owner", async () => {
+      m.getCommissionerOverview.mockResolvedValue(legacyOverview());
+      renderPage();
+      const bats = (await screen.findByText("Bats")).closest("[data-testid='team-row']") as HTMLElement;
+      fireEvent.click(within(bats).getByRole("button", { name: /Manage/ }));
+      expect(within(bats).queryByRole("button", { name: /Remove/ })).toBeNull();
+      expect(within(bats).getByText("Owner set on the team record — change it from the old Owners page.")).toBeTruthy();
+      expect(within(bats).getByLabelText("Add owner")).toBeTruthy();
+    });
+
+    it("legacy owner is not offered in the picker, others still are", async () => {
+      const o = legacyOverview();
+      o.memberships.push({ id: 4, userId: 8, role: "OWNER", user: u(8, "Di Fox") });
+      m.getCommissionerOverview.mockResolvedValue(o);
+      renderPage();
+      const bats = (await screen.findByText("Bats")).closest("[data-testid='team-row']") as HTMLElement;
+      fireEvent.click(within(bats).getByRole("button", { name: /Manage/ }));
+      const select = within(bats).getByLabelText("Add owner") as HTMLSelectElement;
+      // Cal (7) owns this team through the legacy field, so is not offered.
+      expect(Array.from(select.options).map((x) => x.textContent)).not.toContain("Cal Roe");
+      expect(Array.from(select.options).map((x) => x.textContent)).toContain("Di Fox");
+    });
+
+    it("hides Add owner at 2 owners (rows) and the legacy id is not double counted", async () => {
+      const o = legacyOverview();
+      o.teams[1] = { id: 2, name: "Bats", ownerships: [{ id: 9, userId: 7, user: u(7, "Cal Roe") }, { id: 10, userId: 8, user: u(8, "Di Fox") }], ownerUserId: 7 };
+      m.getCommissionerOverview.mockResolvedValue(o);
+      renderPage();
+      const bats = (await screen.findByText("Bats")).closest("[data-testid='team-row']") as HTMLElement;
+      fireEvent.click(within(bats).getByRole("button", { name: /Manage/ }));
+      expect(within(bats).queryByLabelText("Add owner")).toBeNull();
+      expect(within(bats).getByRole("button", { name: "Remove Cal Roe" })).toBeTruthy();
+    });
+  });
+
+  it("picker excludes members who own a team through ownerUserId only", async () => {
+    const o = JSON.parse(JSON.stringify(OVERVIEW));
+    o.teams[2] = { id: 3, name: "Cubs", ownerships: [], ownerUserId: 7, ownerUser: u(7, "Cal Roe") };
+    m.getCommissionerOverview.mockResolvedValue(o);
+    renderPage();
+    const bats = (await screen.findByText("Bats")).closest("[data-testid='team-row']") as HTMLElement;
+    fireEvent.click(within(bats).getByRole("button", { name: /Manage/ }));
+    const select = within(bats).getByLabelText("Add owner") as HTMLSelectElement;
+    // 5 owns Aces, 7 owns Cubs (legacy); 6 is free now.
+    expect(Array.from(select.options).map((x) => x.textContent).filter((l) => l && l !== "Choose a member")).toEqual(["u6@x.com"]);
   });
 });
