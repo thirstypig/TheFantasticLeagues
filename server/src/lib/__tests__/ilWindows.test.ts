@@ -194,3 +194,27 @@ describe("wasOnIlAtPeriodStart", () => {
     expect(wasOnIlAtPeriodStart(1, D("2026-04-19T00:00:00.000Z"), map)).toBe(false);
   });
 });
+
+
+describe("buildIlWindows — DROP / IL_RELEASE close a stint", () => {
+  const d = (s: string) => new Date(s + "T00:00:00Z");
+  it("STASH, DROP, STASH -> closed window then a new open window", () => {
+    const w = buildIlWindows([
+      { playerId: 1, transactionType: "IL_STASH", effDate: d("2026-05-01") },
+      { playerId: 1, transactionType: "DROP", effDate: d("2026-05-20") },
+      { playerId: 1, transactionType: "IL_STASH", effDate: d("2026-07-10") },
+    ]).get(1)!;
+    expect(w).toEqual([
+      { startDate: d("2026-05-01"), endDate: d("2026-05-20") },
+      { startDate: d("2026-07-10"), endDate: null },
+    ]);
+  });
+  it("IL_RELEASE closes too; a DROP with no open stint is ignored", () => {
+    const w = buildIlWindows([
+      { playerId: 2, transactionType: "DROP", effDate: d("2026-04-01") },
+      { playerId: 2, transactionType: "IL_STASH", effDate: d("2026-05-01") },
+      { playerId: 2, transactionType: "IL_RELEASE", effDate: d("2026-05-09") },
+    ]).get(2)!;
+    expect(w).toEqual([{ startDate: d("2026-05-01"), endDate: d("2026-05-09") }]);
+  });
+});

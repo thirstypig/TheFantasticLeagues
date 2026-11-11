@@ -13,6 +13,7 @@ import { logger } from "./logger.js";
 import { reconcileIlFeesForPeriods } from "../features/transactions/services/ilFeeService.js";
 import { findPeriodsMissingReconcile, findExhaustedEvents } from "./outboxHealth.js";
 import { findIlLogDrift } from "./ilLogDrift.js";
+import { IL_WINDOW_EVENT_TYPES } from "./ilWindows.js";
 import { findDeferredPeriodIds } from "./deferredBilling.js";
 
 type OutboxPayloadFeeReconcile = {
@@ -210,7 +211,7 @@ export async function findIlLogDriftAll() {
       // the billing log records IL_RELEASE for it. Without DROP in this SELECT,
       // findIlLogDrift's handling of that pair is unreachable and every such
       // drop reports as drift forever.
-      where: { transactionType: { in: ["IL_STASH", "IL_ACTIVATE", "IL_RELEASE", "DROP"] }, effDate: { not: null } },
+      where: { transactionType: { in: [...IL_WINDOW_EVENT_TYPES] }, effDate: { not: null } },
       select: { teamId: true, playerId: true, effDate: true, transactionType: true },
     }),
     prisma.rosterSlotEvent.findMany({

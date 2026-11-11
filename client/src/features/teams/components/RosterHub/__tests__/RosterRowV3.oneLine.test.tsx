@@ -86,6 +86,48 @@ describe("desktop hitter row is one line with Pos and MLB columns", () => {
   });
 });
 
+describe("slot pill select is wired", () => {
+  it("desktop: clicking the slot pill calls onPillClick; selected rows are aria-pressed", () => {
+    const onPillClick = vi.fn();
+    const { container, rerender } = wrap(
+      <RosterRowV3 {...common} player={player()} role="hitter" onPillClick={onPillClick} />,
+    );
+    const pill = container.querySelector(".am-roster-pill") as HTMLElement;
+    expect(pill).not.toHaveAttribute("aria-pressed");
+    fireEvent.click(pill);
+    expect(onPillClick).toHaveBeenCalledTimes(1);
+    rerender(
+      <MemoryRouter>
+        <PlayerCardProvider>
+          <table><tbody>
+            <RosterRowV3 {...common} player={player()} role="hitter" onPillClick={onPillClick} isSelected />
+          </tbody></table>
+        </PlayerCardProvider>
+      </MemoryRouter>,
+    );
+    expect(container.querySelector(".am-roster-pill")).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("desktop: an eligible destination row is flagged and its pill is marked eligible", () => {
+    const { container } = wrap(<RosterRowV3 {...common} player={player()} role="hitter" isEligible />);
+    expect(container.querySelector("tr")!.className).toContain("am-roster-row-eligible");
+    expect(container.querySelector(".am-roster-pill")).toHaveAttribute("data-eligible", "true");
+  });
+
+  it("phone row: clicking the slot pill calls onPillClick", () => {
+    const onPillClick = vi.fn();
+    const { container } = render(
+      <MemoryRouter>
+        <PlayerCardProvider>
+          <MobileRowV3 {...common} player={player()} onPillClick={onPillClick} />
+        </PlayerCardProvider>
+      </MemoryRouter>,
+    );
+    fireEvent.click(container.querySelector(".am-roster-pill") as HTMLElement);
+    expect(onPillClick).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("phone row (MobileRowV3) is two lines", () => {
   it('line 1 = pill, name, "…"; line 2 = "Pos · MLB" + short stats', () => {
     const { container } = render(

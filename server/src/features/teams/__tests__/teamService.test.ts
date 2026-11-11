@@ -435,12 +435,23 @@ describe("TeamService.getTeamRosterHub — ilSince", () => {
       where: {
         leagueId: 1,
         playerId: { in: [31, 32, 33] },
-        transactionType: { in: ["IL_STASH", "IL_ACTIVATE"] },
+        transactionType: { in: ["IL_STASH", "IL_ACTIVATE", "IL_RELEASE", "DROP"] },
         effDate: { not: null },
       },
       select: { playerId: true, transactionType: true, effDate: true },
       orderBy: { effDate: "asc" },
     });
+  });
+
+  it("STASH -> DROP -> STASH gives the SECOND stash's date (drop closes the stint)", async () => {
+    setupIl();
+    mockPrisma.transactionEvent.findMany.mockResolvedValue([
+      { playerId: 31, transactionType: "IL_STASH", effDate: new Date("2026-05-01T00:00:00Z") },
+      { playerId: 31, transactionType: "DROP", effDate: new Date("2026-05-20T00:00:00Z") },
+      { playerId: 31, transactionType: "IL_STASH", effDate: new Date("2026-07-10T00:00:00Z") },
+    ]);
+    const hub = await new TeamService().getTeamRosterHub(10);
+    expect(hub.ilPlayers.find((r) => r.playerId === 31)?.ilSince).toBe("2026-07-10T00:00:00.000Z");
   });
 
   it("does not query IL events when nobody is on the IL", async () => {

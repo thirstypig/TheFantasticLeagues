@@ -527,7 +527,7 @@ export function RosterHubV3({
                     borderCollapse: "separate",
                     borderSpacing: 0,
                     tableLayout: "fixed",
-                    minWidth: 1000,
+                    minWidth: 860,
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >
@@ -577,7 +577,7 @@ export function RosterHubV3({
                     borderCollapse: "separate",
                     borderSpacing: 0,
                     tableLayout: "fixed",
-                    minWidth: 1140,
+                    minWidth: 920,
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >

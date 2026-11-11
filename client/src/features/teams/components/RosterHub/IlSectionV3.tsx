@@ -112,7 +112,7 @@ export function IlSectionV3({
                 borderCollapse: "separate",
                 borderSpacing: 0,
                 tableLayout: "fixed",
-                minWidth: 900,
+                minWidth: 800,
                 fontVariantNumeric: "tabular-nums",
               }}
             >
@@ -493,7 +493,10 @@ function IlMobileRow({
         <span style={{ whiteSpace: "nowrap" }}>
           {formatEligiblePositions(player.posList, player.posPrimary)} · {player.mlbTeam ?? "FA"}
         </span>
-        <span className="am-roster-mobile-row-stats">{periodLabel}</span>
+        <span className="am-roster-mobile-row-stats">
+          {player.statSnapshot ? `${player.statSnapshot} · ` : ""}
+          {periodLabel}
+        </span>
       </div>
     </div>
   );

@@ -64,4 +64,20 @@ describe("IL section Period column", () => {
     expect(screen.getByText(/This period/)).toBeInTheDocument();
     expect(screen.getByText(/Before Period 1/)).toBeInTheDocument();
   });
+
+  it("phone: keeps the IL row's statSnapshot text next to the period", () => {
+    render(
+      <MemoryRouter>
+        <PlayerCardProvider>
+          <IlSectionV3
+            players={[{ ...il(1, "Snap", "2026-06-10T00:00:00Z"), statSnapshot: "Injured 10-Day" } as any]}
+            periods={periods as any}
+            selectedRosterId={null} eligibleRosterIds={new Set()} pendingRosterIds={new Set()}
+            isMobile totalSlots={1} onPillClick={() => {}} buildActions={() => []}
+          />
+        </PlayerCardProvider>
+      </MemoryRouter>,
+    );
+    expect(screen.getByText(/Injured 10-Day · Since Period 5/)).toBeInTheDocument();
+  });
 });

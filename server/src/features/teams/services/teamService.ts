@@ -2,7 +2,7 @@
 import { prisma } from "../../../db/prisma.js";
 import { POINTS_CANDIDATES } from "../../../constants/stats.js";
 import { isPosGamesRecord } from "../../../lib/jsonGuards.js";
-import { buildIlWindows } from "../../../lib/ilWindows.js";
+import { buildIlWindows, IL_WINDOW_EVENT_TYPES } from "../../../lib/ilWindows.js";
 import type { RosterHubResponse } from "@shared/api/teams.js";
 
 const POS_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P", "SP", "RP", "IL"];
@@ -305,7 +305,7 @@ export class TeamService {
         where: {
           leagueId: summary.team.leagueId,
           playerId: { in: ilRows.map((r) => r.playerId) },
-          transactionType: { in: ["IL_STASH", "IL_ACTIVATE"] },
+          transactionType: { in: [...IL_WINDOW_EVENT_TYPES] },
           effDate: { not: null },
         },
         select: { playerId: true, transactionType: true, effDate: true },
