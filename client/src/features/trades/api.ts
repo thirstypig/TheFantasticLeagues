@@ -109,6 +109,16 @@ export async function proposeTrade(payload: {
     return result;
 }
 
+export interface TradeWindow {
+  open: boolean;
+  message: string | null;
+  rosterCap: number;
+}
+
+export async function getTradeWindow(leagueId: number): Promise<TradeWindow> {
+    return fetchJsonApi<TradeWindow>(`${API_BASE}/trades/window?leagueId=${leagueId}`);
+}
+
 export async function respondToTrade(tradeId: number, action: "ACCEPT" | "REJECT"): Promise<TradeProposal> {
     const endpoint = action === "ACCEPT" ? "accept" : "reject";
     const result = await fetchJsonApi<TradeProposal>(`${API_BASE}/trades/${tradeId}/${endpoint}`, {
