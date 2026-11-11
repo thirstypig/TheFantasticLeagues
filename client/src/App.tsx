@@ -32,6 +32,7 @@ const StartPeriodPage = React.lazy(() => import("./features/commissioner/pages/S
 const RulesPage = React.lazy(() => import("./features/commissioner/pages/RulesPage"));
 const SeasonPage = React.lazy(() => import("./features/commissioner/pages/SeasonPage"));
 const RostersPage = React.lazy(() => import("./features/commissioner/pages/RostersPage"));
+const CommissionerTradesPage = React.lazy(() => import("./features/commissioner/pages/CommissionerTradesPage"));
 const TeamRosterPage = React.lazy(() => import("./features/commissioner/pages/TeamRosterPage"));
 const MeetingPage = React.lazy(() => import("./features/commissioner/pages/MeetingPage"));
 const MeetingReviewPage = React.lazy(() => import("./features/commissioner/pages/MeetingReviewPage"));
@@ -209,6 +210,7 @@ export default function App() {
                     <Route path="/commissioner/:leagueId/rosters/:teamId" element={<ErrorBoundary name="commissioner-team-roster"><TeamRosterPage /></ErrorBoundary>} />
                     <Route path="/commissioner/:leagueId/rosters" element={<ErrorBoundary name="commissioner-rosters"><RostersPage /></ErrorBoundary>} />
                     {/* Section pages. Literal sub-routes (recent, close/:periodId, start/:periodId, bill/:periodId, ...) must be declared ABOVE this catch. */}
+                    <Route path="/commissioner/:leagueId/trades" element={<ErrorBoundary name="commissioner-trades"><CommissionerTradesPage /></ErrorBoundary>} />
                     <Route path="/commissioner/:leagueId/owners" element={<ErrorBoundary name="commissioner-owners"><OwnersPage /></ErrorBoundary>} />
                     <Route path="/commissioner/:leagueId/money" element={<ErrorBoundary name="commissioner-money"><MoneyPage /></ErrorBoundary>} />
                     <Route path="/commissioner/:leagueId/:section" element={<ErrorBoundary name="commissioner-section"><CommissionerSectionPage /></ErrorBoundary>} />

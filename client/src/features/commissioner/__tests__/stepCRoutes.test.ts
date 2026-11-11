@@ -20,6 +20,7 @@ describe("step C routes in App.tsx", () => {
     ['path="/commissioner/:leagueId/meeting/:periodId"', "<MeetingPage />"],
     ['path="/commissioner/:leagueId/rosters/:teamId"', "<TeamRosterPage />"],
     ['path="/commissioner/:leagueId/rosters"', "<RostersPage />"],
+    ['path="/commissioner/:leagueId/trades"', "<CommissionerTradesPage />"],
   ];
 
   it.each(routes)("%s renders %s inside ErrorBoundary above the catch-all", (path, el) => {

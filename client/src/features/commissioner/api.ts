@@ -763,3 +763,48 @@ export const previewOneOffSwap = previewMove;
 export function oneOffSwap(leagueId: number, teamId: number, addId: number, dropId: number): Promise<void> {
   return postMutation("/transactions/claim", claimBody(leagueId, teamId, addId, dropId));
 }
+
+// --- Trades queue (screen 18) ---
+
+export interface LeagueTradeItem {
+  senderId: number;
+  recipientId: number;
+  assetType: string;
+  playerId: number | null;
+  amount: number | null;
+  player?: { id: number; name: string } | null;
+  sender?: { id: number; name: string } | null;
+  recipient?: { id: number; name: string } | null;
+}
+
+export interface LeagueTrade {
+  id: number;
+  status: string;
+  createdAt: string;
+  processedAt: string | null;
+  proposerId: number;
+  proposer?: { id: number; name: string } | null;
+  items: LeagueTradeItem[];
+}
+
+export async function listLeagueTrades(leagueId: number): Promise<LeagueTrade[]> {
+  const resp = await fetchJsonApi<{ trades: LeagueTrade[] }>(`${API_BASE}/trades?leagueId=${leagueId}`);
+  return resp.trades ?? [];
+}
+
+/** Without an effective date the server dates the trade tomorrow. */
+export async function processLeagueTrade(tradeId: number, effectiveDate?: string): Promise<void> {
+  await fetchJsonApi(`${API_BASE}/trades/${tradeId}/process`, {
+    method: "POST",
+    body: JSON.stringify(effectiveDate ? { effectiveDate } : {}),
+  });
+}
+
+export async function vetoLeagueTrade(tradeId: number): Promise<void> {
+  await fetchJsonApi(`${API_BASE}/trades/${tradeId}/veto`, { method: "POST" });
+}
+
+/** Never sends a date: the server reverses effective tomorrow. */
+export async function reverseLeagueTrade(tradeId: number): Promise<void> {
+  await fetchJsonApi(`${API_BASE}/trades/${tradeId}/reverse`, { method: "POST" });
+}
