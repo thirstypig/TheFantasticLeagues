@@ -35,6 +35,8 @@ export interface CommissionerLeague {
   name: string;
   season: number;
   draftMode?: string;
+  entryFee?: number | null;
+  entryFeeNote?: string | null;
 }
 
 export interface CommissionerOverviewResponse {
