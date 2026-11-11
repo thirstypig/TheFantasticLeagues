@@ -123,3 +123,16 @@
   .rosters-phone { display: none; }
   .rosters-desk { display: block; }
 }
+
+/* Meeting moves entry: phone shows the team list OR one team's editor; from
+   1024px the list, editor and tonight's moves sit side by side. */
+.mt-grid { display: grid; gap: 16px; }
+.mt-grid[data-picked="true"] .mt-list, .mt-grid[data-picked="true"] .mt-tonight { display: none; }
+.mt-grid[data-picked="false"] .mt-editor { display: none; }
+.mt-phone-back { display: inline-flex; }
+@media (min-width: 1024px) {
+  .mt-grid { grid-template-columns: 260px minmax(0, 1fr) 280px; align-items: start; }
+  .mt-grid[data-picked="true"] .mt-list, .mt-grid[data-picked="true"] .mt-tonight,
+  .mt-grid[data-picked="false"] .mt-editor { display: block; }
+  .mt-phone-back { display: none; }
+}
