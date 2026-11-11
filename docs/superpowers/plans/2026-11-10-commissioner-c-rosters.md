@@ -114,7 +114,7 @@ All functions are pure and return new objects (no mutation).
 - drop of a player added tonight by the same team: `"<name> was added tonight and can't be dropped"`
 - same drop twice: later move gets `"<name> is already being dropped"`
 
-- [ ] **Step 1: Write failing tests** covering: emptyDraft shape; add/update/remove/setMark immutability (original object unchanged); `completeMoves` filter; each `flagMoves` rule with the exact message; `teamCountAfter(23, …)` stays 23 for a complete pair and is 24 for an add-only move (not counted — returns 23; only complete moves count); `loadDraft` returns emptyDraft for corrupt JSON and when `localStorage.getItem` throws; `saveDraft` → `loadDraft` round trip; `saveDraft` does not throw when `setItem` throws.
+- [ ] **Step 1: Write failing tests** covering: emptyDraft shape; add/update/remove/setMark immutability (original object unchanged); `completeMoves` filter; each `flagMoves` rule with the exact message; `teamCountAfter(23, …)` is 23 for a complete pair and still 23 for an add-only move (only complete moves count); `loadDraft` returns emptyDraft for corrupt JSON and when `localStorage.getItem` throws; `saveDraft` → `loadDraft` round trip; `saveDraft` does not throw when `setItem` throws.
 - [ ] **Step 2:** `cd client && npx vitest run src/features/commissioner/__tests__/meetingDraft.test.ts` → FAIL (module not found).
 - [ ] **Step 3:** Implement. Move ids via `crypto.randomUUID?.() ?? String(Date.now()+Math.random())`. `loadDraft` validates `leagueId`/`periodId` match and `Array.isArray(moves)`.
 - [ ] **Step 4:** Same command → PASS.
