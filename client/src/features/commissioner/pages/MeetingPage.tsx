@@ -105,6 +105,11 @@ function MeetingBody({ leagueId, periodId }: { leagueId: number; periodId: numbe
   function select(teamId: number | null) {
     apply((d) => {
       let next: MeetingDraft = { ...d, selectedTeamId: teamId };
+      const leaving = d.selectedTeamId;
+      if (leaving !== null && leaving !== teamId) {
+        // Leaving a team drops its cards with neither an add nor a drop.
+        next = { ...next, moves: next.moves.filter((mv) => mv.teamId !== leaving || mv.add || mv.drop) };
+      }
       if (teamId !== null && !next.moves.some((mv) => mv.teamId === teamId)) next = addMove(next, teamId);
       return next;
     });

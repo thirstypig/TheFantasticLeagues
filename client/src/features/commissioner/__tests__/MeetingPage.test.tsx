@@ -167,6 +167,23 @@ describe("MeetingPage", () => {
     expect(screen.queryByText(/Roster stays at/)).toBeNull();
   });
 
+  it("leaving a team removes its cards that have neither add nor drop", async () => {
+    seed({ ...emptyDraft(20, 9), selectedTeamId: 4, moves: [mv("a", 4, FRALEY, ALONSO), mv("b", 4, null, null)] });
+    renderPage();
+    await screen.findByText("+ Jake Fraley");
+    fireEvent.click(screen.getAllByTestId("meeting-team-row").find((r) => within(r).queryByText("Bombers"))!);
+    await waitFor(() => expect(stored().selectedTeamId).toBe(2));
+    expect(stored().moves.filter((x) => x.teamId === 4).map((x) => x.id)).toEqual(["a"]);
+  });
+
+  it("leaving a team with the phone back button also removes its empty cards", async () => {
+    seed({ ...emptyDraft(20, 9), selectedTeamId: 4, moves: [mv("b", 4, null, null)] });
+    renderPage();
+    fireEvent.click(await screen.findByText("‹ Period 9 moves"));
+    await waitFor(() => expect(stored().selectedTeamId).toBeNull());
+    expect(stored().moves).toHaveLength(0);
+  });
+
   it("No moves marks the team Passed and returns to the list", async () => {
     seed({ ...emptyDraft(20, 9), selectedTeamId: 4 });
     renderPage();
