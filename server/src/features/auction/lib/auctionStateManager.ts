@@ -31,6 +31,8 @@ export function createDefaultState(leagueId: number): AuctionState {
     teams: [],
     queue: [],
     queueIndex: 0,
+    nominationEndTime: null,
+    paused: false,
     config: {
       sport: "baseball",
       bidTimer: 15, // seconds
@@ -56,6 +58,10 @@ export async function getState(leagueId: number): Promise<AuctionState> {
       if (!persisted.config.sport) persisted.config.sport = "baseball";
       if (!persisted.config.budgetCap) persisted.config.budgetCap = 400;
       if (!persisted.config.rosterSize) persisted.config.rosterSize = 23;
+      // Backfill state fields added in UX step F. No timer survives a cold
+      // load, so the turn clock is never running at this point.
+      persisted.paused = persisted.paused ?? false;
+      persisted.nominationEndTime = null;
       if (!persisted.config.positionLimits) {
         persisted.config.positionLimits = await loadPositionLimits(leagueId);
       }
@@ -435,18 +441,31 @@ export function scheduleAutoFinish(leagueId: number, durationMs: number): void {
 
 // --- Nomination Timer (Auto-Skip) ---
 
+/** Stops the turn clock and clears the state's `nominationEndTime`. */
 export function clearNominationTimer(leagueId: number): void {
   const existing = nominationTimers.get(leagueId);
   if (existing) {
     clearTimeout(existing);
     nominationTimers.delete(leagueId);
   }
+  const state = auctionStates.get(leagueId);
+  if (state) state.nominationEndTime = null;
 }
 
+/**
+ * Starts the current team's turn clock with full time and records its end in
+ * `state.nominationEndTime`. While the auction is paused no clock runs; /resume
+ * schedules it again.
+ */
 export function scheduleNominationTimer(leagueId: number, state: AuctionState): void {
   clearNominationTimer(leagueId);
+  state.nominationEndTime = null;
+  if (state.paused) return;
+  const durationMs = state.config.nominationTimer * 1000;
+  state.nominationEndTime = new Date(Date.now() + durationMs).toISOString();
   const timer = setTimeout(() => {
     nominationTimers.delete(leagueId);
+    state.nominationEndTime = null;
     // Auto-advance queue index (skips full teams)
     if (!advanceQueue(state)) {
       // All teams full — auction complete
@@ -464,7 +483,7 @@ export function scheduleNominationTimer(leagueId: number, state: AuctionState): 
     // Schedule again for the next team
     scheduleNominationTimer(leagueId, state);
     logger.info({ leagueId, queueIndex: state.queueIndex }, "Auto-skipped nomination turn");
-  }, state.config.nominationTimer * 1000);
+  }, durationMs);
   nominationTimers.set(leagueId, timer);
 }
 

@@ -41,7 +41,7 @@ export interface NominationState {
 }
 
 export interface AuctionLogEvent {
-  type: 'NOMINATION' | 'BID' | 'WIN' | 'PAUSE' | 'RESUME' | 'UNDO';
+  type: 'NOMINATION' | 'BID' | 'WIN' | 'PAUSE' | 'RESUME' | 'UNDO' | 'SKIP' | 'ASSIGN' | 'END';
   teamId?: number;
   teamName?: string;
   playerId?: string;
@@ -49,6 +49,8 @@ export interface AuctionLogEvent {
   amount?: number;
   timestamp: number;
   message: string;
+  /** Why a turn was skipped (SKIP only): 'commissioner' | 'timeout'. */
+  reason?: string;
 }
 
 export interface AuctionState {
@@ -64,6 +66,11 @@ export interface AuctionState {
   // Nomination Order
   queue: number[]; // Array of Team IDs
   queueIndex: number;
+
+  /** ISO time the current team's turn clock runs out; null when no turn clock is running. */
+  nominationEndTime: string | null;
+  /** True between /pause and /resume, in both the nominating and bidding phases. */
+  paused: boolean;
 
   config: {
     sport: string;

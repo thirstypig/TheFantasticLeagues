@@ -86,6 +86,8 @@ function freshState(): AuctionState {
     teams: [],
     queue: [],
     queueIndex: 0,
+    nominationEndTime: null,
+    paused: false,
     config: { sport: "baseball", bidTimer: 15, nominationTimer: 30, budgetCap: 400, rosterSize: 23, pitcherCount: 9, batterCount: 14, positionLimits: null },
     log: [],
     lastUpdate: Date.now(),

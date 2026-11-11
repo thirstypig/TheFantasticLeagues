@@ -23,6 +23,7 @@ import {
   scheduleAutoFinish,
   finishCurrentLot,
   clearState,
+  advanceQueue,
 } from "../lib/auctionStateManager.js";
 import { broadcastState } from "../services/auctionWsService.js";
 
@@ -96,10 +97,11 @@ router.post("/finish", requireAuth, requireAdmin, asyncHandler(async (req, res) 
   res.json(state);
 }));
 
-// POST /api/auction/undo-finish (admin-only)
-router.post("/undo-finish", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+// POST /api/auction/undo-finish (commissioner or admin)
+router.post("/undo-finish", requireAuth, asyncHandler(async (req, res) => {
   const leagueId = readLeagueId(req);
   if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
+  if (!(await isAdminOrCommissioner(req, leagueId))) return res.status(403).json({ error: "Commissioner or admin only" });
   const state = await getState(leagueId);
 
   if (state.status !== 'nominating' && state.status !== 'completed') {
@@ -168,6 +170,9 @@ router.post("/pause", requireAuth, asyncHandler(async (req, res) => {
     if (!(await isAdminOrCommissioner(req, leagueId))) return res.status(403).json({ error: "Commissioner or admin only" });
     const state = await getState(leagueId);
 
+    if (state.status === 'nominating' || state.status === 'bidding') {
+        state.paused = true;
+    }
     if (state.nomination && state.nomination.status === 'running') {
         const now = Date.now();
         const end = new Date(state.nomination.endTime).getTime();
@@ -187,6 +192,7 @@ router.post("/resume", requireAuth, asyncHandler(async (req, res) => {
     if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
     if (!(await isAdminOrCommissioner(req, leagueId))) return res.status(403).json({ error: "Commissioner or admin only" });
     const state = await getState(leagueId);
+    state.paused = false;
 
     if (state.nomination && state.nomination.status === 'paused') {
         const now = Date.now();
@@ -196,11 +202,64 @@ router.post("/resume", requireAuth, asyncHandler(async (req, res) => {
         // Reschedule auto-finish with remaining time
         scheduleAutoFinish(leagueId, remaining);
     } else if (state.status === 'nominating') {
-        // Resuming from pause while in nominating — restart nomination timer
+        // Resuming from pause while in nominating — restart that team's clock
+        // with full time (also sets nominationEndTime)
         scheduleNominationTimer(leagueId, state);
     }
     broadcastState(leagueId, state);
     persistState(leagueId, state);
+    res.json(state);
+}));
+
+// POST /api/auction/skip-turn?leagueId=N
+// Commissioner/admin skips the team on the clock. Only during the nominating phase.
+router.post("/skip-turn", requireAuth, asyncHandler(async (req, res) => {
+    const leagueId = readLeagueId(req);
+    if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
+    if (!(await isAdminOrCommissioner(req, leagueId))) return res.status(403).json({ error: "Commissioner or admin only" });
+    const state = await getState(leagueId);
+
+    if (state.status !== 'nominating') {
+      return res.status(409).json({ error: "Can only skip a turn while a team is putting a player up" });
+    }
+
+    const skippedTeamId = state.queue[state.queueIndex];
+    const skippedTeam = state.teams.find(t => t.id === skippedTeamId);
+    clearNominationTimer(leagueId);
+
+    state.log.unshift({
+      type: 'SKIP',
+      teamId: skippedTeamId,
+      teamName: skippedTeam?.name,
+      reason: 'commissioner',
+      timestamp: Date.now(),
+      message: `Commissioner skipped ${skippedTeam?.name ?? 'Team'}'s turn`,
+    });
+
+    if (!advanceQueue(state)) {
+      // Every roster is full — the auction is over
+      state.status = 'completed';
+      state.nomination = null;
+      state.paused = false;
+      state.nominationEndTime = null;
+      logger.info({ leagueId }, "Auction completed — all rosters full (skip turn)");
+    } else {
+      // Full clock for the next team (stays stopped while paused)
+      scheduleNominationTimer(leagueId, state);
+    }
+    state.lastUpdate = Date.now();
+
+    broadcastState(leagueId, state);
+    persistState(leagueId, state);
+
+    writeAuditLog({
+      userId: req.user!.id,
+      action: "AUCTION_SKIP_TURN",
+      resourceType: "Auction",
+      resourceId: skippedTeamId != null ? String(skippedTeamId) : undefined,
+      metadata: { leagueId, skippedTeamId, nextTeamId: state.queue[state.queueIndex], completed: state.status === 'completed' },
+    });
+
     res.json(state);
 }));
 
@@ -270,9 +329,10 @@ router.post("/reset", requireAuth, requireAdmin, asyncHandler(async (req, res) =
 // POST /api/auction/complete
 // Commissioner/admin action to manually end the auction.
 // If a nomination is in progress, it is canceled (not awarded).
-router.post("/complete", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+router.post("/complete", requireAuth, asyncHandler(async (req, res) => {
     const leagueId = readLeagueId(req);
     if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
+    if (!(await isAdminOrCommissioner(req, leagueId))) return res.status(403).json({ error: "Commissioner or admin only" });
 
     const state = auctionStates.get(leagueId);
     if (!state) return res.status(404).json({ error: "No active auction" });
@@ -289,8 +349,18 @@ router.post("/complete", requireAuth, requireAdmin, asyncHandler(async (req, res
     clearNominationTimer(leagueId);
 
     // Mark as completed — cancel any in-progress nomination (don't award it)
+    const canceledLot = state.nomination?.playerName;
     state.status = "completed";
     state.nomination = null;
+    state.paused = false;
+    state.log.unshift({
+      type: 'END',
+      playerName: canceledLot,
+      timestamp: Date.now(),
+      message: canceledLot
+        ? `Commissioner ended the auction (lot for ${canceledLot} canceled)`
+        : "Commissioner ended the auction",
+    });
     state.lastUpdate = Date.now();
 
     broadcastState(leagueId, state);
@@ -394,6 +464,18 @@ router.post("/force-assign", requireAuth, validateBody(forceAssignSchema), async
       amount: price,
       timestamp: Date.now(),
       message: `Commissioner assigned ${playerName} to ${teamRow.name} for $${price}`
+    });
+    // The WIN entry above stays: draft report, last sales and replay read WIN.
+    // ASSIGN marks that this sale was a commissioner fix.
+    state.log.unshift({
+      type: 'ASSIGN',
+      teamId,
+      teamName: teamRow.name,
+      playerId: String(playerId),
+      playerName,
+      amount: price,
+      timestamp: Date.now(),
+      message: `Commissioner gave ${playerName} to ${teamRow.name} for $${price}`
     });
     state.lastUpdate = Date.now();
     broadcastState(leagueId, state);

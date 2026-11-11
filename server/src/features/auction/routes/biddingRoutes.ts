@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../../../db/prisma.js";
 import { requireAuth } from "../../../middleware/auth.js";
-import { requireLeagueMember, requireTeamOwner } from "../../../middleware/auth.js";
+import { requireLeagueMember, requireTeamOwner, isTeamOwner } from "../../../middleware/auth.js";
 import { asyncHandler } from "../../../middleware/asyncHandler.js";
 import { validateBody } from "../../../middleware/validate.js";
 import { requireSeasonStatus } from "../../../middleware/seasonGuard.js";
@@ -9,6 +9,7 @@ import { nominateSchema, bidSchema, proxyBidSchema } from "../lib/schemas.js";
 import {
   getState,
   readLeagueId,
+  isAdminOrCommissioner,
   checkPositionLimit,
   processProxyBids,
   sanitizeStateForBroadcast,
@@ -18,16 +19,45 @@ import {
 } from "../lib/auctionStateManager.js";
 import { broadcastState } from "../services/auctionWsService.js";
 import { logger } from "../../../lib/logger.js";
+import type { AuctionState } from "../types.js";
 
 const router = Router();
 
+const PAUSED_ERROR = "Auction is paused";
+
+/** A lot can take bids only when the auction isn't paused and the lot's clock is running. */
+function isBiddingPaused(state: AuctionState): boolean {
+  return state.paused || state.nomination?.status !== 'running';
+}
+
 // POST /api/auction/nominate
-router.post("/nominate", requireAuth, validateBody(nominateSchema), requireSeasonStatus(["DRAFT"]), requireTeamOwner("nominatorTeamId"), asyncHandler(async (req, res) => {
+// Owner of the team on the clock, or a commissioner/admin on that team's behalf.
+// (Ownership is checked inline instead of via requireTeamOwner so the
+// commissioner exception can be scoped to the team whose turn it is.)
+router.post("/nominate", requireAuth, validateBody(nominateSchema), requireSeasonStatus(["DRAFT"]), asyncHandler(async (req, res) => {
   const leagueId = readLeagueId(req);
   if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
   const state = await getState(leagueId);
 
   const { nominatorTeamId, playerId, playerName, startBid, positions, team, isPitcher } = req.body;
+
+  // Auth: owner of the nominating team, else commissioner/admin (turn check below
+  // limits them to the team on the clock).
+  const ownsTeam = await isTeamOwner(nominatorTeamId, req.user!.id);
+  if (!ownsTeam && !(await isAdminOrCommissioner(req, leagueId))) {
+    return res.status(403).json({ error: "You do not own this team" });
+  }
+
+  // Turn / phase / pause — route-level, never inside the shared nominate core.
+  if (state.status !== 'nominating') {
+    return res.status(409).json({ error: "Not accepting nominations right now" });
+  }
+  if (state.paused) {
+    return res.status(409).json({ error: PAUSED_ERROR });
+  }
+  if (nominatorTeamId !== state.queue[state.queueIndex]) {
+    return res.status(409).json({ error: "It is not this team's turn to nominate" });
+  }
 
   const teamObj = state.teams.find(t => t.id === nominatorTeamId);
   if (!teamObj) return res.status(400).json({ error: "Invalid team" });
@@ -114,6 +144,9 @@ router.post("/bid", requireAuth, validateBody(bidSchema), requireSeasonStatus(["
   if (state.status !== 'bidding' || !state.nomination) {
     return res.status(400).json({ error: "Auction not active" });
   }
+  if (isBiddingPaused(state)) {
+    return res.status(409).json({ error: PAUSED_ERROR });
+  }
 
   const { bidderTeamId, amount } = req.body;
 
@@ -187,8 +220,10 @@ router.post("/proxy-bid", requireAuth, validateBody(proxyBidSchema), requireSeas
     return res.status(400).json({ error: "No active nomination" });
   }
 
-  if (state.nomination.status !== 'running') {
-    return res.status(400).json({ error: "Auction is paused" });
+  // Placing a proxy can immediately raise the current bid, so it is refused
+  // while paused exactly like /bid.
+  if (isBiddingPaused(state)) {
+    return res.status(409).json({ error: PAUSED_ERROR });
   }
 
   const { bidderTeamId, maxBid } = req.body;
