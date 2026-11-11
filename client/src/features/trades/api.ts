@@ -1,6 +1,7 @@
 
 import { fetchJsonApi, API_BASE } from '../../api/base';
 import { track } from '../../lib/posthog';
+import type { LeagueTeam, TeamDetailResponse } from '../../api/types';
 
 export type TradeAssetType = "PLAYER" | "BUDGET" | "PICK" | "FUTURE_BUDGET" | "WAIVER_PRIORITY";
 
@@ -117,6 +118,17 @@ export interface TradeWindow {
 
 export async function getTradeWindow(leagueId: number): Promise<TradeWindow> {
     return fetchJsonApi<TradeWindow>(`${API_BASE}/trades/window?leagueId=${leagueId}`);
+}
+
+/** League teams for the partner picker (GET /api/leagues/:id). Kept here so trades does not import features/leagues. */
+export async function getTradeLeagueTeams(leagueId: number): Promise<LeagueTeam[]> {
+    const res = await fetchJsonApi<{ league: { teams?: LeagueTeam[] } }>(`${API_BASE}/leagues/${leagueId}`);
+    return res.league?.teams ?? [];
+}
+
+/** One team's roster and budget (GET /api/teams/:id/summary). Kept here so trades does not import features/teams. */
+export async function getTradeTeamRoster(teamId: number): Promise<TeamDetailResponse> {
+    return fetchJsonApi<TeamDetailResponse>(`${API_BASE}/teams/${teamId}/summary`);
 }
 
 export async function respondToTrade(tradeId: number, action: "ACCEPT" | "REJECT"): Promise<TradeProposal> {

@@ -51,7 +51,7 @@ describe("checkTrade", () => {
     expect(r.ok).toBe(true);
   });
 
-  it("dollars alone make a valid trade side only when ticked players exist; players-only counts", () => {
+  it("getting one player for none overflows a team at the cap", () => {
     const r = checkTrade({ ...base, mineActive: 23, theirsActive: 23, give: 0, get: 1 });
     expect(r.ok).toBe(false); // me 24 > cap
   });
