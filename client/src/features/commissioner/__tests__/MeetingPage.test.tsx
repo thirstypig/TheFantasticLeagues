@@ -151,6 +151,52 @@ describe("MeetingPage", () => {
     expect(within(row).getByText("Passed")).toBeTruthy();
   });
 
+  it("hides No moves when the team has a complete move, so nothing entered is discarded", async () => {
+    seed({ ...emptyDraft(20, 9), selectedTeamId: 4, moves: [mv("a", 4, FRALEY, ALONSO), mv("b", 4, null, null)] });
+    renderPage();
+    await screen.findByText("+ Jake Fraley");
+    expect(screen.queryByText("No moves")).toBeNull();
+    fireEvent.click(screen.getByText("Done · back to teams"));
+    await waitFor(() => expect(stored().selectedTeamId).toBeNull());
+    expect(stored().moves.map((x) => x.id)).toEqual(["a"]);
+  });
+
+  it("No moves removes a team's incomplete cards", async () => {
+    seed({ ...emptyDraft(20, 9), selectedTeamId: 4, moves: [mv("a", 4, FRALEY, null)] });
+    renderPage();
+    fireEvent.click(await screen.findByText("No moves"));
+    await waitFor(() => expect(stored().marks[4]).toBe("passed"));
+    expect(stored().moves).toHaveLength(0);
+  });
+
+  it("ignores a stale preview for a drop that was since changed", async () => {
+    let resolveOld!: (v: any) => void;
+    m.previewMove.mockImplementationOnce(() => new Promise((r) => { resolveOld = r; }));
+    m.previewMove.mockResolvedValueOnce({ ok: false, error: "New pair rejected" } as any);
+    seed({ ...emptyDraft(20, 9), selectedTeamId: 4, moves: [mv("a", 4, FRALEY, null)] });
+    renderPage();
+    fireEvent.click(await screen.findByText("Drop: choose a player ›"));
+    fireEvent.click(within(screen.getByTestId("drop-options")).getByText("Pete Alonso"));
+    await waitFor(() => expect(m.previewMove).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByLabelText("Change Pete Alonso"));
+    fireEvent.click(within(screen.getByTestId("drop-options")).getByText("Bench Joe"));
+    expect(await screen.findByText("New pair rejected")).toBeTruthy();
+    resolveOld({ ok: false, error: "OLD stale error" });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByText("OLD stale error")).toBeNull();
+    expect(screen.getByText("New pair rejected")).toBeTruthy();
+    expect(stored().moves[0].error).toBe("New pair rejected");
+  });
+
+  it("keeps the move's own drop in its chooser and clears Passed when a Passed team is edited", async () => {
+    seed({ ...emptyDraft(20, 9), selectedTeamId: 4, marks: { 4: "passed" }, moves: [mv("a", 4, FRALEY, ALONSO)] });
+    renderPage();
+    fireEvent.click(await screen.findByLabelText("Change Pete Alonso"));
+    expect(within(screen.getByTestId("drop-options")).getByText("Pete Alonso")).toBeTruthy();
+    fireEvent.click(within(screen.getByTestId("drop-options")).getByText("Bench Joe"));
+    await waitFor(() => expect(stored().marks[4]).toBeUndefined());
+  });
+
   it("flags a free agent added by two teams and hides it from search", async () => {
     seed({
       ...emptyDraft(20, 9),

@@ -1,7 +1,7 @@
 // Meeting moves entry (screen 13): the commissioner enters each owner's
 // add + drop pairs. Nothing touches rosters here; the draft lives in
 // localStorage until the Review page saves it.
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 import { CardError, LINK, PRIMARY, ROW, SECONDARY, Skeleton, useLoad } from "../components/cardParts";
@@ -56,6 +56,8 @@ function MeetingBody({ leagueId, periodId }: { leagueId: number; periodId: numbe
     return t !== null && !d.moves.some((mv) => mv.teamId === t) ? addMove(d, t) : d;
   });
   const draftRef = useRef(draft);
+  const alive = useRef(true);
+  useEffect(() => () => { alive.current = false; }, []);
 
   /** Every change goes through here so state and storage never drift. */
   function apply(fn: (d: MeetingDraft) => MeetingDraft) {
@@ -112,7 +114,9 @@ function MeetingBody({ leagueId, periodId }: { leagueId: number; periodId: numbe
     const idx = teams.findIndex((t) => t.id === teamId);
     const nextTeam = isDesktop() ? teams[idx + 1] ?? null : null;
     apply((d) => {
-      let next: MeetingDraft = { ...d, moves: d.moves.filter((mv) => mv.teamId !== teamId || mv.add || mv.drop) };
+      // "No moves" only exists for a team with no complete move, so it never discards a finished one.
+      const keep = (mv: DraftMove) => mv.teamId !== teamId || (mark === "done" ? mv.add || mv.drop : mv.add && mv.drop);
+      let next: MeetingDraft = { ...d, moves: d.moves.filter(keep) };
       next = setMark(next, teamId, mark);
       return { ...next, selectedTeamId: nextTeam ? nextTeam.id : null };
     });
@@ -134,7 +138,7 @@ function MeetingBody({ leagueId, periodId }: { leagueId: number; periodId: numbe
     previewMove(leagueId, mv.teamId, addId, dropId).then(
       (res) => {
         const cur = draftRef.current.moves.find((x) => x.id === id);
-        if (!cur || cur.add?.playerId !== addId || cur.drop?.playerId !== dropId) return; // edited since
+        if (!alive.current || !cur || cur.add?.playerId !== addId || cur.drop?.playerId !== dropId) return; // edited since
         apply((d) => updateMove(d, id, { error: res.ok ? undefined : res.error || "This move was rejected." }));
       },
       () => {
@@ -236,8 +240,10 @@ function MeetingBody({ leagueId, periodId }: { leagueId: number; periodId: numbe
                 + Another move
               </button>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                <button type="button" style={SECONDARY} onClick={() => finish(selected.id, "passed")}>No moves</button>
-                <button type="button" style={PRIMARY} onClick={() => finish(selected.id, "done")}>
+                {!complete.some((mv) => mv.teamId === selected.id) && (
+                  <button type="button" style={SECONDARY} onClick={() => finish(selected.id, "passed")}>No moves</button>
+                )}
+                <button type="button" style={{ ...PRIMARY, gridColumn: "1 / -1" }} onClick={() => finish(selected.id, "done")}>
                   {isDesktop() ? "Done · next team" : "Done · back to teams"}
                 </button>
               </div>

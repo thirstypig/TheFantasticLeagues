@@ -68,7 +68,7 @@ export function MoveEditor({
         <PlayerSearch
           leagueId={leagueId}
           placeholder="Add: search NL free agents"
-          excludeIds={excludeAddIds}
+          excludeIds={excludeAddIds.filter((id) => id !== move.add?.playerId)}
           onPick={(fa) => {
             setChangingAdd(false);
             onChange({ add: { playerId: fa.playerId, name: fa.name, pos: fa.pos, mlbTeam: fa.mlbTeam, mlbId: fa.mlbId }, error: undefined });
