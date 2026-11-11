@@ -48,7 +48,7 @@ function ReviewBody({ leagueId, periodId }: { leagueId: number; periodId: number
   const draftRef = useRef(draft);
   const alive = useRef(true);
   const inFlight = useRef(false);
-  useEffect(() => () => { alive.current = false; }, []);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []); // re-arm on StrictMode remount
 
   const [sheetOpen, setSheetOpen] = useState(false);
   const [saving, setSaving] = useState(false);

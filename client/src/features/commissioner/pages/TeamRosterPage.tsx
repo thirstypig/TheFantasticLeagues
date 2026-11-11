@@ -85,7 +85,7 @@ function TeamBody({ leagueId, teamId }: { leagueId: number; teamId: number }) {
   const savingRef = useRef(false);
   const pickKey = useRef<string | null>(null);
   const alive = useRef(true);
-  useEffect(() => () => { alive.current = false; }, []);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []); // re-arm on StrictMode remount
 
   if (!rosterRows) {
     const back = <Link to={`${base}/rosters`} style={LINK}>‹ Rosters</Link>;

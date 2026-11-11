@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import React from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 const mockToast = vi.fn();
@@ -23,15 +24,16 @@ import type { MeetingDraft } from "../lib/meetingDraft";
 
 const m = vi.mocked(api);
 
-function renderPage() {
+function renderPage(strict = false) {
+  const Wrap = strict ? React.StrictMode : React.Fragment;
   return render(
-    <MemoryRouter initialEntries={["/commissioner/20/meeting/9/review"]}>
+    <Wrap><MemoryRouter initialEntries={["/commissioner/20/meeting/9/review"]}>
       <Routes>
         <Route path="/commissioner/:leagueId/meeting/:periodId/review" element={<MeetingReviewPage />} />
         <Route path="/commissioner/:leagueId/meeting/:periodId" element={<div>MEETING STUB</div>} />
         <Route path="/commissioner/:leagueId/start/:periodId" element={<div>START STUB</div>} />
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter></Wrap>,
   );
 }
 
@@ -198,6 +200,20 @@ describe("MeetingReviewPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save moves" }));
     expect(await screen.findByText("Saved 2 of 3 moves. The rest need a look.")).toBeTruthy();
     expect(stored().moves.map((x) => [x.id, x.error])).toEqual([["a", "Roster is full."]]);
+  });
+
+  // Dev runs under React.StrictMode, which mounts, unmounts and remounts once.
+  // An "alive" ref that is only ever set false on cleanup stays false after the
+  // remount, so the page ignored every save result and never navigated.
+  it("under StrictMode, a full save still clears the draft and goes to the Start page", async () => {
+    seed(THREE());
+    m.previewMove.mockResolvedValue({ ok: true });
+    m.saveMove.mockResolvedValue(undefined);
+    renderPage(true);
+    fireEvent.click(await screen.findByRole("button", { name: /^Save 3 moves for 2 teams$/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Save moves$/ }));
+    expect(await screen.findByText("START STUB")).toBeTruthy();
+    expect(localStorage.getItem(draftKey(20, 9))).toBeNull();
   });
 
   it("Edit selects the team in the draft and goes back to the meeting page", async () => {

@@ -51,7 +51,7 @@ function MeetingBody({ leagueId, periodId }: { leagueId: number; periodId: numbe
   });
   const draftRef = useRef(draft);
   const alive = useRef(true);
-  useEffect(() => () => { alive.current = false; }, []);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []); // re-arm on StrictMode remount
 
   // The Review page may have saved moves in another tab/while we were away: pick up the stored draft again.
   useEffect(() => {
