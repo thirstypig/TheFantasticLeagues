@@ -120,3 +120,32 @@ export async function assertTradeRosters(
     throw new TradeValidationError(`${teamName(v.teamId)} would have ${v.after} players (limit ${cap})`);
   }
 }
+
+/**
+ * Throws TradeValidationError if any team sends more BUDGET dollars (summed
+ * over the trade's items) than its current budget. Process re-checks inside
+ * its transaction; this lets propose and accept fail early with a clear message.
+ */
+export async function assertTradeBudgets(
+  db: Pick<Db, "team">,
+  items: (TradeItemLike & { amount?: number | null })[],
+): Promise<void> {
+  const owed = new Map<number, number>();
+  for (const item of items) {
+    if (item.assetType !== "BUDGET") continue;
+    owed.set(item.senderId, (owed.get(item.senderId) ?? 0) + (item.amount ?? 0));
+  }
+  if (owed.size === 0) return;
+
+  const teams = await db.team.findMany({
+    where: { id: { in: [...owed.keys()] } },
+    select: { id: true, name: true, budget: true },
+  });
+  for (const [teamId, amount] of owed) {
+    const team = teams.find((t) => t.id === teamId);
+    const budget = team?.budget ?? 0;
+    if (amount > budget) {
+      throw new TradeValidationError(`${team?.name ?? `Team #${teamId}`} has only $${budget}`);
+    }
+  }
+}

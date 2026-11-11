@@ -4,7 +4,7 @@ import { z } from "zod";
 import { prisma } from "../../db/prisma.js";
 import { requireAuth, requireAdmin, requireTeamOwner, requireLeagueMember, isTeamOwner } from "../../middleware/auth.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
-import { assertRosterLimit } from "../../lib/rosterGuard.js";
+import { loadLeagueRosterCap } from "../../lib/rosterGuard.js";
 import { rosterSlotFor } from "../../lib/positionInherit.js";
 import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
@@ -13,8 +13,7 @@ import { logger } from "../../lib/logger.js";
 import { resolveEffectiveDate, assertNoOwnershipConflict } from "../../lib/rosterWindow.js";
 import { getWeekKey } from "../../lib/utils.js";
 import { getTradeWindow } from "../../lib/tradeWindow.js";
-import { assertTradeRosters, TradeValidationError } from "./lib/tradeRosterCheck.js";
-import { loadLeagueRosterCap } from "../../lib/rosterGuard.js";
+import { assertTradeRosters, assertTradeBudgets, TradeValidationError } from "./lib/tradeRosterCheck.js";
 
 const processSchema = z.object({
   effectiveDate: z
@@ -190,6 +189,7 @@ router.post("/", requireAuth, validateBody(tradeProposalSchema), requireSeasonSt
 
   try {
     await assertTradeRosters(prisma as any, leagueId, items, { rejectIl: true });
+    await assertTradeBudgets(prisma as any, items);
   } catch (err) {
     if (err instanceof TradeValidationError) return res.status(400).json({ error: err.message });
     throw err;
@@ -336,6 +336,7 @@ router.post("/:id/accept", requireAuth, asyncHandler(async (req, res) => {
   // Rosters may have changed since the offer was sent.
   try {
     await assertTradeRosters(prisma as any, trade.leagueId, trade.items);
+    await assertTradeBudgets(prisma as any, trade.items);
   } catch (err) {
     if (err instanceof TradeValidationError) return res.status(400).json({ error: err.message });
     throw err;
@@ -534,41 +535,39 @@ router.post("/:id/process", requireAuth, asyncHandler(async (req, res) => {
             `${p?.name ?? `Player #${item.playerId}`} is no longer on ${t?.name ?? `Team #${item.senderId}`}`,
           );
         }
-        {
-           await tx.roster.update({
-             where: { id: rosterEntry.id },
-             data: { releasedAt: effective, source: "TRADE_OUT" },
-           });
+        await tx.roster.update({
+          where: { id: rosterEntry.id },
+          data: { releasedAt: effective, source: "TRADE_OUT" },
+        });
 
-           // Window-aware availability: excludes the just-released sender row.
-           await assertNoOwnershipConflict(tx, {
-             leagueId: trade.leagueId,
-             playerId: item.playerId,
-             acquiredAt: effective,
-             releasedAt: null,
-             excludeRosterIds: [rosterEntry.id],
-           });
+        // Window-aware availability: excludes the just-released sender row.
+        await assertNoOwnershipConflict(tx, {
+          leagueId: trade.leagueId,
+          playerId: item.playerId,
+          acquiredAt: effective,
+          releasedAt: null,
+          excludeRosterIds: [rosterEntry.id],
+        });
 
-           // Carry over assignedPosition from sender, or default to player's primary.
-           // Shared with CommissionerService.executeTrade — one definition, so the
-           // two trade paths cannot drift apart again.
-           const tradedPlayer = await tx.player.findUnique({ where: { id: item.playerId }, select: { posPrimary: true } });
-           const tradePos = rosterSlotFor({
-             assignedPosition: rosterEntry.assignedPosition,
-             posPrimary: tradedPlayer?.posPrimary,
-           });
+        // Carry over assignedPosition from sender, or default to player's primary.
+        // Shared with CommissionerService.executeTrade — one definition, so the
+        // two trade paths cannot drift apart again.
+        const tradedPlayer = await tx.player.findUnique({ where: { id: item.playerId }, select: { posPrimary: true } });
+        const tradePos = rosterSlotFor({
+          assignedPosition: rosterEntry.assignedPosition,
+          posPrimary: tradedPlayer?.posPrimary,
+        });
 
-           await tx.roster.create({
-             data: {
-               teamId: item.recipientId,
-               playerId: item.playerId,
-               source: "TRADE_IN",
-               acquiredAt: effective,
-               price: rosterEntry.price,
-               assignedPosition: tradePos,
-             },
-           });
-        }
+        await tx.roster.create({
+          data: {
+            teamId: item.recipientId,
+            playerId: item.playerId,
+            source: "TRADE_IN",
+            acquiredAt: effective,
+            price: rosterEntry.price,
+            assignedPosition: tradePos,
+          },
+        });
       } else if (item.assetType === "BUDGET") {
         const budgetAmount = item.amount || 0;
         const senderTeam = await tx.team.findUnique({ where: { id: item.senderId }, select: { budget: true } });

@@ -124,12 +124,14 @@ describe("POST /:id/process roster checks", () => {
   }
 
   it("IL rows do not count toward the cap", async () => {
-    mockPrisma.trade.findUnique.mockResolvedValue(trade(oneForOne));
+    // Beta: 22 active + 1 IL takes a 2-for-1 -> 23 active. Counting the IL row
+    // would make it 23 -> 24 and refuse the trade.
+    mockPrisma.trade.findUnique.mockResolvedValue(trade([item(100, 1, 2), item(101, 1, 2), item(200, 2, 1)]));
     seedProcess();
     seedDb(mockTx, [
       ...rows(1, 100, 23),
-      { teamId: 1, playerId: 900, assignedPosition: "IL" },
-      ...rows(2, 200, 23),
+      ...rows(2, 200, 22),
+      { teamId: 2, playerId: 900, assignedPosition: "IL" },
     ]);
     const res = await supertest(app).post("/9/process").send({});
     expect(res.status).toBe(200);
@@ -325,8 +327,82 @@ describe("GET /window", () => {
     expect(res.body).toEqual({ open: true, message: null, rosterCap: 23 });
   });
 
+  it("reports the league's own roster cap, not a fixed 23", async () => {
+    mockRules.mockResolvedValue({ roster: { pitcher_count: "11", batter_count: "14" } });
+    mockGetTradeWindow.mockResolvedValue({ open: true });
+    const res = await supertest(app).get("/window?leagueId=20");
+    expect(res.body.rosterCap).toBe(25);
+    expect(mockRules).toHaveBeenCalledWith(expect.anything(), 20);
+  });
+
   it("400s without a leagueId", async () => {
     const res = await supertest(app).get("/window");
     expect(res.status).toBe(400);
+  });
+});
+
+describe("BUDGET items are checked against the sender's budget", () => {
+  const BUDGET_TEAMS = [
+    { id: 1, name: "Alpha", leagueId: 20, budget: 50 },
+    { id: 2, name: "Beta", leagueId: 20, budget: 200 },
+  ];
+  const dollars = (amount: number, senderId = 1, recipientId = 2) => ({
+    assetType: "BUDGET", playerId: null, senderId, recipientId, amount, pickRound: null, season: null,
+  });
+  const budgetQuery = () =>
+    mockPrisma.team.findMany.mock.calls.find((c: any[]) => c[0]?.select?.budget);
+
+  beforeEach(() => {
+    mockPrisma.team.findMany.mockResolvedValue(BUDGET_TEAMS);
+    mockPrisma.trade.create.mockResolvedValue({ id: 5, status: "PROPOSED", items: [] });
+    mockPrisma.trade.update.mockResolvedValue({ id: 9, status: "ACCEPTED" });
+  });
+
+  it("propose refuses dollars the sender does not have", async () => {
+    const res = await supertest(app)
+      .post("/")
+      .send({ leagueId: 20, proposerTeamId: 1, items: [dollars(60)] });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("Alpha has only $50");
+    expect(budgetQuery()?.[0]).toEqual({
+      where: { id: { in: [1] } },
+      select: { id: true, name: true, budget: true },
+    });
+    expect(mockPrisma.trade.create).not.toHaveBeenCalled();
+  });
+
+  it("propose sums every BUDGET item from the same sender", async () => {
+    const res = await supertest(app)
+      .post("/")
+      .send({ leagueId: 20, proposerTeamId: 1, items: [dollars(30), dollars(30)] });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("Alpha has only $50");
+  });
+
+  it("propose allows dollars up to the sender's whole budget", async () => {
+    const res = await supertest(app)
+      .post("/")
+      .send({ leagueId: 20, proposerTeamId: 1, items: [dollars(50)] });
+    expect(res.status).toBe(200);
+    expect(mockPrisma.trade.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("accept refuses dollars the sender no longer has", async () => {
+    mockPrisma.trade.findUnique.mockResolvedValue({
+      id: 9, leagueId: 20, proposerId: 1, status: "PROPOSED", items: [dollars(60)],
+    });
+    const res = await supertest(app).post("/9/accept");
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("Alpha has only $50");
+    expect(mockPrisma.trade.update).not.toHaveBeenCalled();
+  });
+
+  it("accept allows dollars the sender still has", async () => {
+    mockPrisma.trade.findUnique.mockResolvedValue({
+      id: 9, leagueId: 20, proposerId: 1, status: "PROPOSED", items: [dollars(50)],
+    });
+    const res = await supertest(app).post("/9/accept");
+    expect(res.status).toBe(200);
+    expect(mockPrisma.trade.update).toHaveBeenCalled();
   });
 });
