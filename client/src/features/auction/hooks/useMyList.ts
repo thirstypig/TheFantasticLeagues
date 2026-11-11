@@ -20,6 +20,10 @@ function readLegacy(teamId: number): number[] | null {
     }
 }
 
+function hasLegacyKey(teamId: number): boolean {
+    try { return localStorage.getItem(legacyKey(teamId)) !== null; } catch { return false; }
+}
+
 function clearLegacy(teamId: number) {
     try { localStorage.removeItem(legacyKey(teamId)); } catch { /* ignore */ }
 }
@@ -108,8 +112,4 @@ export function useMyList(leagueId: number | null | undefined, teamId: number | 
     const has = useCallback((mlbId: number) => list.includes(mlbId), [list]);
 
     return { list, loading, error, add, remove, move, reorder, has };
-}
-
-function hasLegacyKey(teamId: number): boolean {
-    try { return localStorage.getItem(legacyKey(teamId)) !== null; } catch { return false; }
 }

@@ -42,7 +42,7 @@ const nom = (over = {}) => ({
 
 describe("teamNeeds", () => {
   it("lists every open slot for an empty roster, with x-counts above one", () => {
-    expect(teamNeeds(team(1, "Empty", []), config)).toBe("C ×2, 1B, 2B, 3B, SS, MI, CI, OF ×5, DH, P ×9");
+    expect(teamNeeds(team(1, "Empty", []), config)).toBe("C ×2, 1B, 2B, 3B, SS, MI, CM, OF ×5, DH, P ×9");
   });
 
   it("drops filled slots and decrements counts", () => {
@@ -51,10 +51,10 @@ describe("teamNeeds", () => {
       rp("Teoscar", "LF", 12), rp("Kike", "CF", 8),
       rp("Yamamoto", "SP", 20, "SP"), rp("Clase", "RP", 5, null),
     ]);
-    expect(teamNeeds(t, config)).toBe("C, 2B, 3B, MI, CI, OF ×3, DH, P ×7");
+    expect(teamNeeds(t, config)).toBe("C, 2B, 3B, MI, CM, OF ×3, DH, P ×7");
   });
 
-  it("spills a second shortstop into MI, a second first baseman into CI, then DH", () => {
+  it("spills a second shortstop into MI, a second first baseman into CM, then DH", () => {
     const t = team(1, "Spill", [
       rp("A", "SS", 1), rp("B", "SS", 1), rp("C1", "1B", 1), rp("D", "1B", 1), rp("E", "1B", 1),
     ]);
@@ -94,7 +94,7 @@ describe("boardGroups", () => {
 
   it("returns the five Style Bible groups plus DH for the OGBA limits", () => {
     const g = boardGroups(t, config);
-    expect(g.map(x => x.label)).toEqual(["C ×2", "1B · 2B · 3B", "SS · MI · CI", "OF ×5", "DH", "P ×9"]);
+    expect(g.map(x => x.label)).toEqual(["C ×2", "1B · 2B · 3B", "SS · MI · CM", "OF ×5", "DH", "P ×9"]);
   });
 
   it("puts each player in the group of the slot they fill, with name and price", () => {
@@ -104,8 +104,8 @@ describe("boardGroups", () => {
     expect(by("C ×2").open).toBe(1);
     expect(by("1B · 2B · 3B").filled.map(f => f.name)).toEqual(["Freddie Freeman", "Kike", "Max Muncy"]);
     expect(by("1B · 2B · 3B").open).toBe(0);
-    expect(by("SS · MI · CI").filled.map(f => f.name)).toEqual(["Mookie Betts"]);
-    expect(by("SS · MI · CI").open).toBe(2);
+    expect(by("SS · MI · CM").filled.map(f => f.name)).toEqual(["Mookie Betts"]);
+    expect(by("SS · MI · CM").open).toBe(2);
     expect(by("OF ×5").open).toBe(4);
     expect(by("P ×9").filled.map(f => f.name)).toEqual(["Yamamoto"]);
     expect(by("P ×9").open).toBe(8);

@@ -38,9 +38,6 @@ function eligibleSlots(pos: string): string[] {
 }
 
 const SLOT_ORDER = ['C', '1B', '2B', '3B', 'SS', 'MI', 'CM', 'OF', 'DH', 'P'];
-/** Display names. The Style Bible calls the corner slot "CI"; the league rule key is "CM". */
-const SLOT_LABEL: Record<string, string> = { CM: 'CI' };
-const slotLabel = (slot: string) => SLOT_LABEL[slot] ?? slot;
 
 const rankSlot = (slot: string) => {
   const i = SLOT_ORDER.indexOf(slot);
@@ -75,7 +72,7 @@ function assignSlots(team: AuctionTeam, limits: Record<string, number>): (string
     if (PITCHER_CODES.has(pos)) return ['P'];
     if (hasH) return ['H'];
     const slots = eligibleSlots(pos).filter(s => s in limits);
-    // A hitter with no open natural slot may still DH.
+    // A hitter with no open natural slot may still DH (display-only inference, not the owner's lineup).
     if ('DH' in limits && !slots.includes('DH')) slots.push('DH');
     return slots;
   });
@@ -103,7 +100,7 @@ export function teamNeeds(team: AuctionTeam, config: Config): string {
       const filled = assigned.filter(s => s === slot).length;
       const open = limits[slot] - filled;
       if (open <= 0) return '';
-      return open > 1 ? `${slotLabel(slot)} ×${open}` : slotLabel(slot);
+      return open > 1 ? `${slot} ×${open}` : slot;
     })
     .filter(Boolean)
     .join(', ');
@@ -111,7 +108,7 @@ export function teamNeeds(team: AuctionTeam, config: Config): string {
 
 export interface BoardPlayer { name: string; price: number; mlbId: number | null }
 export interface BoardGroup {
-  /** e.g. `C ×2`, `1B · 2B · 3B`, `SS · MI · CI`, `OF ×5`, `P ×9` */
+  /** e.g. `C ×2`, `1B · 2B · 3B`, `SS · MI · CM`, `OF ×5`, `P ×9` */
   label: string;
   /** League slot keys in this group */
   slots: string[];
@@ -123,7 +120,7 @@ export interface BoardGroup {
 const KNOWN_GROUPS: string[][] = [['C'], ['1B', '2B', '3B'], ['SS', 'MI', 'CM'], ['OF']];
 
 /**
- * A team's roster grouped for the Board: C, 1B · 2B · 3B, SS · MI · CI, OF ×N,
+ * A team's roster grouped for the Board: C, 1B · 2B · 3B, SS · MI · CM, OF ×N,
  * then any other league slots as their own groups (DH, ...), then P ×N.
  * Slots outside the known groups fall back to raw slot groups; nothing is
  * hardcoded to one league's limits. Players with no open slot (bench) are not listed.
@@ -148,7 +145,7 @@ export function boardGroups(team: AuctionTeam, config: Config): BoardGroup[] {
       const slot = assigned[i];
       if (slot && slots.includes(slot)) filled.push({ name: r.playerName ?? 'Unknown', price: r.price, mlbId: r.mlbId ?? null });
     });
-    const names = slots.map(slotLabel).join(' · ');
+    const names = slots.join(' · ');
     const label = slots.length === 1 && capacity > 1 ? `${names} ×${capacity}` : names;
     return { label, slots, capacity, filled, open: Math.max(0, capacity - filled.length) };
   });
