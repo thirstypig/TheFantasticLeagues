@@ -1518,7 +1518,7 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                 {/* Sub-tab strip */}
                 <div className="cm-subtabs">
                   {([
-                    { key: 'trades'   as OpsSubTab, label: 'Trade Review' },
+                    { key: 'trades'   as OpsSubTab, label: 'Record a past trade' },
                     { key: 'bulk'     as OpsSubTab, label: 'Bulk',
                       hidden: !gating.canKeepers && !gating.canAuction && gating.isReadOnly },
                   ] as { key: OpsSubTab; label: string; badge?: number; hidden?: boolean }[])

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { prisma } from "../../db/prisma.js";
 import { requireAuth, requireAdmin, requireTeamOwner, requireLeagueMember, isTeamOwner } from "../../middleware/auth.js";
 import { writeAuditLog } from "../../lib/auditLog.js";
-import { assertRosterLimit } from "../../lib/rosterGuard.js";
+import { loadLeagueRosterCap } from "../../lib/rosterGuard.js";
 import { rosterSlotFor } from "../../lib/positionInherit.js";
 import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
@@ -13,6 +13,7 @@ import { logger } from "../../lib/logger.js";
 import { resolveEffectiveDate, assertNoOwnershipConflict } from "../../lib/rosterWindow.js";
 import { getWeekKey } from "../../lib/utils.js";
 import { getTradeWindow } from "../../lib/tradeWindow.js";
+import { assertTradeRosters, assertTradeBudgets, TradeValidationError } from "./lib/tradeRosterCheck.js";
 
 const processSchema = z.object({
   effectiveDate: z
@@ -186,6 +187,14 @@ router.post("/", requireAuth, validateBody(tradeProposalSchema), requireSeasonSt
     return res.status(400).json({ error: "All teams must belong to the same league" });
   }
 
+  try {
+    await assertTradeRosters(prisma as any, leagueId, items, { rejectIl: true });
+    await assertTradeBudgets(prisma as any, items);
+  } catch (err) {
+    if (err instanceof TradeValidationError) return res.status(400).json({ error: err.message });
+    throw err;
+  }
+
   const trade = await prisma.trade.create({
     data: {
       leagueId,
@@ -234,12 +243,28 @@ router.post("/", requireAuth, validateBody(tradeProposalSchema), requireSeasonSt
         title: "Trade Proposal",
         body: `${pTeam?.name ?? "A team"} has proposed a trade in ${lg?.name ?? "your league"}`,
         tag: `trade-${trade.id}`,
-        url: `/activity?leagueId=${leagueId}`,
+        url: "/trades",
       }, "tradeProposal", req.user!.id).catch(err => logger.warn({ err }, "Push notification failed"));
     }
   }
 
   res.json(trade);
+}));
+
+// GET /api/trades/window?leagueId=N - Is the trade window open, and the roster cap.
+// Registered before any "/:id" GET so "window" is never read as an id.
+router.get("/window", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
+  const leagueId = Number(req.query.leagueId);
+  if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
+  const [tradeWindow, rosterCap] = await Promise.all([
+    getTradeWindow(leagueId),
+    loadLeagueRosterCap(prisma as any, leagueId),
+  ]);
+  res.json({
+    open: tradeWindow.open,
+    message: tradeWindow.open ? null : tradeWindow.message,
+    rosterCap,
+  });
 }));
 
 // GET /api/trades - List trades for a league
@@ -307,6 +332,15 @@ router.post("/:id/accept", requireAuth, asyncHandler(async (req, res) => {
   // A trade proposed inside the window can be accepted only inside it too.
   const tradeWindow = await getTradeWindow(trade.leagueId);
   if (!tradeWindow.open) return res.status(409).json({ error: tradeWindow.message });
+
+  // Rosters may have changed since the offer was sent.
+  try {
+    await assertTradeRosters(prisma as any, trade.leagueId, trade.items);
+    await assertTradeBudgets(prisma as any, trade.items);
+  } catch (err) {
+    if (err instanceof TradeValidationError) return res.status(400).json({ error: err.message });
+    throw err;
+  }
 
   const updated = await prisma.trade.update({
     where: { id },
@@ -483,47 +517,57 @@ router.post("/:id/process", requireAuth, asyncHandler(async (req, res) => {
       throw new Error("Trade already processed or no longer accepted");
     }
 
+    // Validate against the rosters as they are now, before any write.
+    await assertTradeRosters(tx as any, trade.leagueId, trade.items);
+
     for (const item of trade.items) {
       if (item.assetType === "PLAYER" && item.playerId) {
         const rosterEntry = await tx.roster.findFirst({
           where: { teamId: item.senderId, playerId: item.playerId, releasedAt: null },
         });
 
-        if (rosterEntry) {
-           await tx.roster.update({
-             where: { id: rosterEntry.id },
-             data: { releasedAt: effective, source: "TRADE_OUT" },
-           });
-
-           // Window-aware availability: excludes the just-released sender row.
-           await assertNoOwnershipConflict(tx, {
-             leagueId: trade.leagueId,
-             playerId: item.playerId,
-             acquiredAt: effective,
-             releasedAt: null,
-             excludeRosterIds: [rosterEntry.id],
-           });
-
-           // Carry over assignedPosition from sender, or default to player's primary.
-           // Shared with CommissionerService.executeTrade — one definition, so the
-           // two trade paths cannot drift apart again.
-           const tradedPlayer = await tx.player.findUnique({ where: { id: item.playerId }, select: { posPrimary: true } });
-           const tradePos = rosterSlotFor({
-             assignedPosition: rosterEntry.assignedPosition,
-             posPrimary: tradedPlayer?.posPrimary,
-           });
-
-           await tx.roster.create({
-             data: {
-               teamId: item.recipientId,
-               playerId: item.playerId,
-               source: "TRADE_IN",
-               acquiredAt: effective,
-               price: rosterEntry.price,
-               assignedPosition: tradePos,
-             },
-           });
+        if (!rosterEntry) {
+          const [p, t] = await Promise.all([
+            tx.player.findUnique({ where: { id: item.playerId }, select: { name: true } }),
+            tx.team.findUnique({ where: { id: item.senderId }, select: { name: true } }),
+          ]);
+          throw new TradeValidationError(
+            `${p?.name ?? `Player #${item.playerId}`} is no longer on ${t?.name ?? `Team #${item.senderId}`}`,
+          );
         }
+        await tx.roster.update({
+          where: { id: rosterEntry.id },
+          data: { releasedAt: effective, source: "TRADE_OUT" },
+        });
+
+        // Window-aware availability: excludes the just-released sender row.
+        await assertNoOwnershipConflict(tx, {
+          leagueId: trade.leagueId,
+          playerId: item.playerId,
+          acquiredAt: effective,
+          releasedAt: null,
+          excludeRosterIds: [rosterEntry.id],
+        });
+
+        // Carry over assignedPosition from sender, or default to player's primary.
+        // Shared with CommissionerService.executeTrade — one definition, so the
+        // two trade paths cannot drift apart again.
+        const tradedPlayer = await tx.player.findUnique({ where: { id: item.playerId }, select: { posPrimary: true } });
+        const tradePos = rosterSlotFor({
+          assignedPosition: rosterEntry.assignedPosition,
+          posPrimary: tradedPlayer?.posPrimary,
+        });
+
+        await tx.roster.create({
+          data: {
+            teamId: item.recipientId,
+            playerId: item.playerId,
+            source: "TRADE_IN",
+            acquiredAt: effective,
+            price: rosterEntry.price,
+            assignedPosition: tradePos,
+          },
+        });
       } else if (item.assetType === "BUDGET") {
         const budgetAmount = item.amount || 0;
         const senderTeam = await tx.team.findUnique({ where: { id: item.senderId }, select: { budget: true } });
@@ -563,23 +607,17 @@ router.post("/:id/process", requireAuth, asyncHandler(async (req, res) => {
       }
     }
 
-    // Verify roster limits for all teams involved after all moves
-    const teamIds = new Set(trade.items.flatMap(i => [i.senderId, i.recipientId]));
-    for (const tid of teamIds) {
-      const count = await tx.roster.count({ where: { teamId: tid, releasedAt: null } });
-      if (count > 23) {
-        throw new Error(`Trade would leave team ${tid} with ${count} players (max 23)`);
-      }
-    }
-
     await tx.trade.update({
       where: { id },
       data: { status: "PROCESSED", processedAt: new Date() },
     });
   }, { timeout: 30_000 });
   } catch (err: unknown) {
+    if (err instanceof TradeValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
     const msg = err instanceof Error ? err.message : "Trade process failed";
-    if (msg.includes("Ownership conflict") || msg.includes("Invalid effectiveDate") || msg.includes("already processed") || msg.includes("max 23") || msg.includes("insufficient budget")) {
+    if (msg.includes("Ownership conflict") || msg.includes("Invalid effectiveDate") || msg.includes("already processed") || msg.includes("insufficient budget")) {
       return res.status(400).json({ error: msg });
     }
     throw err;
@@ -748,34 +786,100 @@ router.post("/:id/reverse", requireAuth, asyncHandler(async (req, res) => {
     return res.status(400).json({ error: err instanceof Error ? err.message : "Invalid effectiveDate" });
   }
 
-  // Reverse each item in a transaction (swap sender/recipient)
+  // Reverse each item in a transaction (swap sender/recipient).
+  try {
   await prisma.$transaction(async (tx) => {
+    // Re-check status under row lock so two concurrent reverses cannot both run.
+    const locked = await tx.$queryRaw<{ status: string }[]>`
+      SELECT status FROM "Trade" WHERE id = ${id} FOR UPDATE
+    `;
+    if (!locked[0] || locked[0].status !== "PROCESSED") {
+      throw new TradeValidationError("Can only reverse PROCESSED trades");
+    }
+
+    // Validate everything before any write. Each player must still be on the
+    // team that received them; each dollar amount must still be there to return.
+    const playerMoves: {
+      item: (typeof trade.items)[number];
+      row: { id: number; acquiredAt: Date; price: number; assignedPosition: string | null };
+    }[] = [];
     for (const item of trade.items) {
-      if (item.assetType === "PLAYER" && item.playerId) {
-        // Release from recipient (who received the player)
-        await tx.roster.updateMany({
-          where: { teamId: item.recipientId, playerId: item.playerId, releasedAt: null },
-          data: { releasedAt: reverseEffective, source: "TRADE_REVERSE" },
-        });
-        // Create new roster entry on original sender
-        await tx.roster.create({
-          data: {
-            teamId: item.senderId,
-            playerId: item.playerId,
-            price: item.amount || 0,
-            source: "TRADE_REVERSE",
-            acquiredAt: reverseEffective,
-          },
-        });
-      } else if (item.assetType === "BUDGET") {
+      if (item.assetType !== "PLAYER" || !item.playerId) continue;
+      const row = await tx.roster.findFirst({
+        where: { teamId: item.recipientId, playerId: item.playerId, releasedAt: null },
+      });
+      if (!row) {
+        throw new TradeValidationError(
+          `${item.player?.name ?? `Player #${item.playerId}`} is no longer on ${item.recipient?.name ?? `Team #${item.recipientId}`}`,
+        );
+      }
+      playerMoves.push({ item, row });
+    }
+    // Sum what each team must give back across ALL its BUDGET items (gross, not
+    // net of what it gets back, so every conditional decrement below can succeed
+    // in any order).
+    const giveBack = new Map<number, number>();
+    for (const item of trade.items) {
+      if (item.assetType !== "BUDGET") continue;
+      giveBack.set(item.recipientId, (giveBack.get(item.recipientId) ?? 0) + (item.amount || 0));
+    }
+    for (const [teamId, amount] of giveBack) {
+      const recipientTeam = await tx.team.findUnique({ where: { id: teamId }, select: { budget: true } });
+      if (!recipientTeam || recipientTeam.budget < amount) {
+        throw new TradeValidationError(
+          `Cannot reverse: recipient has insufficient budget ($${recipientTeam?.budget ?? 0}, needs $${amount})`,
+        );
+      }
+    }
+
+    for (const { item, row } of playerMoves) {
+      const playerId = item.playerId as number;
+      // Never end a row before it starts: process may have dated the trade to
+      // a future period start.
+      const effective = row.acquiredAt > reverseEffective ? row.acquiredAt : reverseEffective;
+      await tx.roster.update({
+        where: { id: row.id },
+        data: { releasedAt: effective, source: "TRADE_REVERSE" },
+      });
+      // Window-aware availability: excludes the just-released recipient row.
+      await assertNoOwnershipConflict(tx, {
+        leagueId: trade.leagueId,
+        playerId,
+        acquiredAt: effective,
+        releasedAt: null,
+        excludeRosterIds: [row.id],
+      });
+      // Same slot rule as process (and CommissionerService.executeTrade).
+      const tradedPlayer = await tx.player.findUnique({ where: { id: playerId }, select: { posPrimary: true } });
+      await tx.roster.create({
+        data: {
+          teamId: item.senderId,
+          playerId,
+          source: "TRADE_REVERSE",
+          acquiredAt: effective,
+          price: row.price,
+          assignedPosition: rosterSlotFor({
+            assignedPosition: row.assignedPosition,
+            posPrimary: tradedPlayer?.posPrimary,
+          }),
+        },
+      });
+    }
+
+    for (const item of trade.items) {
+      if (item.assetType === "BUDGET") {
         const amount = item.amount || 0;
-        // Verify recipient has sufficient budget to return before reversing
-        const recipientTeam = await tx.team.findUnique({ where: { id: item.recipientId }, select: { budget: true } });
-        if (!recipientTeam || recipientTeam.budget < amount) {
-          throw new Error(`Cannot reverse: recipient has insufficient budget ($${recipientTeam?.budget ?? 0}, needs $${amount})`);
+        // Reverse: take from recipient, give to sender. Checked above under the
+        // trade lock; the decrement is conditional too, so it can never go negative.
+        const taken = await tx.team.updateMany({
+          where: { id: item.recipientId, budget: { gte: amount } },
+          data: { budget: { decrement: amount } },
+        });
+        if (taken.count === 0) {
+          throw new TradeValidationError(
+            `Cannot reverse: ${item.recipient?.name ?? `Team #${item.recipientId}`} no longer has $${amount}`,
+          );
         }
-        // Reverse: take from recipient, give to sender
-        await tx.team.update({ where: { id: item.recipientId }, data: { budget: { decrement: amount } } });
         await tx.team.update({ where: { id: item.senderId }, data: { budget: { increment: amount } } });
       } else if (item.assetType === "WAIVER_PRIORITY") {
         // Re-swap waiver priority overrides back to original
@@ -795,6 +899,16 @@ router.post("/:id/reverse", requireAuth, asyncHandler(async (req, res) => {
       data: { status: "REVERSED" },
     });
   }, { timeout: 30_000 });
+  } catch (err: unknown) {
+    if (err instanceof TradeValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
+    const msg = err instanceof Error ? err.message : "Trade reverse failed";
+    if (msg.includes("Ownership conflict")) {
+      return res.status(400).json({ error: msg });
+    }
+    throw err;
+  }
 
   writeAuditLog({
     userId: req.user!.id,

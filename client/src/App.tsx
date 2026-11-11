@@ -32,9 +32,12 @@ const StartPeriodPage = React.lazy(() => import("./features/commissioner/pages/S
 const RulesPage = React.lazy(() => import("./features/commissioner/pages/RulesPage"));
 const SeasonPage = React.lazy(() => import("./features/commissioner/pages/SeasonPage"));
 const RostersPage = React.lazy(() => import("./features/commissioner/pages/RostersPage"));
+const CommissionerTradesPage = React.lazy(() => import("./features/commissioner/pages/CommissionerTradesPage"));
 const TeamRosterPage = React.lazy(() => import("./features/commissioner/pages/TeamRosterPage"));
 const MeetingPage = React.lazy(() => import("./features/commissioner/pages/MeetingPage"));
 const MeetingReviewPage = React.lazy(() => import("./features/commissioner/pages/MeetingReviewPage"));
+const TradesHomePage = React.lazy(() => import("./features/trades/pages/TradesHomePage"));
+const NewTradePage = React.lazy(() => import("./features/trades/pages/NewTradePage"));
 const OwnersPage = React.lazy(() => import("./features/commissioner/pages/OwnersPage"));
 const MoneyPage = React.lazy(() => import("./features/commissioner/pages/MoneyPage"));
 const BillPeriodPage = React.lazy(() => import("./features/commissioner/pages/BillPeriodPage"));
@@ -207,6 +210,7 @@ export default function App() {
                     <Route path="/commissioner/:leagueId/rosters/:teamId" element={<ErrorBoundary name="commissioner-team-roster"><TeamRosterPage /></ErrorBoundary>} />
                     <Route path="/commissioner/:leagueId/rosters" element={<ErrorBoundary name="commissioner-rosters"><RostersPage /></ErrorBoundary>} />
                     {/* Section pages. Literal sub-routes (recent, close/:periodId, start/:periodId, bill/:periodId, ...) must be declared ABOVE this catch. */}
+                    <Route path="/commissioner/:leagueId/trades" element={<ErrorBoundary name="commissioner-trades"><CommissionerTradesPage /></ErrorBoundary>} />
                     <Route path="/commissioner/:leagueId/owners" element={<ErrorBoundary name="commissioner-owners"><OwnersPage /></ErrorBoundary>} />
                     <Route path="/commissioner/:leagueId/money" element={<ErrorBoundary name="commissioner-money"><MoneyPage /></ErrorBoundary>} />
                     <Route path="/commissioner/:leagueId/:section" element={<ErrorBoundary name="commissioner-section"><CommissionerSectionPage /></ErrorBoundary>} />
@@ -223,7 +227,8 @@ export default function App() {
                     <Route path="/injured-list" element={<InjuredListPage />} />
                     <Route path="/activity" element={<ActivityPage />} />
                     <Route path="/transactions" element={<Navigate to="/activity" replace />} />
-                    <Route path="/trades" element={<Navigate to="/activity" replace />} />
+                    <Route path="/trades" element={<TradesHomePage />} />
+                    <Route path="/trades/new" element={<NewTradePage />} />
                     <Route path="/trading-block" element={<Navigate to="/board" replace />} />
                     <Route path="/board" element={<BoardPage />} />
                     <Route path="/chat" element={<Navigate to="/board" replace />} />

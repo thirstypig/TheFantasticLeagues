@@ -154,8 +154,8 @@ describe("CommissionerSectionPage", () => {
     expect(vi.mocked(getCommissionerOverview)).toHaveBeenCalledWith(20);
   });
 
-  it("trades renders the Operations trades sub-pane", async () => {
-    renderAt("/commissioner/20/trades");
+  it("trade-record renders the Operations trades sub-pane", async () => {
+    renderAt("/commissioner/20/trade-record");
     await waitFor(() => expect(screen.getByTestId("trade-tool")).toBeInTheDocument());
     expect(screen.getByText("Record Retroactive Trade")).toBeInTheDocument();
     expect(screen.queryByRole("tablist", { name: "Commissioner sections" })).toBeNull();
@@ -171,7 +171,7 @@ describe("CommissionerSectionPage", () => {
   function renderWithNav(path: string) {
     return render(
       <MemoryRouter initialEntries={[path]}>
-        <Link to="/commissioner/20/trades">go-trades</Link>
+        <Link to="/commissioner/20/trade-record">go-trades</Link>
         <Routes>
           <Route path="/commissioner/:leagueId/:section" element={<CommissionerSectionPage />} />
         </Routes>
@@ -206,6 +206,12 @@ describe("CommissionerSectionPage", () => {
     fireEvent.click(screen.getByText("go-trades"));
     await waitFor(() => expect(screen.getByTestId("trade-tool")).toBeInTheDocument());
     expect(screen.queryByTestId("bulk-ops-panel")).toBeNull();
+  });
+
+  it("trades is no longer a section slug (the queue page owns it)", async () => {
+    renderAt("/commissioner/20/trades");
+    await waitFor(() => expect(screen.getByTestId("loc")).toHaveTextContent("/commissioner/20"));
+    expect(screen.queryByTestId("trade-tool")).toBeNull();
   });
 
   it("rosters is no longer a section slug (redirects to the hub)", async () => {
