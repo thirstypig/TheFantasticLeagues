@@ -69,10 +69,6 @@ vi.mock("../../../../hooks/useRosterStatus", () => ({
   useRosterStatus: () => ({ ilPlayers: [], minorsPlayers: [], allPlayers: [] }),
 }));
 
-// ── Heavy child components (prevent deep dependency pulls) ───────────────────
-vi.mock("../../../../components/shared/PlayerDetailModal", () => ({
-  default: () => null,
-}));
 vi.mock("../../../auction/components/PlayerExpandedRow", () => ({
   default: () => null,
 }));

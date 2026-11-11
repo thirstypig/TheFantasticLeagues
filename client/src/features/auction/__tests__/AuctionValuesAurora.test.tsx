@@ -6,22 +6,25 @@
  * Phase 1 — Aurora is the only AuctionValues page now.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 vi.mock("../../../api", () => ({
   getAuctionValues: vi.fn().mockResolvedValue([]),
   getLeague: vi.fn().mockResolvedValue({ league: { teams: [] } }),
+  getPlayerSeasonStatsMeta: vi.fn().mockResolvedValue(null),
+}));
+vi.mock("../../../components/shared/playerCard/PlayerCard", () => ({
+  PlayerCard: ({ mlbId }: { mlbId: number }) => <div data-testid="player-card" data-mlbid={mlbId} />,
 }));
 
 vi.mock("../../../contexts/LeagueContext", () => ({
   useLeague: () => ({ leagueId: 1, outfieldMode: "OF" }),
 }));
 
-vi.mock("../../../components/shared/PlayerDetailModal", () => ({
-  default: () => null,
-}));
 
+import * as api from "../../../api";
+import { PlayerCardProvider } from "../../../components/shared/playerCard/PlayerCardProvider";
 import AuctionValues from "../pages/AuctionValues";
 
 beforeEach(() => {
@@ -31,7 +34,9 @@ beforeEach(() => {
 function renderWithRouter() {
   return render(
     <MemoryRouter initialEntries={["/auction-values"]}>
-      <AuctionValues />
+      <PlayerCardProvider>
+        <AuctionValues />
+      </PlayerCardProvider>
     </MemoryRouter>,
   );
 }
@@ -54,4 +59,21 @@ describe("Aurora AuctionValues", () => {
     });
   });
 
+  it("clicking a row opens the player card for that row's mlbId", async () => {
+    vi.mocked(api.getAuctionValues).mockResolvedValueOnce([
+      { mlb_id: "660271", player_name: "Test Hitter", positions: "OF", is_pitcher: false, dollar_value: 30 },
+    ] as never);
+    renderWithRouter();
+    fireEvent.click(await screen.findByText("Test Hitter"));
+    expect(screen.getByTestId("player-card")).toHaveAttribute("data-mlbid", "660271");
+  });
+
+  it("a row with no usable mlbId does not open the card", async () => {
+    vi.mocked(api.getAuctionValues).mockResolvedValueOnce([
+      { mlb_id: "", player_name: "No Id Guy", positions: "OF", is_pitcher: false, dollar_value: 5 },
+    ] as never);
+    renderWithRouter();
+    fireEvent.click(await screen.findByText("No Id Guy"));
+    expect(screen.queryByTestId("player-card")).toBeNull();
+  });
 });

@@ -30,7 +30,8 @@ import { saveTradeBlock, getLeagueTradeBlocks } from '../../teams/api';
 import BidHistoryChart from './BidHistoryChart';
 import DraftReport from './DraftReport';
 import PlayerExpandedRow from './PlayerExpandedRow';
-import PlayerDetailModal from '../../../components/shared/PlayerDetailModal';
+import { usePlayerCard } from '../../../components/shared/playerCard/PlayerCardProvider';
+import { cardMlbId } from '../../../components/shared/playerDetailHelpers';
 import { Glass, IridText, SectionLabel, Chip } from '../../../components/aurora/atoms';
 import { DataFreshness } from '../../../components/shared/DataFreshness';
 
@@ -75,7 +76,11 @@ const AURORA_BTN_BASE: React.CSSProperties = {
 export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: AuctionCompleteProps) {
   const [expandedTeamId, setExpandedTeamId] = useState<number | null>(null);
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
-  const [selectedPlayer, setSelectedPlayer] = useState<PlayerSeasonStat | null>(null);
+  const { open: openPlayerCard } = usePlayerCard();
+  const selectPlayer = (p: PlayerSeasonStat) => {
+    const id = cardMlbId(p.mlb_id);
+    if (id) openPlayerCard(id);
+  };
   const [rosterSort, setRosterSort] = useState<string>("position");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const toggleSort = (col: string) => {
@@ -674,7 +679,7 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
                                       isTaken={true}
                                       ownerName={team.name}
                                       colSpan={9}
-                                      onViewDetail={(p) => setSelectedPlayer(p)}
+                                      onViewDetail={(p) => selectPlayer(p)}
                                     />
                                   )}
                                 </React.Fragment>
@@ -734,7 +739,7 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
                                       isTaken={true}
                                       ownerName={team.name}
                                       colSpan={9}
-                                      onViewDetail={(p) => setSelectedPlayer(p)}
+                                      onViewDetail={(p) => selectPlayer(p)}
                                     />
                                   )}
                                 </React.Fragment>
@@ -798,7 +803,6 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
         </Glass>
       </div>
 
-      {selectedPlayer && <PlayerDetailModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />}
     </div>
   );
 }

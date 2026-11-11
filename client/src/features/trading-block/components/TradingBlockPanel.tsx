@@ -5,9 +5,8 @@ import { getTradingBlock, getMyTradingBlock, addToTradingBlock, updateTradingBlo
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 import { Button } from "../../../components/ui/button";
 import { useLeague } from "../../../contexts/LeagueContext";
-import PlayerDetailModal from "../../../components/shared/PlayerDetailModal";
+import { usePlayerCard } from "../../../components/shared/playerCard/PlayerCardProvider";
 import { displayPos } from "../../../lib/playerDisplay";
-import type { PlayerSeasonStat } from "../../../api/types";
 
 interface TradingBlockPanelProps {
   /** If provided, shows only this team's block with edit controls */
@@ -34,7 +33,7 @@ export default function TradingBlockPanel({ teamId, leagueWide = false, rosterPl
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editAskingFor, setEditAskingFor] = useState("");
 
-  const [selectedMlbId, setSelectedMlbId] = useState<number | null>(null);
+  const { open: openPlayerCard } = usePlayerCard();
 
   const isMyTeam = teamId === myTeamId;
   const effectiveTeamId = teamId ?? myTeamId;
@@ -204,7 +203,7 @@ export default function TradingBlockPanel({ teamId, leagueWide = false, rosterPl
                       {group.items.map((item) => (
                         <ThemedTr key={item.id} className="hover:bg-[var(--lg-tint)] transition-colors">
                           <ThemedTd frozen>
-                            <button type="button" onClick={() => item.player?.mlbId && setSelectedMlbId(item.player.mlbId)} className="font-semibold text-xs hover:text-[var(--lg-accent)] transition-colors cursor-pointer text-left">{item.player?.name ?? "Unknown"}</button>
+                            <button type="button" onClick={() => item.player?.mlbId && openPlayerCard(item.player.mlbId)} className="font-semibold text-xs hover:text-[var(--lg-accent)] transition-colors cursor-pointer text-left">{item.player?.name ?? "Unknown"}</button>
                           </ThemedTd>
                           <ThemedTd>
                             <span className="px-1 py-px rounded text-xs font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
@@ -250,7 +249,7 @@ export default function TradingBlockPanel({ teamId, leagueWide = false, rosterPl
                 {items.map((item) => (
                   <ThemedTr key={item.id} className="hover:bg-[var(--lg-tint)] transition-colors">
                     <ThemedTd frozen>
-                      <button type="button" onClick={() => item.player?.mlbId && setSelectedMlbId(item.player.mlbId)} className="font-semibold text-xs hover:text-[var(--lg-accent)] transition-colors cursor-pointer text-left">{item.player?.name ?? "Unknown"}</button>
+                      <button type="button" onClick={() => item.player?.mlbId && openPlayerCard(item.player.mlbId)} className="font-semibold text-xs hover:text-[var(--lg-accent)] transition-colors cursor-pointer text-left">{item.player?.name ?? "Unknown"}</button>
                     </ThemedTd>
                     <ThemedTd>
                       <span className="px-1 py-px rounded text-xs font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
@@ -303,12 +302,6 @@ export default function TradingBlockPanel({ teamId, leagueWide = false, rosterPl
             </ThemedTable>
           </div>
         )
-      )}
-      {selectedMlbId && (
-        <PlayerDetailModal
-          player={{ mlb_id: String(selectedMlbId) } as PlayerSeasonStat}
-          onClose={() => setSelectedMlbId(null)}
-        />
       )}
     </div>
   );

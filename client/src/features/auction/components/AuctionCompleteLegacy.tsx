@@ -13,7 +13,8 @@ import { getTradeBlock, saveTradeBlock, getLeagueTradeBlocks } from '../../teams
 import BidHistoryChart from './BidHistoryChart';
 import DraftReport from './DraftReport';
 import PlayerExpandedRow from './PlayerExpandedRow';
-import PlayerDetailModal from '../../../components/shared/PlayerDetailModal';
+import { usePlayerCard } from '../../../components/shared/playerCard/PlayerCardProvider';
+import { cardMlbId } from '../../../components/shared/playerDetailHelpers';
 import { StatsUpdated } from '../../../components/shared/StatsTables';
 
 interface AuctionCompleteLegacyProps {
@@ -43,7 +44,11 @@ interface DraftGrade {
 export default function AuctionCompleteLegacy({ auctionState, myTeamId, onRefresh }: AuctionCompleteLegacyProps) {
   const [expandedTeamId, setExpandedTeamId] = useState<number | null>(null);
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
-  const [selectedPlayer, setSelectedPlayer] = useState<PlayerSeasonStat | null>(null);
+  const { open: openPlayerCard } = usePlayerCard();
+  const selectPlayer = (p: PlayerSeasonStat) => {
+    const id = cardMlbId(p.mlb_id);
+    if (id) openPlayerCard(id);
+  };
   const [rosterSort, setRosterSort] = useState<string>("position");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const toggleSort = (col: string) => {
@@ -588,7 +593,7 @@ export default function AuctionCompleteLegacy({ auctionState, myTeamId, onRefres
                                 isTaken={true}
                                 ownerName={team.name}
                                 colSpan={9}
-                                onViewDetail={(p) => setSelectedPlayer(p)}
+                                onViewDetail={(p) => selectPlayer(p)}
                               />
                             )}
                             </React.Fragment>
@@ -648,7 +653,7 @@ export default function AuctionCompleteLegacy({ auctionState, myTeamId, onRefres
                                 isTaken={true}
                                 ownerName={team.name}
                                 colSpan={9}
-                                onViewDetail={(p) => setSelectedPlayer(p)}
+                                onViewDetail={(p) => selectPlayer(p)}
                               />
                             )}
                             </React.Fragment>
@@ -698,7 +703,6 @@ export default function AuctionCompleteLegacy({ auctionState, myTeamId, onRefres
           })}
         </div>
       </div>
-      {selectedPlayer && <PlayerDetailModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />}
     </div>
   );
 }

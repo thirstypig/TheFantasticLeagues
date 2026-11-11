@@ -34,7 +34,7 @@ import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "reac
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { Glass, SectionLabel } from "../../../../components/aurora/atoms";
 import { getPlayerCareerStats, type CareerHittingRow, type CareerPitchingRow, type HOrP } from "../../../../api";
-import { CareerTable } from "../../../../components/shared/PlayerDetailModal";
+import { CareerTable } from "../../../../components/shared/playerDetailHelpers";
 import { PendingChangeBar } from "./PendingChangeBar";
 import { RosterRowV3, type RosterRowDnd } from "./RosterRowV3";
 import { MobileRowV3, type MobileRowDnd } from "./MobileRowV3";

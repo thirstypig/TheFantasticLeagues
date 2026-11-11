@@ -4,7 +4,7 @@
  * Aurora bento layout for the projected-auction-values viewer used
  * during draft prep. Mirrors the legacy page's behavior 1:1 (Hitters/
  * Pitchers toggle, debounced search, value-relative bar, click-to-open
- * PlayerDetailModal) under AmbientBg with Glass cards.
+ * player card) under AmbientBg with Glass cards.
  *
  * Per the auction-rollout plan this is the lowest-risk auction surface
  * to Aurora-ize first: pre/post-draft only, no WebSocket coupling, no
@@ -30,7 +30,8 @@ import { toNum } from "../../../api/base";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { useSeasonGating } from "../../../hooks/useSeasonGating";
 import { mapPosition } from "../../../lib/sportConfig";
-import PlayerDetailModal from "../../../components/shared/PlayerDetailModal";
+import { usePlayerCard } from "../../../components/shared/playerCard/PlayerCardProvider";
+import { cardMlbId } from "../../../components/shared/playerDetailHelpers";
 import { DataFreshness } from "../../../components/shared/DataFreshness";
 
 function norm(v: any) {
@@ -81,7 +82,11 @@ export default function AuctionValues() {
     debounceRef.current = setTimeout(() => setDebouncedQuery(value), 250);
   };
 
-  const [selected, setSelected] = useState<PlayerSeasonStat | null>(null);
+  const { open: openPlayerCard } = usePlayerCard();
+  const selectPlayer = (p: PlayerSeasonStat) => {
+    const id = cardMlbId(p.mlb_id);
+    if (id) openPlayerCard(id);
+  };
   const [computedAt, setComputedAt] = useState<string | null>(null);
 
   useEffect(() => {
@@ -246,7 +251,7 @@ export default function AuctionValues() {
                     return (
                       <tr
                         key={(p as any).row_id ?? `${p.mlb_id}-${rowIsPitcher(p) ? "P" : "H"}`}
-                        onClick={() => setSelected({ ...p, ogba_team_name: teamNameMap[ogbaTeam(p).toUpperCase()] || "" } as PlayerSeasonStat)}
+                        onClick={() => selectPlayer(p)}
                         style={{ cursor: "pointer", transition: "background 200ms ease" }}
                         className="hover:bg-[var(--am-surface-faint)]"
                       >
@@ -303,7 +308,6 @@ export default function AuctionValues() {
 
       </div>
 
-      <PlayerDetailModal open={!!selected} player={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }

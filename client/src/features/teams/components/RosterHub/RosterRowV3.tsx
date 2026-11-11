@@ -34,6 +34,8 @@ import {
   buildRowClasses,
 } from "./rowShared";
 import type { RosterHubPlayer } from "./types";
+import { usePlayerCard } from "../../../../components/shared/playerCard/PlayerCardProvider";
+import { cardMlbId } from "../../../../components/shared/playerDetailHelpers";
 
 const SLOT_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P"] as const;
 
@@ -112,6 +114,8 @@ export function RosterRowV3({
   dnd,
   isShakeRejecting,
 }: RosterRowV3Props) {
+  const { open: openPlayerCard } = usePlayerCard();
+  const cardId = cardMlbId(player.mlbId);
   const className = buildRowClasses({
     isPending,
     isEligible,
@@ -169,8 +173,8 @@ export function RosterRowV3({
           <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
             <button
               type="button"
-              onClick={onToggleExpand}
-              aria-expanded={isExpanded}
+              onClick={() => (cardId ? openPlayerCard(cardId) : onToggleExpand?.())}
+              aria-expanded={cardId ? undefined : isExpanded}
               style={{
                 padding: 0,
                 border: 0,
@@ -179,7 +183,7 @@ export function RosterRowV3({
                 fontSize: 13,
                 fontWeight: 600,
                 textAlign: "left",
-                cursor: onToggleExpand ? "pointer" : "default",
+                cursor: cardId || onToggleExpand ? "pointer" : "default",
               }}
             >
               <PlayerNameContent player={player} isPending={isPending} />

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { PlayerLink } from "../../components/shared/playerCard/PlayerCardProvider";
 import {
   classifyNews,
   formatLine,
@@ -209,7 +210,7 @@ export function TonightSection({
                   <div className="today-pl" key={`${p.mlbId}-${p.playerName}`}>
                     <div>
                       <div className="today-pl-name" data-testid="tonight-name">
-                        {p.playerName}
+                        <PlayerLink mlbId={p.mlbId} name={p.playerName} />
                         {p.posPrimary && <span className="today-pos">{p.posPrimary}</span>}
                       </div>
                       <div className="today-pl-sub">

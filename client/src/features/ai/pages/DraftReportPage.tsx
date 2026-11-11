@@ -8,7 +8,8 @@ import { ThemedTable, ThemedThead, ThemedTbody, ThemedTr, ThemedTd } from "../..
 import { SortableHeader } from "../../../components/ui/SortableHeader";
 import { isPitcher as isPitcherPos, mapPosition, positionToSlots, POS_ORDER } from "../../../lib/sportConfig";
 import PlayerExpandedRow from "../../auction/components/PlayerExpandedRow";
-import PlayerDetailModal from "../../../components/shared/PlayerDetailModal";
+import { usePlayerCard } from "../../../components/shared/playerCard/PlayerCardProvider";
+import { cardMlbId } from "../../../components/shared/playerDetailHelpers";
 
 /* ── Types ───────────────────────────────────────────────────────── */
 
@@ -401,7 +402,11 @@ export default function DraftReportPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [playerStats, setPlayerStats] = useState<PlayerSeasonStat[]>([]);
-  const [selectedPlayer, setSelectedPlayer] = useState<PlayerSeasonStat | null>(null);
+  const { open: openPlayerCard } = usePlayerCard();
+  const selectPlayer = (p: PlayerSeasonStat) => {
+    const id = cardMlbId(p.mlb_id);
+    if (id) openPlayerCard(id);
+  };
   const loadingMessages = [
     "Analyzing 8 teams across 184 roster spots...",
     "Cross-referencing projected values with auction prices...",
@@ -574,7 +579,7 @@ export default function DraftReportPage() {
           {/* Team cards */}
           <div className="space-y-4 mb-10">
             {sortedTeams.map(team => (
-              <TeamCard key={team.teamId} team={team} leagueAvgH={report.leagueSummary.avgHitterPrice} leagueAvgP={report.leagueSummary.avgPitcherPrice} outfieldMode={outfieldMode} onSelectPlayer={setSelectedPlayer} />
+              <TeamCard key={team.teamId} team={team} leagueAvgH={report.leagueSummary.avgHitterPrice} leagueAvgP={report.leagueSummary.avgPitcherPrice} outfieldMode={outfieldMode} onSelectPlayer={selectPlayer} />
             ))}
           </div>
 
@@ -613,7 +618,6 @@ export default function DraftReportPage() {
         </>
       )}
 
-      {selectedPlayer && <PlayerDetailModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />}
     </div>
   );
 }

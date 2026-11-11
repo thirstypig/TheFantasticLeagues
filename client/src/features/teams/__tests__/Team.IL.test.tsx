@@ -53,10 +53,6 @@ vi.mock("../../../hooks/useRosterStatus", () => ({
   useRosterStatus: () => useRosterStatusMock(),
 }));
 
-// Heavy collaborators stubbed out — they'd otherwise require deep mocking.
-vi.mock("../../../components/shared/PlayerDetailModal", () => ({
-  default: () => null,
-}));
 vi.mock("../../auction/components/PlayerExpandedRow", () => ({
   default: () => null,
 }));

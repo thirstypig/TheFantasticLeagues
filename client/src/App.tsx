@@ -221,9 +221,9 @@ export default function App() {
                         shortcut (PR #132) and external bookmarks both land here. */}
                     <Route path="/my-team" element={<MyTeamRedirect />} />
                     <Route path="/players" element={<Players />} />
-                    {/* Aurora Player Detail page (screen #5). PlayerDetailModal
-                        still ships for inline use elsewhere (Auction, Team,
-                        Trading Block, Watchlist, Board, Draft Report). */}
+                    {/* Aurora Player Detail page (screen #5), the "Full profile"
+                        target of the player card. The card (PlayerCardProvider)
+                        is the inline peek for every other surface. */}
                     <Route path="/players/:mlbId" element={<PlayerDetail />} />
                     {/* League-wide IL page — sortable by AL/NL + by team. Linked from Standings hero. */}
                     <Route path="/injured-list" element={<InjuredListPage />} />

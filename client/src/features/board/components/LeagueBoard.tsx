@@ -23,7 +23,8 @@ import {
   type BoardCard,
 } from "../api";
 import { useAuth } from "../../../auth/AuthProvider";
-import PlayerDetailModal from "../../../components/shared/PlayerDetailModal";
+import { usePlayerCard } from "../../../components/shared/playerCard/PlayerCardProvider";
+import { cardMlbId } from "../../../components/shared/playerDetailHelpers";
 
 /* -- Column config -------------------------------------------------------- */
 
@@ -438,7 +439,7 @@ function CardComponent({
   const isMobileExpanded = expandedId === card.id;
 
   const handleCardClick = () => {
-    // Trade block cards open the PlayerDetailModal
+    // Trade block cards open the player card
     if (isTradeBlock && card.metadata?.playerId) {
       onOpenPlayer(card.metadata.playerId);
       return;
@@ -756,7 +757,7 @@ export default function LeagueBoard({ leagueId }: { leagueId: number }) {
   const [selectedCard, setSelectedCard] = useState<BoardCard | null>(null);
   const [mobileExpandedId, setMobileExpandedId] = useState<number | null>(null);
   const [showDesktopForm, setShowDesktopForm] = useState(false);
-  const [playerModalCard, setPlayerModalCard] = useState<BoardCard | null>(null);
+  const { open: openPlayerCard } = usePlayerCard();
 
   const loadCards = useCallback(async () => {
     if (!leagueId) return;
@@ -846,8 +847,9 @@ export default function LeagueBoard({ leagueId }: { leagueId: number }) {
     const card = cards.find(
       (c) => c.column === "trade_block" && c.metadata?.playerId === playerId
     );
-    if (card) setPlayerModalCard(card);
-  }, [cards]);
+    const mlbId = cardMlbId(card?.metadata?.mlbId);
+    if (mlbId) openPlayerCard(mlbId);
+  }, [cards, openPlayerCard]);
 
   const cardsByColumn = (col: ColumnId) => cards.filter((c) => c.column === col);
 
@@ -1019,20 +1021,6 @@ export default function LeagueBoard({ leagueId }: { leagueId: number }) {
             isCommissioner={isCommissioner}
           />
         </div>
-      )}
-
-      {/* Player detail modal for trade block cards */}
-      {playerModalCard && (
-        <PlayerDetailModal
-          player={{
-            mlb_id: String(playerModalCard.metadata?.mlbId ?? ""),
-            player_name: playerModalCard.title,
-            posPrimary: playerModalCard.metadata?.posPrimary,
-            mlbTeam: playerModalCard.metadata?.mlbTeam,
-          } as any}
-          onClose={() => setPlayerModalCard(null)}
-          open={true}
-        />
       )}
     </div>
   );
