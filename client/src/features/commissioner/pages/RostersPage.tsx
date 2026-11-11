@@ -3,7 +3,7 @@
 import React, { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Glass, SectionLabel } from "../../../components/aurora/atoms";
-import { CardError, LINK, MUTED, PRIMARY, ROW, Skeleton, useLoad } from "../components/cardParts";
+import { CardError, LINK, PRIMARY, ROW, Skeleton, useLoad } from "../components/cardParts";
 import {
   getCommissionerOverview,
   getCommissionerRosters,
@@ -63,7 +63,10 @@ function MeetingCard({ base, periods, leagueId }: { base: string; periods: HubPe
     );
   }
 
-  const prev = state.period && state.period.id !== next.id ? state.period : null;
+  const prev =
+    periods
+      .filter((p) => p.status === "completed")
+      .sort((a, b) => b.endDate.localeCompare(a.endDate))[0] ?? null;
   const prevNo = prev ? periodNumber(prev) : null;
   const nextNo = periodNumber(next);
   const cap = prev
@@ -102,13 +105,14 @@ function RostersPageBody() {
   let teamsBlock: React.ReactNode;
   if (overview.state === "loading" || check.state === "loading") {
     teamsBlock = <Glass padded={false}><Skeleton /></Glass>;
-  } else if (overview.state === "error" || check.state === "error") {
+  } else if (overview.state === "error") {
     teamsBlock = <Glass padded={false}><CardError>Couldn’t load teams.</CardError></Glass>;
   } else {
-    const cap = check.data.cap;
+    const checkData = check.state === "ready" ? check.data : null;
+    const cap = checkData?.cap ?? null;
     const lines: TeamLine[] = (overview.data.teams ?? [])
       .map((t) => {
-        const c = check.data.teams.find((x) => x.teamId === t.id);
+        const c = checkData?.teams.find((x) => x.teamId === t.id);
         const g = ghosts.state === "ready" ? ghosts.data.teams.find((x) => x.teamId === t.id) : undefined;
         return {
           id: t.id,
@@ -120,8 +124,8 @@ function RostersPageBody() {
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-    const overBy = (l: TeamLine) => (l.active ?? 0) - cap;
-    const count = (l: TeamLine) => (l.active === null ? "–" : `${l.active} / ${cap}`);
+    const overBy = (l: TeamLine) => (l.active ?? 0) - (cap ?? 0);
+    const count = (l: TeamLine) => (l.active === null || cap === null ? "–" : `${l.active} / ${cap}`);
 
     teamsBlock = (
       <>
@@ -131,18 +135,16 @@ function RostersPageBody() {
               <Link key={l.id} to={`${base}/rosters/${l.id}`} data-testid="team-row" style={{ ...ROW, minHeight: 56 }}>
                 <span style={{ display: "grid", gap: 2 }}>
                   <b style={{ fontSize: 17 }}>{l.name}</b>
-                  {l.ghosts.length > 0 ? (
-                    l.ghosts.map((n) => (
-                      <small key={n} style={{ fontSize: 15, color: "var(--am-warning)" }}>{n} back from MLB IL</small>
-                    ))
-                  ) : (
-                    <small style={SUB}>{count(l)}</small>
-                  )}
+                  {l.ghosts.map((n) => (
+                    <small key={n} style={{ fontSize: 15, color: "var(--am-warning)" }}>{n} back from MLB IL</small>
+                  ))}
+                  {l.ghosts.length === 0 && <small style={SUB}>{count(l)}</small>}
                 </span>
-                {l.ghosts.length > 0 ? (
-                  <span style={{ fontSize: 15, fontWeight: 600, color: "var(--am-warning)" }}>Fix</span>
-                ) : l.over ? (
-                  <span style={{ fontSize: 15, fontWeight: 600, color: "var(--am-negative)" }}>{overBy(l)} over</span>
+                {l.over || l.ghosts.length > 0 ? (
+                  <span style={{ display: "flex", gap: 8, fontSize: 15, fontWeight: 600 }}>
+                    {l.over && <span style={{ color: "var(--am-negative)" }}>{overBy(l)} over</span>}
+                    {l.ghosts.length > 0 && <span style={{ color: "var(--am-warning)" }}>Fix</span>}
+                  </span>
                 ) : (
                   <span aria-hidden="true">›</span>
                 )}
@@ -196,7 +198,9 @@ function RostersPageBody() {
       {periods.state === "ready" && <MeetingCard base={base} periods={periods.data} leagueId={leagueId} />}
       <SectionLabel>Teams · A to Z</SectionLabel>
       {teamsBlock}
-      <Link to={`${base}/roster-setup`} style={{ ...LINK, ...MUTED, color: "var(--am-accent)" }}>Preseason tools ›</Link>
+      {check.state === "error" && <p style={{ margin: 0, ...SUB }}>Couldn’t check roster sizes.</p>}
+      {ghosts.state === "error" && <p style={{ margin: 0, ...SUB }}>Couldn’t check IL status.</p>}
+      <Link to={`${base}/roster-setup`} style={LINK}>Preseason tools ›</Link>
     </div>
   );
 }

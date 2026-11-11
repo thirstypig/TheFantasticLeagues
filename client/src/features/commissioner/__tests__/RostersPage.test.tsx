@@ -139,4 +139,67 @@ describe("RostersPage", () => {
     expect(screen.getByText("Commissioners only.")).toBeTruthy();
     expect(m.getCommissionerOverview).not.toHaveBeenCalled();
   });
+
+  it("step start with a completed Period 8 still says Between Period 8 and 9", async () => {
+    vi.setSystemTime(new Date("2026-06-16T15:00:00.000Z"));
+    renderPage();
+    expect(await screen.findByText("Between Period 8 and 9")).toBeTruthy();
+  });
+
+  it("phone row shows the over flag and ghost flags together", async () => {
+    m.getGhostIlSummary.mockResolvedValue({
+      teams: [{ teamId: 3, teamName: "Los Doyers", teamCode: "LD", ghosts: [{ rosterId: 9, playerId: 9, playerName: "Kyle Gallen", currentMlbStatus: "IL" }] }],
+      totalTeamsWithGhosts: 1, totalGhosts: 1,
+    });
+    renderPage();
+    const phone = await screen.findByTestId("rosters-phone");
+    await within(phone).findByText("Black Sox");
+    const doyers = within(phone).getAllByTestId("team-row")[2];
+    expect(within(doyers).getByText("1 over")).toBeTruthy();
+    expect(within(doyers).getByText("Gallen back from MLB IL")).toBeTruthy();
+    expect(within(doyers).getByText("Fix")).toBeTruthy();
+  });
+
+  it("applies over and IL counts to the right team only", async () => {
+    renderPage();
+    const phone = await screen.findByTestId("rosters-phone");
+    await within(phone).findByText("Black Sox");
+    const rows = within(phone).getAllByTestId("team-row");
+    expect(within(rows[0]).queryByText(/over/)).toBeNull();
+    expect(within(rows[1]).queryByText(/over/)).toBeNull();
+    const trs = within(screen.getByTestId("rosters-desk")).getAllByTestId("team-tr");
+    const ilCells = trs.map((r) => r.querySelectorAll("td")[2].textContent);
+    expect(ilCells).toEqual(["0", "0", "2"]);
+  });
+
+  it("roster-check failure still lists teams with dashes and a note", async () => {
+    m.getRosterCheck.mockRejectedValue(new Error("x"));
+    renderPage();
+    const phone = await screen.findByTestId("rosters-phone");
+    await within(phone).findByText("Black Sox");
+    expect(within(phone).getAllByTestId("team-row")).toHaveLength(3);
+    expect(within(phone).getAllByText("–")).toHaveLength(3);
+    expect(screen.getByText("Couldn’t check roster sizes.")).toBeTruthy();
+  });
+
+  it("ghost-IL failure shows a note", async () => {
+    m.getGhostIlSummary.mockRejectedValue(new Error("x"));
+    renderPage();
+    expect(await screen.findByText("Couldn’t check IL status.")).toBeTruthy();
+    expect(screen.getAllByText("Black Sox").length).toBeGreaterThan(0);
+  });
+
+  it("rosters failure shows a dash in the IL column", async () => {
+    m.getCommissionerRosters.mockRejectedValue(new Error("x"));
+    renderPage();
+    await screen.findAllByText("Black Sox");
+    const trs = within(screen.getByTestId("rosters-desk")).getAllByTestId("team-tr");
+    expect(trs.map((r) => r.querySelectorAll("td")[2].textContent)).toEqual(["–", "–", "–"]);
+  });
+
+  it("overview failure shows the error card", async () => {
+    m.getCommissionerOverview.mockRejectedValue(new Error("x"));
+    renderPage();
+    expect(await screen.findByText("Couldn’t load teams.")).toBeTruthy();
+  });
 });
