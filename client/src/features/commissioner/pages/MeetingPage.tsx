@@ -174,7 +174,8 @@ function MeetingBody({ leagueId, periodId }: { leagueId: number; periodId: numbe
   const countAfter = selected && active !== null ? teamCountAfter(active, draft, selected.id) : null;
   const allComplete = teamMoves.length > 0 && teamMoves.every((mv) => mv.add && mv.drop);
   const anyError = teamMoves.some((mv) => mv.error);
-  const stays = allComplete && teamFlags.length === 0 && !anyError && countAfter !== null && cap !== null;
+  const overBy = countAfter !== null && cap !== null && countAfter > cap ? countAfter - cap : 0;
+  const stays = allComplete && teamFlags.length === 0 && !anyError && countAfter !== null && cap !== null && overBy === 0;
 
   const tonight = teams
     .map((t) => ({ team: t, moves: complete.filter((mv) => mv.teamId === t.id) }))
@@ -231,6 +232,9 @@ function MeetingBody({ leagueId, periodId }: { leagueId: number; periodId: numbe
                   onRemove={() => apply((d) => removeMove(d, mv.id))}
                 />
               ))}
+              {overBy > 0 && selected && (
+                <p style={{ margin: 0, fontSize: 15, color: "var(--am-negative)" }}>{`${selected.name} is ${overBy} over the limit. Each move keeps the count, so add a drop-only fix first.`}</p>
+              )}
               {stays ? (
                 <p style={{ margin: 0, fontSize: 15, color: "var(--am-positive)" }}>{`✓ Roster stays at ${countAfter} / ${cap}`}</p>
               ) : (

@@ -159,6 +159,14 @@ describe("MeetingPage", () => {
     expect(opts.queryByText("Later Larry")).toBeNull();
   });
 
+  it("an over-cap team gets no green check, and the over-the-limit line instead", async () => {
+    m.getRosterCheck.mockResolvedValue({ cap: 23, teams: [{ teamId: 4, teamName: "Skunk Dogs", activeCount: 25, over: true }] } as any);
+    seed({ ...emptyDraft(20, 9), selectedTeamId: 4, moves: [mv("a", 4, FRALEY, ALONSO)] });
+    renderPage();
+    expect(await screen.findByText("Skunk Dogs is 2 over the limit. Each move keeps the count, so add a drop-only fix first.")).toBeTruthy();
+    expect(screen.queryByText(/Roster stays at/)).toBeNull();
+  });
+
   it("No moves marks the team Passed and returns to the list", async () => {
     seed({ ...emptyDraft(20, 9), selectedTeamId: 4 });
     renderPage();
