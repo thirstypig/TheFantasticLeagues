@@ -471,9 +471,18 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
   });
   const rosteredPlayerIds = rosters.map((r) => r.playerId);
 
+  // Filter by league stats_source (NL/AL/MLB)
+  const allowedTeams = getTeamsForSource(await getLeagueStatsSource(leagueId));
+
   // Build the player where clause. Filter pushdown for FA-only callers
   // (todo #164) avoids loading ~600 rows into memory just to drop ~550.
+  // The NL/AL team filter is pushed down too for FA-only callers: `take`
+  // must count eligible rows, or an NL league's picker can get 20 AL rows
+  // that the in-memory filter below then drops to nothing.
   const playerWhere: Prisma.PlayerWhereInput = {
+    ...(freeAgentsOnly && allowedTeams
+      ? { AND: [{ OR: [{ mlbTeam: null }, { mlbTeam: "" }, { mlbTeam: "FA" }, { mlbTeam: { in: [...allowedTeams] } }] }] }
+      : {}),
     OR: [
       { mlbId: null },
       { mlbId: { lt: 900000 } },
@@ -502,9 +511,6 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
       price: Number(r.price),
     });
   }
-
-  // Filter by league stats_source (NL/AL/MLB)
-  const allowedTeams = getTeamsForSource(await getLeagueStatsSource(leagueId));
 
   // Load player values from 2026 CSV (name → dollar value + position)
   const valuesMap = loadPlayerValues();
