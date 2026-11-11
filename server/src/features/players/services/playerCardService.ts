@@ -32,6 +32,8 @@ export type PlayerCardData = {
   nextGame: { opp: string; home: boolean; startUtc: string } | null;
   splits: Record<RangeKey, GroupStats>;
   recent: Partial<Record<StatGroup, GameRow[]>>;
+  /** True when every windowed stat call failed (statsapi trouble), so the card has no usable stats. */
+  degraded: boolean;
 };
 
 // ── Date helpers (calendar days in US Eastern) ───────────────────
@@ -157,11 +159,13 @@ export async function buildPlayerCard(
   }
 
   // Only the people/{id} lookup is fatal; every other call degrades to null/[].
-  const soft = async <T,>(label: string, fallback: T, fn: () => Promise<T>): Promise<T> => {
+  let splitFailures = 0;
+  const soft = async <T,>(label: string, fallback: T, fn: () => Promise<T>, onFail?: () => void): Promise<T> => {
     try {
       return await fn();
     } catch (err) {
       logger.warn({ error: String(err), mlbId, label }, "Player card fetch failed; degrading");
+      onFail?.();
       return fallback;
     }
   };
@@ -172,6 +176,7 @@ export async function buildPlayerCard(
       g,
       stat: await soft<StatLine | null>(`${r.key}:${g}`, null, async () =>
         pickSplit(firstSplits(await get(r.url(g))), g),
+        () => { splitFailures++; },
       ),
     })),
   );
@@ -242,5 +247,8 @@ export async function buildPlayerCard(
     nextGame,
     splits,
     recent,
+    // Every windowed split failed: the card has no usable stats, so the client
+    // should offer a retry instead of claiming "No games yet".
+    degraded: splitJobs.length > 0 && splitFailures === splitJobs.length,
   };
 }

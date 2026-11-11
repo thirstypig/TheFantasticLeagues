@@ -1,6 +1,7 @@
 // server/src/features/players/routes.ts
 import { Router } from "express";
-import { requireAuth } from "../../middleware/auth.js";
+import type { RequestHandler } from "express";
+import { requireAuth, requireLeagueMember } from "../../middleware/auth.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { rateLimitPerUser } from "../../middleware/rateLimitPerUser.js";
 import { prisma } from "../../db/prisma.js";
@@ -243,14 +244,21 @@ router.get("/news/transactions", requireAuth, asyncHandler(async (_req, res) => 
  * Player card data: windowed splits, recent games, next game, fantasy owner.
  * Must be registered before GET /:mlbId.
  */
-router.get("/:mlbId/card", requireAuth, asyncHandler(async (req, res) => {
+router.get("/:mlbId/card", requireAuth, rateLimitPerUser({ capacity: 30, windowMs: 60_000, bucketName: "player-card" }), asyncHandler(async (req, res) => {
   const mlbId = Number(req.params.mlbId);
-  if (!Number.isInteger(mlbId) || mlbId <= 0) {
+  // Upper bound = Postgres Int4; anything larger would overflow the Prisma lookup.
+  if (!Number.isInteger(mlbId) || mlbId <= 0 || mlbId > 2147483647) {
     return res.status(400).json({ error: "Invalid MLB ID" });
   }
   const leagueId = Number(req.query.leagueId);
   if (!Number.isInteger(leagueId) || leagueId <= 0) {
     return res.status(400).json({ error: "leagueId is required" });
+  }
+  // Only known players reach statsapi: an unknown id (404 upstream) would be
+  // retried and could trip the global MLB circuit breaker for everyone.
+  const known = await prisma.player.findFirst({ where: { mlbId }, select: { id: true } });
+  if (!known) {
+    return res.status(404).json({ error: "Not found" });
   }
   try {
     res.json(await buildPlayerCard(mlbId, leagueId, new Date()));
@@ -455,6 +463,10 @@ router.get("/:mlbId/news", requireAuth, asyncHandler(async (req, res) => {
 
 const dataRouter = Router();
 
+/** Enforce league membership whenever a leagueId is supplied (admins bypass). */
+const requireLeagueMemberIfPresent: RequestHandler = (req, res, next) =>
+  req.query.leagueId ? requireLeagueMember("leagueId")(req, res, next) : next();
+
 /**
  * GET /api/player-season-stats?leagueId=N[&freeAgentsOnly=true&q=&take=50]
  *
@@ -469,7 +481,7 @@ const dataRouter = Router();
  * - `take` — clamp the response size (default unbounded; common pickers
  *   pass 50; defensively clamped to 200).
  */
-dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res) => {
+dataRouter.get("/player-season-stats", requireAuth, requireLeagueMemberIfPresent, asyncHandler(async (req, res) => {
   const leagueId = req.query.leagueId ? Number(req.query.leagueId) : null;
   if (!leagueId || !Number.isFinite(leagueId) || leagueId <= 0) {
     return res.status(400).json({ error: "Missing or invalid leagueId" });
@@ -604,7 +616,7 @@ dataRouter.get("/player-season-stats", requireAuth, asyncHandler(async (req, res
 }));
 
 /** GET /api/player-period-stats?leagueId=N — player stats for the active period */
-dataRouter.get("/player-period-stats", requireAuth, asyncHandler(async (req, res) => {
+dataRouter.get("/player-period-stats", requireAuth, requireLeagueMemberIfPresent, asyncHandler(async (req, res) => {
   const leagueId = req.query.leagueId ? Number(req.query.leagueId) : null;
   if (!leagueId || !Number.isFinite(leagueId)) return res.json({ stats: [], periods: [] });
 

@@ -35,6 +35,7 @@ vi.mock("../services/dataService.js", () => ({
 import { prisma } from "../../../db/prisma.js";
 import { mlbGetJson } from "../../../lib/mlbApi.js";
 import { buildPlayerCard } from "../services/playerCardService.js";
+import { _resetRateLimitPerUserBuckets } from "../../../middleware/rateLimitPerUser.js";
 import express from "express";
 import supertest from "supertest";
 import { playersRouter, playerDataRouter } from "../routes.js";
@@ -84,7 +85,9 @@ const urls = () => mockGet.mock.calls.map((c) => c[0] as string);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  _resetRateLimitPerUserBuckets();
   mockPrisma.roster.findFirst.mockResolvedValue(null);
+  mockPrisma.player.findFirst.mockResolvedValue({ id: 11 });
 });
 
 describe("buildPlayerCard", () => {
@@ -368,5 +371,46 @@ describe("fix round 1", () => {
     });
     const card = await buildPlayerCard(100, 1, TODAY);
     expect(card.nextGame).toEqual({ opp: "SD", home: false, startUtc: "2026-06-12T23:10:00Z" });
+  });
+});
+
+describe("final fix wave: card route hardening", () => {
+  it("I1a: 404 for an mlbId that is not in our Player table, with no statsapi call", async () => {
+    mockPrisma.player.findFirst.mockResolvedValue(null);
+    const res = await supertest(app).get("/players/999999999/card?leagueId=20");
+    expect(res.status).toBe(404);
+    expect(mockGet).not.toHaveBeenCalled();
+    expect(mockPrisma.player.findFirst.mock.calls[0][0].where).toEqual({ mlbId: 999999999 });
+  });
+
+  it("I1a: 400 for an mlbId above the Int column range, with no DB or statsapi call", async () => {
+    const res = await supertest(app).get("/players/1e20/card?leagueId=20");
+    expect(res.status).toBe(400);
+    const res2 = await supertest(app).get("/players/2147483648/card?leagueId=20");
+    expect(res2.status).toBe(400);
+    expect(mockPrisma.player.findFirst).not.toHaveBeenCalled();
+    expect(mockGet).not.toHaveBeenCalled();
+  });
+
+  it("I2: the 31st card request in a window is 429", async () => {
+    route();
+    const statuses: number[] = [];
+    for (let i = 0; i < 31; i++) {
+      statuses.push((await supertest(app).get("/players/100/card?leagueId=20")).status);
+    }
+    expect(statuses.slice(0, 30).every((s) => s === 200)).toBe(true);
+    expect(statuses[30]).toBe(429);
+  });
+
+  it("M2: degraded=true when every stat call fails, false otherwise", async () => {
+    route({
+      "stats=": () => { throw new Error("timeout"); },
+      "/schedule": () => { throw new Error("timeout"); },
+    });
+    const bad = await buildPlayerCard(100, 1, TODAY);
+    expect(bad.degraded).toBe(true);
+    route();
+    const good = await buildPlayerCard(100, 1, TODAY);
+    expect(good.degraded).toBe(false);
   });
 });

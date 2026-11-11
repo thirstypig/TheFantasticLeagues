@@ -17,6 +17,8 @@ let circuitOpenUntil = 0;
 const CIRCUIT_THRESHOLD = 5;
 const CIRCUIT_RESET_MS = 60_000; // 1 minute
 
+class MlbClientError extends Error {}
+
 async function fetchWithRetry(url: string, retries = 3): Promise<Response> {
   // Circuit breaker check
   if (consecutiveFailures >= CIRCUIT_THRESHOLD && Date.now() < circuitOpenUntil) {
@@ -31,12 +33,14 @@ async function fetchWithRetry(url: string, retries = 3): Promise<Response> {
         consecutiveFailures = 0;
         return res;
       }
-      // Don't retry 4xx errors
-      if (res.status >= 400 && res.status < 500) {
-        throw new Error(`MLB API error ${res.status} for ${url}`);
+      // A 4xx (except 429) is the caller's problem, not an outage: never retry
+      // it and never count it toward the circuit breaker.
+      if (res.status >= 400 && res.status < 500 && res.status !== 429) {
+        throw new MlbClientError(`MLB API error ${res.status} for ${url}`);
       }
       lastError = new Error(`MLB API error ${res.status} for ${url}`);
     } catch (err) {
+      if (err instanceof MlbClientError) throw err;
       lastError = err as Error;
       if ((err as Error).name === "AbortError" || (err as Error).name === "TimeoutError") {
         lastError = new Error(`MLB API timeout for ${url}`);

@@ -9,12 +9,14 @@ vi.mock("../../../db/prisma.js", () => ({
     roster: { findMany: vi.fn() },
     period: { findMany: vi.fn() },
     playerStatsPeriod: { findMany: vi.fn() },
+    leagueMembership: { findUnique: vi.fn() },
   },
 }));
 vi.mock("../../../lib/logger.js", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));
-vi.mock("../../../middleware/auth.js", () => ({
+vi.mock("../../../middleware/auth.js", async (importActual) => ({
+  ...(await importActual<typeof import("../../../middleware/auth.js")>()),
   requireAuth: vi.fn((_req: unknown, _res: unknown, next: () => void) => next()),
 }));
 vi.mock("../../../middleware/asyncHandler.js", () => ({
@@ -46,6 +48,7 @@ vi.mock("fs", () => ({
 
 import { prisma } from "../../../db/prisma.js";
 import { mlbGetJson } from "../../../lib/mlbApi.js";
+import { PlayerSeasonStatsResponseSchema } from "../../../../../shared/api/playerSeasonStats.js";
 import { clearPlayersCache } from "../services/playersListCache.js";
 
 const mockPrisma = prisma as any;
@@ -59,7 +62,7 @@ import supertest from "supertest";
 const app = express();
 app.use(express.json());
 app.use((req: any, _res: any, next: NextFunction) => {
-  req.user = { id: 1, isAdmin: false };
+  req.user = { id: Number(req.get("x-test-user") ?? 1), isAdmin: req.get("x-test-admin") === "1" };
   next();
 });
 app.use("/players", playersRouter);
@@ -70,6 +73,8 @@ app.use((err: any, _req: any, res: any, _next: NextFunction) => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Default: user 1 is a member of every league (auth gating has its own tests below).
+  mockPrisma.leagueMembership.findUnique.mockResolvedValue({ role: "OWNER" });
   // Flush the in-memory players list cache so each test sees a fresh load.
   clearPlayersCache();
 });
@@ -157,6 +162,29 @@ describe("GET /players", () => {
     const pitcherRow = ohtaniRows.find((p: any) => p.is_pitcher);
     expect(pitcherRow.positions).toBe("P");
     expect(pitcherRow.is_pitcher).toBe(true);
+  });
+
+  it("contract: the real handler body parses through the shared zod schema (rostered row with ogba_team_id/ogba_slot, free agent without)", async () => {
+    mockPrisma.player.findMany.mockResolvedValue([
+      { id: 1, mlbId: 545361, name: "Mike Trout", posPrimary: "CF", posList: "CF", mlbTeam: "LAA" },
+      { id: 2, mlbId: 592450, name: "Aaron Judge", posPrimary: "RF", posList: "RF", mlbTeam: "NYY" },
+    ]);
+    mockPrisma.roster.findMany.mockResolvedValue([
+      { playerId: 1, price: 10, assignedPosition: "IL", team: { id: 77, code: "ABC", name: "Abc Team" } },
+    ]);
+    const res = await supertest(app).get("/player-season-stats?leagueId=1");
+    expect(res.status).toBe(200);
+    const parsed = PlayerSeasonStatsResponseSchema.safeParse(res.body);
+    expect(parsed.success, parsed.success ? "" : JSON.stringify(parsed.error.issues)).toBe(true);
+    if (!parsed.success) return;
+    const trout = parsed.data.stats.find((r) => r.id === 1)!;
+    const judge = parsed.data.stats.find((r) => r.id === 2)!;
+    expect(trout.ogba_team_id).toBe(77);
+    expect(trout.ogba_slot).toBe("IL");
+    expect(judge.ogba_team_id).toBeNull();
+    // An older payload without the new fields must still parse.
+    const legacy = { ...res.body, stats: res.body.stats.map(({ ogba_team_id, ogba_slot, ...rest }: any) => rest) };
+    expect(PlayerSeasonStatsResponseSchema.safeParse(legacy).success).toBe(true);
   });
 
   it.skip("OBSOLETE: Ohtani split — shows Ohtani pitcher row when filtering type=pitchers", async () => {
@@ -543,5 +571,49 @@ describe("GET /auction-values", () => {
     const res = await supertest(app).get("/auction-values");
     expect(res.status).toBe(200);
     expect(res.body.values).toEqual([]);
+  });
+});
+
+// ── League membership gating on roster-ownership endpoints ──────
+
+describe("league membership gating (final fix wave)", () => {
+  beforeEach(() => {
+    mockPrisma.player.findMany.mockResolvedValue([]);
+    mockPrisma.roster.findMany.mockResolvedValue([]);
+    mockPrisma.period.findMany.mockResolvedValue([]);
+  });
+
+  it.each(["/player-season-stats?leagueId=9101", "/player-period-stats?leagueId=9102"])(
+    "non-member gets 403 on %s",
+    async (url) => {
+      mockPrisma.leagueMembership.findUnique.mockResolvedValue(null);
+      const res = await supertest(app).get(url).set("x-test-user", "77");
+      expect(res.status).toBe(403);
+      expect(mockPrisma.roster.findMany).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["/player-season-stats?leagueId=9103", "/player-period-stats?leagueId=9104"])(
+    "member gets 200 on %s",
+    async (url) => {
+      mockPrisma.leagueMembership.findUnique.mockResolvedValue({ role: "OWNER" });
+      const res = await supertest(app).get(url).set("x-test-user", "78");
+      expect(res.status).toBe(200);
+    },
+  );
+
+  it.each(["/player-season-stats?leagueId=9105", "/player-period-stats?leagueId=9106"])(
+    "admin bypasses membership on %s",
+    async (url) => {
+      mockPrisma.leagueMembership.findUnique.mockResolvedValue(null);
+      const res = await supertest(app).get(url).set("x-test-user", "79").set("x-test-admin", "1");
+      expect(res.status).toBe(200);
+    },
+  );
+
+  it("player-period-stats without leagueId keeps returning the empty shape", async () => {
+    const res = await supertest(app).get("/player-period-stats");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ stats: [], periods: [] });
   });
 });
