@@ -2,9 +2,11 @@
  * /auction-results — Screen 11 team board built from the auction-day snapshot
  * (GET /auction/results), with `Grades and charts ›` to the full report
  * (/auction-results/report → AuctionResultsReport, the previous page, unchanged).
+ * No team links here: /teams/:code shows the current roster, which would
+ * contradict the auction-day snapshot.
  */
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useLeague } from '../../../contexts/LeagueContext';
 import { fetchJsonApi, API_BASE } from '../../../api/base';
 import TeamBoard from '../components/board/TeamBoard';
@@ -13,7 +15,6 @@ import '../components/board/teamBoard.css';
 
 export default function AuctionResults() {
   const { leagueId, myTeamId } = useLeague();
-  const navigate = useNavigate();
   const [snapshot, setSnapshot] = useState<AuctionResultsSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +51,6 @@ export default function AuctionResults() {
           config={board.config}
           myTeamId={myTeamId}
           mode="results"
-          onTeamClick={t => navigate(`/teams/${t.code}`)}
         />
       )}
     </div>

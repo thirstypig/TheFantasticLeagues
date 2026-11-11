@@ -44,7 +44,10 @@ describe('/auction-results', () => {
     );
     expect(fetchJsonApi).toHaveBeenCalledWith('/api/auction/results?leagueId=20');
     expect(await screen.findByText('$9 · $8')).toBeTruthy(); // Left · max: 2 spots open -> 9 - 1
-    expect(screen.getByText('Juan Soto')).toBeTruthy();
+    expect(screen.getByText('Soto')).toBeTruthy();
+    // results mode: no team links (current roster would contradict the snapshot)
+    expect(screen.queryByRole('button', { name: 'Los Doyers' })).toBeNull();
+    expect(screen.queryByText('Click a team name for its full roster.')).toBeNull();
     const link = screen.getByRole('link', { name: 'Grades and charts ›' });
     expect(link.getAttribute('href')).toBe('/auction-results/report');
     fireEvent.click(link);
@@ -71,5 +74,23 @@ describe('/auction/board', () => {
     expect(screen.getByText('Live · 2 players left to buy · updates as players are sold')).toBeTruthy();
     expect(screen.getByRole('link', { name: /Back to the auction/ }).getAttribute('href')).toBe('/auction');
     expect(screen.getByText('Click a team name for its full roster.')).toBeTruthy();
+  });
+
+  it('shows only the empty-state line before the auction starts', () => {
+    auctionState.mockReturnValue({ state: { status: 'not_started', config, teams: [] }, error: null });
+    render(<MemoryRouter><AuctionBoard /></MemoryRouter>);
+    expect(screen.getByText("The auction hasn't started.")).toBeTruthy();
+    expect(screen.queryByRole('table')).toBeNull();
+    expect(screen.queryByText(/^Live ·/)).toBeNull();
+  });
+
+  it('drops the Live line once the auction is completed', () => {
+    auctionState.mockReturnValue({
+      state: { status: 'completed', config, teams: [{ id: 1, name: 'Los Doyers', code: 'DOY', budget: 0, maxBid: 0, rosterCount: 3, spotsLeft: 0, roster: [] }] },
+      error: null,
+    });
+    render(<MemoryRouter><AuctionBoard /></MemoryRouter>);
+    expect(screen.getByRole('table')).toBeTruthy();
+    expect(screen.queryByText(/^Live ·/)).toBeNull();
   });
 });

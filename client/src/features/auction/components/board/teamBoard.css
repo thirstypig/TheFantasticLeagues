@@ -12,7 +12,8 @@
   border-radius: 12px;
   padding: 4px 8px;
 }
-.tb-grid { width: 100%; border-collapse: collapse; }
+.tb-grid { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.tb-grid col.tb-poscol { width: 112px; }
 .tb-grid th,
 .tb-grid td {
   text-align: left;
@@ -27,11 +28,11 @@
   color: var(--am-text-muted);
   font-weight: 600;
   padding: 8px 6px;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .tb-grid th.tb-me { color: var(--am-text); }
-.tb-grid td { border-top: 1px solid var(--am-border); color: var(--am-text); }
-.tb-grid td:first-child { font-weight: 700; white-space: nowrap; }
+.tb-grid td { border-top: 1px solid var(--am-border); color: var(--am-text); overflow-wrap: anywhere; }
+.tb-grid td:first-child { font-weight: 700; overflow-wrap: normal; }
 .tb-money td { font-weight: 700; background: var(--am-chip); }
 .tb-open { color: var(--am-negative); font-style: normal; font-weight: 600; }
 .tb-team-btn {
@@ -97,4 +98,8 @@
 .tb-link {
   display: inline-flex; align-items: center; min-height: 44px;
   font-size: 15px; font-weight: 600; color: var(--am-accent); text-decoration: none;
+}
+.tb-more {
+  background: none; border: 0; padding: 0; font: inherit; color: inherit;
+  cursor: pointer; text-decoration: underline; text-decoration-color: var(--am-border);
 }

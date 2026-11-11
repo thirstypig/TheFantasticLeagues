@@ -14,13 +14,15 @@ export default function AuctionBoard() {
   const { leagueId, myTeamId } = useLeague();
   const navigate = useNavigate();
   const { state, error } = useAuctionState(leagueId);
+  const running = !!state && (state.status === 'nominating' || state.status === 'bidding' || state.status === 'paused' || !!state.paused);
+  const notStarted = state?.status === 'not_started';
 
   return (
     <div className="aurora-theme tb-page">
       <div className="tb-head">
         <div>
           <h1 className="tb-title">Auction · team board</h1>
-          {state && (
+          {running && state && (
             <p className="tb-sub">Live · {playersLeft(state)} players left to buy · updates as players are sold</p>
           )}
         </div>
@@ -29,7 +31,8 @@ export default function AuctionBoard() {
 
       {!state && !error && <p className="tb-sub">Loading…</p>}
       {!state && error && <p className="tb-sub">Couldn't load the auction. {error}</p>}
-      {state && (
+      {notStarted && <p className="tb-sub">The auction hasn't started.</p>}
+      {state && !notStarted && (
         <TeamBoard
           teams={state.teams}
           config={state.config}

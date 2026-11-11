@@ -11,6 +11,7 @@ import { useMediaQuery } from '../../../../hooks/useMediaQuery';
 import { PlayerLink } from '../../../../components/shared/playerCard/PlayerCardProvider';
 import type { AuctionTeam, ClientAuctionState } from '../../hooks/useAuctionState';
 import { boardGroups, teamNeeds, type BoardGroup, type BoardPlayer } from '../../lib/auctionSelectors';
+import { shortName } from '../../lib/shortName';
 import './teamBoard.css';
 
 export interface TeamBoardProps {
@@ -36,8 +37,17 @@ function join<T>(items: T[], render: (item: T, i: number) => React.ReactNode): R
   return items.flatMap((item, i) => (i === 0 ? [render(item, i)] : [' · ', render(item, i)]));
 }
 
-function Name({ p }: { p: BoardPlayer }) {
-  return <PlayerLink mlbId={p.mlbId} name={p.name} />;
+/** Groups with more than 3 filled show the first 2, then `N more` (Style Bible). */
+const COLLAPSE_OVER = 3;
+const SHOWN_WHEN_COLLAPSED = 2;
+
+function collapse(filled: BoardPlayer[]): { shown: BoardPlayer[]; more: number } {
+  if (filled.length <= COLLAPSE_OVER) return { shown: filled, more: 0 };
+  return { shown: filled.slice(0, SHOWN_WHEN_COLLAPSED), more: filled.length - SHOWN_WHEN_COLLAPSED };
+}
+
+function Name({ p, style }: { p: BoardPlayer; style: 'last' | 'initial' }) {
+  return <PlayerLink mlbId={p.mlbId} name={shortName(p.name, style)} />;
 }
 
 // ─── Desktop ─────────────────────────────────────────────────────────────────
@@ -50,6 +60,7 @@ function DesktopBoard({ teams, config, myTeamId, mode, onTeamClick }: TeamBoardP
     <div className="tb" data-mode={mode}>
       <div className="tb-scroll">
         <table className="tb-grid">
+          <colgroup><col className="tb-poscol" />{teams.map(t => <col key={t.id} />)}</colgroup>
           <thead>
             <tr>
               <th scope="col">Pos</th>
@@ -87,9 +98,11 @@ function DesktopBoard({ teams, config, myTeamId, mode, onTeamClick }: TeamBoardP
 
 function DesktopCell({ group }: { group: BoardGroup | undefined }) {
   if (!group) return null;
-  const parts: React.ReactNode[] = join(group.filled, (p, i) => (
-    <React.Fragment key={i}><Name p={p} /> <span className="tb-num">{p.price}</span></React.Fragment>
+  const { shown, more } = collapse(group.filled);
+  const parts: React.ReactNode[] = join(shown, (p, i) => (
+    <React.Fragment key={i}><Name p={p} style="last" /> <span className="tb-num">{p.price}</span></React.Fragment>
   ));
+  if (more > 0) parts.push(' · ', <span key="more">{more} more</span>);
   if (group.open > 0) {
     if (parts.length) parts.push(' · ');
     parts.push(<i key="open" className="tb-open">{openLabel(group.open)}</i>);
@@ -101,6 +114,7 @@ function DesktopCell({ group }: { group: BoardGroup | undefined }) {
 
 function PhoneBoard({ teams, config, myTeamId, mode }: TeamBoardProps) {
   const [picked, setPicked] = useState<number | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const selected =
     teams.find(t => t.id === picked) ?? teams.find(t => t.id === myTeamId) ?? teams[0];
   if (!selected) return null;
@@ -117,7 +131,7 @@ function PhoneBoard({ teams, config, myTeamId, mode }: TeamBoardProps) {
             type="button"
             className={`tb-chip${t.id === selected.id ? ' on' : ''}`}
             aria-pressed={t.id === selected.id}
-            onClick={() => setPicked(t.id)}
+            onClick={() => { setPicked(t.id); setExpanded(new Set()); }}
           >
             {t.name}
           </button>
@@ -143,11 +157,11 @@ function PhoneBoard({ teams, config, myTeamId, mode }: TeamBoardProps) {
             <div className="tb-row-t">
               <b>{g.label}</b>
               {g.filled.length > 0 && (
-                <small>
-                  {join(g.filled, (p, i) => (
-                    <React.Fragment key={i}><Name p={p} /> <span className="tb-num">${p.price}</span></React.Fragment>
-                  ))}
-                </small>
+                <PhoneNames
+                  filled={g.filled}
+                  expanded={expanded.has(g.label)}
+                  onExpand={() => setExpanded(prev => new Set(prev).add(g.label))}
+                />
               )}
             </div>
             <span className={`tb-pill ${g.open > 0 ? 'alert' : 'good'}`}>{g.open > 0 ? `${g.open} open` : 'Full'}</span>
@@ -156,4 +170,15 @@ function PhoneBoard({ teams, config, myTeamId, mode }: TeamBoardProps) {
       </div>
     </div>
   );
+}
+
+function PhoneNames({ filled, expanded, onExpand }: { filled: BoardPlayer[]; expanded: boolean; onExpand: () => void }) {
+  const { shown, more } = expanded ? { shown: filled, more: 0 } : collapse(filled);
+  const parts: React.ReactNode[] = join(shown, (p, i) => (
+    <React.Fragment key={i}><Name p={p} style="initial" /> <span className="tb-num">${p.price}</span></React.Fragment>
+  ));
+  if (more > 0) {
+    parts.push(' · ', <button key="more" type="button" className="tb-more" onClick={onExpand}>{more} more</button>);
+  }
+  return <small>{parts}</small>;
 }
