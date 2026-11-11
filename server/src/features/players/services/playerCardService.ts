@@ -1,5 +1,6 @@
 // server/src/features/players/services/playerCardService.ts
 import { prisma } from "../../../db/prisma.js";
+import { logger } from "../../../lib/logger.js";
 import { mlbGetJson, fetchMlbTeamsMap } from "../../../lib/mlbApi.js";
 
 const MLB_BASE = "https://statsapi.mlb.com/api/v1";
@@ -91,7 +92,11 @@ function sumSplits(stats: StatLine[], group: StatGroup): StatLine {
  */
 function pickSplit(splits: any[] | undefined, group: StatGroup): StatLine | null {
   if (!Array.isArray(splits) || splits.length === 0) return null;
-  const mlb = splits.filter((s) => s?.sport?.id === 1 || s?.sport?.id === undefined);
+  // A split with no sport is not trusted as MLB unless it is the only one.
+  const mlb =
+    splits.length === 1
+      ? splits
+      : splits.filter((s) => s?.sport?.id === 1);
   const usable = mlb.filter((s) => s?.stat);
   if (usable.length === 0) return null;
   if (usable.length === 1) return usable[0].stat as StatLine;
@@ -148,15 +153,40 @@ export async function buildPlayerCard(
     return `${MLB_BASE}/people/${mlbId}/stats?stats=byDateRange&group=${g}&startDate=${startDate}&endDate=${endDate}&season=${season}`;
   }
 
+  // Only the people/{id} lookup is fatal; every other call degrades to null/[].
+  const soft = async <T,>(label: string, fallback: T, fn: () => Promise<T>): Promise<T> => {
+    try {
+      return await fn();
+    } catch (err) {
+      logger.warn({ error: String(err), mlbId, label }, "Player card fetch failed; degrading");
+      return fallback;
+    }
+  };
+
   const splitJobs = ranges.flatMap((r) =>
-    groups.map(async (g) => ({ key: r.key, g, stat: pickSplit(firstSplits(await get(r.url(g))), g) })),
+    groups.map(async (g) => ({
+      key: r.key,
+      g,
+      stat: await soft<StatLine | null>(`${r.key}:${g}`, null, async () =>
+        pickSplit(firstSplits(await get(r.url(g))), g),
+      ),
+    })),
   );
-  const logJobs = groups.map(async (g) => ({
-    g,
-    splits: firstSplits(await get(`${MLB_BASE}/people/${mlbId}/stats?stats=gameLog&group=${g}&season=${season}`)),
-  }));
-  const nextGameJob = teamId
-    ? get(`${MLB_BASE}/schedule?sportId=1&teamId=${teamId}&startDate=${todayEt}&endDate=${addDays(todayEt, 7)}`)
+  const qualifying = (g: StatGroup, rows: any[]) =>
+    rows.filter((s) => s?.date && s?.stat && (g !== "pitching" || Number(s.stat.gamesStarted) === 1));
+  const logFor = (g: StatGroup, yr: number) =>
+    soft<any[]>(`gameLog:${g}:${yr}`, [], async () =>
+      firstSplits(await get(`${MLB_BASE}/people/${mlbId}/stats?stats=gameLog&group=${g}&season=${yr}`)),
+    );
+  const logJobs = groups.map(async (g) => {
+    let rows = await logFor(g, season);
+    if (qualifying(g, rows).length === 0) rows = await logFor(g, season - 1);
+    return { g, splits: rows };
+  });
+  const nextGameJob: Promise<any> = teamId
+    ? soft<any>("schedule", null, () =>
+        get(`${MLB_BASE}/schedule?sportId=1&teamId=${teamId}&startDate=${todayEt}&endDate=${addDays(todayEt, 7)}`),
+      )
     : Promise.resolve(null);
 
   const [splitResults, logResults, schedule] = await Promise.all([
@@ -171,8 +201,7 @@ export async function buildPlayerCard(
 
   const recent: Partial<Record<StatGroup, GameRow[]>> = {};
   for (const { g, splits: log } of logResults) {
-    const rows = (log as any[]).filter((s) => s?.date && s?.stat);
-    const eligible = g === "pitching" ? rows.filter((s) => Number(s.stat.gamesStarted) === 1) : rows;
+    const eligible = qualifying(g, log as any[]);
     recent[g] = eligible
       .slice(-(g === "pitching" ? 3 : 5))
       .reverse()

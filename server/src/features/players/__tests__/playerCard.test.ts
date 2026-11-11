@@ -275,3 +275,88 @@ describe("GET /players/:mlbId/card", () => {
     expect(res.status).toBe(502);
   });
 });
+
+describe("fix round 1", () => {
+  it("falls back to last season's game log when the current one is empty", async () => {
+    const g = (d: string) => ({ date: d, stat: { atBats: 4 }, opponent: { id: 135 }, isHome: true });
+    route({
+      "stats=gameLog&group=hitting&season=2025": () => statResp([g("2025-09-01"), g("2025-09-02")]),
+    });
+    const card = await buildPlayerCard(100, 1, TODAY);
+    expect(urls().some((x) => x.includes("stats=gameLog") && x.includes("season=2025"))).toBe(true);
+    expect(card.recent.hitting!.map((r) => r.date)).toEqual(["2025-09-02", "2025-09-01"]);
+  });
+
+  it("pitcher with only relief appearances this season falls back to last season starts", async () => {
+    const g = (d: string, gs: number) => ({ date: d, stat: { gamesStarted: gs }, opponent: { id: 135 }, isHome: true });
+    route({
+      "/people/100?": () => person("SP", "Pitcher"),
+      "stats=gameLog&group=pitching&season=2026": () => statResp([g("2026-06-01", 0)]),
+      "stats=gameLog&group=pitching&season=2025": () => statResp([g("2025-09-01", 1)]),
+    });
+    const card = await buildPlayerCard(100, 1, TODAY);
+    expect(card.recent.pitching!.map((r) => r.date)).toEqual(["2025-09-01"]);
+  });
+
+  it("does not fetch last season's log when the current one has games", async () => {
+    route({
+      "stats=gameLog&group=hitting&season=2026": () =>
+        statResp([{ date: "2026-06-01", stat: {}, opponent: { id: 135 }, isHome: true }]),
+    });
+    await buildPlayerCard(100, 1, TODAY);
+    expect(urls().some((x) => x.includes("stats=gameLog") && x.includes("season=2025"))).toBe(false);
+  });
+
+  it("degrades per split: failing lastSeason and schedule calls still return a card", async () => {
+    route({
+      "stats=season&group=hitting&season=2025": () => { throw new Error("404"); },
+      "/schedule": () => { throw new Error("500"); },
+      "stats=byDateRange": () => { throw new Error("500"); },
+      "stats=gameLog": () => { throw new Error("500"); },
+    });
+    const card = await buildPlayerCard(100, 1, TODAY);
+    expect(card.splits.lastSeason.hitting).toBeNull();
+    expect(card.splits.last7.hitting).toBeNull();
+    expect(card.nextGame).toBeNull();
+    expect(card.recent.hitting).toEqual([]);
+    expect(card.name).toBe("Test Guy");
+  });
+
+  it("route returns 200 when a non-core call fails, 502 only when the player lookup fails", async () => {
+    route({ "stats=season&group=hitting&season=2025": () => { throw new Error("404"); } });
+    const ok = await supertest(app).get("/players/100/card?leagueId=20");
+    expect(ok.status).toBe(200);
+    expect(ok.body.splits.lastSeason.hitting).toBeNull();
+    route({ "/people/100?": () => { throw new Error("down"); } });
+    const bad = await supertest(app).get("/players/100/card?leagueId=20");
+    expect(bad.status).toBe(502);
+  });
+
+  it("treats a split with no sport as non-MLB unless it is the only split", async () => {
+    route({
+      "stats=season&group=hitting&season=2026": () =>
+        statResp([{ stat: { homeRuns: 99 } }, mlbSplit({ homeRuns: 12 })]),
+      "stats=season&group=hitting&season=2025": () => statResp([{ stat: { homeRuns: 7 } }]),
+    });
+    const card = await buildPlayerCard(100, 1, TODAY);
+    expect(card.splits.season.hitting).toEqual({ homeRuns: 12 });
+    expect(card.splits.lastSeason.hitting).toEqual({ homeRuns: 7 });
+  });
+
+  it("nextGame skips games that already started and picks the first future one", async () => {
+    const game = (gameDate: string, home: number, away: number) => ({
+      gameDate, teams: { home: { team: { id: home } }, away: { team: { id: away } } },
+    });
+    route({
+      "/schedule": () => ({
+        dates: [
+          { games: [game("2026-06-11T01:00:00Z", 119, 135)] }, // earlier (yesterday ET evening)
+          { games: [game("2026-06-11T14:00:00Z", 119, 135)] }, // earlier today, before 15:00Z
+          { games: [game("2026-06-12T23:10:00Z", 135, 119)] }, // future, away for LAD
+        ],
+      }),
+    });
+    const card = await buildPlayerCard(100, 1, TODAY);
+    expect(card.nextGame).toEqual({ opp: "SD", home: false, startUtc: "2026-06-12T23:10:00Z" });
+  });
+});
