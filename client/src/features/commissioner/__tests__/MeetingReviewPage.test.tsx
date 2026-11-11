@@ -161,6 +161,26 @@ describe("MeetingReviewPage", () => {
     expect(screen.queryByText("START STUB")).toBeNull();
   });
 
+  it("does not clobber storage that changed while a save was running", async () => {
+    seed(THREE());
+    m.previewMove.mockImplementation(async (_l, _t, a) =>
+      a === 102 ? ({ ok: false, error: "Casas is on Bombers." } as any) : ({ ok: true } as any));
+    m.saveMove.mockImplementationOnce(async () => {
+      // another tab / the meeting page edits the draft mid-save
+      const d = stored();
+      d.moves.push(mv("z", 2, pl(555, "Late Add"), pl(556, "Late Drop")) as any);
+      d.marks[3] = "done";
+      localStorage.setItem(draftKey(20, 9), JSON.stringify(d));
+    });
+    renderPage();
+    await openSheet();
+    fireEvent.click(screen.getByRole("button", { name: "Save moves" }));
+    await screen.findByText(/Saved 2 of 3 moves/);
+    const d = stored();
+    expect(d.moves.map((x) => x.id).sort()).toEqual(["b", "z"]);
+    expect(d.marks[3]).toBe("done");
+  });
+
   it("a save that throws keeps the move with the server message and continues", async () => {
     seed(THREE());
     m.saveMove.mockImplementation(async (_l, _t, a) => { if (a === 101) throw new Error("Roster is full."); });

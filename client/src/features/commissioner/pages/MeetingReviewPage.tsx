@@ -58,7 +58,8 @@ function ReviewBody({ leagueId, periodId }: { leagueId: number; periodId: number
 
   /** Every change goes through here so state and storage never drift. */
   function apply(fn: (d: MeetingDraft) => MeetingDraft) {
-    const next = fn(draftRef.current);
+    // Re-read storage so an edit made elsewhere (another tab, the meeting page) is not overwritten by a stale copy.
+    const next = fn(loadDraft(leagueId, periodId));
     draftRef.current = next;
     saveDraft(next);
     if (alive.current) setDraft(next);

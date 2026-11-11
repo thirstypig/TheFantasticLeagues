@@ -53,6 +53,21 @@ function MeetingBody({ leagueId, periodId }: { leagueId: number; periodId: numbe
   const alive = useRef(true);
   useEffect(() => () => { alive.current = false; }, []);
 
+  // The Review page may have saved moves in another tab/while we were away: pick up the stored draft again.
+  useEffect(() => {
+    const reload = () => {
+      const d = loadDraft(leagueId, periodId);
+      draftRef.current = d;
+      setDraft(d);
+    };
+    window.addEventListener("focus", reload);
+    window.addEventListener("storage", reload);
+    return () => {
+      window.removeEventListener("focus", reload);
+      window.removeEventListener("storage", reload);
+    };
+  }, [leagueId, periodId]);
+
   /** Every change goes through here so state and storage never drift. */
   function apply(fn: (d: MeetingDraft) => MeetingDraft) {
     const next = fn(draftRef.current);

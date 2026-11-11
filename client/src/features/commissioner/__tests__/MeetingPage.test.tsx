@@ -206,6 +206,15 @@ describe("MeetingPage", () => {
     }
   });
 
+  it("re-reads the draft from storage when the window regains focus", async () => {
+    seed({ ...emptyDraft(20, 9), selectedTeamId: 4, moves: [mv("a", 4, FRALEY, ALONSO)] });
+    renderPage();
+    await screen.findByText("+ Jake Fraley");
+    seed({ ...emptyDraft(20, 9), selectedTeamId: 4, moves: [] , marks: { 1: "passed" } });
+    act(() => { window.dispatchEvent(new Event("focus")); });
+    await waitFor(() => expect(screen.queryByText("+ Jake Fraley")).toBeNull());
+  });
+
   it("No moves marks the team Passed and returns to the list", async () => {
     seed({ ...emptyDraft(20, 9), selectedTeamId: 4 });
     renderPage();
