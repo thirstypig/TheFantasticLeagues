@@ -289,6 +289,11 @@ describe("toHubPlayer — mlbStatus passthrough (ghost-IL chip wake-up)", () => 
     expect(result.mlbStatusDaysAgo).toBe(3);
   });
 
+  it("passes ilSince through to the hub player (IL period column)", () => {
+    expect(toHubPlayer(makeInput({ ilSince: "2026-06-01T00:00:00.000Z" })).ilSince).toBe("2026-06-01T00:00:00.000Z");
+    expect(toHubPlayer(makeInput({})).ilSince).toBeUndefined();
+  });
+
   it("ghost-IL gap: active-roster row carrying mlbStatus indicating IL", () => {
     // The exact scenario the chip wakes up on — assignedPosition is NOT
     // "IL" but mlbStatus says Injured. Team.tsx's ghostIlSuspects filter
@@ -359,6 +364,7 @@ describe("hubPlayerCacheKey — cache key correctness (todo #162.2)", () => {
       gamesByPos: { OF: 1 },
       mlbStatus: "Injured 10-Day",
       mlbStatusDaysAgo: 5,
+      ilSince: "2026-06-01T00:00:00.000Z",
       AB: 100, H: 30, AVG: 0.3, HR: 10, R: 50, RBI: 50, SB: 5,
       IP: 50.0, BB_H: 60, ER: 15, W: 5, SV: 1, K: 60, ERA: 2.7, WHIP: 1.2,
     };
@@ -389,6 +395,7 @@ describe("hubPlayerCacheKey — cache key correctness (todo #162.2)", () => {
       "gamesByPos",
       "mlbStatus",
       "mlbStatusDaysAgo",
+      "ilSince",
       "AB", "H", "AVG", "HR", "R", "RBI", "SB",
       "IP", "BB_H", "ER", "W", "SV", "K", "ERA", "WHIP",
     ]));

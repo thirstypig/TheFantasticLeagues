@@ -269,20 +269,52 @@
  * Note: we use `min-h-svh` semantics on the page wrapper rather than
  * `100vh` per the iOS Safari learning. AppShell handles overflow.
  */
-@media (max-width: 640px) {
-  .am-roster-mobile-row {
-    display: grid;
-    grid-template-columns: 64px 1fr 44px;
-    gap: 12px;
-    align-items: center;
-    padding: 12px 10px;
-    border-bottom: 1px solid var(--am-border);
-    min-height: 60px;
-  }
-
-  .am-roster-mobile-row:first-child {
-    border-top: 1px solid var(--am-border);
-  }
+/* Phone rows are two lines: [pill · name · actions] over [Pos · MLB · stats].
+ * The class is only rendered by the phone variants, so no media query. */
+.am-roster-mobile-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--am-border);
+  min-height: 56px;
+  justify-content: center;
+}
+.am-roster-mobile-row:first-child {
+  border-top: 1px solid var(--am-border);
+}
+.am-roster-mobile-row [data-row-line="1"] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.am-roster-mobile-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.am-roster-mobile-row [data-row-line="2"] {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  /* indent under the name (pill width 48 + gap 8) */
+  padding-left: 56px;
+  font-size: 13px;
+  color: var(--am-text-faint);
+  font-variant-numeric: tabular-nums;
+}
+.am-roster-mobile-row-stats {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  color: var(--am-text-muted);
 }
 
 /* ─── Action menu (per-row "...") ─────────────────────────────── */
@@ -382,7 +414,8 @@
 }
 
 .am-roster-v3-table tbody td {
-  padding: 10px 12px;
+  padding: 4px 12px;
+  height: 40px;
   border-bottom: 1px solid var(--am-border);
   vertical-align: middle;
 }

@@ -5,13 +5,12 @@
  * TeamPageAmbient screen from the Aurora System.html bundle:
  *   - Hero card (full-width): team identity + points + cap + IL count
  *   - Hitters table (span 8): sorted by slot order
- *   - AI sidebar (span 4): weekly insights from the existing endpoint
  *   - Pitchers table (full-width)
  *
  * Data sources (all real, no mocks):
  *   - getTeams(leagueId): resolve teamCode → team metadata
  *   - getTeamDetails(teamId): roster + budget + IL slots
- *   - getTeamAiInsights(leagueId, teamId): AI weekly insights
+ *   - (AI insights are no longer fetched — see the 2026-11-11 tidy note below)
  *
  * The legacy Team.tsx (1062 LOC of trade asset selector, watchlist
  * stars, news feeds, depth charts, weekly insights history tabs,
@@ -29,13 +28,11 @@ import {
 import "../../../components/aurora/aurora.css";
 import { useAuth } from "../../../auth/AuthProvider";
 import { useLeague } from "../../../contexts/LeagueContext";
-import { getTeams, getTeamAiInsights, getTeamRosterHub, getSeasonStandings } from "../../../api";
+import { getTeams, getTeamRosterHub, getSeasonStandings } from "../../../api";
 import { fetchJsonApi, API_BASE, ApiError } from "../../../api/base";
 import { DataFreshness } from "../../../components/shared/DataFreshness";
 import WatchlistPanel from "../../watchlist/components/WatchlistPanel";
 import TradingBlockPanel from "../../trading-block/components/TradingBlockPanel";
-import { getTeamAiInsightsHistory, type WeeklyInsightEntry } from "../api";
-import type { TeamInsightsResult } from "../../../api";
 import { getTeamPeriodRoster, type PeriodRosterEntry, updateRosterPosition } from "../api";
 import {
   usePendingChanges,
@@ -58,6 +55,7 @@ import {
 import type { TeamManageContext } from "./teamManageContext";
 import { useFreeAgents } from "../hooks/useFreeAgents";
 import type { RowAction } from "../components/RosterHub/RowActionMenu";
+import type { IlPeriod } from "../../../lib/rosterDisplay";
 import { toHubPlayer, hubPlayerCacheKey } from "../lib/toHubPlayer";
 // Cross-feature import: roster mutations live in the transactions feature.
 // Per CLAUDE.md "Cross-Feature Dependencies", this is documented in the
@@ -205,12 +203,11 @@ export default function Team() {
   // `_dbPlayerId` / `_dbTeamId` / `assignedPosition` the panel filters
   // require. See todo #116 for why this can't be the raw stats payload.
   const [players, setPlayers] = useState<RosterMovesPlayer[]>([]);
-  const [aiInsights, setAiInsights] = useState<TeamInsightsResult | null>(null);
+  // League periods from the hub response — labels the IL "Period" column.
+  const [leaguePeriods, setLeaguePeriods] = useState<IlPeriod[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [computedAt, setComputedAt] = useState<string | null>(null);
-  const [insightHistory, setInsightHistory] = useState<WeeklyInsightEntry[]>([]);
-  const [selectedWeekKey, setSelectedWeekKey] = useState<string | null>(null);
   // Selection state for the position-pill highlight. No-op for mutation in
   // this slice — the action menu drives the actual moves via sub-routes.
   const [selectedRosterId, setSelectedRosterId] = useState<number | null>(null);
@@ -273,9 +270,8 @@ export default function Team() {
         // hitters / pitchers / IL and pre-joins per-row stats — todo #140
         // collapsed the legacy two-call client join (getTeamDetails ×
         // getPlayerSeasonStatsMeta) into one network call.
-        const [hubRes, aiRes, panelPlayersRes] = await Promise.allSettled([
+        const [hubRes, panelPlayersRes] = await Promise.allSettled([
           getTeamRosterHub(team.id),
-          getTeamAiInsights(leagueId, team.id),
           // Shared loader produces the enriched RosterMovesPlayer shape
           // (_dbPlayerId / _dbTeamId / assignedPosition populated for the
           // active team) that the transactions panels need. Separate
@@ -288,6 +284,14 @@ export default function Team() {
           const hub = hubRes.value;
           setComputedAt(hub.computedAt);
           setRosterVersion(hub.rosterVersion ?? 0);
+          setLeaguePeriods(
+            (hub.leaguePeriods ?? []).map((p) => ({
+              id: p.id,
+              name: p.name,
+              status: p.status,
+              startDate: p.startDate ?? null,
+            })),
+          );
           // Cache the enriched player pool for the transactions panels.
           setPlayers(
             panelPlayersRes.status === "fulfilled" ? panelPlayersRes.value : [],
@@ -311,6 +315,7 @@ export default function Team() {
             isKeeper: row.isKeeper ?? undefined,
             gamesByPos: row.gamesByPos,
             mlbStatus: row.mlbStatus ?? undefined,
+            ilSince: row.ilSince ?? null,
             // Hitter stats
             AB: row.AB,
             H: row.H,
@@ -330,10 +335,6 @@ export default function Team() {
             WHIP: row.WHIP,
           }));
           setRoster(players);
-        }
-
-        if (aiRes.status === "fulfilled") {
-          setAiInsights(aiRes.value);
         }
       } catch (err) {
         if (canceled) return;
@@ -361,22 +362,6 @@ export default function Team() {
       .catch(() => { /* non-fatal: period selector won't show */ });
     return () => { canceled = true; };
   }, [leagueId]);
-
-  // Load weekly-insights history when team identified — powers the
-  // "View past weeks" tabs that the legacy page exposed. One read
-  // per team mount; result is small (one row per past week).
-  useEffect(() => {
-    if (!leagueId || !teamMeta?.id) return;
-    let canceled = false;
-    getTeamAiInsightsHistory(leagueId, teamMeta.id)
-      .then(res => {
-        if (canceled) return;
-        setInsightHistory(res.weeks);
-        if (res.weeks.length > 0) setSelectedWeekKey(res.weeks[0].weekKey);
-      })
-      .catch(() => { /* history is optional */ });
-    return () => { canceled = true; };
-  }, [leagueId, teamMeta?.id]);
 
   // Fetch period-specific roster when a period is selected
   useEffect(() => {
@@ -1249,82 +1234,6 @@ export default function Team() {
     return Number.isFinite(n) && n >= 0 ? n : 2;
   }, [leagueRules]);
 
-  // Lineup Intelligence card — rendered between active roster and IL
-  // section via RosterHubV3's `intelSlot` prop. Was a right-rail sidebar
-  // (span 4) before session 89's polish pass; moved into page flow so
-  // the roster table can claim full horizontal real estate for the wider
-  // stat column set (AB/H for hitters, BB+H/ER for pitchers).
-  //
-  // `activeInsight` mirrors the legacy `TeamLegacy.tsx` pattern (see lines
-  // 436–441 there): when the user picks a historical week from the bottom
-  // weekly-insights selector, surface that week's insights here. Otherwise
-  // fall back to the live current-week `aiInsights`. `WeeklyInsightEntry`
-  // extends `TeamInsightsResult`, so the structural shape (insights[],
-  // overallGrade) is compatible — no narrowing needed in the JSX below.
-  const activeInsight: TeamInsightsResult | WeeklyInsightEntry | null =
-    selectedWeekKey
-      ? insightHistory.find((w) => w.weekKey === selectedWeekKey) ?? aiInsights
-      : aiInsights;
-  const activeInsightWeekKey: string | null =
-    activeInsight && "weekKey" in activeInsight
-      ? (activeInsight as WeeklyInsightEntry).weekKey
-      : null;
-  const lineupIntelligenceCard = (
-    <Glass strong>
-      <SectionLabel>
-        ✦ Lineup intelligence
-        {activeInsightWeekKey && selectedWeekKey && (
-          <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 500, color: "var(--am-text-faint)", letterSpacing: 0.4 }}>
-            · {activeInsightWeekKey}
-          </span>
-        )}
-      </SectionLabel>
-      {activeInsight?.insights?.length ? (
-        <>
-          {activeInsight.overallGrade && (
-            <div style={{ marginTop: 4, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 13, color: "var(--am-text-muted)" }}>Overall grade</span>
-              <IridText size={20}>{activeInsight.overallGrade}</IridText>
-            </div>
-          )}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: 8,
-            }}
-          >
-            {activeInsight.insights.slice(0, 4).map((r, i) => (
-              <div
-                key={i}
-                style={{
-                  padding: 10,
-                  borderRadius: 12,
-                  background: "var(--am-surface-faint)",
-                  border: "1px solid var(--am-border)",
-                }}
-              >
-                <div style={{ fontSize: 13, color: "var(--am-text-faint)", textTransform: "uppercase", letterSpacing: 1, fontWeight: 600, marginBottom: 2 }}>
-                  {r.category}
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 500, color: "var(--am-text)" }}>{r.title}</div>
-                {r.detail && (
-                  <div style={{ fontSize: 13, color: "var(--am-text-muted)", marginTop: 2, lineHeight: 1.45 }}>
-                    {r.detail}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </>
-      ) : (
-        <div style={{ marginTop: 4, fontSize: 13, color: "var(--am-text-faint)", lineHeight: 1.5 }}>
-          AI insights for this team haven't been generated this week.
-        </div>
-      )}
-    </Glass>
-  );
-
   return (
     <div className="aurora-theme">
       <div style={{ position: "relative", minHeight: "100vh", overflow: "hidden", color: "var(--am-text)" }}>
@@ -1578,7 +1487,7 @@ export default function Team() {
                   onEffectiveDateChange={
                     isCommissionerMode ? pending.setEffectiveDate : undefined
                   }
-                  intelSlot={lineupIntelligenceCard}
+                  ilPeriods={leaguePeriods}
                   ilTotalSlots={ilSlotCount}
                   dndEnabled={canManage}
                   shakeRowId={drag.shakeRowId}
@@ -1756,13 +1665,9 @@ export default function Team() {
             )}
           </div>
 
-          {/* Lineup Intelligence is now rendered INSIDE RosterHubV3 via
-              the `intelSlot` render-prop (between active roster and IL
-              section). Defined as `lineupIntelligenceCard` further up so
-              both manage-mode and the regular hub render the same
-              card. Session-89 polish moved it out of a right-rail
-              sidebar (was span 4 alongside a span 8 roster) so the
-              roster table can claim full horizontal real estate. */}
+          {/* Lineup Intelligence and Weekly Insights are intentionally not
+              rendered or fetched (2026-11-11 team-page tidy, DOC-039). The
+              components and api functions stay on disk to bring back. */}
 
           {/* Pitchers section is now inside RosterHubV3 (consolidated table)
               per plan §0.5 refinement #1. The separate Glass block was
@@ -1830,44 +1735,6 @@ export default function Team() {
                   </Link>
                 </Glass>
               </div>
-            </div>
-          )}
-
-          {/* Weekly insights history — week selector when ≥2 weeks exist.
-              Mirrors the legacy week-tab UX. The selected week drives the
-              `activeInsight` value above, which feeds the Lineup
-              Intelligence card. Clicking the same pill toggles back to
-              the current week's live insights. */}
-          {insightHistory.length >= 2 && (
-            <div style={{ gridColumn: "span 12", marginTop: 4 }}>
-              <Glass>
-                <SectionLabel>✦ Weekly insights · {insightHistory.length} weeks</SectionLabel>
-                <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, marginTop: 8 }}>
-                  {insightHistory.map((week) => {
-                    const isActive = week.weekKey === selectedWeekKey;
-                    return (
-                      <button
-                        key={week.weekKey}
-                        type="button"
-                        onClick={() => setSelectedWeekKey(isActive ? null : week.weekKey)}
-                        style={{
-                          flexShrink: 0,
-                          padding: "6px 12px",
-                          borderRadius: 99,
-                          fontSize: 13, fontWeight: 600,
-                          border: "1px solid " + (isActive ? "transparent" : "var(--am-border)"),
-                          background: isActive ? "var(--am-irid)" : "var(--am-chip)",
-                          color: isActive ? "var(--am-on-accent)" : "var(--am-text-muted)",
-                          cursor: "pointer",
-                        }}
-                      >
-                        {week.weekKey}
-                        {week.overallGrade ? ` · ${week.overallGrade}` : ""}
-                      </button>
-                    );
-                  })}
-                </div>
-              </Glass>
             </div>
           )}
 

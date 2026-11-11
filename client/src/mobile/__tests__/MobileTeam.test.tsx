@@ -98,8 +98,8 @@ describe("MobileTeam (read-only)", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Pitchers" }));
     await screen.findByText("Tyler Glasnow");
     expect(screen.queryByText("Mookie Betts")).not.toBeInTheDocument();
-    // Pitcher headers
-    expect(screen.getByText("WHIP")).toBeInTheDocument();
+    // Pitcher stat labels ride inline on each row's second line
+    expect(screen.getAllByText("WHIP").length).toBeGreaterThan(0);
   });
 
   it("exposes an IL tab when the roster has injured players", async () => {
@@ -479,5 +479,63 @@ describe("MobileTeam — period mode IL filtering", () => {
       expect(screen.getByText("Mookie Betts")).toBeInTheDocument();
     });
     expect(screen.queryByText("Clayton Kershaw")).not.toBeInTheDocument();
+  });
+});
+
+// ── Two-line rows + IL period (DOC-039 team page tidy) ─────────────────────
+
+describe("MobileTeam — two-line rows", () => {
+  it('line 1 = slot pill, name, "…"; line 2 = "Pos · MLB" + short stats', async () => {
+    renderTeam();
+    const name = await screen.findByText("Mookie Betts");
+    const row = name.closest('[data-testid="mobile-team-row"]') as HTMLElement;
+    const l1 = row.querySelector('[data-row-line="1"]') as HTMLElement;
+    const l2 = row.querySelector('[data-row-line="2"]') as HTMLElement;
+    expect(within(l1).getByText("Mookie Betts")).toBeInTheDocument();
+    expect(l1.textContent).toContain("OF"); // slot pill
+    expect(within(l1).getByTestId("mobile-team-move-btn")).toBeInTheDocument();
+    expect(l1.textContent).not.toContain("LAD");
+    expect(l2.textContent).toContain("OF/2B · LAD");
+    expect(l2.textContent).toContain("30 HR");
+    expect(l2.textContent).toContain(".300");
+  });
+
+  it("single-position hitter shows just that position and the MLB team", async () => {
+    renderTeam();
+    const row = (await screen.findByText("Will Smith")).closest('[data-testid="mobile-team-row"]') as HTMLElement;
+    expect((row.querySelector('[data-row-line="2"]') as HTMLElement).textContent).toContain("C · LAD");
+  });
+
+  it("the instruction paragraph is gone", async () => {
+    renderTeam();
+    await screen.findByText("Mookie Betts");
+    expect(screen.queryByText(/Tap a slot pill/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("MobileTeam — IL list period", () => {
+  it('shows "Since Period 1", "This period", "Before Period 1" and "—" from ilSince + leaguePeriods', async () => {
+    const hub = {
+      ...SAMPLE_HUB,
+      leaguePeriods: [
+        { id: 1, name: "Period 1", status: "completed", startDate: "2026-03-25T00:00:00.000Z" },
+        { id: 2, name: "Period 2", status: "active", startDate: "2026-04-19T00:00:00.000Z" },
+      ],
+      ilPlayers: [
+        { ...SAMPLE_HUB.ilPlayers[0], rosterId: 21, playerName: "Early IL", ilSince: "2026-04-01T00:00:00.000Z" },
+        { ...SAMPLE_HUB.ilPlayers[0], rosterId: 22, playerName: "Current IL", ilSince: "2026-04-25T00:00:00.000Z" },
+        { ...SAMPLE_HUB.ilPlayers[0], rosterId: 23, playerName: "Preseason IL", ilSince: "2026-03-01T00:00:00.000Z" },
+        { ...SAMPLE_HUB.ilPlayers[0], rosterId: 24, playerName: "Unknown IL", ilSince: null },
+      ],
+    };
+    vi.mocked(getTeamRosterHub).mockResolvedValue(hub as any);
+    renderTeam();
+    fireEvent.click(await screen.findByRole("tab", { name: "IL" }));
+    const l2 = async (n: string) =>
+      ((await screen.findByText(n)).closest('[data-testid="mobile-team-row"]')!.querySelector('[data-row-line="2"]') as HTMLElement).textContent;
+    expect(await l2("Early IL")).toContain("Since Period 1");
+    expect(await l2("Current IL")).toContain("This period");
+    expect(await l2("Preseason IL")).toContain("Before Period 1");
+    expect(await l2("Unknown IL")).toContain("—");
   });
 });

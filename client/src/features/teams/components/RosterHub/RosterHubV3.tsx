@@ -30,6 +30,7 @@
 // All state is hoisted to the parent (preview page or PR2's Team owner
 // view). This component is layout-only.
 
+import type { IlPeriod } from "../../../../lib/rosterDisplay";
 import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { Glass, SectionLabel } from "../../../../components/aurora/atoms";
@@ -98,6 +99,8 @@ interface RosterHubV3Props {
    * the wider stat column set (AB/H for hitters, BB+H/ER for pitchers).
    */
   intelSlot?: React.ReactNode;
+  /** League periods — lets the IL section label each stint's period ("Since Period 5"). */
+  ilPeriods?: IlPeriod[];
   /**
    * Number of IL slots — drives both the section header ("Injured List · N
    * slots") and the count of empty drop targets. Plumbed from
@@ -162,7 +165,9 @@ function useIsMobile(forceMobile?: boolean): boolean {
 //     `BB+H` so the relationship to WHIP = (BB+H)/IP is explicit.
 const HITTER_COLS = [
   { key: "pos", label: "Slot", align: "left" as const, width: 72 },
-  { key: "name", label: "Player", align: "left" as const, width: 200 },
+  { key: "name", label: "Player", align: "left" as const, width: 180 },
+  { key: "elig", label: "Pos", align: "left" as const, width: 96 },
+  { key: "mlb", label: "MLB", align: "left" as const, width: 56 },
   { key: "AB", label: "AB", align: "right" as const, width: 56 },
   { key: "H", label: "H", align: "right" as const, width: 48 },
   { key: "R", label: "R", align: "right" as const, width: 48 },
@@ -175,7 +180,9 @@ const HITTER_COLS = [
 
 const PITCHER_COLS = [
   { key: "pos", label: "Slot", align: "left" as const, width: 72 },
-  { key: "name", label: "Player", align: "left" as const, width: 200 },
+  { key: "name", label: "Player", align: "left" as const, width: 180 },
+  { key: "elig", label: "Pos", align: "left" as const, width: 96 },
+  { key: "mlb", label: "MLB", align: "left" as const, width: 56 },
   { key: "IP", label: "IP", align: "right" as const, width: 56 },
   { key: "BB_H", label: "BB+H", align: "right" as const, width: 64 },
   { key: "K", label: "K", align: "right" as const, width: 48 },
@@ -223,6 +230,8 @@ function HitterTotalsRow({ players }: { players: RosterHubPlayer[] }) {
     <tr>
       <td style={totalCellStyle}>TOT</td>
       <td style={{ ...totalCellStyle, textAlign: "left" }}>Hitter Totals</td>
+      <td style={totalCellStyle} />
+      <td style={totalCellStyle} />
       <td style={totalCellStyle}>{fmtTotal(totals.AB)}</td>
       <td style={totalCellStyle}>{fmtTotal(totals.H)}</td>
       <td style={totalCellStyle}>{fmtTotal(totals.R)}</td>
@@ -263,6 +272,8 @@ function PitcherTotalsRow({ players }: { players: RosterHubPlayer[] }) {
     <tr>
       <td style={totalCellStyle}>TOT</td>
       <td style={{ ...totalCellStyle, textAlign: "left" }}>Pitcher Totals</td>
+      <td style={totalCellStyle} />
+      <td style={totalCellStyle} />
       <td style={totalCellStyle}>{totals.IP > 0 ? fmtTotal(totals.IP, 1) : "—"}</td>
       <td style={totalCellStyle}>{fmtTotal(totals.BB_H)}</td>
       <td style={totalCellStyle}>{fmtTotal(totals.K)}</td>
@@ -383,6 +394,7 @@ export function RosterHubV3({
   effectiveDate,
   onEffectiveDateChange,
   intelSlot,
+  ilPeriods,
   ilTotalSlots,
   dndEnabled,
   shakeRowId,
@@ -406,12 +418,6 @@ export function RosterHubV3({
       <Glass padded={false} style={{ overflow: "visible" }}>
         <div style={{ padding: 16, paddingBottom: 6 }}>
           <SectionLabel>✦ Active roster · 23 slots</SectionLabel>
-          <p style={{ margin: 0, fontSize: 13, color: "var(--am-text-muted)" }}>
-            Tap a slot pill to select; eligible destinations glow. Drag the ⋮⋮ icon
-            to swap roster positions. The "..." menu navigates to focused sub-routes for
-            free agent / IL flows — no modals, the stats table stays visible until you
-            commit.
-          </p>
         </div>
 
         <div style={{ padding: "8px 16px 12px" }}>
@@ -521,7 +527,7 @@ export function RosterHubV3({
                     borderCollapse: "separate",
                     borderSpacing: 0,
                     tableLayout: "fixed",
-                    minWidth: 880,
+                    minWidth: 1000,
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >
@@ -571,7 +577,7 @@ export function RosterHubV3({
                     borderCollapse: "separate",
                     borderSpacing: 0,
                     tableLayout: "fixed",
-                    minWidth: 1020,
+                    minWidth: 1140,
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >
@@ -624,6 +630,7 @@ export function RosterHubV3({
 
       <IlSectionV3
         players={ilPlayers}
+        periods={ilPeriods}
         selectedRosterId={selectedRosterId}
         eligibleRosterIds={eligibleRosterIds}
         pendingRosterIds={pendingRosterIds}

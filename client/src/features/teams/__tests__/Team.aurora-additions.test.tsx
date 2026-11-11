@@ -6,11 +6,8 @@
 //
 //   1. Watchlist + Trading Block + Wire List link cards (PR #272)
 //      — owner-only, gated to DRAFT or IN_SEASON
-//   2. Weekly Insights week-pill selector (PR #272)
-//      — appears only when ≥2 weeks of insightHistory exist
-//   3. Lineup Intelligence card respects selectedWeekKey (PR #274)
-//      — historical week pill swaps the rendered insights and surfaces
-//        the weekKey label without leaking "[object Object]" or undefined
+//   2+3. Lineup Intelligence and Weekly Insights are HIDDEN (2026-11-11
+//      team-page tidy, DOC-039): not rendered and not fetched.
 //   4. Period-roster pill row (PR #272 — actually shipped here, not #274)
 //      — pills render when periodOptions.length > 0; clicking a non-
 //        season pill triggers getTeamPeriodRoster fetch
@@ -90,11 +87,16 @@ vi.mock("../components/RosterHub", async () => {
   const actual = await vi.importActual<any>("../components/RosterHub");
   return {
     ...actual,
-    // Render the `intelSlot` prop so the Lineup Intelligence card —
-    // defined in Team.tsx and threaded through this prop — actually
-    // appears in the DOM. Without this, the card is never mounted.
-    RosterHubV3: ({ intelSlot }: any) => (
-      <div data-testid="roster-hub-v3-stub">{intelSlot}</div>
+    // Render the `intelSlot` prop (if anything ever passes one again) so a
+    // regression that re-mounts Lineup Intelligence shows up in the DOM.
+    RosterHubV3: ({ intelSlot, ilPeriods, ilPlayers }: any) => (
+      <div
+        data-testid="roster-hub-v3-stub"
+        data-il-periods={(ilPeriods ?? []).map((p: any) => p.name).join("|")}
+        data-il-since={(ilPlayers ?? []).map((p: any) => String(p.ilSince)).join("|")}
+      >
+        {intelSlot}
+      </div>
     ),
     SubrouteContainer: ({ children }: any) => <div>{children}</div>,
     FreeAgentPanel: () => null,
@@ -175,7 +177,7 @@ vi.mock("@dnd-kit/core", async () => {
   };
 });
 
-import { getPlayerSeasonStats, getTeamDetails, getTeamRosterHub, getTeams, getSeasonStandings } from "../../../api";
+import { getPlayerSeasonStats, getTeamDetails, getTeamRosterHub, getTeams, getSeasonStandings, getTeamAiInsights } from "../../../api";
 import { getTeamAiInsightsHistory, getTeamPeriodRoster } from "../api";
 import Team from "../pages/Team";
 
@@ -245,15 +247,6 @@ describe("Aurora Team — Watchlist / Trading Block / Wire List cards", () => {
     expect(screen.getByTestId("trading-block-panel-stub")).toBeInTheDocument();
   });
 
-  it("does not link owners to the hidden AI hub from the Lineup Intelligence card", async () => {
-    renderTeam("ACES");
-
-    // The intel slot is the only DOM the stubbed hub renders; wait for it.
-    await screen.findByText(/haven't been generated this week/i);
-    expect(screen.queryByText(/AI Hub/i)).not.toBeInTheDocument();
-    expect(document.querySelector('a[href="/ai"]')).toBeNull();
-  });
-
   it("hides all three cards when the viewer is not the team owner (viewing another owner's team)", async () => {
     // Viewer owns team 11 (BEES); we navigate to ACES (id 10).
     leagueState.myTeamId = 11;
@@ -295,122 +288,56 @@ describe("Aurora Team — Watchlist / Trading Block / Wire List cards", () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────
-// 2. Weekly Insights week-pill selector (PR #272)
+// 2. Lineup Intelligence + Weekly Insights are hidden (DOC-039)
 // ──────────────────────────────────────────────────────────────────────
-describe("Aurora Team — Weekly Insights week-pill selector", () => {
-  function makeWeek(weekKey: string, grade: string, insights: { category: string; title: string; detail: string }[]) {
-    return { weekKey, generatedAt: "2026-04-01T00:00:00Z", overallGrade: grade, insights };
-  }
-
-  it("renders one button per week when ≥2 weeks of history exist", async () => {
+describe("Aurora Team — Lineup Intelligence and Weekly Insights are not rendered and not fetched", () => {
+  it("renders neither section and calls neither AI endpoint, even when history exists", async () => {
     vi.mocked(getTeamAiInsightsHistory).mockResolvedValue({
       weeks: [
-        makeWeek("2026-W14", "A", [{ category: "Power", title: "HR up", detail: "+5 vs avg" }]),
-        makeWeek("2026-W13", "B", [{ category: "Speed", title: "SB down", detail: "" }]),
-        makeWeek("2026-W12", "C", [{ category: "Pitch", title: "ERA spike", detail: "" }]),
+        { weekKey: "2026-W14", generatedAt: "2026-04-01T00:00:00Z", overallGrade: "A", insights: [{ category: "POWER", title: "Recent power surge", detail: "d" }] },
+        { weekKey: "2026-W13", generatedAt: "2026-03-25T00:00:00Z", overallGrade: "B", insights: [{ category: "SPEED", title: "Stolen-base lull", detail: "d" }] },
       ],
-    });
-    renderTeam("ACES");
-
-    await waitFor(() => {
-      expect(screen.getByText(/Weekly insights · 3 weeks/i)).toBeInTheDocument();
-    });
-    expect(screen.getByRole("button", { name: /2026-W14/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /2026-W13/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /2026-W12/ })).toBeInTheDocument();
-  });
-
-  it("does not render the selector when only 1 week of history exists", async () => {
-    vi.mocked(getTeamAiInsightsHistory).mockResolvedValue({
-      weeks: [makeWeek("2026-W14", "A", [{ category: "Power", title: "HR up", detail: "" }])],
     });
     renderTeam("ACES");
 
     await waitFor(() => expect(screen.getByText("Aces")).toBeInTheDocument());
-    expect(screen.queryByText(/Weekly insights ·/i)).not.toBeInTheDocument();
-  });
+    // let the load effects settle
+    await waitFor(() => expect(getTeamRosterHub).toHaveBeenCalled());
 
-  it("does not render the selector when 0 weeks of history exist", async () => {
-    vi.mocked(getTeamAiInsightsHistory).mockResolvedValue({ weeks: [] });
-    renderTeam("ACES");
-
-    await waitFor(() => expect(screen.getByText("Aces")).toBeInTheDocument());
-    expect(screen.queryByText(/Weekly insights ·/i)).not.toBeInTheDocument();
-  });
-});
-
-// ──────────────────────────────────────────────────────────────────────
-// 3. Lineup Intelligence card respects selectedWeekKey (PR #274)
-// ──────────────────────────────────────────────────────────────────────
-describe("Aurora Team — Lineup Intelligence respects selectedWeekKey", () => {
-  it("initially shows the most recent week's insights and labels the card with that weekKey (no '[object Object]', no 'undefined')", async () => {
-    vi.mocked(getTeamAiInsightsHistory).mockResolvedValue({
-      weeks: [
-        {
-          weekKey: "2026-W14",
-          generatedAt: "2026-04-01T00:00:00Z",
-          overallGrade: "A-",
-          insights: [{ category: "POWER", title: "Recent power surge", detail: "Detail W14" }],
-        },
-        {
-          weekKey: "2026-W13",
-          generatedAt: "2026-03-25T00:00:00Z",
-          overallGrade: "B+",
-          insights: [{ category: "SPEED", title: "Stolen-base lull", detail: "Detail W13" }],
-        },
-      ],
-    });
-    renderTeam("ACES");
-
-    // Selected week defaults to weeks[0] = 2026-W14
-    await waitFor(() => {
-      expect(screen.getByText(/Recent power surge/)).toBeInTheDocument();
-    });
-
-    // The historical-week label appears next to "Lineup intelligence"
-    expect(screen.getByText(/· 2026-W14/)).toBeInTheDocument();
-
-    // PR #274 narrowing-bug regression guards: "[object Object]" only
-    // appears when an object is rendered as a React child by mistake;
-    // "undefined" appears when an undefined value is templated. Either
-    // would indicate the activeInsightWeekKey cast lost its narrowing.
-    expect(screen.queryByText(/\[object Object\]/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/^undefined$/)).not.toBeInTheDocument();
-  });
-
-  it("clicking a different week pill swaps the rendered insights to that week's snapshot", async () => {
-    vi.mocked(getTeamAiInsightsHistory).mockResolvedValue({
-      weeks: [
-        {
-          weekKey: "2026-W14",
-          generatedAt: "2026-04-01T00:00:00Z",
-          overallGrade: "A-",
-          insights: [{ category: "POWER", title: "Recent power surge", detail: "Detail W14" }],
-        },
-        {
-          weekKey: "2026-W13",
-          generatedAt: "2026-03-25T00:00:00Z",
-          overallGrade: "B+",
-          insights: [{ category: "SPEED", title: "Stolen-base lull", detail: "Detail W13" }],
-        },
-      ],
-    });
-    renderTeam("ACES");
-
-    // Wait for default selection (W14)
-    await waitFor(() => expect(screen.getByText(/Recent power surge/)).toBeInTheDocument());
-    expect(screen.queryByText(/Stolen-base lull/)).not.toBeInTheDocument();
-
-    // Click the W13 pill
-    fireEvent.click(screen.getByRole("button", { name: /2026-W13/ }));
-
-    // W13 content should appear and W14 should disappear
-    await waitFor(() => expect(screen.getByText(/Stolen-base lull/)).toBeInTheDocument());
+    expect(screen.queryByText(/Lineup intelligence/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Weekly insights/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Recent power surge/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /2026-W1/ })).not.toBeInTheDocument();
+    expect(getTeamAiInsights).not.toHaveBeenCalled();
+    expect(getTeamAiInsightsHistory).not.toHaveBeenCalled();
+  });
 
-    // The historical-week chip should now read W13, not W14
-    expect(screen.getByText(/· 2026-W13/)).toBeInTheDocument();
-    expect(screen.queryByText(/· 2026-W14/)).not.toBeInTheDocument();
+  it("threads the hub's ilSince and leaguePeriods down to the IL section", async () => {
+    vi.mocked(getTeamRosterHub).mockResolvedValue({
+      team: { id: 10, leagueId: 1, name: "Aces", owner: "Tester", budget: 260 },
+      period: null,
+      hitters: [],
+      pitchers: [],
+      ilPlayers: [
+        { rosterId: 5, playerId: 50, playerName: "Hurt Guy", isPitcher: true, assignedPosition: "IL", ilSince: "2026-06-10T00:00:00.000Z" },
+      ],
+      leaguePeriods: [
+        { id: 1, name: "Period 1", status: "completed", startDate: "2026-03-25T00:00:00.000Z" },
+        { id: 5, name: "Period 5", status: "active", startDate: "2026-06-01T00:00:00.000Z" },
+      ],
+      droppedPlayers: [],
+      computedAt: null,
+    } as any);
+    renderTeam("ACES");
+    const stub = await screen.findByTestId("roster-hub-v3-stub");
+    await waitFor(() => expect(stub.getAttribute("data-il-since")).toBe("2026-06-10T00:00:00.000Z"));
+    expect(stub.getAttribute("data-il-periods")).toBe("Period 1|Period 5");
+  });
+
+  it("does not render the instruction paragraph or an AI Hub link", () => {
+    renderTeam("ACES");
+    expect(screen.queryByText(/Tap a slot pill/i)).not.toBeInTheDocument();
+    expect(document.querySelector('a[href="/ai"]')).toBeNull();
   });
 });
 
