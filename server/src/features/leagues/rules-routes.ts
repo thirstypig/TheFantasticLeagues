@@ -44,8 +44,9 @@ router.put("/:id/rules", requireAuth, requireCommissionerOrAdmin("id"), validate
   const { updates } = req.body; // Array of { id, value } objects
 
   let count: number;
+  let changes: { category: string; key: string; value: string }[];
   try {
-    count = await commissionerService.updateRules(leagueId, updates);
+    ({ count, changes } = await commissionerService.updateRulesWithChanges(leagueId, updates));
   } catch (err) {
     if (err instanceof RulesLockedError) return res.status(403).json({ error: err.message });
     if (err instanceof InvalidRuleValueError) return res.status(400).json({ error: err.message });
@@ -57,7 +58,7 @@ router.put("/:id/rules", requireAuth, requireCommissionerOrAdmin("id"), validate
     action: "RULES_UPDATE",
     resourceType: "LeagueRule",
     resourceId: leagueId,
-    metadata: { updateCount: count },
+    metadata: { leagueId, updateCount: count, changes },
   });
 
   res.json({ success: true, updated: count });

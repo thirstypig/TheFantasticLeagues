@@ -17,6 +17,30 @@ function words(raw: unknown): string {
   return String(raw).replace(/_/g, " ").trim();
 }
 
+const RULE_LABELS: Record<string, { label: string; values?: Record<string, string> }> = {
+  trade_window: { label: "When trades are allowed", values: { meeting_day: "Meeting day only", anytime: "Anytime" } },
+  owner_self_serve: { label: "Owners make their own moves", values: { true: "On", false: "Off" } },
+};
+
+function describeOneRule(key: string, value: unknown): string {
+  const known = RULE_LABELS[key];
+  const label = known ? known.label : (() => { const w = words(key); return w.charAt(0).toUpperCase() + w.slice(1); })();
+  if (value === undefined || value === null) return label;
+  const raw = String(value);
+  return `${label} → ${known?.values?.[raw] ?? words(raw)}`;
+}
+
+function describeRules(metadata: RecentChange["metadata"]): string {
+  const list = Array.isArray(metadata?.changes) ? (metadata!.changes as Array<Record<string, unknown>>) : [];
+  const parts = list
+    .filter((x) => typeof x?.key === "string" && x.key !== "")
+    .map((x) => describeOneRule(x.key as string, x.value));
+  if (parts.length === 0 && typeof metadata?.key === "string" && metadata.key !== "") {
+    parts.push(describeOneRule(metadata.key, metadata.value));
+  }
+  return parts.length === 0 ? "Changed a league rule" : `Changed a league rule: ${parts.join("; ")}`;
+}
+
 /** Human copy for a commissioner audit-log row. */
 export function describeChange(c: RecentChange, periods: HubPeriod[]): string {
   switch (c.action) {
@@ -28,14 +52,8 @@ export function describeChange(c: RecentChange, periods: HubPeriod[]): string {
       return `Billed IL fees for ${periodLabel(c, periods)}`;
     case "TRADE_PROCESS":
       return `Processed trade #${c.resourceId ?? "?"}`;
-    case "RULES_UPDATE": {
-      const key = c.metadata?.key;
-      if (typeof key !== "string" || key === "") return "Changed a league rule";
-      const label = words(key);
-      const value = c.metadata?.value;
-      const shown = value === undefined || value === null ? "" : ` → ${words(value)}`;
-      return `Changed a league rule: ${label.charAt(0).toUpperCase()}${label.slice(1)}${shown}`;
-    }
+    case "RULES_UPDATE":
+      return describeRules(c.metadata);
     case "MEMBER_ADD":
       return "Added a member";
     case "MEMBER_REMOVE":

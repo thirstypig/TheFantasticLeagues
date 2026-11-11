@@ -200,7 +200,7 @@ describe("RecentChangesPage (History)", () => {
     expect(screen.queryByRole("heading", { name: "Jun 13" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Rules" }));
-    expect(screen.getByText("Changed a league rule: Trade window → meeting day")).toBeTruthy();
+    expect(screen.getByText("Changed a league rule: When trades are allowed → Meeting day only")).toBeTruthy();
   });
 
   it("shows an empty state for a filter with no rows", async () => {

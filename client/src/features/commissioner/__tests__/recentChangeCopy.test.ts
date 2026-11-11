@@ -10,7 +10,19 @@ const c = (action: string, metadata: Record<string, unknown> | null = null, reso
 describe("describeChange: commissioner-management actions", () => {
   it("RULES_UPDATE with key and value", () => {
     expect(describeChange(c("RULES_UPDATE", { leagueId: 20, category: "trades", key: "trade_window", value: "meeting_day" }), []))
-      .toBe("Changed a league rule: Trade window → meeting day");
+      .toBe("Changed a league rule: When trades are allowed → Meeting day only");
+  });
+  it("RULES_UPDATE friendly labels, changes[] shape, joins, unknown keys", () => {
+    const one = (key: string, value: string) => describeChange(c("RULES_UPDATE", { leagueId: 20, changes: [{ category: "x", key, value }] }), []);
+    expect(one("trade_window", "anytime")).toBe("Changed a league rule: When trades are allowed → Anytime");
+    expect(one("owner_self_serve", "true")).toBe("Changed a league rule: Owners make their own moves → On");
+    expect(one("owner_self_serve", "false")).toBe("Changed a league rule: Owners make their own moves → Off");
+    expect(one("il_slot_1_cost", "10")).toBe("Changed a league rule: Il slot 1 cost → 10");
+    expect(describeChange(c("RULES_UPDATE", { leagueId: 20, updateCount: 2, changes: [
+      { category: "t", key: "trade_window", value: "meeting_day" },
+      { category: "t", key: "owner_self_serve", value: "false" },
+    ] }), [])).toBe("Changed a league rule: When trades are allowed → Meeting day only; Owners make their own moves → Off");
+    expect(describeChange(c("RULES_UPDATE", { leagueId: 20, updateCount: 1, changes: [] }), [])).toBe("Changed a league rule");
   });
   it("RULES_UPDATE without key (bulk PUT logs only updateCount)", () => {
     expect(describeChange(c("RULES_UPDATE", { updateCount: 3 }), [])).toBe("Changed a league rule");

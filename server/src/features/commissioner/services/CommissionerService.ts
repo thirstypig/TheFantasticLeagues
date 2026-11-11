@@ -1055,6 +1055,11 @@ export class CommissionerService {
   }
 
   async updateRules(leagueId: number, updates: { id: number; value: string }[]) {
+      return (await this.updateRulesWithChanges(leagueId, updates)).count;
+  }
+
+  /** Same as updateRules, but also returns what changed (category/key/value) for the audit log. */
+  async updateRulesWithChanges(leagueId: number, updates: { id: number; value: string }[]) {
       // Verify all rule IDs belong to this league (prevent IDOR). Also pull
       // the category so we can decide which updates bypass the lock checks.
       const ruleIds = updates.map(u => u.id);
@@ -1085,7 +1090,13 @@ export class CommissionerService {
         )
       );
       invalidateLeagueRules(leagueId);
-      return results.length;
+      return {
+        count: results.length,
+        changes: updates.map((u) => {
+          const r = byId.get(u.id)!;
+          return { category: r.category, key: r.key, value: u.value };
+        }),
+      };
   }
 
   async lockRules(leagueId: number) {
