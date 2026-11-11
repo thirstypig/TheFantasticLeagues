@@ -439,7 +439,7 @@ function CardComponent({
 
   const handleCardClick = () => {
     // Trade block cards open the player card
-    if (isTradeBlock && card.metadata?.playerId) {
+    if (isTradeBlock && card.metadata?.playerId && card.metadata?.mlbId) {
       onOpenPlayer(card.metadata.playerId);
       return;
     }

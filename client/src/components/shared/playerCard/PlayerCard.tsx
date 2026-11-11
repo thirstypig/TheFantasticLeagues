@@ -50,12 +50,16 @@ function defaultRange(card: PlayerCardData): RangeKey {
   return seasonEmpty ? "lastSeason" : "season";
 }
 
-export function PlayerCard({ mlbId, onClose }: { mlbId: number; onClose: () => void }) {
+export function PlayerCard({ mlbId, group: groupHint, onClose }: { mlbId: number; group?: StatGroup; onClose: () => void }) {
   const { leagueId, myTeamId } = useLeague();
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const dialogRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const firstMlbId = useRef(mlbId);
+  const mlbIdRef = useRef(mlbId);
+  mlbIdRef.current = mlbId;
+  const groupHintRef = useRef(groupHint);
+  groupHintRef.current = groupHint;
   const touchY = useRef<number | null>(null);
   const [card, setCard] = useState<PlayerCardData | null>(null);
   const [error, setError] = useState(false);
@@ -74,14 +78,20 @@ export function PlayerCard({ mlbId, onClose }: { mlbId: number; onClose: () => v
         if (!live) return;
         setCard(c);
         setRange(defaultRange(c));
-        setGroup(c.isTwoWay || !c.isPitcher ? "hitting" : "pitching");
+        setGroup(c.isTwoWay ? groupHintRef.current ?? "hitting" : c.isPitcher ? "pitching" : "hitting");
       })
       .catch(() => live && setError(true));
     return () => { live = false; };
   }, [mlbId, leagueId, nonce]);
 
+  // Re-opening the same two-way player from the other tab's row switches sides.
+  useEffect(() => {
+    if (groupHint && card?.isTwoWay) setGroup(groupHint);
+  }, [groupHint, card]);
+
   useEffect(() => {
     setStarred(false);
+    setStarBusy(false);
     if (!myTeamId) return;
     let live = true;
     getWatchlistMlbIds(myTeamId)
@@ -141,15 +151,18 @@ export function PlayerCard({ mlbId, onClose }: { mlbId: number; onClose: () => v
 
   const toggleStar = useCallback(async () => {
     if (!card || !myTeamId || card.playerId == null || starBusy) return;
+    const startedFor = mlbIdRef.current;
+    const next = !starred;
     setStarBusy(true);
     try {
       if (starred) await removeWatchlist(myTeamId, card.playerId);
       else await addWatchlist(myTeamId, card.playerId);
-      setStarred(!starred);
+      // The card may have swapped to another player while this saved.
+      if (mlbIdRef.current === startedFor) setStarred(next);
     } catch {
       /* leave state unchanged */
     } finally {
-      setStarBusy(false);
+      if (mlbIdRef.current === startedFor) setStarBusy(false);
     }
   }, [card, myTeamId, starred, starBusy]);
 
@@ -160,7 +173,7 @@ export function PlayerCard({ mlbId, onClose }: { mlbId: number; onClose: () => v
 
   return (
     <>
-      {!isDesktop && <div className="pc-backdrop" data-testid="pc-backdrop" onClick={onClose} />}
+      {!isDesktop && <div className="aurora-theme pc-backdrop" data-testid="pc-backdrop" onClick={onClose} />}
       <div
         ref={dialogRef}
         role="dialog"
@@ -168,7 +181,7 @@ export function PlayerCard({ mlbId, onClose }: { mlbId: number; onClose: () => v
         tabIndex={-1}
         aria-modal={isDesktop ? undefined : true}
         onKeyDown={onSheetKeyDown}
-        className={`pc ${isDesktop ? "pc-panel" : "pc-sheet"}`}
+        className={`aurora-theme pc ${isDesktop ? "pc-panel" : "pc-sheet"}`}
       >
         <div className="pc-head" {...swipe}>
           <PlayerFace mlbId={mlbId} name={card?.name ?? ""} size={60} />
@@ -227,7 +240,12 @@ export function PlayerCard({ mlbId, onClose }: { mlbId: number; onClose: () => v
               ))}
             </div>
 
-            {line ? (
+            {card.degraded ? (
+              <div className="pc-state">
+                <p>Couldn&apos;t load stats. Try again.</p>
+                <button type="button" className="pc-btn" onClick={() => setNonce((n) => n + 1)}>Retry</button>
+              </div>
+            ) : line ? (
               <div className="pc-stats">
                 {COLS[activeGroup].map((c) => (
                   <div key={c.label} className="pc-stat">
@@ -240,38 +258,42 @@ export function PlayerCard({ mlbId, onClose }: { mlbId: number; onClose: () => v
               <div className="pc-state">No games yet</div>
             )}
 
-            <h3 className="pc-cap">{pitching ? "Last 3 starts" : "Last 5 games"}</h3>
-            {games.length === 0 ? (
-              <div className="pc-state">No games yet</div>
-            ) : (
-              <table className="pc-games">
-                <thead>
-                  <tr>
-                    {(pitching ? ["Date", "Opp", "IP", "H", "ER", "K"] : ["Date", "Opp", "H-AB", "HR", "RBI", "SB"]).map((h) => (
-                      <th key={h} scope="col">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {games.map((g) => (
-                    <tr key={g.date}>
-                      <td>{g.date.slice(5).replace("-", "/")}</td>
-                      <td>{g.home ? g.opp : `@${g.opp}`}</td>
-                      {pitching ? (
-                        <>
-                          <td>{cell(g.line, "inningsPitched")}</td><td>{cell(g.line, "hits")}</td>
-                          <td>{cell(g.line, "earnedRuns")}</td><td>{cell(g.line, "strikeOuts")}</td>
-                        </>
-                      ) : (
-                        <>
-                          <td>{`${cell(g.line, "hits")}-${cell(g.line, "atBats")}`}</td><td>{cell(g.line, "homeRuns")}</td>
-                          <td>{cell(g.line, "rbi")}</td><td>{cell(g.line, "stolenBases")}</td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {!card.degraded && (
+              <>
+                <h3 className="pc-cap">{pitching ? "Last 3 starts" : "Last 5 games"}</h3>
+                {games.length === 0 ? (
+                  <div className="pc-state">No games yet</div>
+                ) : (
+                  <table className="pc-games">
+                    <thead>
+                      <tr>
+                        {(pitching ? ["Date", "Opp", "IP", "H", "ER", "K"] : ["Date", "Opp", "H-AB", "HR", "RBI", "SB"]).map((h) => (
+                          <th key={h} scope="col">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {games.map((g) => (
+                        <tr key={g.date}>
+                          <td>{g.date.slice(5).replace("-", "/")}</td>
+                          <td>{g.home ? g.opp : `@${g.opp}`}</td>
+                          {pitching ? (
+                            <>
+                              <td>{cell(g.line, "inningsPitched")}</td><td>{cell(g.line, "hits")}</td>
+                              <td>{cell(g.line, "earnedRuns")}</td><td>{cell(g.line, "strikeOuts")}</td>
+                            </>
+                          ) : (
+                            <>
+                              <td>{`${cell(g.line, "hits")}-${cell(g.line, "atBats")}`}</td><td>{cell(g.line, "homeRuns")}</td>
+                              <td>{cell(g.line, "rbi")}</td><td>{cell(g.line, "stolenBases")}</td>
+                            </>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </>
             )}
 
             <Link className="pc-full" to={`/players/${mlbId}`} onClick={onClose}>Full profile ›</Link>

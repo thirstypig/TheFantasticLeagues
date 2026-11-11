@@ -42,6 +42,18 @@ const pitcher: PlayerCardData = {
   },
   recent: { pitching: [{ date: "2026-06-13", opp: "COL", home: false, line: { inningsPitched: "6.0", hits: 4, earnedRuns: 1, strikeOuts: 8 } }] },
 };
+const twoWay: PlayerCardData = {
+  ...hitter, mlbId: 4, playerId: 44, name: "Two Way", pos: "TWP", isTwoWay: true, isPitcher: false,
+  splits: {
+    last7: {}, last14: {}, last30: {},
+    season: {
+      hitting: { atBats: 300, runs: 50, homeRuns: 40, rbi: 90, stolenBases: 10, avg: ".290" },
+      pitching: { inningsPitched: "100.0", wins: 8, saves: 0, strikeOuts: 130, era: "3.10", whip: "1.05" },
+    },
+    lastSeason: {},
+  },
+  recent: { hitting: [], pitching: [] },
+};
 const offseason: PlayerCardData = {
   ...hitter, mlbId: 3, name: "Off Season",
   splits: {
@@ -58,6 +70,8 @@ function mount() {
         <PlayerLink mlbId={1} name="Mookie Betts" />
         <PlayerLink mlbId={2} name="Zack Wheeler" />
         <PlayerLink mlbId={3} name="Off Season" />
+        <PlayerLink mlbId={4} name="Two Way" />
+        <PlayerLink mlbId={4} name="Two Way Pitcher Row" group="pitching" />
       </PlayerCardProvider>
     </MemoryRouter>,
   );
@@ -71,7 +85,7 @@ beforeEach(() => {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: desktop, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   })) as unknown as typeof window.matchMedia;
-  m.getPlayerCard.mockImplementation(async (id: number) => ({ 1: hitter, 2: pitcher, 3: offseason }[id]));
+  m.getPlayerCard.mockImplementation(async (id: number) => ({ 1: hitter, 2: pitcher, 3: offseason, 4: twoWay }[id]));
   m.getWatchlistMlbIds.mockResolvedValue(new Set<number>());
   m.addWatchlist.mockResolvedValue(undefined);
   m.removeWatchlist.mockResolvedValue(undefined);
@@ -290,5 +304,53 @@ describe("PlayerCard", () => {
     expect(provider).toBeGreaterThan(-1);
     expect(provider).toBeLessThan(gate);
     expect(src.indexOf("</PlayerCardProvider>")).toBeGreaterThan(src.indexOf("</MobileLayoutGate>"));
+  });
+
+  it("C1: the card root and backdrop carry aurora-theme (it renders outside the shell wrapper)", async () => {
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: "Mookie Betts" }));
+    await screen.findByText(".301");
+    expect(screen.getByRole("dialog").classList.contains("aurora-theme")).toBe(true);
+    expect(screen.getByTestId("pc-backdrop").classList.contains("aurora-theme")).toBe(true);
+  });
+
+  it("M2: when every stat call failed (degraded) it shows retry copy, not 'No games yet'", async () => {
+    m.getPlayerCard.mockResolvedValueOnce({
+      ...hitter, degraded: true,
+      splits: { last7: { hitting: null }, last14: { hitting: null }, last30: { hitting: null }, season: { hitting: null }, lastSeason: { hitting: null } },
+      recent: { hitting: [] },
+    });
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: "Mookie Betts" }));
+    await screen.findByText("Couldn't load stats. Try again.");
+    expect(screen.queryByText("No games yet")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await screen.findByText(".301");
+  });
+
+  it("M3: opening a two-way player via a pitching link lands on Pitching; the plain link lands on Hitting", async () => {
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: "Two Way Pitcher Row" }));
+    await screen.findByText("3.10");
+    expect(screen.getByRole("button", { name: "Pitching" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.click(screen.getByRole("button", { name: "Two Way" }));
+    await screen.findByText(".290");
+    expect(screen.getByRole("button", { name: "Hitting" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("M4: a toggle still saving for player A never flips the star shown for player B", async () => {
+    let finishAdd!: () => void;
+    m.addWatchlist.mockImplementation(() => new Promise<void>((r) => { finishAdd = r; }));
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: "Mookie Betts" }));
+    await screen.findByText(".301");
+    const star = await screen.findByRole("button", { name: "Add to watchlist" });
+    await act(async () => { fireEvent.click(star); });
+    fireEvent.click(screen.getByRole("button", { name: "Zack Wheeler" }));
+    await screen.findByText("2.90");
+    await act(async () => { finishAdd(); });
+    expect(screen.getByRole("button", { name: "Add to watchlist" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Remove from watchlist" })).toBeNull();
   });
 });

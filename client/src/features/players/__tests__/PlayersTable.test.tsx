@@ -5,8 +5,8 @@ import { MemoryRouter } from "react-router-dom";
 const open = vi.fn();
 vi.mock("../../../components/shared/playerCard/PlayerCardProvider", () => ({
   usePlayerCard: () => ({ open, close: vi.fn() }),
-  PlayerLink: ({ mlbId, name }: { mlbId?: number | null; name: string }) =>
-    mlbId ? <button type="button" onClick={() => open(mlbId)}>{name}</button> : <span>{name}</span>,
+  PlayerLink: ({ mlbId, name, group }: { mlbId?: number | null; name: string; group?: string }) =>
+    mlbId ? <button type="button" data-group={group} onClick={() => open(mlbId)}>{name}</button> : <span>{name}</span>,
 }));
 const phone = vi.hoisted(() => ({ on: false }));
 vi.mock("../../../hooks/useMediaQuery", () => ({ useMediaQuery: () => phone.on }));
@@ -128,6 +128,16 @@ describe("PlayersTable", () => {
     });
     expect(screen.queryByRole("link", { name: "Trade" })).toBeNull();
     expect(screen.queryByRole("button", { name: /Wire List/ })).toBeNull();
+  });
+
+  it("M3: names carry the tab's stat group so a two-way player opens on the right side", () => {
+    renderTable([pitcher()], { group: "pitchers" });
+    expect(screen.getAllByRole("button", { name: /./ }).find((b) => b.getAttribute("data-group"))!.getAttribute("data-group")).toBe("pitching");
+  });
+
+  it("M3: hitters tab passes the hitting group", () => {
+    renderTable([hitter()]);
+    expect(screen.getByRole("button", { name: "Ronald Acuna" }).getAttribute("data-group")).toBe("hitting");
   });
 
   it("tapping the name opens the card", () => {

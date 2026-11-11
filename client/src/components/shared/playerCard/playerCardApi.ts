@@ -18,6 +18,8 @@ export type PlayerCardData = {
   nextGame: { opp: string; home: boolean; startUtc: string } | null;
   splits: Record<RangeKey, GroupStats>;
   recent: Partial<Record<StatGroup, GameRow[]>>;
+  /** Every windowed stat call failed server-side: show retry copy, not 'No games yet'. Absent on older payloads. */
+  degraded?: boolean;
 };
 
 export function getPlayerCard(mlbId: number, leagueId: number): Promise<PlayerCardData> {

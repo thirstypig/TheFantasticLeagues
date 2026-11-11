@@ -5,7 +5,7 @@ import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../..
 import { Button } from "../../../components/ui/button";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { useLeague } from "../../../contexts/LeagueContext";
-import { usePlayerCard } from "../../../components/shared/playerCard/PlayerCardProvider";
+import { PlayerLink } from "../../../components/shared/playerCard/PlayerCardProvider";
 import { displayPos } from "../../../lib/playerDisplay";
 
 const TAG_OPTIONS = ["trade-target", "add-drop", "monitor"] as const;
@@ -35,8 +35,6 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
   const [addTags, setAddTags] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
 
-  // Player card
-  const { open: openPlayerCard } = usePlayerCard();
 
   // Edit note inline
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -259,14 +257,11 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
               {items.map((item) => (
                 <ThemedTr key={item.id} className="hover:bg-[var(--lg-tint)] transition-colors">
                   <ThemedTd frozen>
-                    <button
-                      type="button"
-                      onClick={() => item.player?.mlbId && openPlayerCard(item.player.mlbId)}
-                      className="font-semibold text-xs text-[var(--lg-text-primary)] hover:text-[var(--lg-accent)] transition-colors cursor-pointer text-left"
-                      title="View player details"
-                    >
-                      {item.player?.name ?? "Unknown"}
-                    </button>
+                    <PlayerLink
+                      mlbId={item.player?.mlbId}
+                      name={item.player?.name ?? "Unknown"}
+                      className="font-semibold text-xs text-[var(--lg-text-primary)] hover:text-[var(--lg-accent)] transition-colors text-left"
+                    />
                   </ThemedTd>
                   <ThemedTd>
                     <span className="px-1 py-px rounded text-xs font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">

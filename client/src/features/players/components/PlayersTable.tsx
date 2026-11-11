@@ -134,7 +134,7 @@ export function PlayersTable(props: PlayersTableProps) {
           <li key={row.row_id ?? `${row.mlb_id}-${row.id}`} className="pt-item">
             <div className="pt-line">
               <div className="pt-id">
-                <PlayerLink mlbId={cardMlbId(row.mlb_id)} name={displayName(row)} className="pt-name" />
+                <PlayerLink mlbId={cardMlbId(row.mlb_id)} name={displayName(row)} className="pt-name" group={group === "pitchers" ? "pitching" : "hitting"} />
                 <span className="pt-sub">{`${posLabel(row)} · ${mlbLabel(row)} · ${fantasyLabel(row)}`}</span>
               </div>
               <div className="pt-item-action"><Action row={row} {...actionProps} /></div>
@@ -163,7 +163,7 @@ export function PlayersTable(props: PlayersTableProps) {
         <tbody>
           {rows.map((row) => (
             <tr key={row.row_id ?? `${row.mlb_id}-${row.id}`}>
-              <td><PlayerLink mlbId={cardMlbId(row.mlb_id)} name={displayName(row)} className="pt-name" /></td>
+              <td><PlayerLink mlbId={cardMlbId(row.mlb_id)} name={displayName(row)} className="pt-name" group={group === "pitchers" ? "pitching" : "hitting"} /></td>
               <td>{mlbLabel(row)}</td>
               <td>{posLabel(row)}</td>
               <td className={row.ogba_team_code ? undefined : "pt-muted"}>{fantasyLabel(row)}</td>

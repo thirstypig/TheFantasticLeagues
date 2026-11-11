@@ -38,10 +38,13 @@ describe("LeagueBoard player card", () => {
     expect(openCard).toHaveBeenCalledWith(605141);
   });
 
-  it("a trade block card with no mlbId opens nothing", async () => {
+  it("a trade block card with no mlbId opens nothing and falls through to the normal card behavior (no dead click)", async () => {
     items = [card({ metadata: { playerId: 11 } })];
     render(<LeagueBoard leagueId={1} />);
+    const before = (await screen.findAllByText("Mookie Betts")).length;
     fireEvent.click((await screen.findAllByText("Mookie Betts"))[0]);
     expect(openCard).not.toHaveBeenCalled();
+    // The slide-over (desktop) shows the card's title a second time.
+    expect(screen.getAllByText("Mookie Betts").length).toBeGreaterThan(before);
   });
 });

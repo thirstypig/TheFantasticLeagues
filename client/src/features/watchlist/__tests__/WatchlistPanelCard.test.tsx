@@ -23,7 +23,7 @@ import { PlayerCardProvider } from "../../../components/shared/playerCard/Player
 import WatchlistPanel from "../components/WatchlistPanel";
 
 describe("WatchlistPanel player card", () => {
-  it("tapping a name opens the card for that mlbId; a row without mlbId opens nothing", async () => {
+  it("tapping a name opens the card for that mlbId; a row without mlbId is plain text", async () => {
     render(
       <MemoryRouter>
         <PlayerCardProvider>
@@ -31,8 +31,9 @@ describe("WatchlistPanel player card", () => {
         </PlayerCardProvider>
       </MemoryRouter>,
     );
-    fireEvent.click(await screen.findByRole("button", { name: "Minor Leaguer" }));
-    expect(screen.queryByTestId("player-card")).toBeNull();
+    await screen.findByText("Minor Leaguer");
+    // M1: a name without an mlbId is plain text, not a dead button.
+    expect(screen.queryByRole("button", { name: "Minor Leaguer" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Mookie Betts" }));
     expect(screen.getByTestId("player-card")).toHaveAttribute("data-mlbid", "605141");
   });

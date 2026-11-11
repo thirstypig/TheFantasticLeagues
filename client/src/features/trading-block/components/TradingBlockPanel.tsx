@@ -5,7 +5,7 @@ import { getTradingBlock, getMyTradingBlock, addToTradingBlock, updateTradingBlo
 import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 import { Button } from "../../../components/ui/button";
 import { useLeague } from "../../../contexts/LeagueContext";
-import { usePlayerCard } from "../../../components/shared/playerCard/PlayerCardProvider";
+import { PlayerLink } from "../../../components/shared/playerCard/PlayerCardProvider";
 import { displayPos } from "../../../lib/playerDisplay";
 
 interface TradingBlockPanelProps {
@@ -33,7 +33,6 @@ export default function TradingBlockPanel({ teamId, leagueWide = false, rosterPl
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editAskingFor, setEditAskingFor] = useState("");
 
-  const { open: openPlayerCard } = usePlayerCard();
 
   const isMyTeam = teamId === myTeamId;
   const effectiveTeamId = teamId ?? myTeamId;
@@ -203,7 +202,7 @@ export default function TradingBlockPanel({ teamId, leagueWide = false, rosterPl
                       {group.items.map((item) => (
                         <ThemedTr key={item.id} className="hover:bg-[var(--lg-tint)] transition-colors">
                           <ThemedTd frozen>
-                            <button type="button" onClick={() => item.player?.mlbId && openPlayerCard(item.player.mlbId)} className="font-semibold text-xs hover:text-[var(--lg-accent)] transition-colors cursor-pointer text-left">{item.player?.name ?? "Unknown"}</button>
+                            <PlayerLink mlbId={item.player?.mlbId} name={item.player?.name ?? "Unknown"} className="font-semibold text-xs hover:text-[var(--lg-accent)] transition-colors text-left" />
                           </ThemedTd>
                           <ThemedTd>
                             <span className="px-1 py-px rounded text-xs font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
@@ -249,7 +248,7 @@ export default function TradingBlockPanel({ teamId, leagueWide = false, rosterPl
                 {items.map((item) => (
                   <ThemedTr key={item.id} className="hover:bg-[var(--lg-tint)] transition-colors">
                     <ThemedTd frozen>
-                      <button type="button" onClick={() => item.player?.mlbId && openPlayerCard(item.player.mlbId)} className="font-semibold text-xs hover:text-[var(--lg-accent)] transition-colors cursor-pointer text-left">{item.player?.name ?? "Unknown"}</button>
+                      <PlayerLink mlbId={item.player?.mlbId} name={item.player?.name ?? "Unknown"} className="font-semibold text-xs hover:text-[var(--lg-accent)] transition-colors text-left" />
                     </ThemedTd>
                     <ThemedTd>
                       <span className="px-1 py-px rounded text-xs font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">

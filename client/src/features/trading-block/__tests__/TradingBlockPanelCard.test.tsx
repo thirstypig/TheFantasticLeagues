@@ -8,6 +8,7 @@ vi.mock("../api", () => ({
   getTradingBlock: vi.fn().mockResolvedValue({
     items: [
       { id: 1, askingFor: "", team: { id: 3, name: "Doyers", code: "DOY" }, player: { id: 11, name: "Mookie Betts", mlbId: 605141, posPrimary: "SS", mlbTeam: "LAD" } },
+      { id: 2, askingFor: "", team: { id: 3, name: "Doyers", code: "DOY" }, player: { id: 12, name: "Minor Leaguer", mlbId: null, posPrimary: "OF", mlbTeam: null } },
     ],
   }),
   getMyTradingBlock: vi.fn().mockResolvedValue({ items: [] }),
@@ -33,5 +34,17 @@ describe("TradingBlockPanel player card", () => {
     );
     fireEvent.click((await screen.findAllByRole("button", { name: "Mookie Betts" }))[0]);
     expect(screen.getByTestId("player-card")).toHaveAttribute("data-mlbid", "605141");
+  });
+
+  it("M1: a name without an mlbId is plain text, not a button", async () => {
+    render(
+      <MemoryRouter>
+        <PlayerCardProvider>
+          <TradingBlockPanel leagueWide />
+        </PlayerCardProvider>
+      </MemoryRouter>,
+    );
+    await screen.findAllByText("Minor Leaguer");
+    expect(screen.queryByRole("button", { name: "Minor Leaguer" })).toBeNull();
   });
 });
