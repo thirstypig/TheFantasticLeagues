@@ -3,15 +3,17 @@ id: DOC-026
 title: "OnRoto roster diff — 2026 final season (every FanGraphs residual attributed)"
 description: "Per-player FBST vs OnRoto diff closes every season residual: 7 drops recorded a period late, 1 missing drop, 1 missing add, 1 add a day late, 1 unproven reserve gap, 1 FanGraphs data error, and 2 teams that were an audit-instrument artifact. Applying OnRoto's dates swaps 7th and 8th."
 type: report
-status: active
+status: deprecated
 phase: null
 owner: james
 tags: [scoring, roster, league-admin]
-links: [DOC-024, DOC-025]
+links: [DOC-024, DOC-025, DOC-040]
 category: reports
 date_documented: 2026-11-09
-updated: 2026-11-09
+updated: 2026-11-11
 ---
+
+> ⚠️ **Superseded by DOC-040 (2026-11-11).** The "7 drops recorded a period late" were not late drops: OnRoto's own transaction log releases all seven on 08.30, as FBST does. They were AL-traded players, and OnRoto does not score AL games in an NL-only league. The missing Sheehan drop and Webb add, and the 1-day-late Norby add, still stand.
 
 > Read-only against prod + MLB statsapi + Baseball Reference + OnRoto (`session_id=guest`).
 > Companion to the runbook Results-log rows dated 2026-11-09. No data was changed.

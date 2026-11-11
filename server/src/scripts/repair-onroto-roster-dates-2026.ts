@@ -1,12 +1,10 @@
 // server/src/scripts/repair-onroto-roster-dates-2026.ts
 //
-// OPTIONAL commissioner repair: align 2026 OGBA roster dates with OnRoto.
-// Evidence and point impact: docs/reports/onroto-roster-diff-2026-11-09.md (DOC-026).
-//
-// This is a COMMISSIONER DECISION, not a bug fix. Under ADR-013 FBST's roster
-// records are the scoring authority; OnRoto is only evidence of what the
-// owners did. Each item is opt-in. Adopting all of them changes only 7th/8th
-// (Devil Dawgs 255 passes Los Doyers 250); places 1–6 do not move.
+// Commissioner repair: align 2026 OGBA roster records with OnRoto's transaction log
+// and Kent's period-end workbook. DECIDED 2026-11-11: "follow OnRoto and the workbook".
+// Evidence: docs/reports/ogba-2026-onroto-gap-analysis.md (DOC-040), which supersedes
+// DOC-026's late-drop items. A full transaction diff (414 OnRoto vs 415 FBST moves)
+// left exactly these six differences.
 //
 // DRY RUN BY DEFAULT — verifies the exact current state of every row and prints
 // the plan. To write, you must name the items:
@@ -50,47 +48,33 @@ interface Item {
 }
 
 export const ITEMS: Item[] = [
-  // ── Drops FBST recorded at the P7 rollover (08-30); OnRoto released at P6's start.
-  //    Each player's FBST-minus-OnRoto delta equals his MLB P6 line exactly.
-  { key: "hicks", who: "Liam Hicks", team: "The Show", teamId: 146, playerId: 985, confidence: "strong",
-    evidence: "held since 04-19; delta R8 HR3 RBI12 = his P6 line",
-    steps: [{ kind: "move-release", rosterId: 4135, txnId: 420, from: "2026-08-30", to: "2026-08-02" }] },
-  { key: "garcia", who: "Luis García Jr.", team: "The Show", teamId: 146, playerId: 1658, confidence: "strong",
-    evidence: "held since 05-17; delta R12 HR5 RBI12 SB1 = his P6 line",
-    steps: [{ kind: "move-release", rosterId: 4166, txnId: 432, from: "2026-08-30", to: "2026-08-02" }] },
-  { key: "peralta", who: "Freddy Peralta", team: "The Show", teamId: 146, playerId: 1088, confidence: "strong",
-    evidence: "held all season; delta W1 K20 = his P6 line",
-    steps: [{ kind: "move-release", rosterId: 3796, txnId: 408, from: "2026-08-30", to: "2026-08-02" }] },
-  { key: "griffin", who: "Foster Griffin", team: "Los Doyers", teamId: 147, playerId: 2461, confidence: "strong",
-    evidence: "held since 04-19; delta W3 K23 = his P6 line",
-    steps: [{ kind: "move-release", rosterId: 4107, txnId: 441, from: "2026-08-30", to: "2026-08-02" }] },
-  { key: "ramos", who: "Heliot Ramos", team: "RGing Sluggers", teamId: 145, playerId: 7, confidence: "strong",
-    evidence: "held all season; delta R1 RBI1 SB1 = his P6 line",
-    steps: [{ kind: "move-release", rosterId: 3819, txnId: 428, from: "2026-08-30", to: "2026-08-02" }] },
-  // ── Added in FBST on 08-02; OnRoto credited them (almost) nothing. Backdating
-  //    the drop to the add date makes the stint zero-length. Confirm with the owners.
-  { key: "miller", who: "Erik Miller", team: "Devil Dawgs", teamId: 144, playerId: 561, confidence: "weaker",
-    evidence: "ADDED 08-02 in FBST; OnRoto credits 0 for Devil Dawgs; delta W1 K18 = his P6 line",
-    warning: "zero-length stint (acquired = released 08-02) — did the owner reverse this add?",
-    steps: [{ kind: "move-release", rosterId: 4246, txnId: 412, from: "2026-08-30", to: "2026-08-02" }] },
-  { key: "lowe", who: "Nathaniel Lowe", team: "Demolition Lumber Co.", teamId: 148, playerId: 1294, confidence: "weaker",
-    evidence: "ADDED 08-02 in FBST; OnRoto keeps only his 08-02 game (R2 RBI2); MLB-traded CIN→CLE 08-04",
-    warning: "any date 08-03..08-05 gives the same stats (no games 08-03/04)",
-    steps: [{ kind: "move-release", rosterId: 4261, txnId: 406, from: "2026-08-30", to: "2026-08-03" }] },
-  // ── Missing transactions.
-  { key: "sheehan", who: "Emmet Sheehan", team: "Demolition Lumber Co.", teamId: 148, playerId: 1639, confidence: "review",
-    evidence: "FBST never recorded a drop (stint 07-05..open); OnRoto released him 08-02; delta W1 K28 = every game from 08-02",
+  // REMOVED 2026-11-11: hicks, garcia, peralta, griffin, ramos, miller, lowe. They were
+  // NOT late drops. OnRoto's own transaction log releases all seven on 08.30 — the same
+  // date FBST has — and Kent's period-end workbook lists them on their teams at 8/30.
+  // Each had been traded to an AL club (NYY, TB, CLE, BOS); OnRoto doesn't score AL
+  // games in an NL-only league. That is now a scoring rule (mlbStatsSyncService league
+  // filter), not a roster edit. Backdating their drops would have misstated the rosters.
+  { key: "sheehan", who: "Emmet Sheehan", team: "Demolition Lumber Co.", teamId: 148, playerId: 1639, confidence: "strong",
+    evidence: "FBST never recorded a drop (stint 07-05..open); OnRoto log: Release 08.02; workbook P6/P7 lists J. Webb, not Sheehan",
     warning: "removes him from Demolition's CURRENT roster — affects next season's keeper pool",
     steps: [{ kind: "add-release", rosterId: 4222, to: "2026-08-02" }] },
-  { key: "webb", who: "Jacob Webb", team: "Demolition Lumber Co.", teamId: 148, playerId: 721, confidence: "review",
-    evidence: "no FBST roster row; OnRoto has him active, and his credit (W2 SV4 K17) = his Cubs log from 08-04",
+  { key: "webb", who: "Jacob Webb", team: "Demolition Lumber Co.", teamId: 148, playerId: 721, confidence: "strong",
+    evidence: "no FBST roster row; OnRoto log: Add to Actives 08.02; workbook P6/P7 lists him on Demolition",
     warning: "adds him to Demolition's CURRENT roster — affects next season's keeper pool; slot set to P",
-    steps: [{ kind: "add-stint", playerId: 721, to: "2026-08-04", assignedPosition: "P" }] },
+    steps: [{ kind: "add-stint", playerId: 721, to: "2026-08-02", assignedPosition: "P" }] },
   { key: "norby", who: "Connor Norby", team: "Devil Dawgs", teamId: 144, playerId: 998, confidence: "strong",
-    evidence: "FBST add 08-31, OnRoto 08-30; his only RBI in the window came 08-30",
+    evidence: "FBST add 08-31, OnRoto log 08.30",
     steps: [{ kind: "move-acquire", rosterId: 4287, txnId: 438, from: "2026-08-31", to: "2026-08-30" }] },
-  // Paul Sewald (Los Doyers, K+9) is deliberately NOT here: OnRoto credits nothing
-  // after 08-04 while listing him active, and no FBST record explains it. Unproven.
+  { key: "pratt", who: "Cooper Pratt", team: "Devil Dawgs", teamId: 144, playerId: 3192, confidence: "strong",
+    evidence: "FBST drop 08-31, OnRoto log 08.30 (the other half of the Norby move)",
+    steps: [{ kind: "move-release", rosterId: 4232, txnId: 437, from: "2026-08-31", to: "2026-08-30" }] },
+  { key: "greene", who: "Hunter Greene", team: "Skunk Dogs", teamId: 141, playerId: 96, confidence: "strong",
+    evidence: "FBST drop 08-31, OnRoto log 08.30",
+    steps: [{ kind: "move-release", rosterId: 4208, txnId: 439, from: "2026-08-31", to: "2026-08-30" }] },
+  { key: "gusto", who: "Ryan Gusto", team: "Skunk Dogs", teamId: 141, playerId: 982, confidence: "strong",
+    evidence: "FBST add 08-31, OnRoto log 08.30 (the other half of the Greene move)",
+    steps: [{ kind: "move-acquire", rosterId: 4288, txnId: 440, from: "2026-08-31", to: "2026-08-30" }] },
+  // Paul Sewald (Los Doyers): OnRoto shows no move after his 04-19 add, same as FBST. No change.
 ];
 
 /** Verify every step's starting state; returns human-readable problems (empty = OK). */
@@ -112,6 +96,13 @@ async function verify(db: Prisma.TransactionClient | PrismaClient, item: Item): 
     if (s.kind === "add-release" && r.releasedAt !== null) problems.push(`roster #${s.rosterId} already released ${day(r.releasedAt)}`);
     if (s.kind === "move-release" && r.acquiredAt > d(s.to)) problems.push(`new releasedAt ${s.to} precedes acquiredAt ${day(r.acquiredAt)}`);
     if (s.kind === "add-release" && r.acquiredAt > d(s.to)) problems.push(`new releasedAt ${s.to} precedes acquiredAt ${day(r.acquiredAt)}`);
+    if (s.kind === "move-acquire") {
+      const clash = await db.roster.findFirst({ where: {
+        id: { not: s.rosterId }, playerId: item.playerId, team: { leagueId: LEAGUE_ID },
+        acquiredAt: { lt: d(s.from) }, OR: [{ releasedAt: null }, { releasedAt: { gt: d(s.to) } }],
+      } });
+      if (clash) problems.push(`another league-${LEAGUE_ID} stint #${clash.id} (team ${clash.teamId}) overlaps the new start ${s.to}`);
+    }
     if (s.kind === "move-release" || s.kind === "move-acquire") {
       const t = await db.transactionEvent.findUnique({ where: { id: s.txnId } });
       if (!t || t.playerId !== item.playerId || day(t.effDate) !== s.from)
@@ -123,7 +114,7 @@ async function verify(db: Prisma.TransactionClient | PrismaClient, item: Item): 
 
 async function apply(tx: Prisma.TransactionClient, item: Item): Promise<void> {
   for (const s of item.steps) {
-    const note = `(commissioner correction 2026-11-09 — aligned to OnRoto, DOC-026)`;
+    const note = `(commissioner correction 2026-11-11 — aligned to OnRoto, DOC-040)`;
     if (s.kind === "move-release") {
       await tx.roster.update({ where: { id: s.rosterId }, data: { releasedAt: d(s.to) } });
       await tx.transactionEvent.update({ where: { id: s.txnId }, data: { effDate: d(s.to), transactionRaw: `Dropped ${item.who} ${note}` } });

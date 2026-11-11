@@ -9,6 +9,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("../../../db/prisma.js", () => ({
   prisma: {
     period: { findUnique: vi.fn() },
+    leagueRule: { findMany: vi.fn().mockResolvedValue([]) },
     roster: { findMany: vi.fn() },
     player: { findFirst: vi.fn() },
     playerStatsPeriod: { upsert: vi.fn(), findUnique: vi.fn() },
