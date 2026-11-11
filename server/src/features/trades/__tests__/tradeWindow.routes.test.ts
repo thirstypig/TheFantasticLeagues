@@ -16,12 +16,15 @@ vi.mock("../../../db/prisma.js", () => ({
   prisma: {
     trade: { create: vi.fn(), findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
     team: { findUnique: vi.fn(), findMany: vi.fn() },
+    roster: { findMany: vi.fn() },
+    player: { findMany: vi.fn() },
     league: { findUnique: vi.fn() },
     leagueMembership: { findUnique: vi.fn() },
     $transaction: vi.fn(async (fn: any) => fn(mockTx)),
   },
 }));
 vi.mock("../../../lib/tradeWindow.js", () => ({ getTradeWindow: mockGetTradeWindow }));
+vi.mock("../../../lib/leagueRuleCache.js", () => ({ getLeagueRules: vi.fn(async () => ({})) }));
 vi.mock("../../../lib/supabase.js", () => ({ supabaseAdmin: { auth: { getUser: vi.fn() } } }));
 vi.mock("../../../lib/logger.js", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
@@ -85,9 +88,11 @@ beforeEach(() => {
   mockPrisma.$transaction.mockImplementation(async (fn: any) => fn(mockTx));
   mockPrisma.team.findUnique.mockResolvedValue({ leagueId: 20 });
   mockPrisma.team.findMany.mockResolvedValue([
-    { id: 1, leagueId: 20 },
-    { id: 2, leagueId: 20 },
+    { id: 1, leagueId: 20, name: "Alpha" },
+    { id: 2, leagueId: 20, name: "Beta" },
   ]);
+  mockPrisma.roster.findMany.mockResolvedValue([{ teamId: 1, playerId: 100, assignedPosition: "OF" }]);
+  mockPrisma.player.findMany.mockResolvedValue([{ id: 100, name: "Ann Aces" }]);
 });
 
 describe("POST / (propose) with trade window", () => {

@@ -13,6 +13,8 @@ import { logger } from "../../lib/logger.js";
 import { resolveEffectiveDate, assertNoOwnershipConflict } from "../../lib/rosterWindow.js";
 import { getWeekKey } from "../../lib/utils.js";
 import { getTradeWindow } from "../../lib/tradeWindow.js";
+import { assertTradeRosters, TradeValidationError } from "./lib/tradeRosterCheck.js";
+import { loadLeagueRosterCap } from "../../lib/rosterGuard.js";
 
 const processSchema = z.object({
   effectiveDate: z
@@ -186,6 +188,13 @@ router.post("/", requireAuth, validateBody(tradeProposalSchema), requireSeasonSt
     return res.status(400).json({ error: "All teams must belong to the same league" });
   }
 
+  try {
+    await assertTradeRosters(prisma as any, leagueId, items);
+  } catch (err) {
+    if (err instanceof TradeValidationError) return res.status(400).json({ error: err.message });
+    throw err;
+  }
+
   const trade = await prisma.trade.create({
     data: {
       leagueId,
@@ -240,6 +249,22 @@ router.post("/", requireAuth, validateBody(tradeProposalSchema), requireSeasonSt
   }
 
   res.json(trade);
+}));
+
+// GET /api/trades/window?leagueId=N - Is the trade window open, and the roster cap.
+// Registered before any "/:id" GET so "window" is never read as an id.
+router.get("/window", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
+  const leagueId = Number(req.query.leagueId);
+  if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
+  const [tradeWindow, rosterCap] = await Promise.all([
+    getTradeWindow(leagueId),
+    loadLeagueRosterCap(prisma as any, leagueId),
+  ]);
+  res.json({
+    open: tradeWindow.open,
+    message: tradeWindow.open ? null : tradeWindow.message,
+    rosterCap,
+  });
 }));
 
 // GET /api/trades - List trades for a league
@@ -307,6 +332,14 @@ router.post("/:id/accept", requireAuth, asyncHandler(async (req, res) => {
   // A trade proposed inside the window can be accepted only inside it too.
   const tradeWindow = await getTradeWindow(trade.leagueId);
   if (!tradeWindow.open) return res.status(409).json({ error: tradeWindow.message });
+
+  // Rosters may have changed since the offer was sent.
+  try {
+    await assertTradeRosters(prisma as any, trade.leagueId, trade.items);
+  } catch (err) {
+    if (err instanceof TradeValidationError) return res.status(400).json({ error: err.message });
+    throw err;
+  }
 
   const updated = await prisma.trade.update({
     where: { id },
@@ -483,13 +516,25 @@ router.post("/:id/process", requireAuth, asyncHandler(async (req, res) => {
       throw new Error("Trade already processed or no longer accepted");
     }
 
+    // Validate against the rosters as they are now, before any write.
+    await assertTradeRosters(tx as any, trade.leagueId, trade.items);
+
     for (const item of trade.items) {
       if (item.assetType === "PLAYER" && item.playerId) {
         const rosterEntry = await tx.roster.findFirst({
           where: { teamId: item.senderId, playerId: item.playerId, releasedAt: null },
         });
 
-        if (rosterEntry) {
+        if (!rosterEntry) {
+          const [p, t] = await Promise.all([
+            tx.player.findUnique({ where: { id: item.playerId }, select: { name: true } }),
+            tx.team.findUnique({ where: { id: item.senderId }, select: { name: true } }),
+          ]);
+          throw new TradeValidationError(
+            `${p?.name ?? `Player #${item.playerId}`} is no longer on ${t?.name ?? `Team #${item.senderId}`}`,
+          );
+        }
+        {
            await tx.roster.update({
              where: { id: rosterEntry.id },
              data: { releasedAt: effective, source: "TRADE_OUT" },
@@ -563,23 +608,17 @@ router.post("/:id/process", requireAuth, asyncHandler(async (req, res) => {
       }
     }
 
-    // Verify roster limits for all teams involved after all moves
-    const teamIds = new Set(trade.items.flatMap(i => [i.senderId, i.recipientId]));
-    for (const tid of teamIds) {
-      const count = await tx.roster.count({ where: { teamId: tid, releasedAt: null } });
-      if (count > 23) {
-        throw new Error(`Trade would leave team ${tid} with ${count} players (max 23)`);
-      }
-    }
-
     await tx.trade.update({
       where: { id },
       data: { status: "PROCESSED", processedAt: new Date() },
     });
   }, { timeout: 30_000 });
   } catch (err: unknown) {
+    if (err instanceof TradeValidationError) {
+      return res.status(400).json({ error: err.message });
+    }
     const msg = err instanceof Error ? err.message : "Trade process failed";
-    if (msg.includes("Ownership conflict") || msg.includes("Invalid effectiveDate") || msg.includes("already processed") || msg.includes("max 23") || msg.includes("insufficient budget")) {
+    if (msg.includes("Ownership conflict") || msg.includes("Invalid effectiveDate") || msg.includes("already processed") || msg.includes("insufficient budget")) {
       return res.status(400).json({ error: msg });
     }
     throw err;
