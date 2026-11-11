@@ -49,8 +49,8 @@ export interface AuctionLogEvent {
   amount?: number;
   timestamp: number;
   message: string;
-  /** Why a turn was skipped (SKIP only): 'commissioner' | 'timeout'. */
-  reason?: string;
+  /** Why a turn was skipped (SKIP only). */
+  reason?: 'commissioner' | 'timeout';
 }
 
 export interface AuctionState {
@@ -84,6 +84,14 @@ export interface AuctionState {
   };
 
   log: AuctionLogEvent[];
+
+  /**
+   * Each team's private "my list" of players to put up (mlbIds, in order),
+   * keyed by teamId. Used to auto-nominate when a team's turn clock runs out.
+   * PRIVATE: never broadcast or returned in state payloads — see
+   * `sanitizeStateForBroadcast`. Absent on states persisted before step F.
+   */
+  nominationLists?: Record<number, number[]>;
 
   lastUpdate: number;
 }

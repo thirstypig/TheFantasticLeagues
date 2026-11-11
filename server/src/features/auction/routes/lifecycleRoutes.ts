@@ -24,6 +24,7 @@ import {
   finishCurrentLot,
   clearState,
   advanceQueue,
+  sanitizeStateForBroadcast,
 } from "../lib/auctionStateManager.js";
 import { broadcastState } from "../services/auctionWsService.js";
 
@@ -83,7 +84,7 @@ router.post("/init", requireAuth, requireAdmin, asyncHandler(async (req, res) =>
     metadata: { leagueId, teamCount: state.teams.length, budgetCap, rosterSize, bidTimer, nominationTimer },
   });
 
-  res.json(state);
+  res.json(sanitizeStateForBroadcast(state));
 }));
 
 // POST /api/auction/finish
@@ -94,7 +95,7 @@ router.post("/finish", requireAuth, requireAdmin, asyncHandler(async (req, res) 
   const state = await finishCurrentLot(leagueId, req.user!.id);
   if (!state) return res.status(400).json({ error: "No active nomination or finish already in progress" });
 
-  res.json(state);
+  res.json(sanitizeStateForBroadcast(state));
 }));
 
 // POST /api/auction/undo-finish (commissioner or admin)
@@ -160,7 +161,7 @@ router.post("/undo-finish", requireAuth, asyncHandler(async (req, res) => {
     metadata: { leagueId, playerId: lastRoster.playerId, playerName: lastRoster.player.name, price: lastRoster.price },
   });
 
-  res.json(state);
+  res.json(sanitizeStateForBroadcast(state));
 }));
 
 // POST /api/auction/pause
@@ -183,7 +184,7 @@ router.post("/pause", requireAuth, asyncHandler(async (req, res) => {
     clearNominationTimer(leagueId);
     broadcastState(leagueId, state);
     persistState(leagueId, state);
-    res.json(state);
+    res.json(sanitizeStateForBroadcast(state));
 }));
 
 // POST /api/auction/resume
@@ -208,7 +209,7 @@ router.post("/resume", requireAuth, asyncHandler(async (req, res) => {
     }
     broadcastState(leagueId, state);
     persistState(leagueId, state);
-    res.json(state);
+    res.json(sanitizeStateForBroadcast(state));
 }));
 
 // POST /api/auction/skip-turn?leagueId=N
@@ -260,7 +261,7 @@ router.post("/skip-turn", requireAuth, asyncHandler(async (req, res) => {
       metadata: { leagueId, skippedTeamId, nextTeamId: state.queue[state.queueIndex], completed: state.status === 'completed' },
     });
 
-    res.json(state);
+    res.json(sanitizeStateForBroadcast(state));
 }));
 
 // POST /api/auction/reset
@@ -323,7 +324,7 @@ router.post("/reset", requireAuth, requireAdmin, asyncHandler(async (req, res) =
       metadata: { leagueId },
     });
 
-    res.json(state);
+    res.json(sanitizeStateForBroadcast(state));
 }));
 
 // POST /api/auction/complete

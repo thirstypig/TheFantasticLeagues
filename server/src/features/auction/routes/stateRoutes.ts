@@ -3,7 +3,7 @@ import { requireAuth } from "../../../middleware/auth.js";
 import { requireLeagueMember } from "../../../middleware/auth.js";
 import { asyncHandler } from "../../../middleware/asyncHandler.js";
 import { getAuctionDaySnapshot } from "../lib/auctionDaySnapshot.js";
-import { getState, readLeagueId } from "../lib/auctionStateManager.js";
+import { getState, readLeagueId, sanitizeStateForBroadcast } from "../lib/auctionStateManager.js";
 
 const router = Router();
 
@@ -13,11 +13,9 @@ router.get("/state", requireAuth, requireLeagueMember("leagueId"), asyncHandler(
   if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
 
   const state = await getState(leagueId);
-  // Strip proxy bids (private) — client fetches their own via /proxy-bid
-  const sanitized = state.nomination?.proxyBids
-    ? { ...state, nomination: { ...state.nomination, proxyBids: undefined } }
-    : state;
-  res.json({ ...sanitized, computedAt: new Date().toISOString() });
+  // Strip proxy bids and my-lists (private) — clients read their own via
+  // /my-proxy-bid and /my-list
+  res.json({ ...sanitizeStateForBroadcast(state), computedAt: new Date().toISOString() });
 }));
 
 // GET /api/auction/results?leagueId=N

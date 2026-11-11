@@ -1,11 +1,11 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { prisma } from "../../../db/prisma.js";
 import { requireAuth } from "../../../middleware/auth.js";
 import { requireLeagueMember, requireTeamOwner, isTeamOwner } from "../../../middleware/auth.js";
 import { asyncHandler } from "../../../middleware/asyncHandler.js";
 import { validateBody } from "../../../middleware/validate.js";
 import { requireSeasonStatus } from "../../../middleware/seasonGuard.js";
-import { nominateSchema, bidSchema, proxyBidSchema } from "../lib/schemas.js";
+import { nominateSchema, bidSchema, proxyBidSchema, myListSchema } from "../lib/schemas.js";
 import {
   getState,
   readLeagueId,
@@ -13,9 +13,9 @@ import {
   checkPositionLimit,
   processProxyBids,
   sanitizeStateForBroadcast,
-  clearNominationTimer,
   scheduleAutoFinish,
   persistState,
+  nominatePlayer,
 } from "../lib/auctionStateManager.js";
 import { broadcastState } from "../services/auctionWsService.js";
 import { logger } from "../../../lib/logger.js";
@@ -59,80 +59,12 @@ router.post("/nominate", requireAuth, validateBody(nominateSchema), requireSeaso
     return res.status(409).json({ error: "It is not this team's turn to nominate" });
   }
 
-  const teamObj = state.teams.find(t => t.id === nominatorTeamId);
-  if (!teamObj) return res.status(400).json({ error: "Invalid team" });
-  if (teamObj.maxBid < startBid) return res.status(400).json({ error: "Insufficent funds" });
-
-  // Guard: prevent nominating already-drafted players
-  const dbPlayer = await prisma.player.findFirst({ where: { mlbId: Number(playerId) } });
-  if (dbPlayer) {
-    const existing = await prisma.roster.findFirst({
-      where: { playerId: dbPlayer.id, team: { leagueId }, releasedAt: null }
-    });
-    if (existing) return res.status(400).json({ error: "Player already on a roster" });
-  }
-
-  // Check position limits for the nominating team
-  const nomPosError = checkPositionLimit(nominatorTeamId, isPitcher, state, positions);
-  if (nomPosError) return res.status(400).json({ error: nomPosError });
-
-  // Clear nomination timer (team is nominating)
-  clearNominationTimer(leagueId);
-
-  // Persist AuctionLot to DB for bid history tracking
-  let lotId: number | undefined;
-  if (dbPlayer) {
-    const lot = await prisma.auctionLot.create({
-      data: {
-        playerId: dbPlayer.id,
-        nominatingTeamId: nominatorTeamId,
-        status: "active",
-      },
-    });
-    lotId = lot.id;
-
-    // Record the nominator's opening bid
-    await prisma.auctionBid.create({
-      data: { lotId: lot.id, teamId: nominatorTeamId, amount: Number(startBid) },
-    });
-  }
-
-  const now = Date.now();
-  state.nomination = {
-    playerId,
-    playerName,
-    playerTeam: team,
-    positions,
-    isPitcher,
-    nominatorTeamId,
-    currentBid: Number(startBid),
-    highBidderTeamId: nominatorTeamId,
-    endTime: new Date(now + state.config.bidTimer * 1000).toISOString(),
-    timerDuration: state.config.bidTimer,
-    status: 'running',
-    lotId,
-  };
-
-  state.log.unshift({
-    type: 'NOMINATION',
-    teamId: nominatorTeamId,
-    teamName: teamObj.name,
-    playerId,
-    playerName,
-    amount: startBid,
-    timestamp: now,
-    message: `${teamObj.name} nominated ${playerName} for $${startBid}`
+  const result = await nominatePlayer(leagueId, state, {
+    nominatorTeamId, playerId, playerName, startBid, positions, team, isPitcher,
   });
+  if (!result.ok) return res.status(400).json({ error: result.error });
 
-  state.status = 'bidding';
-  state.lastUpdate = Date.now();
-
-  // Schedule server-side auto-finish
-  scheduleAutoFinish(leagueId, state.config.bidTimer * 1000);
-
-  broadcastState(leagueId, state);
-  persistState(leagueId, state);
-  res.json(state);
+  res.json(sanitizeStateForBroadcast(state));
 }));
 
 // POST /api/auction/bid
@@ -327,6 +259,55 @@ router.delete("/proxy-bid", requireAuth, asyncHandler(async (req, res) => {
     persistState(leagueId, state);
   }
   res.json({ success: true });
+}));
+
+// ── "My list" (Ruling 7) ──────────────────────────────────────────
+// A team's private, ordered list of players to put up. Stored in auction
+// state (persisted, never broadcast) so the server can auto-nominate from it
+// when the team's turn clock runs out.
+
+/**
+ * Owner-only check for /my-list. The team must belong to this league (404
+ * otherwise); then the caller must own it or be an admin, matching
+ * requireTeamOwner (which can't be used here: GET carries teamId in the query).
+ */
+async function authorizeMyList(req: Request, res: Response, leagueId: number, teamId: number): Promise<boolean> {
+  const team = await prisma.team.findUnique({ where: { id: teamId }, select: { leagueId: true } });
+  if (!team || team.leagueId !== leagueId) {
+    res.status(404).json({ error: "Team not found in this league" });
+    return false;
+  }
+  if (!req.user!.isAdmin && !(await isTeamOwner(teamId, req.user!.id))) {
+    res.status(403).json({ error: "You do not own this team" });
+    return false;
+  }
+  return true;
+}
+
+// GET /api/auction/my-list?leagueId=N&teamId=N
+router.get("/my-list", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
+  const leagueId = readLeagueId(req);
+  if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
+  const teamId = Number(req.query.teamId);
+  if (!Number.isInteger(teamId) || teamId <= 0) return res.status(400).json({ error: "Missing teamId" });
+  if (!(await authorizeMyList(req, res, leagueId, teamId))) return;
+
+  const state = await getState(leagueId);
+  res.json({ teamId, mlbIds: state.nominationLists?.[teamId] ?? [] });
+}));
+
+// PUT /api/auction/my-list?leagueId=N  body: { teamId, mlbIds }
+router.put("/my-list", requireAuth, requireLeagueMember("leagueId"), validateBody(myListSchema), asyncHandler(async (req, res) => {
+  const leagueId = readLeagueId(req);
+  if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
+  const { teamId, mlbIds } = req.body as { teamId: number; mlbIds: number[] };
+  if (!(await authorizeMyList(req, res, leagueId, teamId))) return;
+
+  const deduped = [...new Set(mlbIds)];
+  const state = await getState(leagueId);
+  state.nominationLists = { ...(state.nominationLists ?? {}), [teamId]: deduped };
+  persistState(leagueId, state);
+  res.json({ teamId, mlbIds: deduped });
 }));
 
 export default router;

@@ -33,3 +33,9 @@ export const forceAssignSchema = z.object({
   team: z.string().max(10).optional().default(""),
   isPitcher: z.boolean(),
 });
+
+/** PUT /api/auction/my-list — a team's ordered "my list" (mlbIds), max 50 (deduped server-side). */
+export const myListSchema = z.object({
+  teamId: z.number().int().positive(),
+  mlbIds: z.array(z.number().int().positive()).max(50),
+});

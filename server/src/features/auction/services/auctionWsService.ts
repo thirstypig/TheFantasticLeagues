@@ -4,6 +4,7 @@ import { supabaseAdmin } from "../../../lib/supabase.js";
 import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
 import type { AuctionState } from "../types.js";
+import { sanitizeStateForBroadcast } from "../lib/sanitizeState.js";
 
 /** Extended WebSocket with auction metadata */
 interface AuctionSocket extends WebSocket {
@@ -26,12 +27,8 @@ export function broadcastState(leagueId: number, state: AuctionState): void {
   const clients = rooms.get(leagueId);
   if (!clients || clients.size === 0) return;
 
-  // Strip proxyBids before sending — they are private per-team secrets
-  const sanitized = state.nomination?.proxyBids
-    ? { ...state, nomination: { ...state.nomination, proxyBids: undefined } }
-    : state;
-
-  const payload = JSON.stringify(sanitized);
+  // Strip proxyBids and nominationLists before sending — private per-team secrets
+  const payload = JSON.stringify(sanitizeStateForBroadcast(state));
   for (const ws of clients) {
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(payload);
