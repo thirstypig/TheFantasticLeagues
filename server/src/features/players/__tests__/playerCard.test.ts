@@ -219,6 +219,16 @@ describe("buildPlayerCard", () => {
     expect(card.fantasyTeam).toEqual({ id: 7, name: "Doyers", code: "DOY" });
   });
 
+  it("playerId comes from the Player table, null when unknown", async () => {
+    mockPrisma.player.findFirst.mockResolvedValueOnce({ id: 4242 });
+    const card = await buildPlayerCard(660271, 20, new Date("2026-06-15T18:00:00Z"));
+    expect(mockPrisma.player.findFirst.mock.calls[0][0].where).toEqual({ mlbId: 660271 });
+    expect(card.playerId).toBe(4242);
+    mockPrisma.player.findFirst.mockResolvedValueOnce(null);
+    const card2 = await buildPlayerCard(660271, 20, new Date("2026-06-15T18:00:00Z"));
+    expect(card2.playerId).toBeNull();
+  });
+
   it("two-way players get both groups", async () => {
     route({ "/people/100?": () => person("TWP", "Two-Way Player") });
     const card = await buildPlayerCard(100, 1, TODAY);

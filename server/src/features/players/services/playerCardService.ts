@@ -21,6 +21,8 @@ export type GameRow = {
 
 export type PlayerCardData = {
   mlbId: number;
+  /** Prisma Player.id, or null when this mlbId isn't in our Player table. */
+  playerId: number | null;
   name: string;
   pos: string;
   mlbTeam: string | null;
@@ -122,13 +124,14 @@ export async function buildPlayerCard(
   const season = Number(etDate(today).slice(0, 4));
   const todayEt = etDate(today);
 
-  const [personResp, teamsMap, rosterRow] = await Promise.all([
+  const [personResp, teamsMap, rosterRow, playerRow] = await Promise.all([
     get(`${MLB_BASE}/people/${mlbId}?hydrate=currentTeam`),
     fetchMlbTeamsMap().catch(() => ({}) as Record<number, string>),
     prisma.roster.findFirst({
       where: { releasedAt: null, player: { mlbId }, team: { leagueId } },
       select: { team: { select: { id: true, name: true, code: true } } },
     }),
+    prisma.player.findFirst({ where: { mlbId }, select: { id: true } }),
   ]);
 
   const person = personResp?.people?.[0];
@@ -229,6 +232,7 @@ export async function buildPlayerCard(
 
   return {
     mlbId,
+    playerId: playerRow?.id ?? null,
     name: person?.fullName ?? "",
     pos: posAbbr,
     mlbTeam: teamId !== undefined ? abbr(teamId) : null,
