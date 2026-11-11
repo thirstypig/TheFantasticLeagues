@@ -148,3 +148,14 @@
   .rv-grid { grid-template-columns: minmax(0, 1fr) 300px; align-items: start; }
 }
 .rv-grid { display: grid; gap: 16px; }
+
+/* One team (screen 15): phone stacks rows with the action panel under the row;
+   from 1024px the roster table and the action panel sit in two columns. */
+.tr-cols { display: grid; gap: 16px; }
+@media (min-width: 1024px) {
+  .tr-cols { grid-template-columns: minmax(0, 1fr) 340px; align-items: start; }
+}
+.tr-table { width: 100%; border-collapse: collapse; }
+.tr-table th { text-align: left; padding: 10px 16px; font-size: 13px; font-weight: 600; color: var(--am-text-muted); border-bottom: 1px solid var(--am-border); }
+.tr-table td { padding: 8px 16px; font-size: 15px; min-height: 56px; height: 56px; color: var(--am-text); border-bottom: 1px solid var(--am-border); }
+.tr-table tr[data-open="true"] td { background: var(--am-surface-alt); }
