@@ -28,6 +28,7 @@ import {
   type SeasonStatEntry,
   type PlayerValueEntry,
 } from "./services/statsService.js";
+import { buildPlayerCard } from "./services/playerCardService.js";
 import { withPlayersCache } from "./services/playersListCache.js";
 
 const router = Router();
@@ -234,6 +235,28 @@ router.get("/news/transactions", requireAuth, asyncHandler(async (_req, res) => 
   } catch (err) {
     logger.error({ error: String(err) }, "Failed to fetch MLB transactions");
     res.status(502).json({ error: "Unable to fetch MLB transactions" });
+  }
+}));
+
+/**
+ * GET /players/:mlbId/card?leagueId=N
+ * Player card data: windowed splits, recent games, next game, fantasy owner.
+ * Must be registered before GET /:mlbId.
+ */
+router.get("/:mlbId/card", requireAuth, asyncHandler(async (req, res) => {
+  const mlbId = Number(req.params.mlbId);
+  if (!Number.isInteger(mlbId) || mlbId <= 0) {
+    return res.status(400).json({ error: "Invalid MLB ID" });
+  }
+  const leagueId = Number(req.query.leagueId);
+  if (!Number.isInteger(leagueId) || leagueId <= 0) {
+    return res.status(400).json({ error: "leagueId is required" });
+  }
+  try {
+    res.json(await buildPlayerCard(mlbId, leagueId, new Date()));
+  } catch (err) {
+    logger.error({ error: String(err), mlbId }, "Failed to build player card");
+    res.status(502).json({ error: "Unable to load player card" });
   }
 }));
 
