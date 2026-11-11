@@ -26,6 +26,7 @@ import { getLeagueBalances } from "../api";
 import type { TeamBalanceRow } from "@shared/api/commissioner";
 import { getInviteCode, regenerateInviteCode } from "../../leagues/api";
 import { getTransactions, type TransactionEvent } from "../../transactions/api";
+import CommissionerRosterTool from "../components/CommissionerRosterTool";
 import CommissionerControls from "../components/CommissionerControls";
 import CommissionerTradeTool from "../components/CommissionerTradeTool";
 import RosterControls from "../../roster/components/RosterControls";
@@ -279,7 +280,7 @@ function initials(name: string): string {
 }
 
 export type CommissionerTabKey = 'overview' | 'people' | 'settings' | 'ops' | 'finances' | 'archive';
-export type CommissionerOpsSubTab = 'trades' | 'bulk';
+export type CommissionerOpsSubTab = 'trades' | 'bulk' | 'roster';
 
 export interface CommissionerProps {
   /** Seeds the initial top-level tab (section pages render one pane). */
@@ -1532,6 +1533,23 @@ export default function Commissioner({ section, opsSubTab: initialOpsSubTab, hid
                       );
                     })}
                 </div>
+
+                {/* Backdated fixes (Manual Roster): reached from /roster-advanced, no tab button */}
+                {opsSubTab === 'roster' && !gating.isReadOnly && (
+                  <div className="cm-card" style={{ padding: 0 }}>
+                    <CommissionerRosterTool
+                      leagueId={lid}
+                      teams={overview.teams}
+                      onUpdate={() => { /* no-op */ }}
+                      showTrades={false}
+                    />
+                  </div>
+                )}
+                {opsSubTab === 'roster' && gating.isReadOnly && (
+                  <div className="cm-card" style={{ textAlign: "center", color: "var(--am-text-muted)", fontSize: 13, padding: 32 }}>
+                    Roster edits are not available in the current season phase.
+                  </div>
+                )}
 
                 {/* Sub-tab: Trade Review */}
                 {opsSubTab === 'trades' && (

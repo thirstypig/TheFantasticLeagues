@@ -202,4 +202,10 @@ describe("RostersPage", () => {
     renderPage();
     expect(await screen.findByText("Couldn’t load teams.")).toBeTruthy();
   });
+
+  it("links to the backdated fixes tool", async () => {
+    renderPage();
+    const link = await screen.findByRole("link", { name: /Backdated fixes/ });
+    expect(link.getAttribute("href")).toBe("/commissioner/20/roster-advanced");
+  });
 });

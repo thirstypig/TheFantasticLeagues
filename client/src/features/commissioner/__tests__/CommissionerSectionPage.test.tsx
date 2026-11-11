@@ -80,6 +80,9 @@ vi.mock("../components/BulkOpsPanel", () => ({
 vi.mock("../components/CommissionerControls", () => ({
   default: () => <div data-testid="controls" />,
 }));
+vi.mock("../components/CommissionerRosterTool", () => ({
+  default: () => <div data-testid="roster-tool" />,
+}));
 vi.mock("../components/CommissionerTradeTool", () => ({
   default: () => <div data-testid="trade-tool" />,
 }));
@@ -182,6 +185,13 @@ describe("CommissionerSectionPage", () => {
     fireEvent.click(screen.getByText("go-trades"));
     await waitFor(() => expect(screen.getByTestId("trade-tool")).toBeInTheDocument());
     expect(screen.queryByText("Prize Pool")).toBeNull();
+  });
+
+  it("roster-advanced renders the Manual Roster (backdated fixes) panel with no sub-tab button", async () => {
+    renderAt("/commissioner/20/roster-advanced");
+    await waitFor(() => expect(screen.getByTestId("roster-tool")).toBeInTheDocument());
+    expect(screen.queryByTestId("trade-tool")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Manual Roster" })).toBeNull();
   });
 
   it("roster-setup renders the legacy Bulk panel", async () => {

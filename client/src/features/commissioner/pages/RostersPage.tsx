@@ -200,7 +200,10 @@ function RostersPageBody() {
       {teamsBlock}
       {check.state === "error" && <p style={{ margin: 0, ...SUB }}>Couldn’t check roster sizes.</p>}
       {ghosts.state === "error" && <p style={{ margin: 0, ...SUB }}>Couldn’t check IL status.</p>}
-      <Link to={`${base}/roster-setup`} style={LINK}>Preseason tools ›</Link>
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <Link to={`${base}/roster-setup`} style={LINK}>Preseason tools ›</Link>
+        <Link to={`${base}/roster-advanced`} style={LINK}>Backdated fixes ›</Link>
+      </div>
     </div>
   );
 }
