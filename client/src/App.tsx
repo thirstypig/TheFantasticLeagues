@@ -100,6 +100,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useAuth } from "./auth/AuthProvider";
 import NotFound from "./pages/NotFound";
 import { RouteAnnouncer } from "./components/RouteAnnouncer";
+import { PlayerCardProvider } from "./components/shared/playerCard/PlayerCardProvider";
 
 /**
  * Handles unauthenticated routing. If the URL has a Supabase auth hash
@@ -168,6 +169,7 @@ export default function App() {
           element={
             user ? (
               <MobileLayoutGate desktopChrome={AuroraShell}>
+                <PlayerCardProvider>
                 <Suspense fallback={<PageLoader />}>
                   <Routes>
                     <Route path="/" element={<TodayPage />} />
@@ -323,6 +325,7 @@ export default function App() {
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
+                </PlayerCardProvider>
               </MobileLayoutGate>
             ) : (
               <Suspense fallback={<PageLoader />}>
