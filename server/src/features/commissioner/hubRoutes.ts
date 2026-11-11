@@ -142,16 +142,11 @@ hubRouter.get(
   }),
 );
 
-function metaLeagueId(metadata: unknown): number | null {
-  if (!metadata || typeof metadata !== "object") return null;
-  const n = Number((metadata as Record<string, unknown>).leagueId);
-  return Number.isFinite(n) ? n : null;
-}
-
 /**
- * GET /api/commissioner/:leagueId/recent-changes?limit=N (default 50, max 100)
- * Latest AuditLog rows for this league. Filters in memory on metadata.leagueId
- * over the newest 500 rows (portable; no JSON-path query or migration).
+ * GET /api/commissioner/:leagueId/recent-changes?limit=N (default 50, max 200)
+ * Latest AuditLog rows for this league, filtered in the database on the
+ * metadata.leagueId JSON path (writers store it as a number), so other leagues'
+ * activity never pushes this league's rows out of the window.
  */
 hubRouter.get(
   "/commissioner/:leagueId/recent-changes",
@@ -162,17 +157,16 @@ hubRouter.get(
     if (leagueId === null) return res.status(400).json({ error: "Invalid leagueId" });
 
     const rawLimit = Math.floor(Number(req.query.limit));
-    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 100) : 50;
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 200) : 50;
 
     const rows = await prisma.auditLog.findMany({
+      where: { metadata: { path: ["leagueId"], equals: leagueId } },
       orderBy: { createdAt: "desc" },
-      take: 500,
+      take: limit,
       include: { user: { select: { name: true } } },
     });
 
     const changes = rows
-      .filter((r) => metaLeagueId(r.metadata) === leagueId)
-      .slice(0, limit)
       .map((r) => ({
         id: r.id,
         action: r.action,

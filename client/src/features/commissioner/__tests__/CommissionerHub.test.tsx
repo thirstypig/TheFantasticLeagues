@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within, fireEvent } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 const auth = vi.hoisted(() => ({ user: { isAdmin: false, memberships: [{ leagueId: "20", role: "COMMISSIONER" }] } as any }));
@@ -144,15 +144,81 @@ describe("CommissionerHub", () => {
   });
 });
 
-describe("RecentChangesPage", () => {
-  it("loads 50 and shows the footnote", async () => {
-    render(
+describe("RecentChangesPage (History)", () => {
+  const at = (mo: number, d: number, h: number, mi: number) => new Date(2026, mo, d, h, mi).toISOString();
+  const rc = (id: number, action: string, createdAt: string, userName: string | null, metadata: Record<string, unknown> | null = null, resourceId: string | null = null) =>
+    ({ id, action, resourceType: "X", resourceId, createdAt, userName, metadata });
+
+  function renderHistory() {
+    return render(
       <MemoryRouter initialEntries={["/commissioner/20/recent"]}>
         <Routes><Route path="/commissioner/:leagueId/recent" element={<RecentChangesPage />} /></Routes>
       </MemoryRouter>,
     );
+  }
+
+  beforeEach(() => {
+    m.getRecentChanges.mockResolvedValue([
+      rc(1, "TRADE_PROCESS", at(5, 14, 20, 31), "Jim", null, "55"),
+      rc(2, "RULES_UPDATE", at(5, 14, 9, 5), "Jim", { leagueId: 20, key: "trade_window", value: "meeting_day" }),
+      rc(3, "PERIOD_START", at(5, 13, 8, 0), null, { leagueId: 20, periodId: 7 }),
+      rc(4, "SOME_OTHER_THING", at(5, 13, 7, 0), "Jim"),
+    ]);
+  });
+
+  it("is titled History, loads 200, links back, and keeps the footnote", async () => {
+    renderHistory();
     expect(await screen.findByText("Processed trade #55")).toBeTruthy();
-    expect(m.getRecentChanges).toHaveBeenCalledWith(20, 50);
+    expect(m.getRecentChanges).toHaveBeenCalledWith(20, 200);
+    expect(screen.getByText("History")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Commissioner/ }).getAttribute("href")).toBe("/commissioner/20");
     expect(screen.getByText("Older actions from before this feature may not appear.")).toBeTruthy();
+  });
+
+  it("groups rows by day under caption headers with time and who below", async () => {
+    renderHistory();
+    await screen.findByText("Processed trade #55");
+    expect(screen.getByRole("heading", { name: "Jun 14" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Jun 13" })).toBeTruthy();
+    expect(screen.getByText("8:31 pm · Jim")).toBeTruthy();
+    expect(screen.getByText("8:00 am · System")).toBeTruthy();
+  });
+
+  it("filter chips are aria-pressed and filter; All shows unmatched actions", async () => {
+    renderHistory();
+    await screen.findByText("Processed trade #55");
+    const all = screen.getByRole("button", { name: "All" });
+    expect(all.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText("Some other thing")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Trades" }));
+    expect(screen.getByRole("button", { name: "Trades" }).getAttribute("aria-pressed")).toBe("true");
+    expect(all.getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getByText("Processed trade #55")).toBeTruthy();
+    expect(screen.queryByText(/Changed a league rule/)).toBeNull();
+    expect(screen.queryByText("Some other thing")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Jun 13" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Rules" }));
+    expect(screen.getByText("Changed a league rule: Trade window → meeting day")).toBeTruthy();
+  });
+
+  it("shows an empty state for a filter with no rows", async () => {
+    renderHistory();
+    await screen.findByText("Processed trade #55");
+    fireEvent.click(screen.getByRole("button", { name: "Money" }));
+    expect(screen.getByText("Nothing in this group yet.")).toBeTruthy();
+  });
+
+  it("chips are at least 44px tall", async () => {
+    renderHistory();
+    await screen.findByText("Processed trade #55");
+    expect(screen.getByRole("button", { name: "Owners" }).style.minHeight).toBe("44px");
+  });
+
+  it("shows the load error", async () => {
+    m.getRecentChanges.mockRejectedValue(new Error("boom"));
+    renderHistory();
+    expect(await screen.findByText(/Couldn.t load history/)).toBeTruthy();
   });
 });
