@@ -3,6 +3,7 @@
 // localStorage until the Review page saves it.
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 import { CardError, LINK, PRIMARY, ROW, SECONDARY, Skeleton, useLoad } from "../components/cardParts";
 import { getCommissionerOverview, getCommissionerRosters, getLeaguePeriods, getRosterCheck, previewMove } from "../api";
@@ -35,16 +36,9 @@ function lastName(full: string): string {
 const SUB: React.CSSProperties = { fontSize: 15, color: "var(--am-text-muted)" };
 const CHIP: React.CSSProperties = { fontSize: 15, fontWeight: 600, color: "var(--am-text-muted)" };
 
-function isDesktop(): boolean {
-  try {
-    return typeof window.matchMedia === "function" && window.matchMedia("(min-width: 1024px)").matches;
-  } catch {
-    return false;
-  }
-}
-
 function MeetingBody({ leagueId, periodId }: { leagueId: number; periodId: number }) {
   const base = `/commissioner/${leagueId}`;
+  const desktop = useMediaQuery("(min-width: 1024px)");
   const overview = useLoad(() => getCommissionerOverview(leagueId), [leagueId]);
   const periods = useLoad(() => getLeaguePeriods(leagueId), [leagueId]);
   const check = useLoad(() => getRosterCheck(leagueId), [leagueId]);
@@ -118,7 +112,7 @@ function MeetingBody({ leagueId, periodId }: { leagueId: number; periodId: numbe
   /** Close the editor: drop untouched empty cards, set the mark, move on. */
   function finish(teamId: number, mark: TeamMark) {
     const idx = teams.findIndex((t) => t.id === teamId);
-    const nextTeam = isDesktop() ? teams[idx + 1] ?? null : null;
+    const nextTeam = desktop ? teams[idx + 1] ?? null : null;
     apply((d) => {
       // "No moves" only exists for a team with no complete move, so it never discards a finished one.
       const keep = (mv: DraftMove) => mv.teamId !== teamId || (mark === "done" ? mv.add || mv.drop : mv.add && mv.drop);
@@ -255,7 +249,7 @@ function MeetingBody({ leagueId, periodId }: { leagueId: number; periodId: numbe
                   <button type="button" style={SECONDARY} onClick={() => finish(selected.id, "passed")}>No moves</button>
                 )}
                 <button type="button" style={{ ...PRIMARY, gridColumn: "1 / -1" }} onClick={() => finish(selected.id, "done")}>
-                  {isDesktop() ? "Done · next team" : "Done · back to teams"}
+                  {desktop ? "Done · next team" : "Done · back to teams"}
                 </button>
               </div>
             </>

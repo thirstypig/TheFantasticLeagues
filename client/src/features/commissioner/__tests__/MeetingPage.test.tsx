@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, within, fireEvent, waitFor, act } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 const auth = vi.hoisted(() => ({ user: { isAdmin: false, memberships: [{ leagueId: "20", role: "COMMISSIONER" }] } as any }));
@@ -182,6 +182,28 @@ describe("MeetingPage", () => {
     fireEvent.click(await screen.findByText("‹ Period 9 moves"));
     await waitFor(() => expect(stored().selectedTeamId).toBeNull());
     expect(stored().moves).toHaveLength(0);
+  });
+
+  it("reacts to a viewport change across the desktop breakpoint", async () => {
+    const original = window.matchMedia;
+    let desktop = false;
+    const listeners = new Set<() => void>();
+    window.matchMedia = ((q: string) => ({
+      get matches() { return desktop; },
+      media: q,
+      addEventListener: (_: string, fn: () => void) => listeners.add(fn),
+      removeEventListener: (_: string, fn: () => void) => listeners.delete(fn),
+    })) as any;
+    try {
+      seed({ ...emptyDraft(20, 9), selectedTeamId: 4, moves: [mv("a", 4, FRALEY, ALONSO)] });
+      renderPage();
+      expect(await screen.findByText("Done · back to teams")).toBeTruthy();
+      desktop = true;
+      act(() => listeners.forEach((fn) => fn()));
+      expect(await screen.findByText("Done · next team")).toBeTruthy();
+    } finally {
+      window.matchMedia = original;
+    }
   });
 
   it("No moves marks the team Passed and returns to the list", async () => {
