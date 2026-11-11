@@ -111,10 +111,9 @@ Some features import from other features' services or components.
 - `keeper-prep/pages/KeeperSelection` imports `leagues/api` (getMyRoster, saveKeepers)
 - `transactions/pages/TransactionsPage` imports `roster/components/AddDropTab`
 - `trades/pages/TradesPage` imports `teams/components/TeamRosterView`
-- `auction/pages/AuctionValues` imports `components/shared/PlayerDetailModal`
-- `teams/pages/Team` imports `components/shared/PlayerDetailModal`
+- `auction/pages/AuctionValues`, `auction/components/AuctionComplete`, `teams/pages/TeamLegacy`, `teams/components/RosterHub/RosterRowV3`, `board/components/LeagueBoard`, `watchlist/components/WatchlistPanel`, `trading-block/components/TradingBlockPanel`, `players/components/PlayersTable` import `components/shared/playerCard/*` (PlayerLink / usePlayerCard / useOpenPlayerCard)
 - `teams/pages/Team` imports `transactions/components/RosterMovesTab/AddDropPanel`, `PlaceOnIlPanel`, `ActivateFromIlPanel` (Yahoo-style v3 hub remounts these existing panels as inline sub-routes under `/teams/:code/manage/{claim,il-stash,il-activate}` per plan §0.5 refinement #2 "no modals" — replaces the modal entry point on Team page; the panels themselves are unchanged)
-- `components/shared/PlayerDetailModal` imports `hooks/usePlayerNews` (RSS feed aggregation for news section)
+- `components/shared/playerCard/playerCardApi` keeps its own watchlist wrapper (ADR-015: no import from `features/watchlist`)
 - `archive/pages/ArchivePage` imports `players/components/EditPlayerNameModal`, `teams/components/EditTeamNameModal`, `admin/components/ArchiveAdminPanel`, `components/shared/StatsTables`
 - `periods/pages/Season` imports `components/shared/StatsTables`
 - `commissioner/components/CommissionerTradeTool` imports `trades/components/TradeAssetSelector`

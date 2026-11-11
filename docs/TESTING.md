@@ -120,7 +120,11 @@ Major covered areas (selected):
 - `lib/baseballUtils.test.ts` — 32 (POS_ORDER, sortByPosition, positionToSlots)
 - `lib/mlbStatus.test.ts` — 6 (isMlbIlStatus: real MLB format + legacy form + non-IL + malformed + case sensitivity; mirror of `server/src/lib/__tests__/ilSlotGuard.test.ts`)
 - `hooks/useSessionHeartbeat.test.ts` — 7
-- `features/players/PlayerDetailModal.test.tsx` — 14
+- `components/shared/playerCard/__tests__/PlayerCard.test.tsx` — player card: ranges, pitcher/two-way groups, off-season default, swap/stale guards, scroll lock, focus, `aurora-theme` root, degraded retry, group hint, watchlist star race
+- `components/shared/playerCard/__tests__/useOpenPlayerCard.test.tsx` — row `mlb_id` to card open
+- `features/players/__tests__/PlayersTable.test.tsx` + `Players.test.tsx` — responsive players table, Trade / Wire List actions, name links with stat group
+- `server/src/features/players/__tests__/playerCard.test.ts` — card service windows + card route (404 unknown id before statsapi, 400 out of range, 30/min rate limit, `degraded`)
+- `server/src/lib/__tests__/mlbApi.test.ts` — 4xx not retried / not counted by the circuit breaker; 5xx and 429 still retry and trip it
 - `features/standings/StatsTables.test.tsx` — 22
 - `features/auction/AuctionValuesLegacy.test.tsx` — 10 (rendering, tabs, search, sorting, modal — pinned to legacy code path at `/auction-values-classic`)
 - `features/auction/AuctionValuesAurora.test.tsx` — 3 (Aurora hero copy, `.aurora-theme` wrapper, footer escape link)
