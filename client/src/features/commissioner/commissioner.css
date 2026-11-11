@@ -116,3 +116,10 @@
 @media (min-width: 1024px) {
   .close-cols { grid-template-columns: 3fr 2fr; }
 }
+
+/* Rosters home: team rows on phones, the table from 1024px. */
+.rosters-desk { display: none; }
+@media (min-width: 1024px) {
+  .rosters-phone { display: none; }
+  .rosters-desk { display: block; }
+}
