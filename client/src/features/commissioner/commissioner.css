@@ -110,3 +110,9 @@
 @media (min-width: 1024px) {
   .owners-cols { grid-template-columns: 3fr 2fr; }
 }
+
+/* Close checklist: one column on phones; checklist and standings left, IL fees and Close right from 1024px. */
+.close-cols { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+@media (min-width: 1024px) {
+  .close-cols { grid-template-columns: 3fr 2fr; }
+}
