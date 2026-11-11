@@ -35,6 +35,13 @@ export const finishLocks = new Map<number, boolean>();
 // both create a lot for the same turn.
 export const nominateLocks = new Map<number, boolean>();
 
+// Leagues whose turn clock ran out while a nomination held the lock. The
+// timeout is deferred, not dropped: nominatePlayer runs it when that
+// nomination fails (so a doomed /nominate at 0:00 can't buy a fresh clock).
+// Cleared by clearNominationTimer, the choke point every pause/skip/init/
+// reset/complete/resume path goes through.
+export const timeoutPending = new Set<number>();
+
 export function createDefaultState(leagueId: number): AuctionState {
   return {
     leagueId,
@@ -444,6 +451,7 @@ export function clearNominationTimer(leagueId: number): void {
     clearTimeout(existing);
     nominationTimers.delete(leagueId);
   }
+  timeoutPending.delete(leagueId);
   const state = auctionStates.get(leagueId);
   if (state) state.nominationEndTime = null;
 }
@@ -496,7 +504,11 @@ export async function handleNominationTimeout(leagueId: number, state: AuctionSt
   // nomination, commissioner skip). Only act if the turn is still ours, and
   // never skip a turn while a manual nomination for it is mid-flight.
   if (!isStillTurnOf(state, teamId)) return;
-  if (nominateLocks.get(leagueId)) return;
+  if (nominateLocks.get(leagueId)) {
+    // A nomination for this turn is mid-flight: defer the timeout to it.
+    timeoutPending.add(leagueId);
+    return;
+  }
 
   if (candidate) {
     const result = await nominatePlayer(leagueId, state, { ...candidate, nominatorTeamId: teamId, startBid: 1 });
@@ -509,7 +521,11 @@ export async function handleNominationTimeout(leagueId: number, state: AuctionSt
     // A late validity check refused it. Fall through to the skip so the
     // auction never stalls on a team.
     logger.warn({ leagueId, teamId, error: result.error }, "Auto-nominate refused; skipping turn");
-    if (!isStillTurnOf(state, teamId) || nominateLocks.get(leagueId)) return;
+    if (!isStillTurnOf(state, teamId)) return;
+    if (nominateLocks.get(leagueId)) {
+      timeoutPending.add(leagueId);
+      return;
+    }
   }
 
   skipTurnOnTimeout(leagueId, state, teamId);
@@ -643,12 +659,36 @@ export async function nominatePlayer(
     return result;
   } finally {
     nominateLocks.delete(leagueId);
-    // Edge case: the turn clock fired while this (failed) nomination held the
-    // lock, and the timeout handler yielded to it. Re-arm the clock so the
-    // turn can't sit with no clock at all.
-    if (!result.ok && state.status === 'nominating' && !state.paused && !nominationTimers.has(leagueId)) {
-      scheduleNominationTimer(leagueId, state);
+    afterNomination(leagueId, state, result);
+  }
+}
+
+/**
+ * Settle the turn clock once a nomination releases the lock.
+ * - Succeeded: bidding started, so any deferred timeout is moot.
+ * - Failed with a deferred timeout: run it now (auto-put-up, else SKIP
+ *   'timeout'). Never re-arm a full clock here, or a team could stall the
+ *   auction by sending a doomed /nominate at every expiry.
+ * - Failed, nothing deferred, no clock running (e.g. after a cold restart):
+ *   start the turn clock so the turn can't sit clockless.
+ */
+function afterNomination(leagueId: number, state: AuctionState, result: NominatePlayerResult): void {
+  if (result.ok) {
+    timeoutPending.delete(leagueId);
+    return;
+  }
+  const turnLive = state.status === 'nominating' && !state.paused;
+  if (timeoutPending.has(leagueId)) {
+    timeoutPending.delete(leagueId);
+    if (turnLive) {
+      handleNominationTimeout(leagueId, state).catch(err => {
+        logger.error({ error: String(err), leagueId }, "Deferred nomination timeout failed");
+      });
     }
+    return;
+  }
+  if (turnLive && !nominationTimers.has(leagueId)) {
+    scheduleNominationTimer(leagueId, state);
   }
 }
 

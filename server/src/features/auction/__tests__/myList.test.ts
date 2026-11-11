@@ -81,6 +81,8 @@ import {
   scheduleNominationTimer,
   handleNominationTimeout,
   nominateLocks,
+  nominationTimers,
+  timeoutPending,
   NOMINATION_IN_PROGRESS,
   TURN_NO_LONGER_ACTIVE,
 } from "../lib/auctionStateManager.js";
@@ -168,6 +170,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   auctionStates.clear();
   nominateLocks.clear();
+  timeoutPending.clear();
   owners.clear();
   owners.set(OWNER_A.id, [10]);
   owners.set(OWNER_B.id, [11]);
@@ -692,5 +695,102 @@ describe("every route that returns the auction state strips nominationLists", ()
     expect(res.body && typeof res.body).toBe("object");
     expect("leagueId" in res.body).toBe(true); // it IS the state payload
     expect("nominationLists" in res.body).toBe(false);
+  });
+});
+
+// ── Fix round 2: a failing /nominate at 0:00 must not reset the turn clock ──
+
+describe("timeout that fires while a nomination holds the lock", () => {
+  const FAKE = { toFake: ["setTimeout", "clearTimeout"] as const };
+
+  /** Start the turn clock, put a gated /nominate in flight, then let the clock run out. */
+  async function raceClockAgainstManual(s: AuctionState, playerId: string, positions: string, isPitcher: boolean) {
+    vi.useFakeTimers({ toFake: [...FAKE.toFake] });
+    scheduleNominationTimer(LEAGUE, s);
+    const release = gateCoreFirstAwait();
+    const manual = supertest(app).post("/nominate").set(as(OWNER_A)).send(manualBody(playerId, positions, isPitcher)).then((r) => r);
+    await until(() => mockPrisma.player.findFirst.mock.calls.length === 1);
+    await vi.advanceTimersByTimeAsync(30_000); // turn clock expires mid-nomination
+    await flush();
+    return { release, manual };
+  }
+
+  it("(a) a FAILED /nominate: the pending timeout runs at once (auto-put-up); no fresh full-length clock", async () => {
+    const s = seedNominating({ nominationLists: { 10: [104] } });
+    const { release, manual } = await raceClockAgainstManual(s, "101", "OF", false); // 101 is rostered -> 400
+    expect(timeoutPending.has(LEAGUE)).toBe(true);
+
+    release();
+    expect((await manual).status).toBe(400);
+    await flush();
+
+    expect(s.status).toBe("bidding");
+    expect(s.nomination?.playerId).toBe("104");
+    expect(s.nomination?.currentBid).toBe(1);
+    expect(s.nominationEndTime).toBeNull();
+    expect(nominationTimers.has(LEAGUE)).toBe(false);
+    expect(timeoutPending.has(LEAGUE)).toBe(false);
+  });
+
+  it("(a) a FAILED /nominate with nothing on the list: immediate SKIP 'timeout', the stalling team's turn ends", async () => {
+    const s = seedNominating();
+    const { release, manual } = await raceClockAgainstManual(s, "101", "OF", false);
+
+    release();
+    expect((await manual).status).toBe(400);
+    await flush();
+
+    expect(s.log[0]).toMatchObject({ type: "SKIP", reason: "timeout", teamId: 10 });
+    expect(s.queueIndex).toBe(1); // NOT a re-armed full clock for team 10
+    expect(timeoutPending.has(LEAGUE)).toBe(false);
+  });
+
+  it("(b) a SUCCESSFUL /nominate while the timeout is pending: bidding starts, no stray timeout later", async () => {
+    const s = seedNominating({ nominationLists: { 10: [104] } });
+    const { release, manual } = await raceClockAgainstManual(s, "105", "SP", true);
+    expect(timeoutPending.has(LEAGUE)).toBe(true);
+
+    release();
+    expect((await manual).status).toBe(200);
+    await flush();
+
+    expect(s.status).toBe("bidding");
+    expect(s.nomination?.playerId).toBe("105");
+    expect(nominations(s)).toHaveLength(1);
+    expect(s.log.some((e) => e.type === "SKIP")).toBe(false);
+    expect(timeoutPending.has(LEAGUE)).toBe(false);
+    expect(nominationTimers.has(LEAGUE)).toBe(false);
+    expect(mockPrisma.auctionLot.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("(c) /pause while the timeout is pending: nothing runs after the nomination is released", async () => {
+    const s = seedNominating({ nominationLists: { 10: [104] } });
+    const { release, manual } = await raceClockAgainstManual(s, "101", "OF", false);
+    expect(timeoutPending.has(LEAGUE)).toBe(true);
+
+    const p = await supertest(app).post("/pause").set(as(ADMIN)).send({ leagueId: LEAGUE });
+    expect(p.status).toBe(200);
+    expect(timeoutPending.has(LEAGUE)).toBe(false);
+
+    release();
+    expect((await manual).status).toBe(400);
+    await flush();
+
+    expect(s.paused).toBe(true);
+    expect(s.status).toBe("nominating");
+    expect(s.nomination).toBeNull();
+    expect(s.queueIndex).toBe(0);
+    expect(s.log.some((e) => e.type === "SKIP")).toBe(false);
+    expect(nominationTimers.has(LEAGUE)).toBe(false);
+    expect(mockPrisma.auctionLot.create).not.toHaveBeenCalled();
+  });
+
+  it("cold-restart case still re-arms: a failed /nominate with no clock and no pending timeout starts one", async () => {
+    const s = seedNominating(); // no clock scheduled, as after a restart
+    s.teams[0].maxBid = 0;
+    const res = await supertest(app).post("/nominate").set(as(OWNER_A)).send(manualBody("104", "SS", false));
+    expect(res.status).toBe(400);
+    expect(nominationTimers.has(LEAGUE)).toBe(true);
+    expect(s.nominationEndTime).not.toBeNull();
   });
 });
