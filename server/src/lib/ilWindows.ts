@@ -1,5 +1,13 @@
 import { logger } from "./logger.js";
 
+/**
+ * TransactionEvent types that open or close an IL stint. Same set the IL
+ * billing-log drift check reads: a DROP of a player on IL closes his stint
+ * (the billing log records it as IL_RELEASE), so DROP and IL_RELEASE close
+ * windows exactly like IL_ACTIVATE does.
+ */
+export const IL_WINDOW_EVENT_TYPES = ["IL_STASH", "IL_ACTIVATE", "IL_RELEASE", "DROP"] as const;
+
 export type IlWindow = { startDate: Date; endDate: Date | null };
 
 /**
@@ -21,6 +29,15 @@ export function buildIlWindows(
 
     if (e.transactionType === "IL_STASH") {
       if (!openStart.has(pid)) openStart.set(pid, e.effDate);
+    } else if (e.transactionType === "IL_RELEASE" || e.transactionType === "DROP") {
+      // Close silently: a DROP of a player who was never on IL is normal.
+      const start = openStart.get(pid);
+      if (start != null) {
+        const list = windows.get(pid) ?? [];
+        list.push({ startDate: start, endDate: e.effDate });
+        windows.set(pid, list);
+        openStart.delete(pid);
+      }
     } else if (e.transactionType === "IL_ACTIVATE") {
       const start = openStart.get(pid);
       if (start != null) {

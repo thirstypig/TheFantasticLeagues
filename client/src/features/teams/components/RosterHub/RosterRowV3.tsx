@@ -24,20 +24,17 @@
 import React from "react";
 import { ThemedTr, ThemedTd } from "../../../../components/ui/ThemedTable";
 import { PositionEligibilityCell } from "./PositionEligibilityCell";
-import { slotsFor } from "../../../../lib/positionEligibility";
+import { formatEligiblePositions } from "../../../../lib/rosterDisplay";
 import { type RowAction } from "./RowActionMenu";
 import {
   ActionMenuTrigger,
   PlayerNameContent,
-  PlayerSubtitle,
   RevertButton,
   buildRowClasses,
 } from "./rowShared";
 import type { RosterHubPlayer } from "./types";
 import { usePlayerCard } from "../../../../components/shared/playerCard/PlayerCardProvider";
 import { cardMlbId } from "../../../../components/shared/playerDetailHelpers";
-
-const SLOT_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P"] as const;
 
 /**
  * Optional DnD wiring supplied by a parent `<DndContext>`. When omitted,
@@ -147,7 +144,7 @@ export function RosterRowV3({
         />
       </ThemedTd>
 
-      {/* Player name + team. Pending dot + keeper star inline. The drag
+      {/* Player name (one line). Pending dot + keeper star inline. The drag
           handle (⋮⋮) lives at the LEFT of the player name, matching
           Yahoo Fantasy convention. dnd-kit's `setNodeRef` is on the
           row (`<tr>`), so the handle's exact DOM position doesn't
@@ -166,7 +163,7 @@ export function RosterRowV3({
               ⋮⋮
             </button>
           )}
-          <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+          <div style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {cardId ? (
               <button
                 type="button"
@@ -180,6 +177,10 @@ export function RosterRowV3({
                   fontWeight: 600,
                   textAlign: "left",
                   cursor: "pointer",
+                  maxWidth: "100%",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
                 }}
               >
                 <PlayerNameContent player={player} isPending={isPending} />
@@ -189,19 +190,38 @@ export function RosterRowV3({
                 <PlayerNameContent player={player} isPending={isPending} />
               </span>
             )}
-            <PlayerSubtitle player={player} />
-            {(() => {
-              const secondary = [...slotsFor(player.posList)]
-                .filter((s) => s !== player.assignedSlot)
-                .sort((a, b) => SLOT_ORDER.indexOf(a as typeof SLOT_ORDER[number]) - SLOT_ORDER.indexOf(b as typeof SLOT_ORDER[number]));
-              return secondary.length > 0 ? (
-                <span style={{ fontSize: 13, color: "var(--am-text-muted)", letterSpacing: 0.3 }}>
-                  {secondary.join(" · ")}
-                </span>
-              ) : null;
-            })()}
           </div>
         </div>
+      </ThemedTd>
+
+      {/* Pos — every eligible position, "/"-joined. One line: long lists
+          ellipsize and the full list rides in the title attribute. */}
+      <ThemedTd>
+        {(() => {
+          const pos = formatEligiblePositions(player.posList, player.posPrimary);
+          return (
+            <span
+              title={pos}
+              style={{
+                display: "block",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                fontSize: 13,
+                color: "var(--am-text-muted)",
+              }}
+            >
+              {pos}
+            </span>
+          );
+        })()}
+      </ThemedTd>
+
+      {/* MLB team abbreviation */}
+      <ThemedTd>
+        <span style={{ fontSize: 13, color: "var(--am-text-muted)", whiteSpace: "nowrap" }}>
+          {player.mlbTeam ?? "FA"}
+        </span>
       </ThemedTd>
 
       {/* Role-aware stat cells. The `role` prop drives the column layout

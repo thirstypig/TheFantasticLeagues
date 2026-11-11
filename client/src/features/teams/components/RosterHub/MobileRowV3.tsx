@@ -16,20 +16,17 @@
 
 import React from "react";
 import { PositionEligibilityCell } from "./PositionEligibilityCell";
-import { slotsFor } from "../../../../lib/positionEligibility";
+import { formatEligiblePositions } from "../../../../lib/rosterDisplay";
 import { type RowAction } from "./RowActionMenu";
 import {
   ActionMenuTrigger,
   PlayerNameContent,
-  PlayerSubtitle,
   RevertButton,
   buildRowClasses,
 } from "./rowShared";
 import type { RosterHubPlayer } from "./types";
 import { usePlayerCard } from "../../../../components/shared/playerCard/PlayerCardProvider";
 import { cardMlbId } from "../../../../components/shared/playerDetailHelpers";
-
-const SLOT_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P"] as const;
 
 /**
  * Mobile-row DnD wiring. Same shape as RosterRowV3's RosterRowDnd but
@@ -122,65 +119,64 @@ export function MobileRowV3({
       style={dnd?.rowStyle}
       data-roster-row={String(player.rosterId)}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-start" }}>
-        <PositionEligibilityCell
-          posList={player.posList}
-          assignedSlot={player.assignedSlot}
-          gamesPlayedByPosition={player.gamesPlayedByPosition}
-          selected={isSelected}
-          eligible={isEligible && !isSelected}
-          dimmed={isDimmed}
-          onPillClick={onPillClick}
-          showEligibility={false}
-          ariaLabel={`${player.name} — ${player.assignedSlot} slot — tap to ${
-            isSelected ? "deselect" : "select"
-          }`}
-        />
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
-        {cardId ? (
-          <button
-            type="button"
-            className="pc-link"
-            onClick={() => openPlayerCard(cardId)}
-            style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)", textDecoration: "none" }}
-          >
-            <PlayerNameContent player={player} isPending={isPending} />
-          </button>
-        ) : (
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>
-            <PlayerNameContent player={player} isPending={isPending} />
-          </span>
-        )}
-        <PlayerSubtitle player={player} />
-        {(() => {
-          const secondary = [...slotsFor(player.posList)]
-            .filter((s) => s !== player.assignedSlot)
-            .sort((a, b) => SLOT_ORDER.indexOf(a as typeof SLOT_ORDER[number]) - SLOT_ORDER.indexOf(b as typeof SLOT_ORDER[number]));
-          return secondary.length > 0 ? (
-            <span style={{ fontSize: 13, color: "var(--am-text-muted)", letterSpacing: 0.3 }}>
-              {secondary.join(" · ")}
+      {/* Line 1: slot pill, name, drag handle / revert / "…" */}
+      <div data-row-line="1">
+        <div style={{ flex: "none", width: 48 }}>
+          <PositionEligibilityCell
+            posList={player.posList}
+            assignedSlot={player.assignedSlot}
+            gamesPlayedByPosition={player.gamesPlayedByPosition}
+            selected={isSelected}
+            eligible={isEligible && !isSelected}
+            dimmed={isDimmed}
+            onPillClick={onPillClick}
+            showEligibility={false}
+            ariaLabel={`${player.name} — ${player.assignedSlot} slot — tap to ${
+              isSelected ? "deselect" : "select"
+            }`}
+          />
+        </div>
+        <div className="am-roster-mobile-row-name">
+          {cardId ? (
+            <button
+              type="button"
+              className="pc-link"
+              onClick={() => openPlayerCard(cardId)}
+              style={{
+                fontSize: 13, fontWeight: 600, color: "var(--am-text)", textDecoration: "none",
+                maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}
+            >
+              <PlayerNameContent player={player} isPending={isPending} />
+            </button>
+          ) : (
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>
+              <PlayerNameContent player={player} isPending={isPending} />
             </span>
-          ) : null;
-        })()}
-        <span style={{ fontSize: 13, color: "var(--am-text-muted)", fontVariantNumeric: "tabular-nums" }}>
-          {statSummaryFor(player) || "—"}
-        </span>
+          )}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 2, flex: "none" }}>
+          {dnd?.dragHandleAttrs && (
+            <button
+              type="button"
+              {...dnd.dragHandleAttrs}
+              className="am-roster-drag-handle"
+              aria-label={`Drag ${player.name} to reassign slot`}
+              title="Long-press to drag"
+            >
+              ⋮⋮
+            </button>
+          )}
+          {isPending && onRevert && <RevertButton player={player} onRevert={onRevert} />}
+          <ActionMenuTrigger player={player} actions={actions} />
+        </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 2, justifyContent: "flex-end" }}>
-        {dnd?.dragHandleAttrs && (
-          <button
-            type="button"
-            {...dnd.dragHandleAttrs}
-            className="am-roster-drag-handle"
-            aria-label={`Drag ${player.name} to reassign slot`}
-            title="Long-press to drag"
-          >
-            ⋮⋮
-          </button>
-        )}
-        {isPending && onRevert && <RevertButton player={player} onRevert={onRevert} />}
-        <ActionMenuTrigger player={player} actions={actions} />
+      {/* Line 2: "Pos · MLB" + short stats */}
+      <div data-row-line="2">
+        <span style={{ whiteSpace: "nowrap" }}>
+          {formatEligiblePositions(player.posList, player.posPrimary)} · {player.mlbTeam ?? "FA"}
+        </span>
+        <span className="am-roster-mobile-row-stats">{statSummaryFor(player) || "—"}</span>
       </div>
     </div>
   );

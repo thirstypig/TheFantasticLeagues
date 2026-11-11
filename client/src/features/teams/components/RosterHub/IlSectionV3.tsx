@@ -16,16 +16,16 @@
 import { Glass, SectionLabel } from "../../../../components/aurora/atoms";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { PositionEligibilityCell } from "./PositionEligibilityCell";
-import { slotsFor } from "../../../../lib/positionEligibility";
+import { formatEligiblePositions, ilPeriodLabel, type IlPeriod } from "../../../../lib/rosterDisplay";
 import { RowActionMenu, type RowAction } from "./RowActionMenu";
 import { useRef, useState, useMemo } from "react";
 import type { RosterHubPlayer } from "./types";
 import { encodeIlDndId, encodeIlEmptyDndId } from "../../hooks/useRosterHubDrag";
 
-const SLOT_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P"] as const;
-
 interface IlSectionV3Props {
   players: RosterHubPlayer[];
+  /** League periods — maps each row's `ilSince` to "Since Period N" / "This period". */
+  periods?: IlPeriod[];
   selectedRosterId: number | null;
   eligibleRosterIds: ReadonlySet<number>;
   pendingRosterIds: ReadonlySet<number>;
@@ -47,6 +47,7 @@ interface IlSectionV3Props {
 
 export function IlSectionV3({
   players,
+  periods = [],
   selectedRosterId,
   eligibleRosterIds,
   pendingRosterIds,
@@ -90,6 +91,7 @@ export function IlSectionV3({
                 onRevert={onRevert ? () => onRevert(p.rosterId) : undefined}
                 actions={buildActions(p)}
                 dndEnabled={!!dndEnabled}
+                periodLabel={ilPeriodLabel(p.ilSince, periods)}
               />
             ))}
             {Array.from({ length: empties }).map((_, i) => (
@@ -110,7 +112,7 @@ export function IlSectionV3({
                 borderCollapse: "separate",
                 borderSpacing: 0,
                 tableLayout: "fixed",
-                minWidth: 700,
+                minWidth: 800,
                 fontVariantNumeric: "tabular-nums",
               }}
             >
@@ -118,15 +120,18 @@ export function IlSectionV3({
                 <tr>
                   {[
                     { key: "pos", label: "Slot", w: 72 },
-                    { key: "name", label: "Player", w: 220 },
-                    { key: "status", label: "Status", w: 220 },
-                    { key: "act", label: "Actions", w: 80 },
-                  ].map((c, idx) => (
+                    { key: "name", label: "Player", w: 180 },
+                    { key: "elig", label: "Pos", w: 96 },
+                    { key: "mlb", label: "MLB", w: 56 },
+                    { key: "status", label: "Status", w: 160 },
+                    { key: "period", label: "Period", w: 130 },
+                    { key: "act", label: "Actions", w: 100 },
+                  ].map((c, idx, arr) => (
                     <th
                       key={c.key}
                       scope="col"
                       style={{
-                        textAlign: idx === 3 ? "right" : "left",
+                        textAlign: idx === arr.length - 1 ? "right" : "left",
                         padding: "8px 12px",
                         fontSize: 13,
                         letterSpacing: 1.2,
@@ -174,6 +179,7 @@ export function IlSectionV3({
                       onRevert={onRevert ? () => onRevert(p.rosterId) : undefined}
                       actions={buildActions(p)}
                       dndEnabled={!!dndEnabled}
+                      periodLabel={ilPeriodLabel(p.ilSince, periods)}
                     />
                   );
                 })}
@@ -205,6 +211,7 @@ interface IlDesktopRowProps {
   onRevert?: () => void;
   actions: RowAction[];
   dndEnabled: boolean;
+  periodLabel: string;
 }
 
 function IlDesktopRow({
@@ -218,6 +225,7 @@ function IlDesktopRow({
   onRevert,
   actions,
   dndEnabled,
+  periodLabel,
 }: IlDesktopRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -261,34 +269,41 @@ function IlDesktopRow({
           showEligibility={false}
         />
       </td>
-      <td style={{ padding: "10px 12px", borderBottom: "1px solid var(--am-border)" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>
-            {isPending && <span aria-hidden className="am-roster-name-modified-marker" />}
-            {player.isKeeper && (
-              <span aria-label="Keeper" style={{ color: "var(--am-warning)", marginRight: 6 }}>
-                ★
-              </span>
-            )}
-            {player.name}
-          </span>
-          <span style={{ fontSize: 13, color: "var(--am-text-faint)", letterSpacing: 0.4 }}>
-            {(player.mlbTeam ?? "FA") + " · " + player.posPrimary}
-          </span>
-          {(() => {
-            const secondary = [...slotsFor(player.posList)]
-              .filter((s) => s !== player.assignedSlot)
-              .sort((a, b) => SLOT_ORDER.indexOf(a as typeof SLOT_ORDER[number]) - SLOT_ORDER.indexOf(b as typeof SLOT_ORDER[number]));
-            return secondary.length > 0 ? (
-              <span style={{ fontSize: 13, color: "var(--am-text-muted)", letterSpacing: 0.3 }}>
-                {secondary.join(" · ")}
-              </span>
-            ) : null;
-          })()}
-        </div>
+      <td style={{ padding: "4px 12px", height: 40, borderBottom: "1px solid var(--am-border)" }}>
+        <span
+          style={{
+            display: "block", fontSize: 13, fontWeight: 600, color: "var(--am-text)",
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}
+        >
+          {isPending && <span aria-hidden className="am-roster-name-modified-marker" />}
+          {player.isKeeper && (
+            <span aria-label="Keeper" style={{ color: "var(--am-warning)", marginRight: 6 }}>
+              ★
+            </span>
+          )}
+          {player.name}
+        </span>
+      </td>
+      <td style={{ padding: "4px 12px", borderBottom: "1px solid var(--am-border)" }}>
+        <span
+          title={formatEligiblePositions(player.posList, player.posPrimary)}
+          style={{
+            display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            fontSize: 13, color: "var(--am-text-muted)",
+          }}
+        >
+          {formatEligiblePositions(player.posList, player.posPrimary)}
+        </span>
+      </td>
+      <td style={{ padding: "4px 12px", borderBottom: "1px solid var(--am-border)", fontSize: 13, color: "var(--am-text-muted)", whiteSpace: "nowrap" }}>
+        {player.mlbTeam ?? "FA"}
       </td>
       <td style={{ padding: "10px 12px", borderBottom: "1px solid var(--am-border)", color: "var(--am-text-muted)", fontSize: 13 }}>
         {player.statSnapshot ?? "—"}
+      </td>
+      <td style={{ padding: "4px 12px", borderBottom: "1px solid var(--am-border)", color: "var(--am-text-muted)", fontSize: 13, whiteSpace: "nowrap" }}>
+        {periodLabel}
       </td>
       <td style={{ padding: "10px 12px", borderBottom: "1px solid var(--am-border)", textAlign: "right" }}>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>
@@ -356,6 +371,7 @@ interface IlMobileRowProps {
   onRevert?: () => void;
   actions: RowAction[];
   dndEnabled: boolean;
+  periodLabel: string;
 }
 
 function IlMobileRow({
@@ -369,6 +385,7 @@ function IlMobileRow({
   onRevert,
   actions,
   dndEnabled,
+  periodLabel,
 }: IlMobileRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -400,18 +417,20 @@ function IlMobileRow({
 
   return (
     <div ref={setNodeRef as unknown as React.Ref<HTMLDivElement>} className={classes.join(" ")} style={rowStyle}>
-      <PositionEligibilityCell
-        posList={player.posList}
-        assignedSlot={player.assignedSlot}
-        gamesPlayedByPosition={player.gamesPlayedByPosition}
-        selected={isSelected}
-        eligible={isEligible && !isSelected}
-        dimmed={isDimmed}
-        onPillClick={onPillClick}
-        showEligibility={false}
-      />
-      <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>
+      <div data-row-line="1">
+        <div style={{ flex: "none", width: 48 }}>
+          <PositionEligibilityCell
+            posList={player.posList}
+            assignedSlot={player.assignedSlot}
+            gamesPlayedByPosition={player.gamesPlayedByPosition}
+            selected={isSelected}
+            eligible={isEligible && !isSelected}
+            dimmed={isDimmed}
+            onPillClick={onPillClick}
+            showEligibility={false}
+          />
+        </div>
+        <span className="am-roster-mobile-row-name" style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}>
           {isPending && <span aria-hidden className="am-roster-name-modified-marker" />}
           {player.isKeeper && (
             <span aria-label="Keeper" style={{ color: "var(--am-warning)", marginRight: 6 }}>
@@ -420,11 +439,7 @@ function IlMobileRow({
           )}
           {player.name}
         </span>
-        <span style={{ fontSize: 13, color: "var(--am-text-faint)" }}>
-          {(player.mlbTeam ?? "FA") + " · " + (player.statSnapshot ?? player.posPrimary)}
-        </span>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 2, justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 2, flex: "none" }}>
         {dndEnabled && (
           <button
             type="button"
@@ -472,6 +487,16 @@ function IlMobileRow({
           …
         </button>
         <RowActionMenu actions={actions} open={menuOpen} onClose={() => setMenuOpen(false)} anchorRect={anchorRect} />
+        </div>
+      </div>
+      <div data-row-line="2">
+        <span style={{ whiteSpace: "nowrap" }}>
+          {formatEligiblePositions(player.posList, player.posPrimary)} · {player.mlbTeam ?? "FA"}
+        </span>
+        <span className="am-roster-mobile-row-stats">
+          {player.statSnapshot ? `${player.statSnapshot} · ` : ""}
+          {periodLabel}
+        </span>
       </div>
     </div>
   );
@@ -505,7 +530,7 @@ function EmptyIlDesktopRow({ index, dndEnabled, ilStashEligible }: EmptyIlRowPro
       data-testid="il-empty-row"
     >
       <td
-        colSpan={4}
+        colSpan={7}
         style={{
           padding: "10px 14px",
           color: showAffordance ? "var(--am-warning)" : "var(--am-text-faint)",
@@ -537,6 +562,10 @@ function EmptyIlMobileRow({ index, dndEnabled, ilStashEligible }: EmptyIlRowProp
       className="am-roster-mobile-row am-roster-il-empty"
       data-testid="il-empty-row"
       style={{
+        display: "grid",
+        gridTemplateColumns: "48px 1fr",
+        gap: 8,
+        alignItems: "center",
         color: showAffordance ? "var(--am-warning)" : "var(--am-text-faint)",
         fontSize: 13,
         background: showLanding

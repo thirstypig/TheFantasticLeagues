@@ -20,6 +20,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
 import { useLeague } from "../../contexts/LeagueContext";
+import { formatEligiblePositions, ilPeriodLabel } from "../../lib/rosterDisplay";
 import { getTeams, getTeamRosterHub, updateRosterPosition, getTeamPeriodRoster, getTeamPlayerSeasonStats, type PeriodRosterEntry, type PeriodRosterStats } from "../../features/teams/api";
 import { getSeasonStandings } from "../../api";
 import { ilActivate, ilStash } from "../../features/transactions/api";
@@ -443,12 +444,10 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
   // for editable teams. The button's onClick branches on which tab is
   // active — slot picker for active rows, drop-target picker for IL rows.
   const showMoveCol = canEdit;
-  const cols = showMoveCol
-    ? "32px minmax(0,1fr) 36px 36px 36px 36px 26px"
-    : "32px minmax(0,1fr) 36px 36px 36px 36px";
-  const hitterStatHeaders = ["AVG", "HR", "RBI", "SB"];
-  const pitcherStatHeaders = ["W", "K", "ERA", "WHIP"];
-  const statHeaders = isHit ? hitterStatHeaders : pitcherStatHeaders;
+  // Line 1: slot pill | name | "…". Line 2 (indented under the name):
+  // "Pos · MLB" + short stats.
+  const cols = showMoveCol ? "40px minmax(0,1fr) 26px" : "40px minmax(0,1fr)";
+  const ilPeriods = hub?.leaguePeriods ?? [];
 
   const totals = useMemo(() => {
     if (tab === "IL" || list.length === 0) return null;
@@ -671,44 +670,6 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
       {/* DENSE ROWS */}
       <div style={{ padding: "0 14px 12px" }}>
         <MCard padded={false}>
-          {/* COLUMN HEADER STRIP */}
-          <div
-            style={{
-              padding: "6px 14px",
-              display: "grid",
-              gridTemplateColumns: cols,
-              gap: 6,
-              alignItems: "center",
-              borderBottom: "1px solid var(--am-border)",
-            }}
-          >
-            <div />
-            <div
-              style={{
-                fontSize: 13,
-                letterSpacing: 0.6,
-                color: "var(--am-text-faint)",
-                fontWeight: 700,
-              }}
-            >
-              PLAYER
-            </div>
-            {statHeaders.map((s) => (
-              <div
-                key={s}
-                style={{
-                  fontSize: 13,
-                  letterSpacing: 0.6,
-                  color: "var(--am-text-faint)",
-                  fontWeight: 700,
-                  textAlign: "right",
-                }}
-              >
-                {s}
-              </div>
-            ))}
-            {showMoveCol && <div aria-hidden="true" />}
-          </div>
           {(loading && !hub) || (periodMode !== "season" && periodLoading) ? (
             <div style={{ padding: "16px 14px", color: "var(--am-text-muted)", fontSize: 13 }}>
               Loading roster…
@@ -726,15 +687,15 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
                 data-mlb-id={p.mlbId ?? ""}
                 onClick={() => p.mlbId && nav(`/players/${p.mlbId}`)}
                 style={{
-                  display: "grid",
-                  gridTemplateColumns: cols,
-                  gap: 6,
-                  alignItems: "center",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
                   padding: "7px 14px",
                   borderTop: i > 0 ? "1px solid var(--am-border)" : "none",
                   cursor: p.mlbId ? "pointer" : "default",
                 }}
               >
+                <div data-row-line="1" style={{ display: "grid", gridTemplateColumns: cols, gap: 6, alignItems: "center" }}>
                 <div
                   style={{
                     fontSize: 13,
@@ -749,38 +710,19 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
                 >
                   {p.assignedPosition ?? p.posPrimary ?? "—"}
                 </div>
-                <div style={{ minWidth: 0 }}>
-                  <div
-                    style={{
-                      fontSize: 13,
-                      color: "var(--am-text)",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    {p.playerName}
-                  </div>
-                  <div style={{ fontSize: 13, color: "var(--am-text-faint)" }}>
-                    {(p.mlbTeam ?? "—")} · {p.posPrimary ?? p.position ?? "—"}
-                  </div>
+                <div
+                  style={{
+                    minWidth: 0,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "var(--am-text)",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {p.playerName}
                 </div>
-                {isHit ? (
-                  <>
-                    <StatCell value={fmtAvg(p.AVG)} />
-                    <StatCell value={fmtInt(p.HR)} />
-                    <StatCell value={fmtInt(p.RBI)} />
-                    <StatCell value={fmtInt(p.SB)} />
-                  </>
-                ) : (
-                  <>
-                    <StatCell value={fmtInt(p.W)} />
-                    <StatCell value={fmtInt(p.K)} />
-                    <StatCell value={fmtRate(p.ERA, 2)} />
-                    <StatCell value={fmtRate(p.WHIP, 2)} />
-                  </>
-                )}
                 {showMoveCol && (
                   <button
                     type="button"
@@ -814,42 +756,56 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
                     <Glyph kind="moreDots" size={16} />
                   </button>
                 )}
+                </div>
+                <div
+                  data-row-line="2"
+                  style={{
+                    display: "flex",
+                    alignItems: "baseline",
+                    gap: 8,
+                    paddingLeft: 46,
+                    minWidth: 0,
+                    fontSize: 13,
+                    color: "var(--am-text-faint)",
+                  }}
+                >
+                  <span style={{ whiteSpace: "nowrap" }}>
+                    {formatEligiblePositions(p.posList, p.posPrimary ?? p.position)} · {p.mlbTeam ?? "—"}
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0, textAlign: "right", color: "var(--am-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {tab === "IL" ? (
+                      ilPeriodLabel(p.ilSince, ilPeriods)
+                    ) : isHit ? (
+                      <StatLine items={[[fmtAvg(p.AVG), "AVG"], [fmtInt(p.HR), "HR"], [fmtInt(p.RBI), "RBI"], [fmtInt(p.SB), "SB"]]} />
+                    ) : (
+                      <StatLine items={[[fmtInt(p.W), "W"], [fmtInt(p.K), "K"], [fmtRate(p.ERA, 2), "ERA"], [fmtRate(p.WHIP, 2), "WHIP"]]} />
+                    )}
+                  </span>
+                </div>
               </div>
               ))}
               {totals && (
                 <div
                   style={{
-                    display: "grid",
-                    gridTemplateColumns: cols,
-                    gap: 6,
-                    alignItems: "center",
+                    display: "flex",
+                    alignItems: "baseline",
+                    gap: 8,
                     padding: "7px 14px",
                     borderTop: "2px solid var(--am-border)",
                     background: "var(--am-chip)",
+                    fontSize: 13,
                   }}
                 >
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--am-text-faint)", textAlign: "center" }}>
-                    TOT
-                  </div>
-                  <div style={{ fontSize: 13, color: "var(--am-text-muted)", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <span style={{ color: "var(--am-text-muted)", fontWeight: 600, whiteSpace: "nowrap" }}>
                     {isHit ? "Hitter Totals" : "Pitcher Totals"}
-                  </div>
-                  {isHit ? (
-                    <>
-                      <StatCell value={totals.AVG != null ? fmtAvg(totals.AVG) : "—"} />
-                      <StatCell value={fmtInt(totals.HR)} />
-                      <StatCell value={fmtInt(totals.RBI)} />
-                      <StatCell value={fmtInt(totals.SB)} />
-                    </>
-                  ) : (
-                    <>
-                      <StatCell value={fmtInt(totals.W)} />
-                      <StatCell value={fmtInt(totals.K)} />
-                      <StatCell value={totals.ERA != null ? fmtRate(totals.ERA, 2) : "—"} />
-                      <StatCell value={totals.WHIP != null ? fmtRate(totals.WHIP, 2) : "—"} />
-                    </>
-                  )}
-                  {showMoveCol && <div />}
+                  </span>
+                  <span style={{ flex: 1, minWidth: 0, textAlign: "right", color: "var(--am-text-muted)" }}>
+                    {isHit ? (
+                      <StatLine items={[[totals.AVG != null ? fmtAvg(totals.AVG) : "—", "AVG"], [fmtInt(totals.HR), "HR"], [fmtInt(totals.RBI), "RBI"], [fmtInt(totals.SB), "SB"]]} />
+                    ) : (
+                      <StatLine items={[[fmtInt(totals.W), "W"], [fmtInt(totals.K), "K"], [totals.ERA != null ? fmtRate(totals.ERA, 2) : "—", "ERA"], [totals.WHIP != null ? fmtRate(totals.WHIP, 2) : "—", "WHIP"]]} />
+                    )}
+                  </span>
                 </div>
               )}
             </>
@@ -918,19 +874,18 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
   );
 }
 
-function StatCell({ value }: { value: string }) {
+/** Short inline stats: value (strong) + label (quiet), tabular-nums. */
+function StatLine({ items }: { items: [string, string][] }) {
   return (
-    <div
-      style={{
-        fontSize: 13,
-        fontWeight: 600,
-        color: "var(--am-text)",
-        textAlign: "right",
-        fontVariantNumeric: "tabular-nums",
-      }}
-    >
-      {value}
-    </div>
+    <span style={{ fontVariantNumeric: "tabular-nums" }}>
+      {items.map(([value, label], i) => (
+        <span key={label}>
+          {i > 0 && " · "}
+          <span style={{ fontWeight: 600, color: "var(--am-text)" }}>{value}</span>{" "}
+          <span>{label}</span>
+        </span>
+      ))}
+    </span>
   );
 }
 

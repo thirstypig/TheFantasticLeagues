@@ -56,6 +56,8 @@ interface RosterHubPlayerBase {
    * Optional; when absent the chip elides the day count.
    */
   mlbStatusDaysAgo?: number;
+  /** IL rows only: ISO start of the current IL stint (server `ilSince`); null/absent when unknown. */
+  ilSince?: string | null;
 
   /**
    * Per §0.5 refinement #3: games played at each eligible position.

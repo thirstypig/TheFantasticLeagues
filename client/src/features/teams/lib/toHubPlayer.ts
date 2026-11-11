@@ -36,6 +36,8 @@ export interface RosterPlayerInput {
   mlbStatus?: string | null;
   /** Days since `mlbStatus` was observed — drives ghost-IL chip body. */
   mlbStatusDaysAgo?: number;
+  /** IL rows only: ISO start of the current IL stint. */
+  ilSince?: string | null;
   // Hitter stats (when available)
   AB?: number;
   H?: number;
@@ -140,6 +142,7 @@ export const HUB_PLAYER_CACHE_KEY_FIELDS = [
   "gamesByPos",
   "mlbStatus",
   "mlbStatusDaysAgo",
+  "ilSince",
   "AB", "H", "AVG", "HR", "R", "RBI", "SB",
   "IP", "BB_H", "ER", "W", "SV", "K", "ERA", "WHIP",
 ] as const satisfies readonly (keyof RosterPlayerInput)[];
@@ -191,6 +194,7 @@ export function toHubPlayer(p: RosterPlayerInput): RosterHubPlayer {
     gamesPlayedByPosition: narrowGamesByPos(p.gamesByPos),
     mlbStatus: p.mlbStatus ?? undefined,
     mlbStatusDaysAgo: p.mlbStatusDaysAgo,
+    ilSince: p.ilSince,
   };
   // Per todo #153 — RosterHubPlayer is a discriminated union on
   // `isPitcher`. Branch the return value so the type system knows which

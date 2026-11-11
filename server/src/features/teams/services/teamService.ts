@@ -2,6 +2,7 @@
 import { prisma } from "../../../db/prisma.js";
 import { POINTS_CANDIDATES } from "../../../constants/stats.js";
 import { isPosGamesRecord } from "../../../lib/jsonGuards.js";
+import { buildIlWindows, IL_WINDOW_EVENT_TYPES } from "../../../lib/ilWindows.js";
 import type { RosterHubResponse } from "@shared/api/teams.js";
 
 const POS_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P", "SP", "RP", "IL"];
@@ -286,6 +287,37 @@ export class TeamService {
       };
     });
 
+    // ilSince: start of each IL player's CURRENT open stint, from the same
+    // IL windows the fee code uses (lib/ilWindows). Only queried when the
+    // roster actually has IL rows. Scoped by league + player (not team) so a
+    // stint opened before a trade still resolves.
+    const ilRows = rows.filter((row) => row.assignedPosition === "IL");
+    const ilSinceByPlayer = new Map<number, string>();
+    let leaguePeriods: { id: number; name: string | null; status: string | null; startDate: Date | null; endDate: Date | null }[] = [];
+    if (ilRows.length > 0) {
+      // League periods let the client label ilSince ("Since Period N").
+      leaguePeriods = await prisma.period.findMany({
+        where: { leagueId: summary.team.leagueId },
+        select: { id: true, name: true, status: true, startDate: true, endDate: true },
+        orderBy: { startDate: "asc" },
+      });
+      const ilEvents = await prisma.transactionEvent.findMany({
+        where: {
+          leagueId: summary.team.leagueId,
+          playerId: { in: ilRows.map((r) => r.playerId) },
+          transactionType: { in: [...IL_WINDOW_EVENT_TYPES] },
+          effDate: { not: null },
+        },
+        select: { playerId: true, transactionType: true, effDate: true },
+        orderBy: { effDate: "asc" },
+      });
+      const windows = buildIlWindows(ilEvents);
+      for (const r of ilRows) {
+        const open = (windows.get(r.playerId) ?? []).filter((w) => w.endDate === null).pop();
+        if (open) ilSinceByPlayer.set(r.playerId, open.startDate.toISOString());
+      }
+    }
+
     const activeRows = rows.filter((row) => row.assignedPosition !== "IL");
     const hitters = activeRows
       .filter((row) => !row.isPitcher)
@@ -308,7 +340,8 @@ export class TeamService {
       period: summary.period,
       hitters,
       pitchers,
-      ilPlayers: rows.filter((row) => row.assignedPosition === "IL"),
+      leaguePeriods,
+      ilPlayers: ilRows.map((row) => ({ ...row, ilSince: ilSinceByPlayer.get(row.playerId) ?? null })),
       droppedPlayers: summary.droppedPlayers,
       rosterVersion: teamMeta?.rosterVersion ?? 0,
     };
