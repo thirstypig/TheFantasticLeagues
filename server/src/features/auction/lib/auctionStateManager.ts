@@ -42,6 +42,11 @@ export const nominateLocks = new Map<number, boolean>();
 // reset/complete/resume path goes through.
 export const timeoutPending = new Set<number>();
 
+// Leagues whose timeout handler is running right now (from the clock firing
+// until the handler settles). The turn counts as expired throughout, and a
+// failed nomination in that window must not re-arm a fresh clock.
+export const timeoutRunning = new Map<number, symbol>();
+
 export function createDefaultState(leagueId: number): AuctionState {
   return {
     leagueId,
@@ -470,12 +475,33 @@ export function scheduleNominationTimer(leagueId: number, state: AuctionState): 
   state.nominationEndTime = new Date(Date.now() + durationMs).toISOString();
   const timer = setTimeout(() => {
     nominationTimers.delete(leagueId);
-    state.nominationEndTime = null;
-    handleNominationTimeout(leagueId, state).catch(err => {
-      logger.error({ error: String(err), leagueId }, "Nomination timeout handling failed");
-    });
+    // nominationEndTime is deliberately kept: it marks the turn as expired
+    // (isTurnTimeUp) until the turn resolves and the clock is cleared or reset.
+    runNominationTimeout(leagueId, state);
   }, durationMs);
   nominationTimers.set(leagueId, timer);
+}
+
+/**
+ * Run the timeout for the team on the clock. If the handler throws (e.g. a DB
+ * error), fall back to the plain skip: the turn is already expired, so leaving
+ * it would refuse every /nominate with no clock running.
+ */
+function runNominationTimeout(leagueId: number, state: AuctionState): void {
+  const teamId = state.queue[state.queueIndex];
+  const run = Symbol("nomination-timeout");
+  timeoutRunning.set(leagueId, run);
+  handleNominationTimeout(leagueId, state)
+    .catch(err => {
+      logger.error({ error: String(err), leagueId }, "Nomination timeout handling failed; skipping turn");
+      if (isStillTurnOf(state, teamId) && !nominateLocks.get(leagueId)) {
+        skipTurnOnTimeout(leagueId, state, teamId);
+      }
+    })
+    .finally(() => {
+      // Only clear our own mark, never a newer run's.
+      if (timeoutRunning.get(leagueId) === run) timeoutRunning.delete(leagueId);
+    });
 }
 
 /** True while `teamId` still holds an unpaused nominating turn. */
@@ -511,7 +537,9 @@ export async function handleNominationTimeout(leagueId: number, state: AuctionSt
   }
 
   if (candidate) {
-    const result = await nominatePlayer(leagueId, state, { ...candidate, nominatorTeamId: teamId, startBid: 1 });
+    const result = await nominatePlayer(
+      leagueId, state, { ...candidate, nominatorTeamId: teamId, startBid: 1 }, { fromTimeout: true },
+    );
     if (result.ok) {
       logger.info({ leagueId, teamId, playerId: candidate.playerId }, "Auto-nominated from list on turn timeout");
       return;
@@ -637,25 +665,43 @@ export type NominatePlayerResult = { ok: true } | { ok: false; error: string; co
 
 export const NOMINATION_IN_PROGRESS = "Nomination already in progress";
 export const TURN_NO_LONGER_ACTIVE = "Turn no longer active";
+export const TIME_IS_UP = "Time is up";
+
+/** Same grace /bid allows after a lot's end time. */
+const TURN_GRACE_MS = 500;
+
+/**
+ * True once the current turn's clock has run out: a timeout is pending, or the
+ * recorded end time is more than the grace in the past. After that the turn
+ * belongs to the server (auto-put-up or skip); /nominate is refused, for
+ * owners and commissioners alike (a commissioner can Skip instead).
+ */
+export function isTurnTimeUp(leagueId: number, state: AuctionState): boolean {
+  if (timeoutPending.has(leagueId) || timeoutRunning.has(leagueId)) return true;
+  if (!state.nominationEndTime) return false;
+  return Date.now() > new Date(state.nominationEndTime).getTime() + TURN_GRACE_MS;
+}
 
 /**
  * Put a player up for bids. Holds ONLY the shared mechanics: budget, rostered,
  * already-sold and position checks, the AuctionLot row, nomination state,
  * clocks, log, broadcast and persist. Auth and phase/pause/turn checks belong
  * to the caller (the /nominate route, or the turn-timeout handler, which acts
- * for the team on the clock).
+ * for the team on the clock and passes `fromTimeout` so the expired-turn
+ * check doesn't refuse it).
  */
 export async function nominatePlayer(
   leagueId: number,
   state: AuctionState,
   input: NominatePlayerInput,
+  opts: { fromTimeout?: boolean } = {},
 ): Promise<NominatePlayerResult> {
   // Taken synchronously, before the first await (same pattern as finishLocks).
   if (nominateLocks.get(leagueId)) return { ok: false, error: NOMINATION_IN_PROGRESS, conflict: true };
   nominateLocks.set(leagueId, true);
   let result: NominatePlayerResult = { ok: false, error: TURN_NO_LONGER_ACTIVE, conflict: true };
   try {
-    result = await nominateUnderLock(leagueId, state, input);
+    result = await nominateUnderLock(leagueId, state, input, opts);
     return result;
   } finally {
     nominateLocks.delete(leagueId);
@@ -680,14 +726,11 @@ function afterNomination(leagueId: number, state: AuctionState, result: Nominate
   const turnLive = state.status === 'nominating' && !state.paused;
   if (timeoutPending.has(leagueId)) {
     timeoutPending.delete(leagueId);
-    if (turnLive) {
-      handleNominationTimeout(leagueId, state).catch(err => {
-        logger.error({ error: String(err), leagueId }, "Deferred nomination timeout failed");
-      });
-    }
+    if (turnLive) runNominationTimeout(leagueId, state);
     return;
   }
-  if (turnLive && !nominationTimers.has(leagueId)) {
+  // A running timeout will settle the turn itself; don't hand it a new clock.
+  if (turnLive && !nominationTimers.has(leagueId) && !timeoutRunning.has(leagueId)) {
     scheduleNominationTimer(leagueId, state);
   }
 }
@@ -702,6 +745,7 @@ async function nominateUnderLock(
   leagueId: number,
   state: AuctionState,
   input: NominatePlayerInput,
+  opts: { fromTimeout?: boolean },
 ): Promise<NominatePlayerResult> {
   const { nominatorTeamId, playerId, playerName, startBid, positions, team, isPitcher } = input;
 
@@ -729,6 +773,11 @@ async function nominateUnderLock(
   // (a pause, skip or undo may have landed meanwhile).
   if (!turnStillOpenFor(state, nominatorTeamId)) {
     return { ok: false, error: TURN_NO_LONGER_ACTIVE, conflict: true };
+  }
+  // A request that started before the clock ran out and resumed after it
+  // cannot win; only the timeout path itself may nominate an expired turn.
+  if (!opts.fromTimeout && isTurnTimeUp(leagueId, state)) {
+    return { ok: false, error: TIME_IS_UP, conflict: true };
   }
 
   // Clear nomination timer (team is nominating)

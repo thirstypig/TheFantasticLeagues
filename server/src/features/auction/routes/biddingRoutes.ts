@@ -16,6 +16,8 @@ import {
   scheduleAutoFinish,
   persistState,
   nominatePlayer,
+  isTurnTimeUp,
+  TIME_IS_UP,
 } from "../lib/auctionStateManager.js";
 import { broadcastState } from "../services/auctionWsService.js";
 import { logger } from "../../../lib/logger.js";
@@ -57,6 +59,11 @@ router.post("/nominate", requireAuth, validateBody(nominateSchema), requireSeaso
   }
   if (nominatorTeamId !== state.queue[state.queueIndex]) {
     return res.status(409).json({ error: "It is not this team's turn to nominate" });
+  }
+  // Once the turn clock has run out the server owns the turn (auto-put-up or
+  // skip). Same rule for owners and commissioners.
+  if (isTurnTimeUp(leagueId, state)) {
+    return res.status(409).json({ error: TIME_IS_UP });
   }
 
   const result = await nominatePlayer(leagueId, state, {

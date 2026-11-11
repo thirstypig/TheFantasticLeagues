@@ -83,8 +83,10 @@ import {
   nominateLocks,
   nominationTimers,
   timeoutPending,
+  timeoutRunning,
   NOMINATION_IN_PROGRESS,
   TURN_NO_LONGER_ACTIVE,
+  TIME_IS_UP,
 } from "../lib/auctionStateManager.js";
 import type { AuctionState, AuctionTeam } from "../types.js";
 
@@ -171,6 +173,7 @@ beforeEach(() => {
   auctionStates.clear();
   nominateLocks.clear();
   timeoutPending.clear();
+  timeoutRunning.clear();
   owners.clear();
   owners.set(OWNER_A.id, [10]);
   owners.set(OWNER_B.id, [11]);
@@ -546,7 +549,8 @@ describe("nominate race: timeout auto-put-up vs manual /nominate", () => {
     expect(nominateLocks.get(LEAGUE)).toBeFalsy();
   });
 
-  it("manual /nominate mid-core + clock runs out: the timeout neither nominates nor skips; one lot, one NOMINATION", async () => {
+  it("manual /nominate mid-core + clock runs out: the manual loses ('Time is up'), the timeout puts up from the list; one lot, one NOMINATION", async () => {
+    // Round 3 ruling: a request that straddles expiry cannot win.
     const s = seedNominating({ nominationLists: { 10: [104] } });
     const release = gateCoreFirstAwait();
 
@@ -554,15 +558,19 @@ describe("nominate race: timeout auto-put-up vs manual /nominate", () => {
     await until(() => mockPrisma.player.findFirst.mock.calls.length === 1);
 
     await handleNominationTimeout(LEAGUE, s);
+    // Deferred to the in-flight nomination: neither nominated nor skipped yet
     expect(s.queueIndex).toBe(0);
     expect(s.log.some((e) => e.type === "SKIP")).toBe(false);
+    expect(s.nomination).toBeNull();
 
     release();
     const res = await manual;
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe(TIME_IS_UP);
+    await flush();
     expect(mockPrisma.auctionLot.create).toHaveBeenCalledTimes(1);
     expect(nominations(s)).toHaveLength(1);
-    expect(s.nomination?.playerId).toBe("105");
+    expect(s.nomination?.playerId).toBe("104");
   });
 
   it("two concurrent /nominate calls: one 200, one 409, one lot", async () => {
@@ -745,17 +753,20 @@ describe("timeout that fires while a nomination holds the lock", () => {
     expect(timeoutPending.has(LEAGUE)).toBe(false);
   });
 
-  it("(b) a SUCCESSFUL /nominate while the timeout is pending: bidding starts, no stray timeout later", async () => {
+  it("(b) an otherwise-valid /nominate that straddles expiry loses with 'Time is up'; the timeout puts up from the list, no stray timeout later", async () => {
+    // Round 2 had this manual call win; the round 3 ruling makes it lose.
     const s = seedNominating({ nominationLists: { 10: [104] } });
     const { release, manual } = await raceClockAgainstManual(s, "105", "SP", true);
     expect(timeoutPending.has(LEAGUE)).toBe(true);
 
     release();
-    expect((await manual).status).toBe(200);
+    const res = await manual;
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe(TIME_IS_UP);
     await flush();
 
     expect(s.status).toBe("bidding");
-    expect(s.nomination?.playerId).toBe("105");
+    expect(s.nomination?.playerId).toBe("104");
     expect(nominations(s)).toHaveLength(1);
     expect(s.log.some((e) => e.type === "SKIP")).toBe(false);
     expect(timeoutPending.has(LEAGUE)).toBe(false);
@@ -792,5 +803,177 @@ describe("timeout that fires while a nomination holds the lock", () => {
     expect(res.status).toBe(400);
     expect(nominationTimers.has(LEAGUE)).toBe(true);
     expect(s.nominationEndTime).not.toBeNull();
+  });
+});
+
+// ── Fix round 3: once the clock has expired, /nominate gets "Time is up" ──
+
+describe("expired turn: /nominate is refused with 'Time is up'", () => {
+  /** Gate the timeout handler's list lookup (player.findMany) until released. */
+  function gateTimeoutLookup(): () => void {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    mockPrisma.player.findMany.mockImplementationOnce(async ({ where }: any) => {
+      await gate;
+      return where.mlbId.in.map((m: number) => PLAYERS[m]).filter(Boolean);
+    });
+    return release;
+  }
+
+  /** Start a 30s clock and let it expire, with the system clock 1s past the 500ms grace. */
+  async function expireClock(s: AuctionState) {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+    scheduleNominationTimer(LEAGUE, s);
+    await vi.advanceTimersByTimeAsync(30_000);
+    vi.setSystemTime(Date.now() + 1_000);
+  }
+
+  it("clock past end + 500ms grace: 409 'Time is up', nothing deferred, no lot", async () => {
+    const s = seedNominating();
+    s.nominationEndTime = new Date(Date.now() - 1_000).toISOString();
+    const res = await supertest(app).post("/nominate").set(as(OWNER_A)).send(manualBody("104", "SS", false));
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe(TIME_IS_UP);
+    expect(timeoutPending.has(LEAGUE)).toBe(false);
+    expect(mockPrisma.auctionLot.create).not.toHaveBeenCalled();
+    expect(s.nomination).toBeNull();
+  });
+
+  it("inside the 500ms grace the nomination is still accepted", async () => {
+    const s = seedNominating();
+    s.nominationEndTime = new Date(Date.now() - 200).toISOString();
+    const res = await supertest(app).post("/nominate").set(as(OWNER_A)).send(manualBody("104", "SS", false));
+    expect(res.status).toBe(200);
+    expect(s.nomination?.playerId).toBe("104");
+  });
+
+  it("a pending (deferred) timeout also means 409 'Time is up'", async () => {
+    seedNominating();
+    timeoutPending.add(LEAGUE);
+    const res = await supertest(app).post("/nominate").set(as(OWNER_A)).send(manualBody("104", "SS", false));
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe(TIME_IS_UP);
+  });
+
+  it("commissioner on-behalf nominations follow the same rule", async () => {
+    const s = seedNominating();
+    s.nominationEndTime = new Date(Date.now() - 1_000).toISOString();
+    mockPrisma.leagueMembership.findUnique.mockResolvedValue({ role: "COMMISSIONER" });
+    const res = await supertest(app).post("/nominate").set(as({ id: 2, isAdmin: false })).send(manualBody("104", "SS", false));
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe(TIME_IS_UP);
+  });
+
+  it("with fake timers: a /nominate after the clock expires gets 409 and does not defer the timeout, which then puts up from the list", async () => {
+    const s = seedNominating({ nominationLists: { 10: [104] } });
+    const release = gateTimeoutLookup();
+    await expireClock(s); // timeout handler is now parked in its list lookup
+
+    const res = await supertest(app).post("/nominate").set(as(OWNER_A)).send(manualBody("105", "SP", true));
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe(TIME_IS_UP);
+    expect(timeoutPending.has(LEAGUE)).toBe(false);
+
+    release();
+    await flush();
+    expect(s.status).toBe("bidding");
+    expect(s.nomination?.playerId).toBe("104");
+    expect(mockPrisma.auctionLot.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("scripted spam of failing /nominate calls cannot starve the timeout: auto-put-up completes", async () => {
+    const s = seedNominating({ nominationLists: { 10: [104] } });
+    const release = gateTimeoutLookup();
+    await expireClock(s);
+
+    // A burst before the handler resumes, then more while it finishes.
+    const spam = (n: number) => Promise.all(Array.from({ length: n }, () =>
+      supertest(app).post("/nominate").set(as(OWNER_A)).send(manualBody("101", "OF", false)).then((r) => r)));
+    const before = await spam(5);
+    release();
+    const during = spam(5);
+    await flush();
+    const after = await during;
+
+    for (const r of [...before, ...after]) expect(r.status).toBe(409);
+    expect(before.every((r) => r.body.error === TIME_IS_UP)).toBe(true);
+    expect(s.status).toBe("bidding");
+    expect(s.nomination?.playerId).toBe("104");
+    expect(nominations(s)).toHaveLength(1);
+    expect(mockPrisma.auctionLot.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("scripted spam with an empty list: the turn is SKIPped 'timeout' and the queue moves on", async () => {
+    const s = seedNominating({ nominationLists: { 10: [999] } }); // 999 is not in Player -> nothing eligible
+    const release = gateTimeoutLookup();
+    await expireClock(s);
+
+    const spam = await Promise.all(Array.from({ length: 5 }, () =>
+      supertest(app).post("/nominate").set(as(OWNER_A)).send(manualBody("101", "OF", false)).then((r) => r)));
+    release();
+    await flush();
+
+    expect(spam.every((r) => r.status === 409 && r.body.error === TIME_IS_UP)).toBe(true);
+    expect(s.log[0]).toMatchObject({ type: "SKIP", reason: "timeout", teamId: 10 });
+    expect(s.queueIndex).toBe(1);
+  });
+});
+
+describe("timeout handler failure cannot strand an expired turn", () => {
+  it("a DB error during the list lookup falls back to SKIP 'timeout' so the auction moves on", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const s = seedNominating({ nominationLists: { 10: [104] } });
+    mockPrisma.player.findMany.mockRejectedValueOnce(new Error("db down"));
+
+    scheduleNominationTimer(LEAGUE, s);
+    await vi.advanceTimersByTimeAsync(30_000);
+    await flush();
+
+    expect(s.log[0]).toMatchObject({ type: "SKIP", reason: "timeout", teamId: 10 });
+    expect(s.queueIndex).toBe(1);
+    expect(nominationTimers.has(LEAGUE)).toBe(true); // next team's clock
+  });
+});
+
+describe("a request that straddles expiry while the timeout is still looking up the list", () => {
+  it("loses with 'Time is up' WITHOUT re-arming the clock, so later spam is still refused and the timeout completes", async () => {
+    const s = seedNominating({ nominationLists: { 10: [104] } });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+    scheduleNominationTimer(LEAGUE, s);
+    const originalEnd = s.nominationEndTime;
+
+    // Handler's list lookup will park when the clock fires
+    let releaseLookup!: () => void;
+    const lookupGate = new Promise<void>((r) => { releaseLookup = r; });
+    mockPrisma.player.findMany.mockImplementationOnce(async ({ where }: any) => {
+      await lookupGate;
+      return where.mlbId.in.map((m: number) => PLAYERS[m]).filter(Boolean);
+    });
+
+    // Request A passes the route at 0:00.1 and parks in the core
+    await vi.advanceTimersByTimeAsync(29_900);
+    const releaseA = gateCoreFirstAwait();
+    const a = supertest(app).post("/nominate").set(as(OWNER_A)).send(manualBody("105", "SP", true)).then((r) => r);
+    await until(() => mockPrisma.player.findFirst.mock.calls.length === 1);
+
+    await vi.advanceTimersByTimeAsync(100); // clock fires; handler parks in its lookup
+    vi.setSystemTime(Date.now() + 1_000);  // past the grace
+
+    releaseA();
+    const resA = await a;
+    expect(resA.status).toBe(409);
+    expect(resA.body.error).toBe(TIME_IS_UP);
+    expect(s.nominationEndTime).toBe(originalEnd); // not pushed out by a re-armed clock
+    expect(nominationTimers.has(LEAGUE)).toBe(false);
+
+    const spam = await Promise.all(Array.from({ length: 3 }, () =>
+      supertest(app).post("/nominate").set(as(OWNER_A)).send(manualBody("101", "OF", false)).then((r) => r)));
+    expect(spam.every((r) => r.status === 409 && r.body.error === TIME_IS_UP)).toBe(true);
+
+    releaseLookup();
+    await flush();
+    expect(s.status).toBe("bidding");
+    expect(s.nomination?.playerId).toBe("104");
+    expect(mockPrisma.auctionLot.create).toHaveBeenCalledTimes(1);
   });
 });
