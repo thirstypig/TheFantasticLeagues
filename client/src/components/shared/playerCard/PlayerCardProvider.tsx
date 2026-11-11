@@ -1,4 +1,5 @@
-import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { PlayerCard } from "./PlayerCard";
 
 type Ctx = { open(mlbId: number): void; close(): void };
@@ -26,6 +27,16 @@ export function PlayerCardProvider({ children }: { children: React.ReactNode }) 
     trigger.current = null;
     if (el && el.isConnected) el.focus();
   }, []);
+
+  const { pathname } = useLocation();
+  const lastPath = useRef(pathname);
+  useEffect(() => {
+    if (lastPath.current !== pathname) {
+      lastPath.current = pathname;
+      setMlbId(null);
+      trigger.current = null;
+    }
+  }, [pathname]);
 
   const value = useMemo(() => ({ open, close }), [open, close]);
 

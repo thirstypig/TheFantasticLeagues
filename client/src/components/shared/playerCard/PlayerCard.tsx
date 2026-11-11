@@ -54,6 +54,9 @@ export function PlayerCard({ mlbId, onClose }: { mlbId: number; onClose: () => v
   const { leagueId, myTeamId } = useLeague();
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const dialogRef = useRef<HTMLDivElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const firstMlbId = useRef(mlbId);
+  const touchY = useRef<number | null>(null);
   const [card, setCard] = useState<PlayerCardData | null>(null);
   const [error, setError] = useState(false);
   const [nonce, setNonce] = useState(0);
@@ -87,8 +90,11 @@ export function PlayerCard({ mlbId, onClose }: { mlbId: number; onClose: () => v
     return () => { live = false; };
   }, [mlbId, myTeamId]);
 
-  // Focus into the card on open.
-  useEffect(() => { dialogRef.current?.focus(); }, []);
+  // Focus into the card on open; on a player swap, move it to the new heading.
+  useEffect(() => {
+    if (mlbId === firstMlbId.current) dialogRef.current?.focus();
+    else headingRef.current?.focus();
+  }, [mlbId]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -103,6 +109,35 @@ export function PlayerCard({ mlbId, onClose }: { mlbId: number; onClose: () => v
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
   }, [isDesktop]);
+
+  const onSheetKeyDown = (e: React.KeyboardEvent) => {
+    if (isDesktop || e.key !== "Tab") return;
+    const items = Array.from(
+      dialogRef.current?.querySelectorAll<HTMLElement>("button:not([disabled]), a[href]") ?? [],
+    );
+    if (items.length === 0) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
+  const swipe = isDesktop
+    ? {}
+    : {
+        onTouchStart: (e: React.TouchEvent) => { touchY.current = e.touches[0]?.clientY ?? null; },
+        onTouchEnd: (e: React.TouchEvent) => {
+          const start = touchY.current;
+          touchY.current = null;
+          const end = e.changedTouches[0]?.clientY;
+          if (start != null && end != null && end - start > 80) onClose();
+        },
+      };
 
   const toggleStar = useCallback(async () => {
     if (!card || !myTeamId || card.playerId == null || starBusy) return;
@@ -131,12 +166,14 @@ export function PlayerCard({ mlbId, onClose }: { mlbId: number; onClose: () => v
         role="dialog"
         aria-label={card?.name || "Player"}
         tabIndex={-1}
+        aria-modal={isDesktop ? undefined : true}
+        onKeyDown={onSheetKeyDown}
         className={`pc ${isDesktop ? "pc-panel" : "pc-sheet"}`}
       >
-        <div className="pc-head">
+        <div className="pc-head" {...swipe}>
           <PlayerFace mlbId={mlbId} name={card?.name ?? ""} size={60} />
           <div className="pc-id">
-            <div className="pc-name">{card?.name ?? ""}</div>
+            <h2 className="pc-name" ref={headingRef} tabIndex={-1}>{card?.name ?? ""}</h2>
             {card && (
               <div className="pc-sub">
                 <span>{card.pos}</span>

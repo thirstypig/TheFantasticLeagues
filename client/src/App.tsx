@@ -168,8 +168,8 @@ export default function App() {
           path="/*"
           element={
             user ? (
+              <PlayerCardProvider>
               <MobileLayoutGate desktopChrome={AuroraShell}>
-                <PlayerCardProvider>
                 <Suspense fallback={<PageLoader />}>
                   <Routes>
                     <Route path="/" element={<TodayPage />} />
@@ -325,8 +325,8 @@ export default function App() {
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </Suspense>
-                </PlayerCardProvider>
               </MobileLayoutGate>
+              </PlayerCardProvider>
             ) : (
               <Suspense fallback={<PageLoader />}>
                 <Routes>

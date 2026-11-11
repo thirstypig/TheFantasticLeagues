@@ -1,10 +1,10 @@
 .pc { position: fixed; z-index: 60; background: var(--am-surface); color: var(--am-text); font-family: inherit; font-size: 15px; display: flex; flex-direction: column; overflow: hidden; outline: none; box-shadow: 0 -4px 24px rgba(0,0,0,.25); }
 .pc-sheet { left: 0; right: 0; bottom: 0; max-height: 85vh; border-radius: 12px 12px 0 0; border-top: 1px solid var(--am-border); }
 .pc-panel { top: 0; right: 0; bottom: 0; width: 400px; border-left: 1px solid var(--am-border); }
-.pc-backdrop { position: fixed; inset: 0; z-index: 59; background: rgba(0,0,0,.45); }
+.pc-backdrop { position: fixed; inset: 0; z-index: 59; background: var(--am-scrim); }
 .pc-head { display: flex; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid var(--am-border); }
 .pc-id { flex: 1; min-width: 0; }
-.pc-name { font-size: 17px; font-weight: 700; }
+.pc-name { margin: 0; outline: none; font-size: 17px; font-weight: 700; }
 .pc-sub { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--am-text-muted); }
 .pc-icon { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: var(--am-text); font-size: 24px; cursor: pointer; }
 .pc-body { overflow-y: auto; padding: 16px; }

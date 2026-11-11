@@ -1,7 +1,9 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useNavigate } from "react-router-dom";
 
 vi.mock("../../../../contexts/LeagueContext", () => ({
   useLeague: () => ({ leagueId: 20, myTeamId: 7 }),
@@ -49,7 +51,7 @@ const offseason: PlayerCardData = {
   },
 };
 
-function mount(player = hitter) {
+function mount() {
   return render(
     <MemoryRouter>
       <PlayerCardProvider>
@@ -61,10 +63,13 @@ function mount(player = hitter) {
   );
 }
 
+let desktop = false;
 beforeEach(() => {
   vi.clearAllMocks();
+  desktop = false;
+  document.body.style.overflow = "";
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-    matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    matches: desktop, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   })) as unknown as typeof window.matchMedia;
   m.getPlayerCard.mockImplementation(async (id: number) => ({ 1: hitter, 2: pitcher, 3: offseason }[id]));
   m.getWatchlistMlbIds.mockResolvedValue(new Set<number>());
@@ -143,5 +148,147 @@ describe("PlayerCard", () => {
     await act(async () => { fireEvent.click(on); });
     expect(m.removeWatchlist).toHaveBeenCalledWith(7, 11);
     await waitFor(() => expect(screen.getByRole("button", { name: "Add to watchlist" })).toBeTruthy());
+  });
+
+  it("stale response from an earlier player never overwrites the current one", async () => {
+    let resolveA!: (c: PlayerCardData) => void;
+    m.getPlayerCard.mockImplementation((id: number) =>
+      id === 1 ? new Promise((r) => { resolveA = r; }) : Promise.resolve(pitcher));
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: "Mookie Betts" }));
+    fireEvent.click(screen.getByRole("button", { name: "Zack Wheeler" }));
+    await screen.findByText("2.90");
+    await act(async () => { resolveA(hitter); });
+    expect(screen.getByRole("dialog").getAttribute("aria-label")).toBe("Zack Wheeler");
+    expect(screen.queryByText(".301")).toBeNull();
+  });
+
+  it("card data resets on swap (no old data under the new header)", async () => {
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: "Mookie Betts" }));
+    await screen.findByText(".301");
+    m.getPlayerCard.mockImplementation(() => new Promise(() => {}));
+    fireEvent.click(screen.getByRole("button", { name: "Zack Wheeler" }));
+    expect(screen.queryByText(".301")).toBeNull();
+    expect(screen.queryByText("Mookie Betts", { selector: ".pc-name" })).toBeNull();
+  });
+
+  it("phone locks body scroll, releases on close and on unmount", async () => {
+    const { unmount } = mount();
+    fireEvent.click(screen.getByRole("button", { name: "Mookie Betts" }));
+    await screen.findByText(".301");
+    expect(document.body.style.overflow).toBe("hidden");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(document.body.style.overflow).toBe("");
+    fireEvent.click(screen.getByRole("button", { name: "Mookie Betts" }));
+    await screen.findByText(".301");
+    expect(document.body.style.overflow).toBe("hidden");
+    unmount();
+    expect(document.body.style.overflow).toBe("");
+  });
+
+  it("desktop: right panel, no backdrop, no scroll lock, no aria-modal", async () => {
+    desktop = true;
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: "Mookie Betts" }));
+    await screen.findByText(".301");
+    const dlg = screen.getByRole("dialog");
+    expect(dlg.className).toContain("pc-panel");
+    expect(screen.queryByTestId("pc-backdrop")).toBeNull();
+    expect(document.body.style.overflow).toBe("");
+    expect(dlg.getAttribute("aria-modal")).toBeNull();
+  });
+
+  it("phone: backdrop, sheet class, aria-modal; backdrop tap closes", async () => {
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: "Mookie Betts" }));
+    await screen.findByText(".301");
+    const dlg = screen.getByRole("dialog");
+    expect(dlg.className).toContain("pc-sheet");
+    expect(dlg.getAttribute("aria-modal")).toBe("true");
+    fireEvent.click(screen.getByTestId("pc-backdrop"));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("PlayerLink is plain text without an mlbId", () => {
+    render(
+      <MemoryRouter>
+        <PlayerCardProvider>
+          <PlayerLink name="Minor Leaguer" />
+          <PlayerLink mlbId={null} name="Other Guy" />
+        </PlayerCardProvider>
+      </MemoryRouter>,
+    );
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.getByText("Minor Leaguer")).toBeTruthy();
+    expect(screen.getByText("Other Guy")).toBeTruthy();
+  });
+
+  it("swipe down more than 80px on the header closes the phone sheet", async () => {
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: "Mookie Betts" }));
+    await screen.findByText(".301");
+    const head = document.querySelector(".pc-head")!;
+    fireEvent.touchStart(head, { touches: [{ clientY: 100 }] });
+    fireEvent.touchMove(head, { touches: [{ clientY: 150 }] });
+    fireEvent.touchEnd(head, { changedTouches: [{ clientY: 150 }] });
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    fireEvent.touchStart(head, { touches: [{ clientY: 100 }] });
+    fireEvent.touchMove(head, { touches: [{ clientY: 200 }] });
+    fireEvent.touchEnd(head, { changedTouches: [{ clientY: 200 }] });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("phone: Tab and Shift+Tab cycle inside the sheet", async () => {
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: "Mookie Betts" }));
+    await screen.findByText(".301");
+    const dlg = screen.getByRole("dialog");
+    const focusables = Array.from(dlg.querySelectorAll<HTMLElement>("button:not([disabled]), a[href]"));
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    last.focus();
+    fireEvent.keyDown(dlg, { key: "Tab" });
+    expect(document.activeElement).toBe(first);
+    first.focus();
+    fireEvent.keyDown(dlg, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(last);
+  });
+
+  it("on player swap focus moves to the card heading", async () => {
+    mount();
+    fireEvent.click(screen.getByRole("button", { name: "Mookie Betts" }));
+    await screen.findByText(".301");
+    fireEvent.click(screen.getByRole("button", { name: "Zack Wheeler" }));
+    await screen.findByText("2.90");
+    expect(document.activeElement?.classList.contains("pc-name")).toBe(true);
+  });
+
+  it("closes on route change", async () => {
+    const Nav = () => {
+      const nav = useNavigate();
+      return <button onClick={() => nav("/elsewhere")}>go</button>;
+    };
+    render(
+      <MemoryRouter>
+        <PlayerCardProvider>
+          <PlayerLink mlbId={1} name="Mookie Betts" />
+          <Nav />
+        </PlayerCardProvider>
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Mookie Betts" }));
+    await screen.findByText(".301");
+    fireEvent.click(screen.getByRole("button", { name: "go" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("App mounts the provider outside MobileLayoutGate (mobile twins and the 768px swap keep it)", () => {
+    const src = fs.readFileSync(path.resolve(__dirname, "../../../../App.tsx"), "utf8");
+    const provider = src.indexOf("<PlayerCardProvider>");
+    const gate = src.indexOf("<MobileLayoutGate");
+    expect(provider).toBeGreaterThan(-1);
+    expect(provider).toBeLessThan(gate);
+    expect(src.indexOf("</PlayerCardProvider>")).toBeGreaterThan(src.indexOf("</MobileLayoutGate>"));
   });
 });
