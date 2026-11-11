@@ -26,6 +26,8 @@ export interface CommissionerTeam {
   budget?: number | null;
   owner?: string | null;
   owners?: Array<{ userId: number; user: CommissionerUser }>;
+  ownerUserId?: number | null;
+  ownerships?: Array<{ id: number; userId: number; user: CommissionerUser }>;
 }
 
 export interface CommissionerLeague {
@@ -206,6 +208,16 @@ export async function assignTeamOwner(leagueId: number, teamId: number, userId: 
 
 export async function removeTeamOwner(leagueId: number, teamId: number, userId: number): Promise<void> {
   await fetchJsonApi(`${API_BASE}/commissioner/${leagueId}/teams/${teamId}/owner/${userId}`, { method: "DELETE" });
+}
+
+export async function getLeagueInviteCode(leagueId: number): Promise<string | null> {
+  const resp = await fetchJsonApi<{ inviteCode: string | null }>(`${API_BASE}/leagues/${leagueId}/invite-code`);
+  return resp.inviteCode ?? null;
+}
+
+export async function regenerateLeagueInviteCode(leagueId: number): Promise<string> {
+  const resp = await fetchJsonApi<{ inviteCode: string }>(`${API_BASE}/leagues/${leagueId}/invite-code/regenerate`, { method: "POST" });
+  return resp.inviteCode;
 }
 
 export async function assignRosterKeeper(leagueId: number, data: {

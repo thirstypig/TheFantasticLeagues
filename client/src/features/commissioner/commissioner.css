@@ -104,3 +104,9 @@
 @media (min-width: 1024px) {
   .season-cols { grid-template-columns: 1fr 360px; }
 }
+
+/* Owners screen: one column on phones; teams left, invite tools right from 1024px. */
+.owners-cols { display: grid; grid-template-columns: 1fr; gap: 0 24px; align-items: start; }
+@media (min-width: 1024px) {
+  .owners-cols { grid-template-columns: 3fr 2fr; }
+}
