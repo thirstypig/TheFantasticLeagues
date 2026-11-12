@@ -191,3 +191,33 @@
 .yt-table td .pc-link { font: inherit; font-weight: 600; }
 .yt-table .yt-act { text-align: right; white-space: nowrap; }
 .yt-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Screen 10 · Commissioner controls */
+.cb-wrap { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.cb-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0;
+  padding: 8px; border-radius: 12px; border: 2px dashed var(--am-accent); background: var(--am-surface);
+}
+.cb-bar > .la-btn { flex: 1 1 auto; min-width: 0; white-space: normal; text-align: center; }
+.cb-bar.wide > .la-btn { flex: 0 0 auto; white-space: nowrap; }
+.cb-label { font-size: 15px; font-weight: 700; padding: 0 8px; }
+.cb-linkbtn { text-decoration: none; }
+.cb-err { flex-basis: 100%; }
+.cb-more { display: flex; flex-direction: column; gap: 8px; }
+.cb-row {
+  width: 100%; background: none; border-left: 0; border-right: 0; border-bottom: 0;
+  font: inherit; color: inherit; text-align: left; text-decoration: none; cursor: pointer;
+}
+.cb-row:first-child { border-top: 0; }
+.cb-row:disabled { opacity: 0.45; cursor: not-allowed; }
+.cb-chev { flex: none; font-size: 17px; color: var(--am-text-muted); }
+.la-center .cb-sales { margin-top: 4px; }
+
+/* /auction/assign */
+.ap-pick { width: 100%; background: none; border-left: 0; border-right: 0; border-bottom: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.ap-pick:first-child { border-top: 0; }
+.ap-pick[aria-pressed="true"] { background: var(--am-chip); box-shadow: inset 3px 0 0 var(--am-accent); }
+.ap-pick:disabled { opacity: 0.45; cursor: not-allowed; }
+.ap-price { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; }
+.ap-price .la-input { flex: none; width: 96px; }
+.cb-row .la-t, .ap-pick .la-t { display: block; flex: 1; }

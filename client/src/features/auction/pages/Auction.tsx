@@ -7,14 +7,13 @@
  * the team board (AuctionResults) once the auction is completed or the league
  * is out of the draft phase.
  */
-import React, { useEffect, useRef, useState } from 'react';
-import { getPlayerSeasonStats, type PlayerSeasonStat, getLeague, getMe } from '../../../api';
+import React, { useEffect, useRef } from 'react';
 import { useAuctionState } from '../hooks/useAuctionState';
 import { useAuctionSounds } from '../hooks/useAuctionSounds';
 import { useAuctionPrefs } from '../hooks/useAuctionPrefs';
 import { useAuctionNotifications } from '../hooks/useAuctionNotifications';
 import { useToast } from '../../../contexts/ToastContext';
-import { useLeague, findMyTeam } from '../../../contexts/LeagueContext';
+import { useAuctionPageData } from '../hooks/useAuctionPageData';
 import { useSeasonGating } from '../../../hooks/useSeasonGating';
 // Deliberate: AuctionResults is the Screen 11 team board (Task 7), shown when the auction is over.
 import AuctionResults from './AuctionResults';
@@ -33,14 +32,8 @@ function PlainCard({ children }: { children: React.ReactNode }) {
 
 export default function Auction() {
   const { toast } = useToast();
-  const { leagueId: currentLeagueId } = useLeague();
   const gating = useSeasonGating();
-  const [players, setPlayers] = useState<PlayerSeasonStat[]>([]);
-  const [initLoading, setInitLoading] = useState(true);
-
-  const [myTeamId, setMyTeamId] = useState<number | undefined>(undefined);
-  const [activeLeagueId, setActiveLeagueId] = useState<number | null>(null);
-  const [isCommissioner, setIsCommissioner] = useState(false);
+  const { leagueId: activeLeagueId, players, myTeamId, isCommissioner, loading: initLoading } = useAuctionPageData();
 
   const { state: auctionState, connectionStatus, actions } = useAuctionState(activeLeagueId);
   const sounds = useAuctionSounds();
@@ -49,41 +42,6 @@ export default function Auction() {
 
   // Browser notifications (your turn, outbid, win)
   useAuctionNotifications(auctionState, myTeamId, !auctionPrefs.notifications);
-
-  // Initialization: fetch data and identify the user
-  useEffect(() => {
-    let mounted = true;
-    const init = async () => {
-      try {
-        setInitLoading(true);
-        const [stats, meRes] = await Promise.all([
-          getPlayerSeasonStats(currentLeagueId || undefined),
-          getMe(),
-        ]);
-        if (!mounted) return;
-        setPlayers(stats);
-        const fetchedUserId = meRes.user?.id;
-
-        if (currentLeagueId) {
-          setActiveLeagueId(currentLeagueId);
-          const membership = meRes.user?.memberships?.find((m: { leagueId: number; role: string }) => m.leagueId === currentLeagueId);
-          if (membership?.role === 'COMMISSIONER' || meRes.user?.isAdmin) {
-            setIsCommissioner(true);
-          }
-          const detail = await getLeague(currentLeagueId);
-          if (!mounted) return;
-          const myTeam = fetchedUserId ? findMyTeam(detail.league.teams, fetchedUserId) : null;
-          if (myTeam) setMyTeamId(myTeam.id);
-        }
-      } catch (e) {
-        console.error(e);
-      } finally {
-        if (mounted) setInitLoading(false);
-      }
-    };
-    init();
-    return () => { mounted = false; };
-  }, [currentLeagueId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Show "Start auction" instead of auto-init — the commissioner starts it explicitly
   const needsInit = activeLeagueId && auctionState && auctionState.status === 'not_started' && isCommissioner;

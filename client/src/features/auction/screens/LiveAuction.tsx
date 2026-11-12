@@ -10,7 +10,8 @@
  * Slots for later tasks:
  *  - Screen 9 (YourTurn): while status is 'nominating' the turn box takes the lot card's place;
  *    on my turn the put-up panel follows it (phone: pinned box, panel scrolls below).
- *  - Task 6 (CommissionerBar): renders where `{/* Task 6: CommissionerBar *\/}` sits, above the lot area (on phone, just above the pinned block, not inside it).
+ *  - Screen 10 (CommissionerBar, commissioner/admin only): above the lot area (on phone, just above the
+ *    pinned block, not inside it); desktop adds Last sales under the lot in the center column.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -27,6 +28,7 @@ import PlayersPanel, { availablePlayers, playerValue } from '../components/live/
 import LotBids from '../components/live/LotBids';
 import YourTurn, { PutUpPanel, TurnBox, isMyTurn } from '../components/live/YourTurn';
 import TeamBoard from '../components/board/TeamBoard';
+import CommissionerBar, { LastSales } from '../components/live/CommissionerBar';
 import '../components/live/live.css';
 
 export type AuctionActions = ReturnType<typeof useAuctionState>['actions'];
@@ -45,7 +47,7 @@ export interface LiveAuctionProps {
   myTeamId?: number | null;
   /** Full player feed (season stats); availability is derived here. */
   players: PlayerSeasonStat[];
-  /** Unused here; reserved for Task 6 (CommissionerBar). */
+  /** Commissioner or site admin: shows the commissioner bar (and Last sales on desktop). */
   isCommissioner: boolean;
   connectionStatus?: ConnectionStatus;
   prefs: LiveAuctionPrefs;
@@ -98,7 +100,7 @@ function HeaderToggles({ prefs }: { prefs: LiveAuctionPrefs }) {
   );
 }
 
-export default function LiveAuction({ state, actions, leagueId, myTeamId, players, connectionStatus, prefs }: LiveAuctionProps) {
+export default function LiveAuction({ state, actions, leagueId, myTeamId, players, isCommissioner, connectionStatus, prefs }: LiveAuctionProps) {
   const isPhone = useMediaQuery(PHONE_QUERY);
   const [tab, setTab] = useState<Tab>('teams');
   const myList = useMyList(leagueId, myTeamId ?? null);
@@ -173,7 +175,7 @@ export default function LiveAuction({ state, actions, leagueId, myTeamId, player
           <div className="la-head-r"><HeaderToggles prefs={prefs} /></div>
         </div>
         {reconnecting}
-        {/* Task 6: CommissionerBar */}
+        {isCommissioner && <CommissionerBar state={state} actions={actions} variant="phone" />}
         {/* Pinned: only the lot header, bid bar and max-bid line (controller ruling). */}
         <div className="la-pin" data-testid="pinned">
           {lotArea}
@@ -211,7 +213,7 @@ export default function LiveAuction({ state, actions, leagueId, myTeamId, player
         </div>
       </div>
       {reconnecting}
-      {/* Task 6: CommissionerBar */}
+      {isCommissioner && <CommissionerBar state={state} actions={actions} variant="desktop" />}
       <div className="la-cols3">
         <div className="la-col la-players">
           <p className="la-cap">Players</p>
@@ -220,6 +222,7 @@ export default function LiveAuction({ state, actions, leagueId, myTeamId, player
         <div className="la-col la-center">
           {lotArea}
           {hasLot && <LotBids bids={bids} />}
+          {isCommissioner && <LastSales state={state} actions={actions} />}
         </div>
         <div className="la-col la-right">
           <OrderStrip strip={strip} variant="desktop" />
