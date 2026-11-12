@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../../../db/prisma.js", () => ({
   prisma: {
+    league: { findUnique: vi.fn() },
     period: { findFirst: vi.fn() },
     team: { findMany: vi.fn() },
   },
@@ -14,11 +15,14 @@ import {
 } from "../lib/auctionDaySnapshot.js";
 
 const mockPrisma = prisma as unknown as {
+  league: { findUnique: ReturnType<typeof vi.fn> };
   period: { findFirst: ReturnType<typeof vi.fn> };
   team: { findMany: ReturnType<typeof vi.fn> };
 };
 
 beforeEach(() => {
+  mockPrisma.league.findUnique.mockReset();
+  mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
   mockPrisma.period.findFirst.mockReset();
   mockPrisma.team.findMany.mockReset();
 });
@@ -45,15 +49,17 @@ describe("getAuctionCutoff", () => {
     expect(mockPrisma.period.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         orderBy: { startDate: "asc" },
-        where: expect.objectContaining({ season: { leagueId: 20 } }),
+        where: expect.objectContaining({ season: { leagueId: 20, year: 2026 } }),
       }),
     );
   });
 
-  it("falls back to current-year April 1 when no periods exist", async () => {
+  it("falls back to now (not April 1) when the season has no periods", async () => {
     mockPrisma.period.findFirst.mockResolvedValueOnce(null);
+    const before = Date.now();
     const cutoff = await getAuctionCutoff(20);
-    expect(cutoff.toISOString().slice(5, 10)).toBe("04-01");
+    expect(cutoff.getTime()).toBeGreaterThanOrEqual(before);
+    expect(cutoff.getTime()).toBeLessThanOrEqual(Date.now());
   });
 });
 

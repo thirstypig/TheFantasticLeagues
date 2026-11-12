@@ -3,11 +3,18 @@ import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
 import { writeAuditLog } from "../../../lib/auditLog.js";
 import { assertPlayerAvailable } from "../../../lib/rosterGuard.js";
+import { getCurrentSeasonStatus } from "../../../middleware/seasonGuard.js";
 import { positionToSlots, PITCHER_CODES_SET as PITCHER_CODES, isPitcher as isPitcherPos } from "../../../lib/sportConfig.js";
 import { broadcastState } from "../services/auctionWsService.js";
 import { saveState, loadState, clearState } from "../services/auctionPersistence.js";
 
+import { sanitizeStateForBroadcast } from "./sanitizeState.js";
+
 import type { AuctionState } from "../types.js";
+
+// Strips proxy bids and my-lists; lives in a dependency-free module so the
+// WebSocket service can share it without an import cycle.
+export { sanitizeStateForBroadcast };
 
 // Re-export for external consumers that import from this module
 export { clearState };
@@ -23,6 +30,29 @@ export const nominationTimers = new Map<number, NodeJS.Timeout>();
 // --- Concurrent Finish Protection ---
 export const finishLocks = new Map<number, boolean>();
 
+// --- Concurrent Nominate Protection ---
+// Held by nominatePlayer from its first line (before any await) until it
+// returns, so a manual /nominate and the turn-timeout auto-put-up can never
+// both create a lot for the same turn.
+export const nominateLocks = new Map<number, boolean>();
+
+// --- Concurrent Undo Protection ---
+// Held by /undo-finish from before its first await until it responds, so a
+// double press can never delete two sales.
+export const undoLocks = new Map<number, boolean>();
+
+// Leagues whose turn clock ran out while a nomination held the lock. The
+// timeout is deferred, not dropped: nominatePlayer runs it when that
+// nomination fails (so a doomed /nominate at 0:00 can't buy a fresh clock).
+// Cleared by clearNominationTimer, the choke point every pause/skip/init/
+// reset/complete/resume path goes through.
+export const timeoutPending = new Set<number>();
+
+// Leagues whose timeout handler is running right now (from the clock firing
+// until the handler settles). The turn counts as expired throughout, and a
+// failed nomination in that window must not re-arm a fresh clock.
+export const timeoutRunning = new Map<number, symbol>();
+
 export function createDefaultState(leagueId: number): AuctionState {
   return {
     leagueId,
@@ -31,6 +61,8 @@ export function createDefaultState(leagueId: number): AuctionState {
     teams: [],
     queue: [],
     queueIndex: 0,
+    nominationEndTime: null,
+    paused: false,
     config: {
       sport: "baseball",
       bidTimer: 15, // seconds
@@ -56,6 +88,10 @@ export async function getState(leagueId: number): Promise<AuctionState> {
       if (!persisted.config.sport) persisted.config.sport = "baseball";
       if (!persisted.config.budgetCap) persisted.config.budgetCap = 400;
       if (!persisted.config.rosterSize) persisted.config.rosterSize = 23;
+      // Backfill state fields added in UX step F. No timer survives a cold
+      // load, so the turn clock is never running at this point.
+      persisted.paused = persisted.paused ?? false;
+      persisted.nominationEndTime = null;
       if (!persisted.config.positionLimits) {
         persisted.config.positionLimits = await loadPositionLimits(leagueId);
       }
@@ -396,22 +432,6 @@ export function processProxyBids(state: AuctionState): boolean {
   return true;
 }
 
-/**
- * Strip proxy bids from state before broadcasting.
- * Each client only sees their own proxy bid via a separate mechanism.
- */
-export function sanitizeStateForBroadcast(state: AuctionState): AuctionState {
-  if (!state.nomination?.proxyBids) return state;
-  // Deep-clone nomination to avoid mutating the real state
-  return {
-    ...state,
-    nomination: {
-      ...state.nomination,
-      proxyBids: undefined,
-    },
-  };
-}
-
 // --- Auto-Finish Timer ---
 
 export function clearAutoFinishTimer(leagueId: number): void {
@@ -435,37 +455,436 @@ export function scheduleAutoFinish(leagueId: number, durationMs: number): void {
 
 // --- Nomination Timer (Auto-Skip) ---
 
+/** Stops the turn clock and clears the state's `nominationEndTime`. */
 export function clearNominationTimer(leagueId: number): void {
   const existing = nominationTimers.get(leagueId);
   if (existing) {
     clearTimeout(existing);
     nominationTimers.delete(leagueId);
   }
+  timeoutPending.delete(leagueId);
+  const state = auctionStates.get(leagueId);
+  if (state) state.nominationEndTime = null;
 }
 
+/**
+ * Starts the current team's turn clock with full time and records its end in
+ * `state.nominationEndTime`. While the auction is paused no clock runs; /resume
+ * schedules it again. When the clock runs out, `handleNominationTimeout` puts
+ * up the top eligible player on the team's list, or skips the turn.
+ */
 export function scheduleNominationTimer(leagueId: number, state: AuctionState): void {
   clearNominationTimer(leagueId);
+  state.nominationEndTime = null;
+  if (state.paused) return;
+  const durationMs = state.config.nominationTimer * 1000;
+  state.nominationEndTime = new Date(Date.now() + durationMs).toISOString();
   const timer = setTimeout(() => {
     nominationTimers.delete(leagueId);
-    // Auto-advance queue index (skips full teams)
-    if (!advanceQueue(state)) {
-      // All teams full — auction complete
-      state.status = 'completed';
-      state.nomination = null;
-      state.lastUpdate = Date.now();
-      broadcastState(leagueId, state);
-      persistState(leagueId, state);
-      logger.info({ leagueId }, "Auction completed — all rosters full (nomination timer)");
-      return;
-    }
+    // nominationEndTime is deliberately kept: it marks the turn as expired
+    // (isTurnTimeUp) until the turn resolves and the clock is cleared or reset.
+    runNominationTimeout(leagueId, state);
+  }, durationMs);
+  nominationTimers.set(leagueId, timer);
+}
+
+/**
+ * Run the timeout for the team on the clock. If the handler throws (e.g. a DB
+ * error), fall back to the plain skip: the turn is already expired, so leaving
+ * it would refuse every /nominate with no clock running.
+ */
+function runNominationTimeout(leagueId: number, state: AuctionState): void {
+  const teamId = state.queue[state.queueIndex];
+  const run = Symbol("nomination-timeout");
+  timeoutRunning.set(leagueId, run);
+  handleNominationTimeout(leagueId, state)
+    .catch(err => {
+      logger.error({ error: String(err), leagueId }, "Nomination timeout handling failed; skipping turn");
+      if (!isStillTurnOf(state, teamId)) return;
+      if (nominateLocks.get(leagueId)) {
+        // A nomination for this turn is mid-flight: defer to it, as the
+        // handler itself does, instead of dropping the expired turn.
+        timeoutPending.add(leagueId);
+        return;
+      }
+      skipTurnOnTimeout(leagueId, state, teamId);
+    })
+    .finally(() => {
+      // Only clear our own mark, never a newer run's.
+      if (timeoutRunning.get(leagueId) === run) timeoutRunning.delete(leagueId);
+    });
+}
+
+/** True while `teamId` still holds an unpaused nominating turn. */
+function isStillTurnOf(state: AuctionState, teamId: number): boolean {
+  return state.status === 'nominating' && !state.paused && state.queue[state.queueIndex] === teamId;
+}
+
+/**
+ * Turn clock ran out (Ruling 7). Walk the team's list in order and nominate
+ * the first player that is in the Player table, not rostered in this league,
+ * not already sold in this auction, and not blocked by the team's position
+ * limits, at $1 through the shared `nominatePlayer` core. If none qualifies,
+ * skip the turn (log SKIP, reason 'timeout') as before.
+ *
+ * The list itself is left untouched: a nominated player simply becomes
+ * ineligible once sold.
+ */
+export async function handleNominationTimeout(leagueId: number, state: AuctionState): Promise<void> {
+  const teamId = state.queue[state.queueIndex];
+  if (!isStillTurnOf(state, teamId)) return;
+
+  // Never put a player up outside the draft (same check requireSeasonStatus
+  // makes for /nominate and /bid). An auction state left in memory after the
+  // season moved on just stops its clock: no lot, no skip, no new clock.
+  const seasonStatus = await getCurrentSeasonStatus(leagueId);
+  if (seasonStatus !== "DRAFT") {
+    if (!isStillTurnOf(state, teamId)) return;
+    logger.warn({ leagueId, teamId, seasonStatus }, "Turn timeout outside DRAFT; clock stopped, nothing nominated");
+    clearNominationTimer(leagueId);
     state.lastUpdate = Date.now();
     broadcastState(leagueId, state);
     persistState(leagueId, state);
-    // Schedule again for the next team
+    return;
+  }
+  if (!isStillTurnOf(state, teamId)) return;
+
+  const list = state.nominationLists?.[teamId] ?? [];
+  const candidate = list.length > 0 ? await findFirstEligible(leagueId, state, teamId, list) : null;
+
+  // Something may have changed while we were querying (pause, manual
+  // nomination, commissioner skip). Only act if the turn is still ours, and
+  // never skip a turn while a manual nomination for it is mid-flight.
+  if (!isStillTurnOf(state, teamId)) return;
+  if (nominateLocks.get(leagueId) || undoLocks.get(leagueId)) {
+    // A nomination (or an undo) for this turn is mid-flight: defer the timeout
+    // to it. Both settle the pending flag when they release their lock.
+    timeoutPending.add(leagueId);
+    return;
+  }
+
+  if (candidate) {
+    const result = await nominatePlayer(
+      leagueId, state, { ...candidate, nominatorTeamId: teamId, startBid: 1 }, { fromTimeout: true },
+    );
+    if (result.ok) {
+      logger.info({ leagueId, teamId, playerId: candidate.playerId }, "Auto-nominated from list on turn timeout");
+      return;
+    }
+    // Another nomination got there first, or the turn moved on: nothing to do.
+    if (result.conflict) return;
+    // A late validity check refused it. Fall through to the skip so the
+    // auction never stalls on a team.
+    logger.warn({ leagueId, teamId, error: result.error }, "Auto-nominate refused; skipping turn");
+    if (!isStillTurnOf(state, teamId)) return;
+    if (nominateLocks.get(leagueId)) {
+      timeoutPending.add(leagueId);
+      return;
+    }
+  }
+
+  skipTurnOnTimeout(leagueId, state, teamId);
+}
+
+type NominationInput = Omit<NominatePlayerInput, 'nominatorTeamId' | 'startBid'>;
+
+async function findFirstEligible(
+  leagueId: number,
+  state: AuctionState,
+  teamId: number,
+  list: number[],
+): Promise<NominationInput | null> {
+  const players = await prisma.player.findMany({
+    where: { mlbId: { in: list } },
+    select: { id: true, mlbId: true, name: true, posPrimary: true, posList: true, mlbTeam: true },
+  });
+  if (players.length === 0) return null;
+
+  const rostered = await prisma.roster.findMany({
+    where: { playerId: { in: players.map(p => p.id) }, team: { leagueId }, releasedAt: null },
+    select: { playerId: true },
+  });
+  const rosteredIds = new Set(rostered.map(r => r.playerId));
+  const soldMlbIds = soldInThisAuction(state);
+  const byMlbId = new Map(players.map(p => [p.mlbId, p]));
+
+  for (const mlbId of list) {
+    const p = byMlbId.get(mlbId);
+    if (!p) continue;                       // not in the Player table
+    if (rosteredIds.has(p.id)) continue;    // rostered in this league
+    if (soldMlbIds.has(mlbId)) continue;    // already sold in this auction
+    const primary = (p.posPrimary ?? "").toUpperCase();
+    const isPitcher = PITCHER_CODES.has(primary);
+    // Primary first: checkPositionLimit reads the first listed position.
+    const others = (p.posList ?? "").split(",").map(x => x.trim()).filter(x => x && x.toUpperCase() !== primary);
+    const positions = [p.posPrimary, ...others].filter(Boolean).join(",") || (isPitcher ? "P" : "UT");
+    if (checkPositionLimit(teamId, isPitcher, state, positions)) continue;
+    return {
+      playerId: String(mlbId),
+      playerName: p.name,
+      positions,
+      team: p.mlbTeam ?? "",
+      isPitcher,
+    };
+  }
+  return null;
+}
+
+/** mlbIds already on a roster in this auction's in-memory team state. */
+function soldInThisAuction(state: AuctionState): Set<number> {
+  const ids = new Set<number>();
+  for (const t of state.teams) {
+    for (const r of t.roster) if (r.mlbId != null) ids.add(r.mlbId);
+  }
+  return ids;
+}
+
+/** Skip the timed-out team's turn: log SKIP, advance (or complete), broadcast, persist. */
+function skipTurnOnTimeout(leagueId: number, state: AuctionState, teamId: number): void {
+  const team = state.teams.find(t => t.id === teamId);
+  state.log.unshift({
+    type: 'SKIP',
+    teamId,
+    teamName: team?.name,
+    reason: 'timeout',
+    timestamp: Date.now(),
+    message: `${team?.name ?? 'Team'} ran out of time; turn skipped`,
+  });
+
+  // Auto-advance queue index (skips full teams)
+  if (!advanceQueue(state)) {
+    // All teams full — auction complete
+    clearNominationTimer(leagueId);
+    state.status = 'completed';
+    state.nomination = null;
+    state.nominationEndTime = null;
+    state.lastUpdate = Date.now();
+    broadcastState(leagueId, state);
+    persistState(leagueId, state);
+    logger.info({ leagueId }, "Auction completed — all rosters full (nomination timer)");
+    return;
+  }
+  // Start the next team's clock before broadcasting so clients see it
+  scheduleNominationTimer(leagueId, state);
+  state.lastUpdate = Date.now();
+  broadcastState(leagueId, state);
+  persistState(leagueId, state);
+  logger.info({ leagueId, queueIndex: state.queueIndex }, "Auto-skipped nomination turn");
+}
+
+// --- Shared Nominate Core (POST /nominate + turn-timeout auto-put-up) ---
+
+export interface NominatePlayerInput {
+  nominatorTeamId: number;
+  playerId: string;   // mlbId
+  playerName: string;
+  startBid: number;
+  positions: string;
+  team: string;       // MLB team abbreviation
+  isPitcher: boolean;
+}
+
+/**
+ * `conflict: true` means another nomination or a turn change won a race
+ * (route maps it to 409); otherwise the request itself was invalid (400).
+ */
+export type NominatePlayerResult = { ok: true } | { ok: false; error: string; conflict: boolean };
+
+export const NOMINATION_IN_PROGRESS = "Nomination already in progress";
+export const TURN_NO_LONGER_ACTIVE = "Turn no longer active";
+export const TIME_IS_UP = "Time is up";
+export const UNDO_IN_PROGRESS = "Undo in progress";
+
+/** Same grace /bid allows after a lot's end time. */
+const TURN_GRACE_MS = 500;
+
+/**
+ * True once the current turn's clock has run out: a timeout is pending, or the
+ * recorded end time is more than the grace in the past. After that the turn
+ * belongs to the server (auto-put-up or skip); /nominate is refused, for
+ * owners and commissioners alike (a commissioner can Skip instead).
+ */
+export function isTurnTimeUp(leagueId: number, state: AuctionState): boolean {
+  if (timeoutPending.has(leagueId) || timeoutRunning.has(leagueId)) return true;
+  if (!state.nominationEndTime) return false;
+  return Date.now() > new Date(state.nominationEndTime).getTime() + TURN_GRACE_MS;
+}
+
+/**
+ * Put a player up for bids. Holds ONLY the shared mechanics: budget, rostered,
+ * already-sold and position checks, the AuctionLot row, nomination state,
+ * clocks, log, broadcast and persist. Auth and phase/pause/turn checks belong
+ * to the caller (the /nominate route, or the turn-timeout handler, which acts
+ * for the team on the clock and passes `fromTimeout` so the expired-turn
+ * check doesn't refuse it).
+ */
+export async function nominatePlayer(
+  leagueId: number,
+  state: AuctionState,
+  input: NominatePlayerInput,
+  opts: { fromTimeout?: boolean } = {},
+): Promise<NominatePlayerResult> {
+  // Taken synchronously, before the first await (same pattern as finishLocks).
+  if (nominateLocks.get(leagueId)) return { ok: false, error: NOMINATION_IN_PROGRESS, conflict: true };
+  // An undo rewinds the turn and clears the lot; never start one under it.
+  if (undoLocks.get(leagueId)) return { ok: false, error: UNDO_IN_PROGRESS, conflict: true };
+  nominateLocks.set(leagueId, true);
+  let result: NominatePlayerResult = { ok: false, error: TURN_NO_LONGER_ACTIVE, conflict: true };
+  try {
+    result = await nominateUnderLock(leagueId, state, input, opts);
+    return result;
+  } finally {
+    nominateLocks.delete(leagueId);
+    afterNomination(leagueId, state, result);
+  }
+}
+
+/**
+ * Settle the turn clock once a nomination releases the lock.
+ * - Succeeded: bidding started, so any deferred timeout is moot.
+ * - Failed with a deferred timeout: run it now (auto-put-up, else SKIP
+ *   'timeout'). Never re-arm a full clock here, or a team could stall the
+ *   auction by sending a doomed /nominate at every expiry.
+ * - Failed, nothing deferred, no clock running (e.g. after a cold restart):
+ *   start the turn clock so the turn can't sit clockless.
+ */
+function afterNomination(leagueId: number, state: AuctionState, result: NominatePlayerResult): void {
+  if (result.ok) {
+    timeoutPending.delete(leagueId);
+    return;
+  }
+  const turnLive = state.status === 'nominating' && !state.paused;
+  if (timeoutPending.has(leagueId)) {
+    timeoutPending.delete(leagueId);
+    if (turnLive) runNominationTimeout(leagueId, state);
+    return;
+  }
+  // A running timeout will settle the turn itself; don't hand it a new clock.
+  if (turnLive && !nominationTimers.has(leagueId) && !timeoutRunning.has(leagueId)) {
     scheduleNominationTimer(leagueId, state);
-    logger.info({ leagueId, queueIndex: state.queueIndex }, "Auto-skipped nomination turn");
-  }, state.config.nominationTimer * 1000);
-  nominationTimers.set(leagueId, timer);
+  }
+}
+
+/** True while it is still `teamId`'s unpaused turn and no lot is up. */
+function turnStillOpenFor(state: AuctionState, teamId: number): boolean {
+  return state.status === 'nominating' && !state.paused && !state.nomination
+    && state.queue[state.queueIndex] === teamId;
+}
+
+async function nominateUnderLock(
+  leagueId: number,
+  state: AuctionState,
+  input: NominatePlayerInput,
+  opts: { fromTimeout?: boolean },
+): Promise<NominatePlayerResult> {
+  const { nominatorTeamId, playerId, playerName, startBid, positions, team, isPitcher } = input;
+
+  const teamObj = state.teams.find(t => t.id === nominatorTeamId);
+  if (!teamObj) return { ok: false, error: "Invalid team", conflict: false };
+  if (teamObj.maxBid < startBid) return { ok: false, error: "Insufficent funds", conflict: false };
+
+  // Guard: prevent nominating already-drafted players
+  if (soldInThisAuction(state).has(Number(playerId))) {
+    return { ok: false, error: "Player already on a roster", conflict: false };
+  }
+  const dbPlayer = await prisma.player.findFirst({ where: { mlbId: Number(playerId) } });
+  if (dbPlayer) {
+    const existing = await prisma.roster.findFirst({
+      where: { playerId: dbPlayer.id, team: { leagueId }, releasedAt: null }
+    });
+    if (existing) return { ok: false, error: "Player already on a roster", conflict: false };
+  }
+
+  // Check position limits for the nominating team
+  const nomPosError = checkPositionLimit(nominatorTeamId, isPitcher, state, positions);
+  if (nomPosError) return { ok: false, error: nomPosError, conflict: false };
+
+  // The awaits above yielded; re-check the turn right before the first write
+  // (a pause, skip or undo may have landed meanwhile).
+  if (!turnStillOpenFor(state, nominatorTeamId)) {
+    return { ok: false, error: TURN_NO_LONGER_ACTIVE, conflict: true };
+  }
+  // A request that started before the clock ran out and resumed after it
+  // cannot win; only the timeout path itself may nominate an expired turn.
+  if (!opts.fromTimeout && isTurnTimeUp(leagueId, state)) {
+    return { ok: false, error: TIME_IS_UP, conflict: true };
+  }
+
+  // Clear nomination timer (team is nominating)
+  clearNominationTimer(leagueId);
+
+  // Persist AuctionLot to DB for bid history tracking
+  let lotId: number | undefined;
+  if (dbPlayer) {
+    const lot = await prisma.auctionLot.create({
+      data: {
+        playerId: dbPlayer.id,
+        nominatingTeamId: nominatorTeamId,
+        status: "active",
+      },
+    });
+    lotId = lot.id;
+
+    // Record the nominator's opening bid
+    await prisma.auctionBid.create({
+      data: { lotId: lot.id, teamId: nominatorTeamId, amount: Number(startBid) },
+    });
+
+    // The inserts yielded again. If a pause, skip, undo or end landed meanwhile
+    // (they refuse while this lock is held, but don't rely on that alone), the
+    // lot must not start: remove the rows and report the conflict.
+    if (!turnStillOpenFor(state, nominatorTeamId)) {
+      await cancelLot(leagueId, lot.id);
+      return { ok: false, error: TURN_NO_LONGER_ACTIVE, conflict: true };
+    }
+  }
+
+  const now = Date.now();
+  state.nomination = {
+    playerId,
+    playerName,
+    playerTeam: team,
+    positions,
+    isPitcher,
+    nominatorTeamId,
+    currentBid: Number(startBid),
+    highBidderTeamId: nominatorTeamId,
+    endTime: new Date(now + state.config.bidTimer * 1000).toISOString(),
+    timerDuration: state.config.bidTimer,
+    status: 'running',
+    lotId,
+  };
+
+  state.log.unshift({
+    type: 'NOMINATION',
+    teamId: nominatorTeamId,
+    teamName: teamObj.name,
+    playerId,
+    playerName,
+    amount: startBid,
+    timestamp: now,
+    message: `${teamObj.name} nominated ${playerName} for $${startBid}`
+  });
+
+  state.status = 'bidding';
+  state.lastUpdate = Date.now();
+
+  // Schedule server-side auto-finish
+  scheduleAutoFinish(leagueId, state.config.bidTimer * 1000);
+
+  broadcastState(leagueId, state);
+  persistState(leagueId, state);
+  return { ok: true };
+}
+
+/** Remove a lot (and its opening bid) that was created for a nomination that lost a race. */
+async function cancelLot(leagueId: number, lotId: number): Promise<void> {
+  try {
+    await prisma.auctionBid.deleteMany({ where: { lotId } });
+    await prisma.auctionLot.delete({ where: { id: lotId } });
+  } catch (err) {
+    logger.error({ error: String(err), leagueId, lotId }, "Failed to remove canceled AuctionLot");
+  }
 }
 
 // --- Core Finish Logic (shared by auto-finish timer + manual /finish route) ---
@@ -515,7 +934,7 @@ export async function finishCurrentLot(leagueId: number, userId?: number): Promi
     // Owners can override via the Team page position dropdown later.
     const primaryPos = (dbPlayer.posPrimary ?? positions.split('/')[0] ?? "UT").toUpperCase();
 
-    await prisma.roster.create({
+    const created = await prisma.roster.create({
       data: {
         teamId: highBidderTeamId,
         playerId: dbPlayer.id,
@@ -540,8 +959,11 @@ export async function finishCurrentLot(leagueId: number, userId?: number): Promi
       type: 'WIN',
       teamId: highBidderTeamId,
       teamName: winner?.name,
+      playerId: String(playerId),
       playerName,
       amount: currentBid,
+      rosterId: created.id,
+      saleKind: 'lot',
       timestamp: Date.now(),
       message: `${winner?.name || 'Winner'} won ${playerName} for $${currentBid}`
     });

@@ -110,6 +110,8 @@ function initState(): AuctionState {
     teams,
     queue: teams.map(t => t.id),
     queueIndex: 0,
+    nominationEndTime: null,
+    paused: false,
     config: { sport: "baseball", bidTimer: BID_TIMER, nominationTimer: NOMINATION_TIMER, budgetCap: BUDGET_CAP, rosterSize: ROSTER_SIZE, pitcherCount: 9, batterCount: 14, positionLimits: null },
     log: [],
     lastUpdate: Date.now(),

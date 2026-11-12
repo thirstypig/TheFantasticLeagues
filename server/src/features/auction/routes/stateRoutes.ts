@@ -3,7 +3,7 @@ import { requireAuth } from "../../../middleware/auth.js";
 import { requireLeagueMember } from "../../../middleware/auth.js";
 import { asyncHandler } from "../../../middleware/asyncHandler.js";
 import { getAuctionDaySnapshot } from "../lib/auctionDaySnapshot.js";
-import { getState, readLeagueId } from "../lib/auctionStateManager.js";
+import { getState, readLeagueId, sanitizeStateForBroadcast } from "../lib/auctionStateManager.js";
 
 const router = Router();
 
@@ -13,11 +13,9 @@ router.get("/state", requireAuth, requireLeagueMember("leagueId"), asyncHandler(
   if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
 
   const state = await getState(leagueId);
-  // Strip proxy bids (private) — client fetches their own via /proxy-bid
-  const sanitized = state.nomination?.proxyBids
-    ? { ...state, nomination: { ...state.nomination, proxyBids: undefined } }
-    : state;
-  res.json({ ...sanitized, computedAt: new Date().toISOString() });
+  // Strip proxy bids and my-lists (private) — clients read their own via
+  // /my-proxy-bid and /my-list
+  res.json({ ...sanitizeStateForBroadcast(state), computedAt: new Date().toISOString() });
 }));
 
 // GET /api/auction/results?leagueId=N
@@ -33,7 +31,7 @@ router.get("/state", requireAuth, requireLeagueMember("leagueId"), asyncHandler(
 //   any in-season churn). Right for "what was the auction outcome".
 //
 // Auction-day inclusion rules:
-// - source IN (auction_2026, prior_season) — clean auction-time rows
+// - source IN (auction_<League.season>, prior_season) — clean auction-time rows
 // - source IN (DROP, SEASON_IMPORT) — known mis-labeled auction-time rows from
 //   early import code paths (4 rows in OGBA 2026: Busch, Vaughn, Palencia,
 //   Priester). Surface as auction wins.

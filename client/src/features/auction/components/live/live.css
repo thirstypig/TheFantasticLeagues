@@ -1,0 +1,252 @@
+/* Screen 8 · Live bidding (Style Bible). Sizes 13/15/17/24 (32 display) only; --am-* tokens only. */
+
+.la-page {
+  display: flex; flex-direction: column; gap: 16px;
+  max-width: 1280px; margin: 0 auto; width: 100%;
+  min-width: 0; box-sizing: border-box; color: var(--am-text);
+  font-family: var(--am-body);
+}
+.la-page.phone { padding: 12px 16px 24px; gap: 12px; }
+.la-num { font-variant-numeric: tabular-nums; }
+.la-muted { color: var(--am-text-muted); }
+
+/* Header */
+.la-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.la-title { font-family: var(--am-display); font-size: 24px; font-weight: 700; margin: 0; line-height: 1.15; }
+.la-sub { font-size: 15px; color: var(--am-text-muted); margin: 2px 0 0; }
+.la-head-r { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.la-link {
+  display: inline-flex; align-items: center; min-height: 44px;
+  font-size: 15px; font-weight: 600; color: var(--am-accent); text-decoration: none;
+}
+.la-toggle {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px;
+  border-radius: 22px; border: 1px solid var(--am-field-line); background: var(--am-field);
+  color: var(--am-text-muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.la-toggle[aria-pressed="true"] { color: var(--am-text); background: var(--am-chip); }
+
+/* Pinned block (phone): the window scrolls, so stick under the shell's top bar. */
+.la-pin {
+  position: sticky; top: var(--shell-top-inset, 0px); z-index: 5;
+  display: flex; flex-direction: column; gap: 8px;
+  background: var(--am-bg); padding: 4px 0 8px;
+  margin: 0 -16px; padding-left: 16px; padding-right: 16px;
+}
+
+/* Lot card */
+.la-oc {
+  background: var(--am-surface); border: 2px solid var(--am-accent); border-radius: 14px;
+  padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0;
+}
+.la-page.phone .la-oc { padding: 10px 12px; gap: 8px; }
+.la-pc-head { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.la-pc-head .la-t { flex: 1; min-width: 0; }
+.la-pname { display: block; font-family: var(--am-display); font-size: 24px; font-weight: 700; line-height: 1.1; overflow-wrap: break-word; }
+.la-pname .pc-link { font: inherit; }
+.la-pc-head small { display: block; font-size: 15px; color: var(--am-text-muted); }
+.la-face {
+  flex: none; width: 40px; height: 40px; border-radius: 50%; object-fit: cover; object-position: 50% 15%;
+  background: var(--am-chip); border: 1px solid var(--am-border);
+}
+.la-face.lg { width: 56px; height: 56px; }
+.la-face.xl { width: 84px; height: 84px; }
+.la-mlb { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--am-text-muted); }
+.la-mlb img { width: 26px; height: 26px; object-fit: contain; background: var(--am-surface); border-radius: 50%; padding: 3px; border: 1px solid var(--am-border); box-sizing: border-box; }
+.la-top2 { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.la-top2 > div { min-width: 0; }
+.la-price { font-family: var(--am-display); font-size: 24px; font-weight: 700; margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
+.la-clock { font-family: var(--am-display); font-size: 32px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; flex: none; }
+.la-clock.low { color: var(--am-negative); }
+
+.la-cap {
+  font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em;
+  font-weight: 600; color: var(--am-text-muted); margin: 0;
+}
+
+/* Bid controls */
+.la-btns { display: flex; gap: 8px; }
+.la-btns .la-btn { flex: 1 1 0; min-width: 0; }
+.la-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 48px; padding: 0 14px; border-radius: 12px;
+  font: inherit; font-size: 17px; font-weight: 700; white-space: nowrap;
+  border: 1px solid var(--am-field-line); background: var(--am-chip); color: var(--am-text); cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.la-btn.primary { background: var(--am-accent); color: var(--am-on-accent); border-color: var(--am-accent); }
+.la-btn.sm { min-height: 44px; font-size: 15px; padding: 0 12px; }
+.la-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.la-state {
+  min-height: 48px; display: flex; align-items: center; justify-content: center;
+  border-radius: 12px; background: var(--am-chip); font-size: 17px; font-weight: 700;
+}
+.la-type { display: flex; gap: 8px; }
+.la-input {
+  flex: 1; min-width: 0; min-height: 48px; padding: 0 14px; box-sizing: border-box;
+  border: 1px solid var(--am-field-line); border-radius: 10px; background: var(--am-field);
+  color: var(--am-text); font: inherit; font-size: 17px; font-variant-numeric: tabular-nums;
+}
+.la-err { font-size: 15px; color: var(--am-negative); margin: 0; }
+.la-spread { display: flex; justify-content: space-between; align-items: center; gap: 4px 12px; flex-wrap: wrap; font-size: 15px; }
+.la-linkbtn {
+  background: none; border: 0; padding: 0; min-height: 44px; font: inherit; font-size: 15px;
+  color: var(--am-text-muted); cursor: pointer; text-decoration: underline; text-decoration-color: var(--am-border);
+  text-align: left;
+}
+
+/* Order strip */
+.la-box {
+  background: var(--am-surface); border: 1px solid var(--am-border); border-radius: 12px;
+  padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0;
+}
+.la-page.phone .la-box { padding: 8px 12px; gap: 6px; }
+.la-picks { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; max-width: 100%; }
+.la-pick {
+  flex: none; display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px;
+  border-radius: 20px; border: 1px solid var(--am-field-line); background: var(--am-field);
+  font-size: 15px; font-weight: 600; white-space: nowrap;
+}
+.la-pick.on { background: var(--am-accent); color: var(--am-on-accent); border-color: var(--am-accent); }
+.la-order { font-size: 15px; margin: 0; overflow-wrap: break-word; }
+
+/* Tabs (phone) */
+.la-seg { display: flex; border: 1px solid var(--am-field-line); border-radius: 22px; overflow: hidden; background: var(--am-field); }
+.la-seg button {
+  flex: 1; min-height: 44px; border: 0; background: transparent; color: var(--am-text);
+  font: inherit; font-size: 15px; font-weight: 600; cursor: pointer;
+}
+.la-seg button[aria-pressed="true"] { background: var(--am-accent); color: var(--am-on-accent); }
+
+/* Lists */
+.la-list { background: var(--am-surface); border: 1px solid var(--am-border); border-radius: 12px; min-width: 0; }
+.la-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 56px; padding: 8px 14px; border-top: 1px solid var(--am-border); box-sizing: border-box;
+}
+.la-row:first-child { border-top: 0; }
+.la-row .la-l { min-width: 0; display: flex; align-items: center; gap: 10px; flex: 1; }
+.la-row .la-t { min-width: 0; }
+/* Names never break inside a word: one line, ellipsis when it doesn't fit. */
+.la-row .la-t b { display: block; font-weight: 600; line-height: 1.25; font-size: 17px; overflow-wrap: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.la-row .la-t b .pc-link { font: inherit; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+.la-row .la-t small { display: block; font-size: 15px; color: var(--am-text-muted); line-height: 1.3; overflow-wrap: break-word; }
+.la-row-r { flex: none; display: flex; align-items: center; gap: 8px; }
+.la-chip {
+  flex: none; display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px;
+  border-radius: 14px; background: var(--am-chip); font-size: 13px; font-weight: 700; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.la-chip.alert { color: var(--am-negative); }
+.la-foot { font-size: 15px; color: var(--am-text-muted); margin: 0; }
+.la-field {
+  width: 100%; box-sizing: border-box; min-height: 48px; padding: 0 14px;
+  border: 1px solid var(--am-field-line); border-radius: 10px; background: var(--am-field);
+  color: var(--am-text); font: inherit; font-size: 15px;
+}
+.la-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+/* Waiting / placeholder box (nominating) */
+.la-wait { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.la-wait h2 { font-family: var(--am-display); font-size: 24px; font-weight: 700; margin: 0; }
+
+/* Desktop three columns; the players column drops below under 1200px. */
+.la-cols3 {
+  display: grid; gap: 20px; align-items: start;
+  grid-template-columns: 260px minmax(0, 1fr) 300px;
+  grid-template-areas: "players lot teams";
+}
+.la-cols3 > .la-players { grid-area: players; }
+.la-cols3 > .la-center { grid-area: lot; }
+.la-cols3 > .la-right { grid-area: teams; }
+@media (max-width: 1199px) {
+  .la-cols3 {
+    grid-template-columns: minmax(0, 1fr) 280px;
+    grid-template-areas: "lot teams" "players teams";
+  }
+  /* The players list sits under the lot here: bound it so the page stays short. */
+  .la-cols3 > .la-players {
+    max-height: 70vh; overflow-y: auto; overscroll-behavior: contain;
+  }
+}
+/* Three columns: the window doesn't grow with the player list. The Players
+   column scrolls itself; the center (lot / your turn) is pinned, so the lot,
+   bid buttons and clock never scroll off-screen (the phone pin, on desktop). */
+@media (min-width: 1200px) {
+  .la-cols3 > .la-players {
+    position: sticky; top: 16px;
+    max-height: calc(100vh - 64px); overflow-y: auto; overscroll-behavior: contain;
+  }
+  .la-cols3 > .la-center {
+    position: sticky; top: 16px;
+    max-height: calc(100vh - 64px); overflow-y: auto; overscroll-behavior: contain;
+  }
+  /* When the center scrolls (your turn: list + search table + last sales),
+     the lot card / turn box with its clock stays at the top of it. */
+  .la-cols3 > .la-center > .la-oc { position: sticky; top: 0; z-index: 2; flex: none; }
+}
+
+/* Screen 9 · Your turn (put a player up) */
+.yt-h { font-family: var(--am-display); font-size: 24px; font-weight: 700; margin: 0; line-height: 1.15; }
+.yt-after { font-size: 15px; color: var(--am-text-muted); margin: 0; overflow-wrap: break-word; }
+.yt-paused { padding: 0 12px; flex: none; }
+.yt-panel { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.yt-sec { gap: 8px; }
+.yt-x {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--am-field-line);
+  background: var(--am-field); color: var(--am-text-muted); font: inherit; font-size: 17px; cursor: pointer;
+}
+.yt-bid { gap: 6px; font-size: 17px; font-weight: 700; }
+.yt-bid .la-input { flex: none; width: 80px; }
+/* Desktop put-up panel: Your list (+ opening bid) above a full-width search
+   table. Side by side, a 240px list column squeezed both and broke names. */
+.yt-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+.yt-grid > .yt-listcol { order: -1; }
+/* Bounded so the Last sales list under it stays close. */
+.yt-tablewrap { max-height: 45vh; overflow-y: auto; overscroll-behavior: contain; }
+.yt-table { width: 100%; border-collapse: collapse; font-size: 15px; table-layout: fixed; }
+.yt-table col.yt-c-team { width: 64px; }
+.yt-table col.yt-c-pos { width: 56px; }
+.yt-table col.yt-c-val { width: 64px; }
+.yt-table col.yt-c-act { width: 104px; }
+.yt-table th {
+  text-align: left; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--am-text-muted); padding: 10px 12px; border-bottom: 1px solid var(--am-border);
+}
+.yt-table td { padding: 4px 12px; border-top: 1px solid var(--am-border); height: 52px; overflow-wrap: normal; }
+.yt-table td.yt-name { overflow-wrap: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.yt-table tbody tr:first-child td { border-top: 0; }
+.yt-table td .pc-link { font: inherit; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+.yt-table .yt-act { text-align: right; white-space: nowrap; }
+.yt-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Screen 10 · Commissioner controls */
+.cb-wrap { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.cb-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0;
+  padding: 8px; border-radius: 12px; border: 2px dashed var(--am-accent); background: var(--am-surface);
+}
+.cb-bar > .la-btn { flex: 1 1 auto; min-width: 0; white-space: normal; text-align: center; }
+.cb-bar.wide > .la-btn { flex: 0 0 auto; white-space: nowrap; }
+.cb-label { font-size: 15px; font-weight: 700; padding: 0 8px; }
+.cb-linkbtn { text-decoration: none; }
+.cb-err { flex-basis: 100%; }
+.cb-more { display: flex; flex-direction: column; gap: 8px; }
+.cb-row {
+  width: 100%; background: none; border-left: 0; border-right: 0; border-bottom: 0;
+  font: inherit; color: inherit; text-align: left; text-decoration: none; cursor: pointer;
+}
+.cb-row:first-child { border-top: 0; }
+.cb-row:disabled { opacity: 0.45; cursor: not-allowed; }
+.cb-chev { flex: none; font-size: 17px; color: var(--am-text-muted); }
+.la-center .cb-sales { margin-top: 4px; }
+
+/* /auction/assign */
+.ap-pick { width: 100%; background: none; border-left: 0; border-right: 0; border-bottom: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.ap-pick:first-child { border-top: 0; }
+.ap-pick[aria-pressed="true"] { background: var(--am-chip); box-shadow: inset 3px 0 0 var(--am-accent); }
+.ap-pick:disabled { opacity: 0.45; cursor: not-allowed; }
+.ap-price { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 700; }
+.ap-price .la-input { flex: none; width: 96px; }
+.cb-row .la-t, .ap-pick .la-t { display: block; flex: 1; }

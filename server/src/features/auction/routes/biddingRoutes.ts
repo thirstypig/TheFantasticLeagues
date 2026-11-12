@@ -1,108 +1,77 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { prisma } from "../../../db/prisma.js";
 import { requireAuth } from "../../../middleware/auth.js";
-import { requireLeagueMember, requireTeamOwner } from "../../../middleware/auth.js";
+import { requireLeagueMember, requireTeamOwner, isTeamOwner } from "../../../middleware/auth.js";
 import { asyncHandler } from "../../../middleware/asyncHandler.js";
 import { validateBody } from "../../../middleware/validate.js";
 import { requireSeasonStatus } from "../../../middleware/seasonGuard.js";
-import { nominateSchema, bidSchema, proxyBidSchema } from "../lib/schemas.js";
+import { nominateSchema, bidSchema, proxyBidSchema, myListSchema } from "../lib/schemas.js";
 import {
   getState,
   readLeagueId,
+  isAdminOrCommissioner,
   checkPositionLimit,
   processProxyBids,
   sanitizeStateForBroadcast,
-  clearNominationTimer,
   scheduleAutoFinish,
   persistState,
+  nominatePlayer,
+  isTurnTimeUp,
+  TIME_IS_UP,
 } from "../lib/auctionStateManager.js";
 import { broadcastState } from "../services/auctionWsService.js";
 import { logger } from "../../../lib/logger.js";
+import type { AuctionState } from "../types.js";
 
 const router = Router();
 
+const PAUSED_ERROR = "Auction is paused";
+
+/** A lot can take bids only when the auction isn't paused and the lot's clock is running. */
+function isBiddingPaused(state: AuctionState): boolean {
+  return state.paused || state.nomination?.status !== 'running';
+}
+
 // POST /api/auction/nominate
-router.post("/nominate", requireAuth, validateBody(nominateSchema), requireSeasonStatus(["DRAFT"]), requireTeamOwner("nominatorTeamId"), asyncHandler(async (req, res) => {
+// Owner of the team on the clock, or a commissioner/admin on that team's behalf.
+// (Ownership is checked inline instead of via requireTeamOwner so the
+// commissioner exception can be scoped to the team whose turn it is.)
+router.post("/nominate", requireAuth, validateBody(nominateSchema), requireSeasonStatus(["DRAFT"]), asyncHandler(async (req, res) => {
   const leagueId = readLeagueId(req);
   if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
   const state = await getState(leagueId);
 
   const { nominatorTeamId, playerId, playerName, startBid, positions, team, isPitcher } = req.body;
 
-  const teamObj = state.teams.find(t => t.id === nominatorTeamId);
-  if (!teamObj) return res.status(400).json({ error: "Invalid team" });
-  if (teamObj.maxBid < startBid) return res.status(400).json({ error: "Insufficent funds" });
-
-  // Guard: prevent nominating already-drafted players
-  const dbPlayer = await prisma.player.findFirst({ where: { mlbId: Number(playerId) } });
-  if (dbPlayer) {
-    const existing = await prisma.roster.findFirst({
-      where: { playerId: dbPlayer.id, team: { leagueId }, releasedAt: null }
-    });
-    if (existing) return res.status(400).json({ error: "Player already on a roster" });
+  // Auth: owner of the nominating team, else commissioner/admin (turn check below
+  // limits them to the team on the clock).
+  const ownsTeam = await isTeamOwner(nominatorTeamId, req.user!.id);
+  if (!ownsTeam && !(await isAdminOrCommissioner(req, leagueId))) {
+    return res.status(403).json({ error: "You do not own this team" });
   }
 
-  // Check position limits for the nominating team
-  const nomPosError = checkPositionLimit(nominatorTeamId, isPitcher, state, positions);
-  if (nomPosError) return res.status(400).json({ error: nomPosError });
-
-  // Clear nomination timer (team is nominating)
-  clearNominationTimer(leagueId);
-
-  // Persist AuctionLot to DB for bid history tracking
-  let lotId: number | undefined;
-  if (dbPlayer) {
-    const lot = await prisma.auctionLot.create({
-      data: {
-        playerId: dbPlayer.id,
-        nominatingTeamId: nominatorTeamId,
-        status: "active",
-      },
-    });
-    lotId = lot.id;
-
-    // Record the nominator's opening bid
-    await prisma.auctionBid.create({
-      data: { lotId: lot.id, teamId: nominatorTeamId, amount: Number(startBid) },
-    });
+  // Turn / phase / pause — route-level, never inside the shared nominate core.
+  if (state.status !== 'nominating') {
+    return res.status(409).json({ error: "Not accepting nominations right now" });
+  }
+  if (state.paused) {
+    return res.status(409).json({ error: PAUSED_ERROR });
+  }
+  if (nominatorTeamId !== state.queue[state.queueIndex]) {
+    return res.status(409).json({ error: "It is not this team's turn to nominate" });
+  }
+  // Once the turn clock has run out the server owns the turn (auto-put-up or
+  // skip). Same rule for owners and commissioners.
+  if (isTurnTimeUp(leagueId, state)) {
+    return res.status(409).json({ error: TIME_IS_UP });
   }
 
-  const now = Date.now();
-  state.nomination = {
-    playerId,
-    playerName,
-    playerTeam: team,
-    positions,
-    isPitcher,
-    nominatorTeamId,
-    currentBid: Number(startBid),
-    highBidderTeamId: nominatorTeamId,
-    endTime: new Date(now + state.config.bidTimer * 1000).toISOString(),
-    timerDuration: state.config.bidTimer,
-    status: 'running',
-    lotId,
-  };
-
-  state.log.unshift({
-    type: 'NOMINATION',
-    teamId: nominatorTeamId,
-    teamName: teamObj.name,
-    playerId,
-    playerName,
-    amount: startBid,
-    timestamp: now,
-    message: `${teamObj.name} nominated ${playerName} for $${startBid}`
+  const result = await nominatePlayer(leagueId, state, {
+    nominatorTeamId, playerId, playerName, startBid, positions, team, isPitcher,
   });
+  if (!result.ok) return res.status(result.conflict ? 409 : 400).json({ error: result.error });
 
-  state.status = 'bidding';
-  state.lastUpdate = Date.now();
-
-  // Schedule server-side auto-finish
-  scheduleAutoFinish(leagueId, state.config.bidTimer * 1000);
-
-  broadcastState(leagueId, state);
-  persistState(leagueId, state);
-  res.json(state);
+  res.json(sanitizeStateForBroadcast(state));
 }));
 
 // POST /api/auction/bid
@@ -113,6 +82,9 @@ router.post("/bid", requireAuth, validateBody(bidSchema), requireSeasonStatus(["
 
   if (state.status !== 'bidding' || !state.nomination) {
     return res.status(400).json({ error: "Auction not active" });
+  }
+  if (isBiddingPaused(state)) {
+    return res.status(409).json({ error: PAUSED_ERROR });
   }
 
   const { bidderTeamId, amount } = req.body;
@@ -187,8 +159,10 @@ router.post("/proxy-bid", requireAuth, validateBody(proxyBidSchema), requireSeas
     return res.status(400).json({ error: "No active nomination" });
   }
 
-  if (state.nomination.status !== 'running') {
-    return res.status(400).json({ error: "Auction is paused" });
+  // Placing a proxy can immediately raise the current bid, so it is refused
+  // while paused exactly like /bid.
+  if (isBiddingPaused(state)) {
+    return res.status(409).json({ error: PAUSED_ERROR });
   }
 
   const { bidderTeamId, maxBid } = req.body;
@@ -292,6 +266,55 @@ router.delete("/proxy-bid", requireAuth, asyncHandler(async (req, res) => {
     persistState(leagueId, state);
   }
   res.json({ success: true });
+}));
+
+// ── "My list" (Ruling 7) ──────────────────────────────────────────
+// A team's private, ordered list of players to put up. Stored in auction
+// state (persisted, never broadcast) so the server can auto-nominate from it
+// when the team's turn clock runs out.
+
+/**
+ * Owner-only check for /my-list. The team must belong to this league (404
+ * otherwise); then the caller must own it or be an admin, matching
+ * requireTeamOwner (which can't be used here: GET carries teamId in the query).
+ */
+async function authorizeMyList(req: Request, res: Response, leagueId: number, teamId: number): Promise<boolean> {
+  const team = await prisma.team.findUnique({ where: { id: teamId }, select: { leagueId: true } });
+  if (!team || team.leagueId !== leagueId) {
+    res.status(404).json({ error: "Team not found in this league" });
+    return false;
+  }
+  if (!req.user!.isAdmin && !(await isTeamOwner(teamId, req.user!.id))) {
+    res.status(403).json({ error: "You do not own this team" });
+    return false;
+  }
+  return true;
+}
+
+// GET /api/auction/my-list?leagueId=N&teamId=N
+router.get("/my-list", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
+  const leagueId = readLeagueId(req);
+  if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
+  const teamId = Number(req.query.teamId);
+  if (!Number.isInteger(teamId) || teamId <= 0) return res.status(400).json({ error: "Missing teamId" });
+  if (!(await authorizeMyList(req, res, leagueId, teamId))) return;
+
+  const state = await getState(leagueId);
+  res.json({ teamId, mlbIds: state.nominationLists?.[teamId] ?? [] });
+}));
+
+// PUT /api/auction/my-list?leagueId=N  body: { teamId, mlbIds }
+router.put("/my-list", requireAuth, requireLeagueMember("leagueId"), validateBody(myListSchema), asyncHandler(async (req, res) => {
+  const leagueId = readLeagueId(req);
+  if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
+  const { teamId, mlbIds } = req.body as { teamId: number; mlbIds: number[] };
+  if (!(await authorizeMyList(req, res, leagueId, teamId))) return;
+
+  const deduped = [...new Set(mlbIds)];
+  const state = await getState(leagueId);
+  state.nominationLists = { ...(state.nominationLists ?? {}), [teamId]: deduped };
+  persistState(leagueId, state);
+  res.json({ teamId, mlbIds: deduped });
 }));
 
 export default router;

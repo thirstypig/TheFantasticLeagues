@@ -8,7 +8,7 @@ phase: null
 owner: james
 tags: [docs-system]
 links: [DOC-001]
-updated: 2026-11-11
+updated: 2026-11-12
 ---
 
 # Repo statistics
@@ -21,24 +21,24 @@ updated: 2026-11-11
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-11 from 1,946 git-tracked files.*
+*Generated 2026-11-12 from 1,967 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 640 | 110,590 |
-| `.tsx` | 371 | 97,081 |
-| `.md` | 561 | 70,622 |
-| `.json` | 36 | 40,132 |
+| `.ts` | 655 | 114,541 |
+| `.tsx` | 374 | 93,959 |
+| `.md` | 562 | 70,865 |
+| `.json` | 36 | 40,131 |
+| `.css` | 14 | 2,378 |
 | `.sql` | 40 | 2,153 |
-| `.css` | 12 | 2,019 |
 | `.prisma` | 1 | 1,767 |
 | `.mjs` | 9 | 1,745 |
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,942** | **370,395** |
+| **All tracked** | **1,963** | **371,825** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -46,18 +46,18 @@ updated: 2026-11-11
 
 | Measure | Count |
 |---|---:|
-| API routes | 290 |
+| API routes | 293 |
 | Prisma models | 66 |
 | Prisma migrations | 38 |
 | Server feature modules | 33 |
 | Client feature modules | 28 |
-| Cross-feature imports (ADR-015 baseline) | 86 |
+| Cross-feature imports (ADR-015 baseline) | 85 |
 
 ## Docs
 
-**216** board-scope markdown files (`docs/` plus the four root docs), of which **149** carry frontmatter.
+**217** board-scope markdown files (`docs/` plus the four root docs), of which **150** carry frontmatter.
 
-*565 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
+*566 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
 unrelated frontmatter vocabularies and are deliberately excluded from the tables below.*
 
 > **67 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
@@ -66,7 +66,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | Type | Docs | In vocabulary? |
 |---|---:|---|
 | `feat` | 20 | ❌ off-vocabulary |
-| `plan` | 12 | ✅ |
+| `plan` | 13 | ✅ |
 | `fix` | 6 | ❌ off-vocabulary |
 | `report` | 4 | ✅ |
 | `refactor` | 3 | ❌ off-vocabulary |
@@ -104,7 +104,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 | Status | Docs | In vocabulary? |
 |---|---:|---|
-| `active` | 60 | ✅ |
+| `active` | 61 | ✅ |
 | `draft` | 6 | ✅ |
 | `completed` | 4 | ❌ off-vocabulary |
 | `resolved` | 4 | ❌ off-vocabulary |
@@ -127,7 +127,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 Planning status: 27/82 planning tasks done, 2 in progress.
 
-`server/data/planning.json` last updated **2026-05-19** (176 days ago).
+`server/data/planning.json` last updated **2026-05-19** (177 days ago).
 
-> ⚠️ The canonical roadmap source is **176 days stale**. Numbers above are honest; the *plan* they describe may not be.
+> ⚠️ The canonical roadmap source is **177 days stale**. Numbers above are honest; the *plan* they describe may not be.
 

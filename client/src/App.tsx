@@ -5,7 +5,6 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import AuroraShell from "./components/aurora/AuroraShell";
 import { MobileLayoutGate } from "./mobile/MobileLayoutGate";
 const InjuredListPage = React.lazy(() => import("./features/players/pages/InjuredListPage"));
-const AuctionLegacy = React.lazy(() => import("./features/auction/pages/AuctionLegacy"));
 
 // Core routes — static imports (high-traffic, always needed)
 import TodayPage from "./pages/today/TodayPage";
@@ -51,6 +50,9 @@ const TodoPage = React.lazy(() => import("./features/admin/pages/TodoPage"));
 const ArchivePage = React.lazy(() => import("./features/archive/pages/ArchivePage"));
 const Auction = React.lazy(() => import("./features/auction/pages/Auction"));
 const AuctionResults = React.lazy(() => import("./features/auction/pages/AuctionResults"));
+const AuctionResultsReport = React.lazy(() => import("./features/auction/pages/AuctionResultsReport"));
+const AuctionBoard = React.lazy(() => import("./features/auction/pages/AuctionBoard"));
+const AssignPlayer = React.lazy(() => import("./features/auction/screens/AssignPlayer"));
 const AuctionValues = React.lazy(() => import("./features/auction/pages/AuctionValues"));
 const KeeperSelection = React.lazy(() => import("./features/keeper-prep/pages/KeeperSelection"));
 const Rules = React.lazy(() => import("./features/leagues/pages/Rules"));
@@ -236,10 +238,11 @@ export default function App() {
                     <Route path="/chat" element={<Navigate to="/board" replace />} />
                     <Route path="/leagues/:id/keepers" element={<KeeperSelection />} />
                     <Route path="/auction" element={<ErrorBoundary name="auction"><Auction /></ErrorBoundary>} />
-                    {/* Live-floor escape hatch (PR-3 strangler-fig). Use this
-                        if the Aurora live floor regresses mid-draft. */}
-                    <Route path="/auction-classic" element={<ErrorBoundary name="auction-classic"><AuctionLegacy /></ErrorBoundary>} />
+                    <Route path="/auction/board" element={<ErrorBoundary name="auction-board"><AuctionBoard /></ErrorBoundary>} />
+                    <Route path="/auction/assign" element={<ErrorBoundary name="auction-assign"><AssignPlayer /></ErrorBoundary>} />
+                    <Route path="/auction-classic" element={<Navigate to="/auction" replace />} />
                     <Route path="/auction-results" element={<ErrorBoundary name="auction-results"><AuctionResults /></ErrorBoundary>} />
+                    <Route path="/auction-results/report" element={<ErrorBoundary name="auction-results-report"><AuctionResultsReport /></ErrorBoundary>} />
                     <Route path="/auction-values" element={<AuctionValues />} />
                     <Route path="/draft" element={<ErrorBoundary name="draft"><Draft /></ErrorBoundary>} />
                     <Route path="/draft-results" element={<ErrorBoundary name="draft-results"><DraftResults /></ErrorBoundary>} />

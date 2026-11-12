@@ -290,7 +290,9 @@ async function testPauseResumeUndo(state: any) {
   );
   const prevRosterCount = prevWinTeam?.rosterCount;
 
-  const { status: us, data: ud } = await api("POST", "/auction/undo-finish", { leagueId: 2 });
+  // Name the sale being undone (newest live WIN), as the client does.
+  const newestSale = (fd.log ?? []).find((e: any) => e.type === "WIN" && !e.undone);
+  const { status: us, data: ud } = await api("POST", "/auction/undo-finish", { leagueId: 2, expectedRosterId: newestSale?.rosterId });
   assert(us === 200, `Undo should succeed, got ${us}: ${JSON.stringify(ud.error)}`);
   assert(ud.status === "nominating", `Status should be 'nominating' after undo, got ${ud.status}`);
 

@@ -55,7 +55,7 @@ interface BidHistoryChartProps {
 /* ================================================================
    HELPER: group log events into per-lot bid sequences
    ================================================================ */
-function buildLotData(log: AuctionLogEvent[]): ProcessedLot[] {
+export function buildLotData(log: AuctionLogEvent[]): ProcessedLot[] {
   const lots: ProcessedLot[] = [];
   let currentLot: { playerId: string; playerName: string; bids: BidStep[] } | null = null;
 
@@ -84,6 +84,9 @@ function buildLotData(log: AuctionLogEvent[]): ProcessedLot[] {
         timestamp: evt.timestamp,
         isNomination: false,
       });
+    } else if (evt.type === 'WIN' && evt.undone) {
+      // The commissioner undid this sale: it isn't a sale, drop the lot.
+      currentLot = null;
     } else if (evt.type === 'WIN' && currentLot) {
       const bids = currentLot.bids;
       const openingBid = bids[0]?.amount || 1;

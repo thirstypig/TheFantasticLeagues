@@ -41,7 +41,7 @@ export interface NominationState {
 }
 
 export interface AuctionLogEvent {
-  type: 'NOMINATION' | 'BID' | 'WIN' | 'PAUSE' | 'RESUME' | 'UNDO';
+  type: 'NOMINATION' | 'BID' | 'WIN' | 'PAUSE' | 'RESUME' | 'UNDO' | 'SKIP' | 'ASSIGN' | 'END';
   teamId?: number;
   teamName?: string;
   playerId?: string;
@@ -49,6 +49,14 @@ export interface AuctionLogEvent {
   amount?: number;
   timestamp: number;
   message: string;
+  /** Why a turn was skipped (SKIP only). */
+  reason?: 'commissioner' | 'timeout';
+  /** WIN / UNDO: the Roster row the sale created (absent on WINs logged before Task 6 fix round 1). */
+  rosterId?: number;
+  /** WIN: a lot won by bidding, or a commissioner force-assign (absent on older WINs). */
+  saleKind?: 'lot' | 'assign';
+  /** WIN: set once /undo-finish has reversed this sale. */
+  undone?: boolean;
 }
 
 export interface AuctionState {
@@ -65,6 +73,11 @@ export interface AuctionState {
   queue: number[]; // Array of Team IDs
   queueIndex: number;
 
+  /** ISO time the current team's turn clock runs out; null when no turn clock is running. */
+  nominationEndTime: string | null;
+  /** True between /pause and /resume, in both the nominating and bidding phases. */
+  paused: boolean;
+
   config: {
     sport: string;
     bidTimer: number;
@@ -77,6 +90,14 @@ export interface AuctionState {
   };
 
   log: AuctionLogEvent[];
+
+  /**
+   * Each team's private "my list" of players to put up (mlbIds, in order),
+   * keyed by teamId. Used to auto-nominate when a team's turn clock runs out.
+   * PRIVATE: never broadcast or returned in state payloads — see
+   * `sanitizeStateForBroadcast`. Absent on states persisted before step F.
+   */
+  nominationLists?: Record<number, number[]>;
 
   lastUpdate: number;
 }

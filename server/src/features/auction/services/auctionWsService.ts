@@ -3,7 +3,9 @@ import type { IncomingMessage, Server as HttpServer } from "http";
 import { supabaseAdmin } from "../../../lib/supabase.js";
 import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
+import { createRoutedWebSocketServer } from "../../../lib/wsUpgradeRouter.js";
 import type { AuctionState } from "../types.js";
+import { sanitizeStateForBroadcast } from "../lib/sanitizeState.js";
 
 /** Extended WebSocket with auction metadata */
 interface AuctionSocket extends WebSocket {
@@ -26,12 +28,8 @@ export function broadcastState(leagueId: number, state: AuctionState): void {
   const clients = rooms.get(leagueId);
   if (!clients || clients.size === 0) return;
 
-  // Strip proxyBids before sending — they are private per-team secrets
-  const sanitized = state.nomination?.proxyBids
-    ? { ...state, nomination: { ...state.nomination, proxyBids: undefined } }
-    : state;
-
-  const payload = JSON.stringify(sanitized);
+  // Strip proxyBids and nominationLists before sending — private per-team secrets
+  const payload = JSON.stringify(sanitizeStateForBroadcast(state));
   for (const ws of clients) {
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(payload);
@@ -68,7 +66,7 @@ async function authenticateWs(req: IncomingMessage): Promise<number | null> {
  * Handles authentication, room join/leave, and heartbeat.
  */
 export function attachAuctionWs(httpServer: HttpServer): WebSocketServer {
-  const wss = new WebSocketServer({ server: httpServer, path: "/ws/auction" });
+  const wss = createRoutedWebSocketServer(httpServer, "/ws/auction");
 
   wss.on("connection", async (ws: WebSocket, req: IncomingMessage) => {
     const userId = await authenticateWs(req);

@@ -3,6 +3,7 @@ import type { IncomingMessage, Server as HttpServer } from "http";
 import { supabaseAdmin } from "../../../lib/supabase.js";
 import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
+import { createRoutedWebSocketServer } from "../../../lib/wsUpgradeRouter.js";
 
 /** Extended WebSocket with chat metadata */
 interface ChatSocket extends WebSocket {
@@ -62,7 +63,7 @@ async function authenticateWs(req: IncomingMessage): Promise<number | null> {
  * Attach the Chat WebSocketServer to an existing HTTP server at /ws/chat.
  */
 export function attachChatWs(httpServer: HttpServer): WebSocketServer {
-  const wss = new WebSocketServer({ server: httpServer, path: "/ws/chat" });
+  const wss = createRoutedWebSocketServer(httpServer, "/ws/chat");
 
   wss.on("connection", async (ws: WebSocket, req: IncomingMessage) => {
     const userId = await authenticateWs(req);

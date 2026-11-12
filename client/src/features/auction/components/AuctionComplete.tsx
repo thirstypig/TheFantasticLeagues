@@ -215,8 +215,8 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
     }
   }, [myTeamId, tradeBlockSelections]);
 
-  const { teamResults, totalLots, totalSpent, totalKeeperSpend } = useMemo(() => {
-    // NOTE: We derive league-wide totals from teams.roster (not auctionState.log).
+  const { teamResults, totalLots, totalSpent, totalKeeperSpend, spotsLeftOpen } = useMemo(() => {
+    // NOTE: We derive league-wide spend totals from teams.roster (not auctionState.log).
     // The log only records WIN events from on-the-block bidding; keepers carry over
     // from prior_season at their existing salary and never hit the log. Counting
     // roster rows ensures league totals = sum of per-team totals shown below.
@@ -260,11 +260,18 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
 
     teamResults.sort((a, b) => b.totalSpent - a.totalSpent);
 
-    const totalLots = teamResults.reduce((sum, t) => sum + t.roster.length, 0);
+    // Lots = auction sales (WIN entries the commissioner didn't undo), not
+    // roster rows: keepers never went up for bid.
+    const totalLots = (auctionState.log || []).filter(e => e.type === 'WIN' && !e.undone).length;
+    // Open spots across the league; the header only says "All rosters filled." at 0.
+    const rosterSize = auctionState.config?.rosterSize;
+    const spotsLeftOpen = rosterSize
+      ? teamResults.reduce((sum, t) => sum + Math.max(0, rosterSize - t.roster.length), 0)
+      : (auctionState.teams || []).reduce((sum, t) => sum + Math.max(0, t.spotsLeft ?? 0), 0);
     const totalSpent = teamResults.reduce((sum, t) => sum + t.totalSpent, 0);
     const totalKeeperSpend = teamResults.reduce((sum, t) => sum + t.keeperSpend, 0);
 
-    return { teamResults, totalLots, totalSpent, totalKeeperSpend };
+    return { teamResults, totalLots, totalSpent, totalKeeperSpend, spotsLeftOpen };
   }, [auctionState]);
 
   const handleExportExcel = async () => {
@@ -280,7 +287,7 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
     }));
     xlsx.utils.book_append_sheet(wb, xlsx.utils.json_to_sheet(summaryData), 'Summary');
 
-    const wins = (auctionState.log || []).filter(e => e.type === 'WIN').reverse();
+    const wins = (auctionState.log || []).filter(e => e.type === 'WIN' && !e.undone).reverse();
     const picksData = wins.map((w, i) => ({
       Pick: i + 1,
       Player: w.playerName || '',
@@ -319,7 +326,9 @@ export default function AuctionComplete({ auctionState, myTeamId, onRefresh }: A
               </span>
             </SectionLabel>
             <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
-              All rosters filled.
+              {spotsLeftOpen === 0
+                ? 'All rosters filled.'
+                : `Auction ended · ${spotsLeftOpen} ${spotsLeftOpen === 1 ? 'spot' : 'spots'} left open`}
             </h1>
             <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
               The auction draft has concluded. Review results, grades, and bid history below.

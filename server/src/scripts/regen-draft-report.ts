@@ -5,6 +5,7 @@
 import { prisma } from "../db/prisma.js";
 import { lookupAuctionValue } from "../lib/auctionValues.js";
 import { aiAnalysisService } from "../services/aiAnalysisService.js";
+import { saleEntriesFromLog } from "../features/auction/lib/salesLog.js";
 
 const leagueId = Number(process.argv[2]) || 20;
 
@@ -33,15 +34,8 @@ async function main() {
   console.log(`Found ${teams.length} teams, ${teams.reduce((s, t) => s + t.rosters.length, 0)} total roster entries`);
 
   // Build auction log
-  const logEntries = (state?.log ?? [])
-    .filter((l: any) => l.type === "WIN" && l.playerName && l.teamName && l.amount != null)
-    .sort((a: any, b: any) => a.timestamp - b.timestamp)
-    .map((l: any, i: number) => ({
-      playerName: l.playerName,
-      teamName: l.teamName,
-      price: l.amount,
-      order: i + 1,
-    }));
+  // Undone sales are excluded (saleEntriesFromLog).
+  const logEntries = saleEntriesFromLog(state?.log);
 
   console.log(`Auction log: ${logEntries.length} WIN events`);
 
