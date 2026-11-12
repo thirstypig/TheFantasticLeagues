@@ -36,7 +36,6 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - UX step F (PR open, branch feat/auction-f): auction screens 8–11 rebuilt, engine safety fixes, ~6,800 lines of dead legacy auction code deleted
 
 ## Open bugs / known issues
-- `ALERT_EMAIL_TO` is unset, so nightly audit alarms only log (commissioner to set it on Railway).
 - Auction: a server restart mid-auction doesn't re-arm turn/lot timers; starting an auction needs a site admin.
 - 2026 final vs OnRoto (Kent's workbook): P1–P3, P5, P6 exact; P4 and P7 each have one ±1 pair (DDG/RGS, RGS/The Show). Final order identical.
 - Todos #181 (stale roster across tabs), #304 (cache cleanup), #305 (slow first standings load)
