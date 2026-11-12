@@ -171,14 +171,14 @@ export function lotBids(state: Pick<ClientAuctionState, 'log'>): LotBid[] {
   return out;
 }
 
-export interface LastSale { playerId?: string; playerName?: string; teamId?: number; teamName?: string; amount?: number; timestamp: number }
+export interface LastSale { playerId?: string; playerName?: string; teamId?: number; teamName?: string; amount?: number; timestamp: number; rosterId?: number }
 
 /** Most recent sales (WIN log entries not undone), newest first. Default top 5. */
 export function lastSales(state: Pick<ClientAuctionState, 'log'>, limit = 5): LastSale[] {
   return state.log
     .filter((e: AuctionLogEvent) => e.type === 'WIN' && !e.undone)
     .slice(0, limit)
-    .map(e => ({ playerId: e.playerId, playerName: e.playerName, teamId: e.teamId, teamName: e.teamName, amount: e.amount, timestamp: e.timestamp }));
+    .map(e => ({ playerId: e.playerId, playerName: e.playerName, teamId: e.teamId, teamName: e.teamName, amount: e.amount, timestamp: e.timestamp, rosterId: e.rosterId }));
 }
 
 // ─── Turn order ──────────────────────────────────────────────────────────────

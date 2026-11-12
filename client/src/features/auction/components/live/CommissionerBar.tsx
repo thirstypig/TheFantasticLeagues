@@ -63,7 +63,8 @@ export default function CommissionerBar({ state, actions, variant }: Commissione
   const panelId = 'cb-more';
 
   const togglePause = () => run(paused ? actions.resume : actions.pause, paused ? 'Could not resume' : 'Could not pause');
-  const undo = () => run(actions.undoLastSale, 'Could not undo the last sale');
+  // Name the sale on screen so a stale view can't undo a different one.
+  const undo = () => run(() => actions.undoLastSale(lastSales(state, 1)[0]?.rosterId), 'Could not undo the last sale');
   const skip = () => run(actions.skipTurn, "Could not skip this team's turn");
   const end = async () => {
     await run(actions.endAuction, 'Could not end the auction');
@@ -183,7 +184,7 @@ export function LastSales({ state, actions }: LastSalesProps) {
               <small className="la-num">{`${s.teamName ?? 'Unknown team'} · $${s.amount ?? 0}`}</small>
             </div>
             {i === 0 && (
-              <button type="button" className="la-btn sm" disabled={busy || !canUndo} onClick={() => run(actions.undoLastSale, 'Could not undo the last sale')}>
+              <button type="button" className="la-btn sm" disabled={busy || !canUndo} onClick={() => run(() => actions.undoLastSale(s.rosterId), 'Could not undo the last sale')}>
                 Undo
               </button>
             )}

@@ -355,8 +355,12 @@ export function useAuctionState(leagueId?: number | null) {
                 return lid ? saveMyList(lid, teamId, mlbIds) : [];
             },
             skipTurn: async () => { await fetchJsonApi(`${API_BASE}/auction/skip-turn`, { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
-            /** Undo the most recent sale (server route is /undo-finish). */
-            undoLastSale: async () => { await fetchJsonApi(`${API_BASE}/auction/undo-finish`, { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
+            /**
+             * Undo the most recent sale (server route is /undo-finish). Pass the
+             * rosterId of the newest live sale on screen; the server refuses (409)
+             * if a different sale is now the newest. Legacy sales have none.
+             */
+            undoLastSale: async (expectedRosterId?: number) => { await fetchJsonApi(`${API_BASE}/auction/undo-finish`, { method: 'POST', body: withLeagueId(expectedRosterId != null ? { expectedRosterId } : {}) }); if (!wsRef.current) fetchState(); },
             /** End the auction now (server route is /complete). Commissioner or admin. */
             endAuction: async () => { await fetchJsonApi(`${API_BASE}/auction/complete`, { method: 'POST', body: withLeagueId() }); if (!wsRef.current) fetchState(); },
             refetch: fetchState,

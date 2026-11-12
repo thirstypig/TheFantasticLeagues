@@ -322,3 +322,46 @@ describe('Commissioner controls · desktop', () => {
     expect(within(list).getByText('Player 0')).toBeTruthy();
   });
 });
+
+// ── Final fix wave C1 / S2: Undo names the sale it means ──────────────────
+describe('Commissioner controls · Undo sends the expected rosterId', () => {
+  const withIds: ClientAuctionState = {
+    ...nominating,
+    log: nominating.log.map(e => (e.type === 'WIN'
+      ? { ...e, rosterId: e.playerName === 'Paul Skenes' ? 77 : 66, saleKind: 'lot' as const }
+      : e)),
+  };
+  const undoBody = () => JSON.parse(calls('/api/auction/undo-finish')[0][1].body);
+
+  it('phone · Undo last sale posts the newest live sale\'s rosterId', async () => {
+    setPhone(true);
+    route(withIds);
+    render(<Harness />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Undo last sale' }));
+    await waitFor(() => expect(calls('/api/auction/undo-finish')).toHaveLength(1));
+    expect(undoBody()).toEqual({ leagueId: 20, expectedRosterId: 77 });
+  });
+
+  it('desktop · the Last sales Undo posts the same rosterId; after an undo it names the next sale', async () => {
+    setPhone(false);
+    route({ ...withIds, log: withIds.log.map(e => (e.playerName === 'Paul Skenes' && e.type === 'WIN' ? { ...e, undone: true } : e)) });
+    render(<Harness />);
+    const rows = within(await screen.findByTestId('last-sales')).getAllByTestId('last-sale');
+    fireEvent.click(within(rows[0]).getByRole('button', { name: 'Undo' }));
+    await waitFor(() => expect(calls('/api/auction/undo-finish')).toHaveLength(1));
+    expect(undoBody()).toEqual({ leagueId: 20, expectedRosterId: 66 });
+  });
+
+  it('a 409 from the server shows inline (bar and Last sales)', async () => {
+    setPhone(false);
+    route(withIds, { path: '/api/auction/undo-finish', message: 'Sales changed — refresh' });
+    render(<Harness />);
+    const bar = await screen.findByRole('group', { name: 'Commissioner controls' });
+    fireEvent.click(within(bar).getByRole('button', { name: 'Undo last sale' }));
+    expect((await within(bar).findByRole('alert')).textContent).toBe('Sales changed — refresh');
+
+    const list = screen.getByTestId('last-sales');
+    fireEvent.click(within(list).getByRole('button', { name: 'Undo' }));
+    expect((await within(list).findByRole('alert')).textContent).toBe('Sales changed — refresh');
+  });
+});
