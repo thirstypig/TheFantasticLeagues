@@ -6,14 +6,17 @@
 // source allowlist.
 //
 // Inclusion rules (mirror the comment block at the original `/results` site):
-// - source IN (auction_2026, prior_season) — clean auction-time rows
+// - source IN (auction_<season>, prior_season) — clean auction-time rows,
+//   where <season> is the league's `League.season` (auction_2026 for OGBA 2026)
 // - source IN (DROP, SEASON_IMPORT) — mis-labeled auction-time rows from
 //   early import code paths (4 rows in OGBA 2026). Surface as auction wins.
 // - acquiredAt < AUCTION_CUTOFF — drafted/kept before the auction window closed
 // - releasedAt IS NULL OR releasedAt >= AUCTION_CUTOFF — exclude pre-auction
 //   keeper cuts, include in-season drops
 //
-// AUCTION_CUTOFF = first Period.startDate + 7d safety buffer.
+// AUCTION_CUTOFF = first Period.startDate of THAT season + 7d safety buffer;
+// "now" when the season has no periods yet (the auction is still running or
+// just ended, so everything acquired so far is auction-day).
 import { prisma } from "../../../db/prisma.js";
 import { PITCHER_CODES_SET as PITCHER_CODES } from "../../../lib/sportConfig.js";
 
@@ -45,23 +48,39 @@ export interface AuctionDaySnapshot {
   teams: AuctionSnapshotTeam[];
 }
 
-const AUCTION_SOURCES = ["auction_2026", "prior_season", "DROP", "SEASON_IMPORT"] as const;
 const NORMALIZE_TO_AUCTION = new Set(["DROP", "SEASON_IMPORT"]);
 
+/** Source tag of rows bought in `season`'s auction (matches finishCurrentLot / force-assign). */
+function auctionSourceFor(season: number): string {
+  return `auction_${season}`;
+}
+
+function auctionSources(season: number): string[] {
+  return [auctionSourceFor(season), "prior_season", "DROP", "SEASON_IMPORT"];
+}
+
+/** The league's season year (League.season), current year if the league row is missing. */
+async function getLeagueSeason(leagueId: number): Promise<number> {
+  const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { season: true } });
+  return league?.season ?? new Date().getFullYear();
+}
+
 /**
- * Derive the auction cutoff from a league's first period startDate + 7d.
+ * Derive the auction cutoff from the first period of the league's season
+ * (startDate + 7d), or "now" when that season has no periods yet.
  * Exported so tests and the route handler can verify the value cheaply
  * without duplicating the query.
  */
-export async function getAuctionCutoff(leagueId: number): Promise<Date> {
+export async function getAuctionCutoff(leagueId: number, season?: number): Promise<Date> {
+  const year = season ?? (await getLeagueSeason(leagueId));
   const firstPeriod = await prisma.period.findFirst({
-    where: { season: { leagueId } },
+    where: { season: { leagueId, year } },
     orderBy: { startDate: "asc" },
     select: { startDate: true },
   });
   return firstPeriod
     ? new Date(firstPeriod.startDate.getTime() + 7 * 24 * 60 * 60 * 1000)
-    : new Date(`${new Date().getFullYear()}-04-01T00:00:00Z`);
+    : new Date();
 }
 
 /**
@@ -71,14 +90,16 @@ export async function getAuctionCutoff(leagueId: number): Promise<Date> {
  * scoring.
  */
 export async function getAuctionDaySnapshot(leagueId: number): Promise<AuctionDaySnapshot> {
-  const cutoff = await getAuctionCutoff(leagueId);
+  const season = await getLeagueSeason(leagueId);
+  const cutoff = await getAuctionCutoff(leagueId, season);
+  const auctionSource = auctionSourceFor(season);
 
   const teams = await prisma.team.findMany({
     where: { leagueId },
     include: {
       rosters: {
         where: {
-          source: { in: [...AUCTION_SOURCES] },
+          source: { in: auctionSources(season) },
           acquiredAt: { lt: cutoff },
           OR: [{ releasedAt: null }, { releasedAt: { gte: cutoff } }],
         },
@@ -121,7 +142,7 @@ export async function getAuctionDaySnapshot(leagueId: number): Promise<AuctionDa
           assignedPosition: r.assignedPosition ?? null,
           // Normalize the 4 known mis-labeled rows so consumers don't have
           // to special-case them; matches the legacy /results behavior.
-          source: NORMALIZE_TO_AUCTION.has(r.source) ? "auction_2026" : r.source,
+          source: NORMALIZE_TO_AUCTION.has(r.source) ? auctionSource : r.source,
           isPitcher: pos ? PITCHER_CODES.has(pos) : false,
         };
       }),

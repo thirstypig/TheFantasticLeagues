@@ -31,7 +31,7 @@ router.get("/state", requireAuth, requireLeagueMember("leagueId"), asyncHandler(
 //   any in-season churn). Right for "what was the auction outcome".
 //
 // Auction-day inclusion rules:
-// - source IN (auction_2026, prior_season) — clean auction-time rows
+// - source IN (auction_<League.season>, prior_season) — clean auction-time rows
 // - source IN (DROP, SEASON_IMPORT) — known mis-labeled auction-time rows from
 //   early import code paths (4 rows in OGBA 2026: Busch, Vaughn, Palencia,
 //   Priester). Surface as auction wins.
