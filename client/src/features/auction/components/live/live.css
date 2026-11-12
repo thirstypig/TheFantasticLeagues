@@ -42,7 +42,7 @@
 .la-page.phone .la-oc { padding: 10px 12px; gap: 8px; }
 .la-pc-head { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .la-pc-head .la-t { flex: 1; min-width: 0; }
-.la-pname { display: block; font-family: var(--am-display); font-size: 24px; font-weight: 700; line-height: 1.1; overflow-wrap: anywhere; }
+.la-pname { display: block; font-family: var(--am-display); font-size: 24px; font-weight: 700; line-height: 1.1; overflow-wrap: break-word; }
 .la-pname .pc-link { font: inherit; }
 .la-pc-head small { display: block; font-size: 15px; color: var(--am-text-muted); }
 .la-face {
@@ -55,7 +55,7 @@
 .la-mlb img { width: 26px; height: 26px; object-fit: contain; background: var(--am-surface); border-radius: 50%; padding: 3px; border: 1px solid var(--am-border); box-sizing: border-box; }
 .la-top2 { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .la-top2 > div { min-width: 0; }
-.la-price { font-family: var(--am-display); font-size: 24px; font-weight: 700; margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.la-price { font-family: var(--am-display); font-size: 24px; font-weight: 700; margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
 .la-clock { font-family: var(--am-display); font-size: 32px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; flex: none; }
 .la-clock.low { color: var(--am-negative); }
 
@@ -108,7 +108,7 @@
   font-size: 15px; font-weight: 600; white-space: nowrap;
 }
 .la-pick.on { background: var(--am-accent); color: var(--am-on-accent); border-color: var(--am-accent); }
-.la-order { font-size: 15px; margin: 0; overflow-wrap: anywhere; }
+.la-order { font-size: 15px; margin: 0; overflow-wrap: break-word; }
 
 /* Tabs (phone) */
 .la-seg { display: flex; border: 1px solid var(--am-field-line); border-radius: 22px; overflow: hidden; background: var(--am-field); }
@@ -127,9 +127,10 @@
 .la-row:first-child { border-top: 0; }
 .la-row .la-l { min-width: 0; display: flex; align-items: center; gap: 10px; flex: 1; }
 .la-row .la-t { min-width: 0; }
-.la-row .la-t b { display: block; font-weight: 600; line-height: 1.25; font-size: 17px; overflow-wrap: anywhere; }
-.la-row .la-t b .pc-link { font: inherit; }
-.la-row .la-t small { display: block; font-size: 15px; color: var(--am-text-muted); line-height: 1.3; overflow-wrap: anywhere; }
+/* Names never break inside a word: one line, ellipsis when it doesn't fit. */
+.la-row .la-t b { display: block; font-weight: 600; line-height: 1.25; font-size: 17px; overflow-wrap: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.la-row .la-t b .pc-link { font: inherit; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+.la-row .la-t small { display: block; font-size: 15px; color: var(--am-text-muted); line-height: 1.3; overflow-wrap: break-word; }
 .la-row-r { flex: none; display: flex; align-items: center; gap: 8px; }
 .la-chip {
   flex: none; display: inline-flex; align-items: center; min-height: 28px; padding: 0 10px;
@@ -163,11 +164,31 @@
     grid-template-columns: minmax(0, 1fr) 280px;
     grid-template-areas: "lot teams" "players teams";
   }
+  /* The players list sits under the lot here: bound it so the page stays short. */
+  .la-cols3 > .la-players {
+    max-height: 70vh; overflow-y: auto; overscroll-behavior: contain;
+  }
+}
+/* Three columns: the window doesn't grow with the player list. The Players
+   column scrolls itself; the center (lot / your turn) is pinned, so the lot,
+   bid buttons and clock never scroll off-screen (the phone pin, on desktop). */
+@media (min-width: 1200px) {
+  .la-cols3 > .la-players {
+    position: sticky; top: 16px;
+    max-height: calc(100vh - 64px); overflow-y: auto; overscroll-behavior: contain;
+  }
+  .la-cols3 > .la-center {
+    position: sticky; top: 16px;
+    max-height: calc(100vh - 64px); overflow-y: auto; overscroll-behavior: contain;
+  }
+  /* When the center scrolls (your turn: list + search table + last sales),
+     the lot card / turn box with its clock stays at the top of it. */
+  .la-cols3 > .la-center > .la-oc { position: sticky; top: 0; z-index: 2; flex: none; }
 }
 
 /* Screen 9 · Your turn (put a player up) */
 .yt-h { font-family: var(--am-display); font-size: 24px; font-weight: 700; margin: 0; line-height: 1.15; }
-.yt-after { font-size: 15px; color: var(--am-text-muted); margin: 0; overflow-wrap: anywhere; }
+.yt-after { font-size: 15px; color: var(--am-text-muted); margin: 0; overflow-wrap: break-word; }
 .yt-paused { padding: 0 12px; flex: none; }
 .yt-panel { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .yt-sec { gap: 8px; }
@@ -178,17 +199,25 @@
 }
 .yt-bid { gap: 6px; font-size: 17px; font-weight: 700; }
 .yt-bid .la-input { flex: none; width: 80px; }
-.yt-grid { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 16px; align-items: start; }
-@media (max-width: 1023px) { .yt-grid { grid-template-columns: minmax(0, 1fr); } }
-.yt-tablewrap { overflow: hidden; }
-.yt-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+/* Desktop put-up panel: Your list (+ opening bid) above a full-width search
+   table. Side by side, a 240px list column squeezed both and broke names. */
+.yt-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+.yt-grid > .yt-listcol { order: -1; }
+/* Bounded so the Last sales list under it stays close. */
+.yt-tablewrap { max-height: 45vh; overflow-y: auto; overscroll-behavior: contain; }
+.yt-table { width: 100%; border-collapse: collapse; font-size: 15px; table-layout: fixed; }
+.yt-table col.yt-c-team { width: 64px; }
+.yt-table col.yt-c-pos { width: 56px; }
+.yt-table col.yt-c-val { width: 64px; }
+.yt-table col.yt-c-act { width: 104px; }
 .yt-table th {
   text-align: left; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
   color: var(--am-text-muted); padding: 10px 12px; border-bottom: 1px solid var(--am-border);
 }
-.yt-table td { padding: 4px 12px; border-top: 1px solid var(--am-border); height: 52px; overflow-wrap: anywhere; }
+.yt-table td { padding: 4px 12px; border-top: 1px solid var(--am-border); height: 52px; overflow-wrap: normal; }
+.yt-table td.yt-name { overflow-wrap: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .yt-table tbody tr:first-child td { border-top: 0; }
-.yt-table td .pc-link { font: inherit; font-weight: 600; }
+.yt-table td .pc-link { font: inherit; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
 .yt-table .yt-act { text-align: right; white-space: nowrap; }
 .yt-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 

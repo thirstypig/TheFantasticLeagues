@@ -214,12 +214,15 @@ export default function LiveAuction({ state, actions, leagueId, myTeamId, player
       </div>
       {reconnecting}
       {isCommissioner && <CommissionerBar state={state} actions={actions} variant="desktop" />}
+      {/* Desktop: the Players column and the center (lot / your turn) are
+          sticky and viewport-bounded with their own scroll (live.css), so the
+          lot, bid buttons and clock never scroll away and the page stays short. */}
       <div className="la-cols3">
-        <div className="la-col la-players">
+        <div className="la-col la-players" data-testid="players-col">
           <p className="la-cap">Players</p>
           <PlayersPanel players={available} myList={listControls} />
         </div>
-        <div className="la-col la-center">
+        <div className="la-col la-center" data-testid="center-col">
           {lotArea}
           {hasLot && <LotBids bids={bids} />}
           {isCommissioner && <LastSales state={state} actions={actions} />}

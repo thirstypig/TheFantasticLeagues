@@ -185,13 +185,20 @@ export function PutUpPanel({ myTeam, list, available, paused, variant, onPutUp, 
   const searchResults = showResults && (desktop ? (
     <div className="la-list yt-tablewrap" data-testid="search-results">
       <table className="yt-table">
+        <colgroup>
+          <col />
+          <col className="yt-c-team" />
+          <col className="yt-c-pos" />
+          <col className="yt-c-val" />
+          <col className="yt-c-act" />
+        </colgroup>
         <thead>
           <tr><th scope="col">Player</th><th scope="col">Team</th><th scope="col">Pos</th><th scope="col">Value</th><th scope="col"><span className="yt-sr">Put up</span></th></tr>
         </thead>
         <tbody>
           {results.map(p => (
             <tr key={p.mlb_id}>
-              <td><PlayerLink mlbId={Number(p.mlb_id)} name={p.player_name ?? 'Unknown'} /></td>
+              <td className="yt-name" title={p.player_name ?? undefined}><PlayerLink mlbId={Number(p.mlb_id)} name={p.player_name ?? 'Unknown'} /></td>
               <td>{p.mlb_team_abbr || p.mlb_team || ''}</td>
               <td>{primaryPos(p)}</td>
               <td className="la-num">{valueText(p)}</td>
@@ -249,7 +256,7 @@ export function PutUpPanel({ myTeam, list, available, paused, variant, onPutUp, 
             {noMatch}
             {moreHint}
           </div>
-          <div className="la-col">
+          <div className="la-col yt-listcol">
             {myList}
             {opening}
           </div>
