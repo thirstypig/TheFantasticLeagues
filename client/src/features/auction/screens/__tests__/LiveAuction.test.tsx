@@ -250,6 +250,7 @@ describe('LiveAuction · phone', () => {
   it("my turn: the server's 409 message shows inline", async () => {
     routeTurn(myTurn, [694973]);
     render(<Harness />);
+    await screen.findByTestId('list-row'); // list loaded (until then the phone shows suggestions)
     const btn = await screen.findByRole('button', { name: 'Put up Paul Skenes' });
     fetchJsonApi.mockImplementationOnce(async () => { throw new Error('Time is up'); });
     fireEvent.click(btn);

@@ -56,15 +56,26 @@ export function TurnBox({ state, strip, paused }: TurnBoxProps) {
   }
 
   const now = strip.now;
-  const heading = strip.next?.isMe ? "You're up next" : now ? `${now.team.name} is choosing` : 'Waiting for the next player';
+  const meNext = !!strip.next?.isMe;
+  const heading = meNext ? "You're up next" : now ? `${now.team.name} is choosing` : 'Waiting for the next player';
+  const sub = meNext ? (now ? `${now.team.name} is choosing.` : null) : upAfterText(strip);
   return (
     <div className="la-oc" data-slot="your-turn">
       <div className="la-wait">
         <h2>{heading}</h2>
         {clock}
       </div>
+      {sub && <p className="yt-after">{sub}</p>}
     </div>
   );
+}
+
+/** "You're up after {team}." when I'm later in the order than next; null otherwise. */
+export function upAfterText(strip: OrderStrip): string | null {
+  const i = strip.rest.findIndex(e => e.isMe);
+  if (i < 0) return null;
+  const before = i === 0 ? strip.next : strip.rest[i - 1];
+  return before ? `You're up after ${before.team.name}.` : null;
 }
 
 export interface PutUpPanelProps {
@@ -81,6 +92,8 @@ export interface PutUpPanelProps {
 
 /** Search results shown at once; narrowing the search shows the rest. */
 const MAX_RESULTS = 25;
+/** Phone: best available players offered when my list is empty. */
+const SUGGESTIONS = 8;
 
 const errMessage = (e: unknown) => (e instanceof Error && e.message ? e.message : 'Could not put that player up');
 
@@ -104,6 +117,8 @@ export function PutUpPanel({ myTeam, list, available, paused, variant, onPutUp, 
   const matches = useMemo(() => matchPlayers(available, query), [available, query]);
   const showResults = desktop || query.trim() !== '';
   const results = matches.slice(0, MAX_RESULTS);
+  // Phone, empty list, no search: offer the best available so the owner on the clock has something to tap.
+  const suggestions = !desktop && listPlayers.length === 0 && !showResults ? available.slice(0, SUGGESTIONS) : [];
 
   const putUp = async (p: PlayerSeasonStat) => {
     const v = openingBidValidation(openingBid, myTeam);
@@ -129,6 +144,16 @@ export function PutUpPanel({ myTeam, list, available, paused, variant, onPutUp, 
     >
       Put up
     </button>
+  );
+
+  const phoneRow = (p: PlayerSeasonStat) => (
+    <div className="la-row" key={p.mlb_id}>
+      <div className="la-t">
+        <b><PlayerLink mlbId={Number(p.mlb_id)} name={p.player_name ?? 'Unknown'} /></b>
+        <small className="la-num">{[primaryPos(p), p.mlb_team_abbr || p.mlb_team, valueText(p) && `value ${valueText(p)}`].filter(Boolean).join(' · ')}</small>
+      </div>
+      <div className="la-row-r">{putUpButton(p)}</div>
+    </div>
   );
 
   const myList = (
@@ -162,9 +187,16 @@ export function PutUpPanel({ myTeam, list, available, paused, variant, onPutUp, 
           );
         })}
         {listPlayers.length === 0 && (
-          <div className="la-row"><div className="la-t"><small>Your list is empty. Add players with + List.</small></div></div>
+          <div className="la-row"><div className="la-t"><small>{desktop
+            ? 'Your list is empty. Add players with + List.'
+            : suggestions.length > 0 ? 'Your list is empty. Put up one of these, or search.' : 'Your list is empty. Search for a player to put up.'}</small></div></div>
         )}
       </div>
+      {suggestions.length > 0 && (
+        <div className="la-list" data-testid="suggestions" aria-label="Best available">
+          {suggestions.map(phoneRow)}
+        </div>
+      )}
     </div>
   );
 
@@ -210,15 +242,7 @@ export function PutUpPanel({ myTeam, list, available, paused, variant, onPutUp, 
     </div>
   ) : (
     <div className="la-list" data-testid="search-results">
-      {results.map(p => (
-        <div className="la-row" key={p.mlb_id}>
-          <div className="la-t">
-            <b><PlayerLink mlbId={Number(p.mlb_id)} name={p.player_name ?? 'Unknown'} /></b>
-            <small className="la-num">{[primaryPos(p), p.mlb_team_abbr || p.mlb_team, valueText(p) && `value ${valueText(p)}`].filter(Boolean).join(' · ')}</small>
-          </div>
-          <div className="la-row-r">{putUpButton(p)}</div>
-        </div>
-      ))}
+      {results.map(phoneRow)}
     </div>
   ));
 

@@ -248,3 +248,55 @@ describe('openingBidValidation', () => {
     expect(openingBidValidation('3', null)).toEqual({ ok: false, message: "You don't have a team in this league" });
   });
 });
+
+describe('Design review polish (2026-11-12)', () => {
+  it("someone else, I'm later: You're up after {the team before me}.", () => {
+    box(state({ queueIndex: 1 })); // Black Sox now, Skunk Dogs next, then Bombers, then me
+    expect(screen.getByText('Black Sox is choosing')).toBeTruthy();
+    expect(screen.getByText("You're up after Bombers.")).toBeTruthy();
+  });
+
+  it("I'm next: the box still says who is choosing", () => {
+    box(state({ queueIndex: 3 }));
+    expect(screen.getByText("You're up next")).toBeTruthy();
+    expect(screen.getByText('Bombers is choosing.')).toBeTruthy();
+  });
+
+  it('no team of mine: no up-after line', () => {
+    box(state({ queueIndex: 1 }), null);
+    expect(screen.queryByText(/You're up after/)).toBeNull();
+  });
+
+  const render8 = (variant: 'phone' | 'desktop', list: number[] = []) => {
+    const onPutUp = vi.fn().mockResolvedValue(undefined);
+    render(<PutUpPanel myTeam={doyers} list={list} available={[skenes, harper, alonso]} paused={false} variant={variant} onPutUp={onPutUp} onRemove={vi.fn()} />);
+    return onPutUp;
+  };
+
+  it('phone, empty list: best available players with Put up, and copy that says so', async () => {
+    const onPutUp = render8('phone');
+    expect(screen.getByText('Your list is empty. Put up one of these, or search.')).toBeTruthy();
+    const sug = screen.getByTestId('suggestions');
+    expect(within(sug).getAllByRole('button', { name: /^Put up/ })).toHaveLength(3);
+    fireEvent.click(within(sug).getByRole('button', { name: 'Put up Paul Skenes' }));
+    await waitFor(() => expect(onPutUp).toHaveBeenCalledWith(skenes, 1));
+  });
+
+  it('phone: suggestions go away once there is a list or a search', () => {
+    render8('phone', [547180]);
+    expect(screen.queryByTestId('suggestions')).toBeNull();
+  });
+
+  it('phone: typing a search replaces the suggestions with results', () => {
+    render8('phone');
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search all players' }), { target: { value: 'alon' } });
+    expect(screen.queryByTestId('suggestions')).toBeNull();
+    expect(within(screen.getByTestId('search-results')).getByText('Pete Alonso')).toBeTruthy();
+  });
+
+  it('desktop, empty list: keeps the + List copy and shows no suggestions (the table is already there)', () => {
+    render8('desktop');
+    expect(screen.getByText('Your list is empty. Add players with + List.')).toBeTruthy();
+    expect(screen.queryByTestId('suggestions')).toBeNull();
+  });
+});
