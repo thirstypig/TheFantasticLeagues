@@ -32,14 +32,14 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - Legacy waivers retired (#466); standings cache fix (#465); critical CVEs cleared (#467)
 
 ## In progress
-- UX step F: auction screens, plus deleting about 2,900 lines of dead legacy auction code
-- 2026 re-score: code is live in prod; the commissioner runs it (turn on "NL players only" → repair script → rescore script → re-audit)
+- UX step F (PR open, branch feat/auction-f): auction screens 8–11 rebuilt, engine safety fixes, ~6,800 lines of dead legacy auction code deleted
+- 2026 re-score: "NL players only" ON and roster repair applied 2026-11-11; rescore apply + re-audit + close Period 7 pending
 
 ## Open bugs / known issues
 - OGBA Period 7 is still `active` (season over). Closing it auto-bills contested IL fees.
-- `ALERT_EMAIL_TO` is unset, so nightly audit alarms only log.
+- `ALERT_EMAIL_TO` being set to the commissioner (pending confirmation of the Railway change).
+- Auction: a server restart mid-auction doesn't re-arm turn/lot timers; starting an auction needs a site admin.
 - One stale P6 stat (Perdomo hits 31 vs MLB 30; 0 points)
-- OGBA trade window is still "anytime" (the decision was meeting day only)
 - Todos #181 (stale roster across tabs), #304 (cache cleanup), #305 (slow first standings load)
 
 ## Next phases (in order)
