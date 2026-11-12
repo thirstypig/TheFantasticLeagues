@@ -3,6 +3,7 @@ import type { IncomingMessage, Server as HttpServer } from "http";
 import { supabaseAdmin } from "../../../lib/supabase.js";
 import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
+import { createRoutedWebSocketServer } from "../../../lib/wsUpgradeRouter.js";
 import type { AuctionState } from "../types.js";
 import { sanitizeStateForBroadcast } from "../lib/sanitizeState.js";
 
@@ -65,7 +66,7 @@ async function authenticateWs(req: IncomingMessage): Promise<number | null> {
  * Handles authentication, room join/leave, and heartbeat.
  */
 export function attachAuctionWs(httpServer: HttpServer): WebSocketServer {
-  const wss = new WebSocketServer({ server: httpServer, path: "/ws/auction" });
+  const wss = createRoutedWebSocketServer(httpServer, "/ws/auction");
 
   wss.on("connection", async (ws: WebSocket, req: IncomingMessage) => {
     const userId = await authenticateWs(req);

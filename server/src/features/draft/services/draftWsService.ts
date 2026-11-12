@@ -4,6 +4,7 @@ import type { IncomingMessage, Server as HttpServer } from "http";
 import { supabaseAdmin } from "../../../lib/supabase.js";
 import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
+import { createRoutedWebSocketServer } from "../../../lib/wsUpgradeRouter.js";
 import type { DraftState } from "../types.js";
 
 /** Extended WebSocket with draft metadata */
@@ -93,7 +94,7 @@ async function authenticateWs(req: IncomingMessage): Promise<number | null> {
  * Attach a WebSocketServer for the snake draft to an existing HTTP server.
  */
 export function attachDraftWs(httpServer: HttpServer): WebSocketServer {
-  const wss = new WebSocketServer({ server: httpServer, path: "/ws/draft" });
+  const wss = createRoutedWebSocketServer(httpServer, "/ws/draft");
 
   wss.on("connection", async (ws: WebSocket, req: IncomingMessage) => {
     const userId = await authenticateWs(req);
