@@ -49,6 +49,7 @@ vi.mock("../../../middleware/auth.js", () => {
 });
 vi.mock("../../../middleware/seasonGuard.js", () => ({
   requireSeasonStatus: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  getCurrentSeasonStatus: async () => "DRAFT",
 }));
 vi.mock("../../../lib/auditLog.js", () => ({ writeAuditLog: vi.fn() }));
 vi.mock("../../../lib/rosterGuard.js", () => ({ assertPlayerAvailable: vi.fn() }));
@@ -492,7 +493,11 @@ describe("undo-finish undoes exactly the newest sale that is not undone", () => 
     return live;
   }
 
-  const undo = () => supertest(app).post("/undo-finish").set(as(COMMISH)).send({ leagueId: LEAGUE });
+  // Like the client: name the newest live sale's rosterId (final fix S2).
+  const undo = () => {
+    const live = auctionStates.get(LEAGUE)?.log.find((e) => e.type === "WIN" && !e.undone);
+    return supertest(app).post("/undo-finish").set(as(COMMISH)).send({ leagueId: LEAGUE, expectedRosterId: live?.rosterId });
+  };
 
   it("sell A then B: undo deletes B's row, then A's row, then refuses", async () => {
     const s = seedNominating({ queueIndex: 2 });

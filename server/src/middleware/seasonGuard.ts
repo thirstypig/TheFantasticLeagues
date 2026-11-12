@@ -7,6 +7,21 @@ import { prisma } from "../db/prisma.js";
 type SeasonStatus = "SETUP" | "DRAFT" | "IN_SEASON" | "COMPLETED";
 
 /**
+ * Status of the league's current (non-COMPLETED, newest) season, or null when
+ * it has none. The single definition of "the season status" that
+ * requireSeasonStatus enforces; non-request code (e.g. the auction turn
+ * timer) calls it directly.
+ */
+export async function getCurrentSeasonStatus(leagueId: number): Promise<SeasonStatus | null> {
+  const season = await prisma.season.findFirst({
+    where: { leagueId, status: { not: "COMPLETED" } },
+    orderBy: { year: "desc" },
+    select: { status: true },
+  });
+  return (season?.status ?? null) as SeasonStatus | null;
+}
+
+/**
  * Middleware factory that rejects requests unless the league's current season
  * is in one of the allowed statuses.
  *
@@ -14,10 +29,11 @@ type SeasonStatus = "SETUP" | "DRAFT" | "IN_SEASON" | "COMPLETED";
  * @param leagueIdSource  - How to resolve leagueId:
  *   - "body.leagueId" (default) — reads from req.body.leagueId
  *   - "body.teamId"             — looks up team → leagueId
+ *   - "body.or.query.leagueId"  — req.body.leagueId, else req.query.leagueId
  */
 export function requireSeasonStatus(
   allowedStatuses: SeasonStatus[],
-  leagueIdSource: "body.leagueId" | "body.teamId" = "body.leagueId",
+  leagueIdSource: "body.leagueId" | "body.teamId" | "body.or.query.leagueId" = "body.leagueId",
 ): RequestHandler {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -25,6 +41,8 @@ export function requireSeasonStatus(
 
       if (leagueIdSource === "body.leagueId") {
         leagueId = Number(req.body?.leagueId);
+      } else if (leagueIdSource === "body.or.query.leagueId") {
+        leagueId = Number(req.body?.leagueId ?? req.query?.leagueId);
       } else if (leagueIdSource === "body.teamId") {
         const teamId = Number(req.body?.teamId);
         if (!teamId || !Number.isFinite(teamId)) {
@@ -45,13 +63,7 @@ export function requireSeasonStatus(
       }
 
       // Find the current (non-COMPLETED) season for this league
-      const season = await prisma.season.findFirst({
-        where: { leagueId, status: { not: "COMPLETED" } },
-        orderBy: { year: "desc" },
-        select: { status: true },
-      });
-
-      const status = (season?.status ?? null) as SeasonStatus | null;
+      const status = await getCurrentSeasonStatus(leagueId);
 
       if (!status || !allowedStatuses.includes(status)) {
         const allowed = allowedStatuses.join(" or ");

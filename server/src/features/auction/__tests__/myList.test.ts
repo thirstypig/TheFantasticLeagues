@@ -55,6 +55,7 @@ vi.mock("../../../middleware/auth.js", () => {
 });
 vi.mock("../../../middleware/seasonGuard.js", () => ({
   requireSeasonStatus: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  getCurrentSeasonStatus: async () => "DRAFT",
 }));
 vi.mock("../../../lib/auditLog.js", () => ({ writeAuditLog: vi.fn() }));
 vi.mock("../../../lib/rosterGuard.js", () => ({ assertPlayerAvailable: vi.fn() }));
@@ -774,26 +775,30 @@ describe("timeout that fires while a nomination holds the lock", () => {
     expect(mockPrisma.auctionLot.create).toHaveBeenCalledTimes(1);
   });
 
-  it("(c) /pause while the timeout is pending: nothing runs after the nomination is released", async () => {
+  it("(c) /pause while the nomination holds the lock is refused 409 (final fix S1); the pending timeout still settles the turn", async () => {
     const s = seedNominating({ nominationLists: { 10: [104] } });
     const { release, manual } = await raceClockAgainstManual(s, "101", "OF", false);
     expect(timeoutPending.has(LEAGUE)).toBe(true);
 
     const p = await supertest(app).post("/pause").set(as(ADMIN)).send({ leagueId: LEAGUE });
-    expect(p.status).toBe(200);
-    expect(timeoutPending.has(LEAGUE)).toBe(false);
+    expect(p.status).toBe(409);
+    expect(p.body.error).toBe("Nomination in progress, try again");
+    expect(s.paused).toBe(false);
+    expect(timeoutPending.has(LEAGUE)).toBe(true);
 
     release();
     expect((await manual).status).toBe(400);
     await flush();
 
+    // The deferred timeout ran: auto-put-up from the list, as in (a).
+    expect(s.status).toBe("bidding");
+    expect(s.nomination?.playerId).toBe("104");
+    expect(timeoutPending.has(LEAGUE)).toBe(false);
+
+    // Once the lock is free, pause works.
+    const p2 = await supertest(app).post("/pause").set(as(ADMIN)).send({ leagueId: LEAGUE });
+    expect(p2.status).toBe(200);
     expect(s.paused).toBe(true);
-    expect(s.status).toBe("nominating");
-    expect(s.nomination).toBeNull();
-    expect(s.queueIndex).toBe(0);
-    expect(s.log.some((e) => e.type === "SKIP")).toBe(false);
-    expect(nominationTimers.has(LEAGUE)).toBe(false);
-    expect(mockPrisma.auctionLot.create).not.toHaveBeenCalled();
   });
 
   it("cold-restart case still re-arms: a failed /nominate with no clock and no pending timeout starts one", async () => {

@@ -3,6 +3,7 @@ import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
 import { writeAuditLog } from "../../../lib/auditLog.js";
 import { assertPlayerAvailable } from "../../../lib/rosterGuard.js";
+import { getCurrentSeasonStatus } from "../../../middleware/seasonGuard.js";
 import { positionToSlots, PITCHER_CODES_SET as PITCHER_CODES, isPitcher as isPitcherPos } from "../../../lib/sportConfig.js";
 import { broadcastState } from "../services/auctionWsService.js";
 import { saveState, loadState, clearState } from "../services/auctionPersistence.js";
@@ -34,6 +35,11 @@ export const finishLocks = new Map<number, boolean>();
 // returns, so a manual /nominate and the turn-timeout auto-put-up can never
 // both create a lot for the same turn.
 export const nominateLocks = new Map<number, boolean>();
+
+// --- Concurrent Undo Protection ---
+// Held by /undo-finish from before its first await until it responds, so a
+// double press can never delete two sales.
+export const undoLocks = new Map<number, boolean>();
 
 // Leagues whose turn clock ran out while a nomination held the lock. The
 // timeout is deferred, not dropped: nominatePlayer runs it when that
@@ -494,9 +500,14 @@ function runNominationTimeout(leagueId: number, state: AuctionState): void {
   handleNominationTimeout(leagueId, state)
     .catch(err => {
       logger.error({ error: String(err), leagueId }, "Nomination timeout handling failed; skipping turn");
-      if (isStillTurnOf(state, teamId) && !nominateLocks.get(leagueId)) {
-        skipTurnOnTimeout(leagueId, state, teamId);
+      if (!isStillTurnOf(state, teamId)) return;
+      if (nominateLocks.get(leagueId)) {
+        // A nomination for this turn is mid-flight: defer to it, as the
+        // handler itself does, instead of dropping the expired turn.
+        timeoutPending.add(leagueId);
+        return;
       }
+      skipTurnOnTimeout(leagueId, state, teamId);
     })
     .finally(() => {
       // Only clear our own mark, never a newer run's.
@@ -523,6 +534,21 @@ export async function handleNominationTimeout(leagueId: number, state: AuctionSt
   const teamId = state.queue[state.queueIndex];
   if (!isStillTurnOf(state, teamId)) return;
 
+  // Never put a player up outside the draft (same check requireSeasonStatus
+  // makes for /nominate and /bid). An auction state left in memory after the
+  // season moved on just stops its clock: no lot, no skip, no new clock.
+  const seasonStatus = await getCurrentSeasonStatus(leagueId);
+  if (seasonStatus !== "DRAFT") {
+    if (!isStillTurnOf(state, teamId)) return;
+    logger.warn({ leagueId, teamId, seasonStatus }, "Turn timeout outside DRAFT; clock stopped, nothing nominated");
+    clearNominationTimer(leagueId);
+    state.lastUpdate = Date.now();
+    broadcastState(leagueId, state);
+    persistState(leagueId, state);
+    return;
+  }
+  if (!isStillTurnOf(state, teamId)) return;
+
   const list = state.nominationLists?.[teamId] ?? [];
   const candidate = list.length > 0 ? await findFirstEligible(leagueId, state, teamId, list) : null;
 
@@ -530,8 +556,9 @@ export async function handleNominationTimeout(leagueId: number, state: AuctionSt
   // nomination, commissioner skip). Only act if the turn is still ours, and
   // never skip a turn while a manual nomination for it is mid-flight.
   if (!isStillTurnOf(state, teamId)) return;
-  if (nominateLocks.get(leagueId)) {
-    // A nomination for this turn is mid-flight: defer the timeout to it.
+  if (nominateLocks.get(leagueId) || undoLocks.get(leagueId)) {
+    // A nomination (or an undo) for this turn is mid-flight: defer the timeout
+    // to it. Both settle the pending flag when they release their lock.
     timeoutPending.add(leagueId);
     return;
   }
@@ -666,6 +693,7 @@ export type NominatePlayerResult = { ok: true } | { ok: false; error: string; co
 export const NOMINATION_IN_PROGRESS = "Nomination already in progress";
 export const TURN_NO_LONGER_ACTIVE = "Turn no longer active";
 export const TIME_IS_UP = "Time is up";
+export const UNDO_IN_PROGRESS = "Undo in progress";
 
 /** Same grace /bid allows after a lot's end time. */
 const TURN_GRACE_MS = 500;
@@ -698,6 +726,8 @@ export async function nominatePlayer(
 ): Promise<NominatePlayerResult> {
   // Taken synchronously, before the first await (same pattern as finishLocks).
   if (nominateLocks.get(leagueId)) return { ok: false, error: NOMINATION_IN_PROGRESS, conflict: true };
+  // An undo rewinds the turn and clears the lot; never start one under it.
+  if (undoLocks.get(leagueId)) return { ok: false, error: UNDO_IN_PROGRESS, conflict: true };
   nominateLocks.set(leagueId, true);
   let result: NominatePlayerResult = { ok: false, error: TURN_NO_LONGER_ACTIVE, conflict: true };
   try {
@@ -799,6 +829,14 @@ async function nominateUnderLock(
     await prisma.auctionBid.create({
       data: { lotId: lot.id, teamId: nominatorTeamId, amount: Number(startBid) },
     });
+
+    // The inserts yielded again. If a pause, skip, undo or end landed meanwhile
+    // (they refuse while this lock is held, but don't rely on that alone), the
+    // lot must not start: remove the rows and report the conflict.
+    if (!turnStillOpenFor(state, nominatorTeamId)) {
+      await cancelLot(leagueId, lot.id);
+      return { ok: false, error: TURN_NO_LONGER_ACTIVE, conflict: true };
+    }
   }
 
   const now = Date.now();
@@ -837,6 +875,16 @@ async function nominateUnderLock(
   broadcastState(leagueId, state);
   persistState(leagueId, state);
   return { ok: true };
+}
+
+/** Remove a lot (and its opening bid) that was created for a nomination that lost a race. */
+async function cancelLot(leagueId: number, lotId: number): Promise<void> {
+  try {
+    await prisma.auctionBid.deleteMany({ where: { lotId } });
+    await prisma.auctionLot.delete({ where: { id: lotId } });
+  } catch (err) {
+    logger.error({ error: String(err), leagueId, lotId }, "Failed to remove canceled AuctionLot");
+  }
 }
 
 // --- Core Finish Logic (shared by auto-finish timer + manual /finish route) ---
