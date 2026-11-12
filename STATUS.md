@@ -28,12 +28,13 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
   - commissioner hub, theme, four-tab shell, Today page (#473–#476)
   - steps A–E: style, rules, commissioner, rosters, trades, players and player card (#477–#482)
   - team page (#483)
+  - step F: auction screens 8–11, auction engine safety fixes, live auction socket fixed, ~6,800 lines of dead auction code deleted (#487)
 - Sport-agnostic standings rows (#469)
 - Final 2026 audit: every gap against FanGraphs and OnRoto explained (#470, #471)
 - Legacy waivers retired (#466); standings cache fix (#465); critical CVEs cleared (#467)
 
 ## In progress
-- UX step F (PR open, branch feat/auction-f): auction screens 8–11 rebuilt, engine safety fixes, ~6,800 lines of dead legacy auction code deleted
+- Nothing in flight. Owed: step F design review.
 
 ## Open bugs / known issues
 - Auction: a server restart mid-auction doesn't re-arm turn/lot timers; starting an auction needs a site admin.
@@ -41,10 +42,9 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - Todos #181 (stale roster across tabs), #304 (cache cleanup), #305 (slow first standings load)
 
 ## Next phases (in order)
-1. UX F: auction screens
-2. UX G: live meeting with a clock
-3. Phase 3.5: standings categories from the league's scoring settings
-4. Public auction-keeper leagues (not scheduled)
+1. UX G: live meeting with a clock
+2. Phase 3.5: standings categories from the league's scoring settings
+3. Public auction-keeper leagues (not scheduled)
 
 ## Decisions changed recently
 - 2026-11-11: AL games don't count in NL-only leagues (OnRoto's rule)
