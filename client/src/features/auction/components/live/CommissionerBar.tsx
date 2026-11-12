@@ -24,6 +24,26 @@ export function canUndoSale(state: ClientAuctionState): boolean {
   return lastSales(state, 1).length > 0 && (state.status === 'nominating' || state.status === 'completed');
 }
 
+const NAME_SUFFIX = /^(jr\.?|sr\.?|ii|iii|iv|v)$/i;
+
+/** Last name for a button label: "Ronald Acuña Jr." -> "Acuña". */
+export function shortPlayerName(name: string | undefined): string {
+  const parts = (name ?? '').trim().split(/\s+/).filter(Boolean);
+  while (parts.length > 1 && NAME_SUFFIX.test(parts[parts.length - 1])) parts.pop();
+  return parts[parts.length - 1] ?? '';
+}
+
+/** The undo button names the sale it undoes, so the commissioner never undoes blind. */
+export function undoLabels(sale: LastSale | undefined): { text: string; aria: string } {
+  const short = shortPlayerName(sale?.playerName);
+  if (!sale || !short) return { text: 'Undo last sale', aria: 'Undo last sale' };
+  const price = `$${sale.amount ?? 0}`;
+  return {
+    text: `Undo ${short} ${price}`,
+    aria: `Undo last sale: ${sale.playerName} to ${sale.teamName ?? 'unknown team'} for ${price}`,
+  };
+}
+
 const errorText = (e: unknown, fallback: string) => (e instanceof Error && e.message ? e.message : fallback);
 
 /** Runs one control at a time and keeps its error for an inline alert. */
@@ -76,8 +96,9 @@ export default function CommissionerBar({ state, actions, variant }: Commissione
       {paused ? 'Resume' : 'Pause'}
     </button>
   );
+  const undoText = undoLabels(lastSales(state, 1)[0]);
   const undoBtn = (
-    <button type="button" className="la-btn sm" disabled={busy || !canUndo} onClick={undo}>Undo last sale</button>
+    <button type="button" className="la-btn sm" aria-label={undoText.aria} disabled={busy || !canUndo} onClick={undo}>{undoText.text}</button>
   );
   const alert = error ? <p className="la-err cb-err" role="alert">{error}</p> : null;
 

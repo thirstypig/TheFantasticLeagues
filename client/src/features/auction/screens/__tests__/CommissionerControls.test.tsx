@@ -12,6 +12,7 @@ vi.mock('../../../../components/shared/playerCard/PlayerCardProvider', () => ({
 }));
 
 import LiveAuction, { type LiveAuctionProps } from '../LiveAuction';
+import { shortPlayerName, undoLabels } from '../../components/live/CommissionerBar';
 import { useAuctionState, type ClientAuctionState, type AuctionTeam } from '../../hooks/useAuctionState';
 import type { PlayerSeasonStat } from '../../../../api';
 
@@ -111,7 +112,7 @@ describe('Commissioner controls · visibility', () => {
       expect(await screen.findByText(/Auction · Lot/)).toBeTruthy();
       expect(screen.queryByRole('group', { name: 'Commissioner controls' })).toBeNull();
       expect(screen.queryByRole('button', { name: 'Pause' })).toBeNull();
-      expect(screen.queryByRole('button', { name: 'Undo last sale' })).toBeNull();
+      expect(screen.queryByRole('button', { name: /^Undo last sale/ })).toBeNull();
       expect(screen.queryByText('Last sales')).toBeNull();
       unmount();
     }
@@ -123,7 +124,7 @@ describe('Commissioner controls · visibility', () => {
     render(<Harness />);
     const bar = await screen.findByRole('group', { name: 'Commissioner controls' });
     expect(within(bar).getByRole('button', { name: 'Pause' })).toBeTruthy();
-    expect(within(bar).getByRole('button', { name: 'Undo last sale' })).toBeTruthy();
+    expect(within(bar).getByRole('button', { name: /^Undo last sale/ })).toBeTruthy();
     expect(within(bar).getByRole('button', { name: 'More ›' })).toBeTruthy();
     expect(within(screen.getByTestId('pinned')).queryByRole('group', { name: 'Commissioner controls' })).toBeNull();
   });
@@ -150,26 +151,26 @@ describe('Commissioner controls · phone', () => {
   it('Undo last sale calls /undo-finish, with no confirm; disabled when nothing has sold', async () => {
     route(nominating);
     const { unmount } = render(<Harness />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Undo last sale' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Undo last sale/ }));
     expect(screen.queryByRole('dialog')).toBeNull();
     await waitFor(() => expectPost('/api/auction/undo-finish'));
     unmount();
 
     route({ ...nominating, log: nominating.log.filter(e => e.type !== 'WIN') });
     const r2 = render(<Harness />);
-    expect((await screen.findByRole('button', { name: 'Undo last sale' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((await screen.findByRole('button', { name: /^Undo last sale/ }) as HTMLButtonElement).disabled).toBe(true);
     r2.unmount();
 
     // every sale already undone
     route({ ...nominating, log: nominating.log.map(e => (e.type === 'WIN' ? { ...e, undone: true } : e)) });
     render(<Harness />);
-    expect((await screen.findByRole('button', { name: 'Undo last sale' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((await screen.findByRole('button', { name: /^Undo last sale/ }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('Undo last sale is disabled while a lot is being bid on (the server refuses it then)', async () => {
     route(bidding);
     render(<Harness />);
-    expect((await screen.findByRole('button', { name: 'Undo last sale' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((await screen.findByRole('button', { name: /^Undo last sale/ }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('More toggles an inline panel (no dialog) with the three rows', async () => {
@@ -247,7 +248,7 @@ describe('Commissioner controls · desktop', () => {
     render(<Harness />);
     const bar = await screen.findByRole('group', { name: 'Commissioner controls' });
     expect(within(bar).getByText('Commissioner')).toBeTruthy();
-    for (const name of ['Pause', 'Undo last sale', 'Skip turn', 'End auction']) {
+    for (const name of ['Pause', /^Undo last sale/, 'Skip turn', 'End auction']) {
       expect(within(bar).getByRole('button', { name })).toBeTruthy();
     }
     expect(within(bar).getByRole('link', { name: 'Give a player to a team' }).getAttribute('href')).toBe('/auction/assign');
@@ -337,9 +338,17 @@ describe('Commissioner controls · Undo sends the expected rosterId', () => {
     setPhone(true);
     route(withIds);
     render(<Harness />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Undo last sale' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Undo last sale/ }));
     await waitFor(() => expect(calls('/api/auction/undo-finish')).toHaveLength(1));
     expect(undoBody()).toEqual({ leagueId: 20, expectedRosterId: 77 });
+  });
+
+  it('the undo button names the sale it undoes (text and spoken label)', async () => {
+    setPhone(true);
+    route(withIds);
+    render(<Harness />);
+    const btn = await screen.findByRole('button', { name: 'Undo last sale: Paul Skenes to Black Sox for $41' });
+    expect(btn.textContent).toBe('Undo Skenes $41');
   });
 
   it('desktop · the Last sales Undo posts the same rosterId; after an undo it names the next sale', async () => {
@@ -357,11 +366,24 @@ describe('Commissioner controls · Undo sends the expected rosterId', () => {
     route(withIds, { path: '/api/auction/undo-finish', message: 'Sales changed — refresh' });
     render(<Harness />);
     const bar = await screen.findByRole('group', { name: 'Commissioner controls' });
-    fireEvent.click(within(bar).getByRole('button', { name: 'Undo last sale' }));
+    fireEvent.click(within(bar).getByRole('button', { name: /^Undo last sale/ }));
     expect((await within(bar).findByRole('alert')).textContent).toBe('Sales changed — refresh');
 
     const list = screen.getByTestId('last-sales');
     fireEvent.click(within(list).getByRole('button', { name: 'Undo' }));
     expect((await within(list).findByRole('alert')).textContent).toBe('Sales changed — refresh');
+  });
+});
+
+describe('shortPlayerName / undoLabels', () => {
+  it('uses the last name, skipping suffixes', () => {
+    expect(shortPlayerName('Ronald Acuña Jr.')).toBe('Acuña');
+    expect(shortPlayerName('Michael Harris II')).toBe('Harris');
+    expect(shortPlayerName('Ichiro')).toBe('Ichiro');
+    expect(shortPlayerName(undefined)).toBe('');
+  });
+  it('falls back to Undo last sale when there is no sale or no name', () => {
+    expect(undoLabels(undefined)).toEqual({ text: 'Undo last sale', aria: 'Undo last sale' });
+    expect(undoLabels({ timestamp: 1, amount: 5 }).text).toBe('Undo last sale');
   });
 });
