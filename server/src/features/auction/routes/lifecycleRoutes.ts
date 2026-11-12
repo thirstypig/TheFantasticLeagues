@@ -117,15 +117,33 @@ router.post("/undo-finish", requireAuth, asyncHandler(async (req, res) => {
   const season = league?.season ?? new Date().getFullYear();
   const auctionSource = `auction_${season}`;
 
-  // Find the most recent auction roster entry in this league
-  const lastRoster = await prisma.roster.findFirst({
-    where: { source: auctionSource, team: { leagueId }, releasedAt: null },
-    orderBy: { acquiredAt: 'desc' },
-    include: { player: { select: { name: true } }, team: { select: { name: true } } },
-  });
+  // The sale to undo: the newest WIN in the log that hasn't been undone.
+  const target = state.log.find(e => e.type === 'WIN' && !e.undone);
+  const hasWins = state.log.some(e => e.type === 'WIN');
+  if (hasWins && !target) {
+    return res.status(400).json({ error: "No auction sales to undo" });
+  }
 
-  if (!lastRoster) {
-    return res.status(400).json({ error: "No auction roster entries to undo" });
+  const rosterInclude = { player: { select: { name: true } }, team: { select: { name: true } } } as const;
+  let lastRoster;
+  if (target && typeof target.rosterId === 'number') {
+    // Exactly the row this sale created; the source/league guard stays as a safety check.
+    lastRoster = await prisma.roster.findFirst({
+      where: { id: target.rosterId, source: auctionSource, team: { leagueId }, releasedAt: null },
+      include: rosterInclude,
+    });
+    if (!lastRoster) return res.status(409).json({ error: "Sale already undone" });
+  } else {
+    // LEGACY: WINs persisted before rosterId was logged (or a state with no WINs at all)
+    // fall back to the most recent auction roster row in this league.
+    lastRoster = await prisma.roster.findFirst({
+      where: { source: auctionSource, team: { leagueId }, releasedAt: null },
+      orderBy: { acquiredAt: 'desc' },
+      include: rosterInclude,
+    });
+    if (!lastRoster) {
+      return res.status(400).json({ error: "No auction roster entries to undo" });
+    }
   }
 
   // Delete the roster entry
@@ -134,14 +152,21 @@ router.post("/undo-finish", requireAuth, asyncHandler(async (req, res) => {
   // Refresh teams to recalculate budgets
   await refreshTeams(state);
 
-  // Decrement queue index (wrap around)
-  state.queueIndex = (state.queueIndex - 1 + state.queue.length) % state.queue.length;
+  // A lot sale advanced the turn, so hand it back. A force-assign never advanced it.
+  // Legacy WINs without saleKind rewind as before.
+  if (target?.saleKind !== 'assign' && state.queue.length > 0) {
+    state.queueIndex = (state.queueIndex - 1 + state.queue.length) % state.queue.length;
+  }
 
+  if (target) target.undone = true;
   state.log.unshift({
     type: 'UNDO',
+    teamId: target?.teamId,
     teamName: lastRoster.team.name,
+    playerId: target?.playerId,
     playerName: lastRoster.player.name,
     amount: lastRoster.price,
+    rosterId: lastRoster.id,
     timestamp: Date.now(),
     message: `Undo: ${lastRoster.player.name} removed from ${lastRoster.team.name} ($${lastRoster.price})`
   });
@@ -449,7 +474,7 @@ router.post("/force-assign", requireAuth, validateBody(forceAssignSchema), async
 
   const importPrimaryPos = (player.posPrimary ?? positions.split('/')[0] ?? "UT").toUpperCase();
 
-  await prisma.roster.create({
+  const created = await prisma.roster.create({
     data: {
       teamId,
       playerId: player.id,
@@ -467,8 +492,11 @@ router.post("/force-assign", requireAuth, validateBody(forceAssignSchema), async
       type: 'WIN',
       teamId,
       teamName: teamRow.name,
+      playerId: String(playerId),
       playerName,
       amount: price,
+      rosterId: created.id,
+      saleKind: 'assign',
       timestamp: Date.now(),
       message: `Commissioner assigned ${playerName} to ${teamRow.name} for $${price}`
     });

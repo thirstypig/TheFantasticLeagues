@@ -156,6 +156,16 @@ describe("lastSales", () => {
   it("honours a custom limit", () => {
     expect(lastSales(state({ log: wins }), 2)).toHaveLength(2);
   });
+  it("leaves out sales that were undone and carries the playerId", () => {
+    const log: AuctionLogEvent[] = [
+      { ...wins[0], undone: true },
+      { ...wins[1], playerId: "547180", rosterId: 9, saleKind: "lot" },
+      wins[2],
+    ];
+    const res = lastSales(state({ log }));
+    expect(res.map(r => r.playerName)).toEqual(["P1", "P2"]);
+    expect(res[0].playerId).toBe("547180");
+  });
 });
 
 describe("orderStrip", () => {

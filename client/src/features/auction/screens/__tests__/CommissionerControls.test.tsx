@@ -8,7 +8,7 @@ vi.mock('../../../../api/base', () => ({ API_BASE: '/api', fetchJsonApi: (...a: 
 vi.mock('../../../../lib/supabase', () => ({ supabase: { auth: { getSession: async () => ({ data: { session: null } }) } } }));
 vi.mock('../../../../lib/posthog', () => ({ track: vi.fn() }));
 vi.mock('../../../../components/shared/playerCard/PlayerCardProvider', () => ({
-  PlayerLink: ({ name }: { name: string }) => <span>{name}</span>,
+  PlayerLink: ({ name, mlbId }: { name: string; mlbId?: number | null }) => <span data-mlbid={mlbId ?? ''}>{name}</span>,
 }));
 
 import LiveAuction, { type LiveAuctionProps } from '../LiveAuction';
@@ -148,14 +148,26 @@ describe('Commissioner controls · phone', () => {
   });
 
   it('Undo last sale calls /undo-finish, with no confirm; disabled when nothing has sold', async () => {
-    route(bidding);
+    route(nominating);
     const { unmount } = render(<Harness />);
     fireEvent.click(await screen.findByRole('button', { name: 'Undo last sale' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     await waitFor(() => expectPost('/api/auction/undo-finish'));
     unmount();
 
-    route({ ...bidding, log: bidding.log.filter(e => e.type !== 'WIN') });
+    route({ ...nominating, log: nominating.log.filter(e => e.type !== 'WIN') });
+    const r2 = render(<Harness />);
+    expect((await screen.findByRole('button', { name: 'Undo last sale' }) as HTMLButtonElement).disabled).toBe(true);
+    r2.unmount();
+
+    // every sale already undone
+    route({ ...nominating, log: nominating.log.map(e => (e.type === 'WIN' ? { ...e, undone: true } : e)) });
+    render(<Harness />);
+    expect((await screen.findByRole('button', { name: 'Undo last sale' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('Undo last sale is disabled while a lot is being bid on (the server refuses it then)', async () => {
+    route(bidding);
     render(<Harness />);
     expect((await screen.findByRole('button', { name: 'Undo last sale' }) as HTMLButtonElement).disabled).toBe(true);
   });
@@ -253,7 +265,7 @@ describe('Commissioner controls · desktop', () => {
   });
 
   it('Last sales lists sales newest first, Undo only on the newest row', async () => {
-    route(bidding);
+    route(nominating);
     render(<Harness />);
     const list = await screen.findByTestId('last-sales');
     const rows = within(list).getAllByTestId('last-sale');
@@ -266,6 +278,37 @@ describe('Commissioner controls · desktop', () => {
     expect(within(rows[1]).queryByRole('button', { name: 'Undo' })).toBeNull();
     fireEvent.click(within(rows[0]).getByRole('button', { name: 'Undo' }));
     await waitFor(() => expectPost('/api/auction/undo-finish'));
+  });
+
+  it('Last sales Undo is disabled while bidding', async () => {
+    route(bidding);
+    render(<Harness />);
+    const rows = within(await screen.findByTestId('last-sales')).getAllByTestId('last-sale');
+    expect((within(rows[0]).getByRole('button', { name: 'Undo' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('Last sales hides undone sales; Undo moves to the next newest', async () => {
+    route({ ...nominating, log: nominating.log.map(e => (e.type === 'WIN' && e.playerName === 'Paul Skenes' ? { ...e, undone: true } : e)) });
+    render(<Harness />);
+    const rows = within(await screen.findByTestId('last-sales')).getAllByTestId('last-sale');
+    expect(rows).toHaveLength(1);
+    expect(within(rows[0]).getByText('Bryce Harper')).toBeTruthy();
+    expect(within(rows[0]).getByRole('button', { name: 'Undo' })).toBeTruthy();
+  });
+
+  it("the player link uses the sale's playerId; legacy sales fall back to the roster name match", async () => {
+    const teams = nominating.teams.map(t => (t.id === 1
+      ? { ...t, roster: [{ id: 5, playerId: 5, mlbId: 547180, playerName: 'Bryce Harper', price: 30 }] }
+      : t));
+    route({
+      ...nominating,
+      teams,
+      log: nominating.log.map(e => (e.playerName === 'Paul Skenes' ? { ...e, playerId: '694973', rosterId: 77, saleKind: 'lot' as const } : e)),
+    });
+    render(<Harness />);
+    const rows = within(await screen.findByTestId('last-sales')).getAllByTestId('last-sale');
+    expect(within(rows[0]).getByText('Paul Skenes').getAttribute('data-mlbid')).toBe('694973');
+    expect(within(rows[1]).getByText('Bryce Harper').getAttribute('data-mlbid')).toBe('547180');
   });
 
   it('Last sales shows at most five', async () => {

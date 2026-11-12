@@ -458,6 +458,7 @@ describe("6: force-assign is logged as ASSIGN", () => {
     seedNominating();
     mockPrisma.team.findFirst.mockResolvedValueOnce({ id: 11, name: "Beta", leagueId: LEAGUE });
     mockPrisma.player.create.mockResolvedValueOnce({ id: 88, posPrimary: "OF", mlbTeam: "SF" });
+    mockPrisma.roster.create.mockResolvedValueOnce({ id: 5150 }); // real prisma returns the created row
     mockPrisma.team.findMany.mockResolvedValueOnce([]);
     const res = await supertest(app).post("/force-assign").set(as(COMMISH)).send({
       leagueId: LEAGUE, teamId: 11, playerId: "555", playerName: "New Guy",
@@ -467,5 +468,153 @@ describe("6: force-assign is logged as ASSIGN", () => {
     const types = lastBroadcast().log.map((l) => l.type);
     expect(types).toContain("ASSIGN");
     expect(mockAudit).toHaveBeenCalledWith(expect.objectContaining({ action: "AUCTION_FORCE_ASSIGN" }));
+  });
+});
+
+// ── Task 6 fix round 1: undo targets the exact sale ──────────────
+
+describe("undo-finish undoes exactly the newest sale that is not undone", () => {
+  const win = (rosterId: number, playerId: string, name: string, teamId: number, saleKind: "lot" | "assign", ts: number) => ({
+    type: "WIN" as const, teamId, teamName: teamId === 10 ? "Alpha" : "Beta", playerId, playerName: name,
+    amount: 10, rosterId, saleKind, timestamp: ts, message: `won ${name}`,
+  });
+
+  /** Roster rows that still exist; findFirst answers only for these ids, delete removes them. */
+  function rosterRows(rows: Array<{ id: number; name: string; team: string }>) {
+    const live = new Map(rows.map((r) => [r.id, r]));
+    mockPrisma.roster.findFirst.mockImplementation(async ({ where }: any) => {
+      if (typeof where?.id !== "number") return null; // legacy newest-by-acquiredAt query
+      const r = live.get(where.id);
+      return r ? { id: r.id, playerId: r.id + 1000, price: 10, player: { name: r.name }, team: { name: r.team } } : null;
+    });
+    mockPrisma.roster.delete.mockImplementation(async ({ where }: any) => { live.delete(where.id); return {}; });
+    mockPrisma.team.findMany.mockResolvedValue([]);
+    return live;
+  }
+
+  const undo = () => supertest(app).post("/undo-finish").set(as(COMMISH)).send({ leagueId: LEAGUE });
+
+  it("sell A then B: undo deletes B's row, then A's row, then refuses", async () => {
+    const s = seedNominating({ queueIndex: 2 });
+    s.log = [
+      win(502, "2", "Bee Player", 11, "lot", 20),
+      { type: "NOMINATION", timestamp: 15, message: "n" },
+      win(501, "1", "Aye Player", 10, "lot", 10),
+    ];
+    rosterRows([{ id: 501, name: "Aye Player", team: "Alpha" }, { id: 502, name: "Bee Player", team: "Beta" }]);
+
+    const r1 = await undo();
+    expect(r1.status).toBe(200);
+    expect(mockPrisma.roster.delete).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.roster.delete).toHaveBeenLastCalledWith({ where: { id: 502 } });
+    let b = lastBroadcast();
+    expect(b.log[0]).toMatchObject({ type: "UNDO", playerId: "2", rosterId: 502, playerName: "Bee Player" });
+    expect(b.log.find((e) => e.rosterId === 502 && e.type === "WIN")?.undone).toBe(true);
+    expect(b.log.find((e) => e.rosterId === 501 && e.type === "WIN")?.undone).toBeFalsy();
+
+    const r2 = await undo();
+    expect(r2.status).toBe(200);
+    expect(mockPrisma.roster.delete).toHaveBeenCalledTimes(2);
+    expect(mockPrisma.roster.delete).toHaveBeenLastCalledWith({ where: { id: 501 } });
+    b = lastBroadcast();
+    expect(b.log[0]).toMatchObject({ type: "UNDO", playerId: "1", rosterId: 501 });
+
+    const r3 = await undo();
+    expect([400, 409]).toContain(r3.status);
+    expect(mockPrisma.roster.delete).toHaveBeenCalledTimes(2);
+  });
+
+  it("the sale's roster row is already gone: 409 'Sale already undone', nothing deleted", async () => {
+    const s = seedNominating();
+    s.log = [win(600, "6", "Gone Guy", 10, "lot", 5)];
+    rosterRows([]);
+    const res = await undo();
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe("Sale already undone");
+    expect(mockPrisma.roster.delete).not.toHaveBeenCalled();
+  });
+
+  it("the row lookup keeps the season/source and league guard", async () => {
+    const s = seedNominating();
+    s.log = [win(501, "1", "Aye Player", 10, "lot", 10)];
+    rosterRows([{ id: 501, name: "Aye Player", team: "Alpha" }]);
+    await undo();
+    expect(mockPrisma.roster.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 501, source: "auction_2026", team: { leagueId: LEAGUE }, releasedAt: null },
+    }));
+  });
+
+  it("undoing a lot sale rewinds the turn one team", async () => {
+    const s = seedNominating({ queueIndex: 1 });
+    s.log = [win(501, "1", "Aye Player", 10, "lot", 10)];
+    rosterRows([{ id: 501, name: "Aye Player", team: "Alpha" }]);
+    await undo().expect(200);
+    expect(lastBroadcast().queueIndex).toBe(0);
+  });
+
+  it("undoing a force-assign leaves the turn where it is", async () => {
+    const s = seedNominating({ queueIndex: 1 });
+    s.log = [
+      { type: "ASSIGN", teamId: 11, playerId: "3", timestamp: 11, message: "a" },
+      win(503, "3", "Assigned Guy", 11, "assign", 10),
+    ];
+    rosterRows([{ id: 503, name: "Assigned Guy", team: "Beta" }]);
+    await undo().expect(200);
+    expect(mockPrisma.roster.delete).toHaveBeenCalledWith({ where: { id: 503 } });
+    expect(lastBroadcast().queueIndex).toBe(1);
+  });
+
+  it("LEGACY: a WIN without rosterId falls back to the newest auction row and marks that WIN undone", async () => {
+    const s = seedNominating({ queueIndex: 1 });
+    s.log = [{ type: "WIN", teamId: 10, teamName: "Alpha", playerName: "Old Sale", amount: 4, timestamp: 1, message: "w" }];
+    mockPrisma.roster.findFirst.mockResolvedValueOnce({
+      id: 77, playerId: 5, price: 4, player: { name: "Old Sale" }, team: { name: "Alpha" },
+    });
+    mockPrisma.team.findMany.mockResolvedValue([]);
+    await undo().expect(200);
+    expect(mockPrisma.roster.findFirst).toHaveBeenCalledWith(expect.objectContaining({ orderBy: { acquiredAt: "desc" } }));
+    expect(mockPrisma.roster.delete).toHaveBeenCalledWith({ where: { id: 77 } });
+    const b = lastBroadcast();
+    expect(b.log.find((e) => e.type === "WIN")?.undone).toBe(true);
+    expect(b.queueIndex).toBe(0); // legacy: no saleKind, rewinds as before
+  });
+
+  it("undo while paused does not start the turn clock", async () => {
+    const s = seedNominating({ paused: true });
+    s.config.nominationTimer = 20;
+    s.log = [win(501, "1", "Aye Player", 10, "lot", 10)];
+    rosterRows([{ id: 501, name: "Aye Player", team: "Alpha" }]);
+    await undo().expect(200);
+    const b = lastBroadcast();
+    expect(b.paused).toBe(true);
+    expect(b.nominationEndTime).toBeNull();
+  });
+});
+
+describe("WIN entries carry playerId, rosterId and saleKind", () => {
+  it("a finished lot logs WIN with the lot's mlbId, the created roster id and saleKind 'lot'", async () => {
+    seedBidding();
+    mockPrisma.player.create.mockResolvedValueOnce({ id: 88, posPrimary: "OF", mlbTeam: "LAD" });
+    mockPrisma.roster.create.mockResolvedValueOnce({ id: 4242 });
+    mockPrisma.team.findMany.mockResolvedValue([]);
+    const res = await supertest(app).post("/finish").set(as(ADMIN)).send({ leagueId: LEAGUE });
+    expect(res.status).toBe(200);
+    const w = lastBroadcast().log.find((e) => e.type === "WIN");
+    expect(w).toMatchObject({ playerId: "999", rosterId: 4242, saleKind: "lot" });
+  });
+
+  it("force-assign logs WIN with the mlbId, the created roster id and saleKind 'assign'", async () => {
+    seedNominating();
+    mockPrisma.team.findFirst.mockResolvedValueOnce({ id: 11, name: "Beta", leagueId: LEAGUE });
+    mockPrisma.player.create.mockResolvedValueOnce({ id: 88, posPrimary: "OF", mlbTeam: "SF" });
+    mockPrisma.roster.create.mockResolvedValueOnce({ id: 5151 });
+    mockPrisma.team.findMany.mockResolvedValue([]);
+    const res = await supertest(app).post("/force-assign").set(as(COMMISH)).send({
+      leagueId: LEAGUE, teamId: 11, playerId: "555", playerName: "New Guy",
+      price: 3, positions: "OF", team: "SF", isPitcher: false,
+    });
+    expect(res.status).toBe(200);
+    const w = lastBroadcast().log.find((e) => e.type === "WIN");
+    expect(w).toMatchObject({ playerId: "555", rosterId: 5151, saleKind: "assign" });
   });
 });

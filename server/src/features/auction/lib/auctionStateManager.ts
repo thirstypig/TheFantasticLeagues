@@ -886,7 +886,7 @@ export async function finishCurrentLot(leagueId: number, userId?: number): Promi
     // Owners can override via the Team page position dropdown later.
     const primaryPos = (dbPlayer.posPrimary ?? positions.split('/')[0] ?? "UT").toUpperCase();
 
-    await prisma.roster.create({
+    const created = await prisma.roster.create({
       data: {
         teamId: highBidderTeamId,
         playerId: dbPlayer.id,
@@ -911,8 +911,11 @@ export async function finishCurrentLot(leagueId: number, userId?: number): Promi
       type: 'WIN',
       teamId: highBidderTeamId,
       teamName: winner?.name,
+      playerId: String(playerId),
       playerName,
       amount: currentBid,
+      rosterId: created.id,
+      saleKind: 'lot',
       timestamp: Date.now(),
       message: `${winner?.name || 'Winner'} won ${playerName} for $${currentBid}`
     });

@@ -15,9 +15,14 @@ import { Link } from 'react-router-dom';
 import { ConfirmSheet } from '../../../../components/shared/ConfirmSheet';
 import { PlayerLink } from '../../../../components/shared/playerCard/PlayerCardProvider';
 import type { ClientAuctionState, useAuctionState } from '../../hooks/useAuctionState';
-import { lastSales } from '../../lib/auctionSelectors';
+import { lastSales, type LastSale } from '../../lib/auctionSelectors';
 
 type Actions = Pick<ReturnType<typeof useAuctionState>['actions'], 'pause' | 'resume' | 'undoLastSale' | 'skipTurn' | 'endAuction'>;
+
+/** The server undoes a sale only between lots or after the auction (not while a lot is up). */
+export function canUndoSale(state: ClientAuctionState): boolean {
+  return lastSales(state, 1).length > 0 && (state.status === 'nominating' || state.status === 'completed');
+}
 
 const errorText = (e: unknown, fallback: string) => (e instanceof Error && e.message ? e.message : fallback);
 
@@ -53,7 +58,7 @@ export default function CommissionerBar({ state, actions, variant }: Commissione
 
   const paused = !!state.paused || state.status === 'paused';
   const running = state.status === 'nominating' || state.status === 'bidding' || state.status === 'paused';
-  const canUndo = lastSales(state, 1).length > 0;
+  const canUndo = canUndoSale(state);
   const canSkip = state.status === 'nominating';
   const panelId = 'cb-more';
 
@@ -144,11 +149,16 @@ export default function CommissionerBar({ state, actions, variant }: Commissione
   );
 }
 
-/** mlbId for a sold player: WIN log entries carry no id, so look it up on the buying team's roster by name. */
-function soldMlbId(state: ClientAuctionState, teamId: number | undefined, name: string | undefined): number | null {
-  if (!name) return null;
-  const t = state.teams.find(x => x.id === teamId);
-  const r = t?.roster.find(x => x.playerName === name);
+/**
+ * mlbId for a sold player: the WIN entry's playerId. Legacy WINs (logged
+ * before playerId was added) fall back to a name match on the buying team's roster.
+ */
+function soldMlbId(state: ClientAuctionState, sale: LastSale): number | null {
+  const fromSale = Number(sale.playerId);
+  if (sale.playerId && Number.isFinite(fromSale) && fromSale > 0) return fromSale;
+  if (!sale.playerName) return null;
+  const t = state.teams.find(x => x.id === sale.teamId);
+  const r = t?.roster.find(x => x.playerName === sale.playerName);
   return r?.mlbId ?? null;
 }
 
@@ -161,6 +171,7 @@ export interface LastSalesProps {
 export function LastSales({ state, actions }: LastSalesProps) {
   const { busy, error, run } = useControl();
   const sales = lastSales(state, 5);
+  const canUndo = canUndoSale(state);
   return (
     <div className="la-col cb-sales" data-testid="last-sales">
       <p className="la-cap">Last sales</p>
@@ -168,11 +179,11 @@ export function LastSales({ state, actions }: LastSalesProps) {
         {sales.map((s, i) => (
           <div className="la-row" key={`${s.timestamp}-${i}`} data-testid="last-sale">
             <div className="la-t">
-              <b><PlayerLink mlbId={soldMlbId(state, s.teamId, s.playerName)} name={s.playerName ?? 'Unknown'} /></b>
+              <b><PlayerLink mlbId={soldMlbId(state, s)} name={s.playerName ?? 'Unknown'} /></b>
               <small className="la-num">{`${s.teamName ?? 'Unknown team'} · $${s.amount ?? 0}`}</small>
             </div>
             {i === 0 && (
-              <button type="button" className="la-btn sm" disabled={busy} onClick={() => run(actions.undoLastSale, 'Could not undo the last sale')}>
+              <button type="button" className="la-btn sm" disabled={busy || !canUndo} onClick={() => run(actions.undoLastSale, 'Could not undo the last sale')}>
                 Undo
               </button>
             )}

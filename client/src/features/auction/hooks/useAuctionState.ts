@@ -92,6 +92,12 @@ export interface AuctionLogEvent {
   message: string;
   /** Why a turn was skipped (SKIP only). */
   reason?: 'commissioner' | 'timeout';
+  /** WIN / UNDO: the Roster row the sale created (absent on older WINs). */
+  rosterId?: number;
+  /** WIN: won by bidding, or a commissioner force-assign (absent on older WINs). */
+  saleKind?: 'lot' | 'assign';
+  /** WIN: this sale has been undone. */
+  undone?: boolean;
 }
 
 export interface ChatMessage {

@@ -51,6 +51,12 @@ export interface AuctionLogEvent {
   message: string;
   /** Why a turn was skipped (SKIP only). */
   reason?: 'commissioner' | 'timeout';
+  /** WIN / UNDO: the Roster row the sale created (absent on WINs logged before Task 6 fix round 1). */
+  rosterId?: number;
+  /** WIN: a lot won by bidding, or a commissioner force-assign (absent on older WINs). */
+  saleKind?: 'lot' | 'assign';
+  /** WIN: set once /undo-finish has reversed this sale. */
+  undone?: boolean;
 }
 
 export interface AuctionState {
