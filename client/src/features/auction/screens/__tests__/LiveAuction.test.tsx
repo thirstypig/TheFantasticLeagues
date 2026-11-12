@@ -81,6 +81,27 @@ const calls = (path: string) => fetchJsonApi.mock.calls.filter(([u]) => String(u
 
 beforeEach(() => { fetchJsonApi.mockReset(); localStorage.clear(); });
 
+const myTurn: ClientAuctionState = {
+  ...baseState,
+  status: 'nominating',
+  nomination: null,
+  queueIndex: 1, // Los Doyers (me) on the clock
+  nominationEndTime: new Date(Date.now() + 22_000).toISOString(),
+  teams: [
+    team(1, 'Los Doyers', 69, 61, 4),
+    { ...team(2, 'Skunk Dogs', 88, 80, 3), roster: [{ id: 9, playerId: 9, mlbId: 682829, playerName: 'Elly De La Cruz', price: 34 }] },
+    team(3, 'Bombers', 31, 26, 2),
+  ],
+};
+
+function routeTurn(state: ClientAuctionState, list: number[]) {
+  fetchJsonApi.mockImplementation(async (url: string) => {
+    if (url.startsWith('/api/auction/state')) return state;
+    if (url.startsWith('/api/auction/my-list')) return { teamId: 1, mlbIds: list };
+    return {};
+  });
+}
+
 describe('lotNumber', () => {
   it('counts nominations; while choosing it is the next lot', () => {
     expect(lotNumber(baseState)).toBe(2);
@@ -194,13 +215,53 @@ describe('LiveAuction · phone', () => {
     expect(screen.getByRole('button', { name: 'Bid $2' })).toBeTruthy();
   });
 
-  it('while nominating shows the Task 5 placeholder: who is choosing and You\'re up next', async () => {
+  it("while someone else chooses and I'm next: the You're up next box with the turn clock", async () => {
     route({ ...baseState, status: 'nominating', nomination: null, nominationEndTime: new Date(Date.now() + 22_000).toISOString() });
     render(<Harness />);
-    expect(await screen.findByText('Bombers is choosing')).toBeTruthy();
-    expect(screen.getByText("You're up next")).toBeTruthy();
+    expect(await screen.findByText("You're up next")).toBeTruthy();
     expect(screen.getByRole('timer').textContent).toBe('0:22');
     expect(screen.queryByRole('button', { name: /^Bid \$/ })).toBeNull();
+    expect(screen.queryAllByRole('button', { name: /^Put up/ })).toHaveLength(0);
+  });
+
+  it('my turn: Your list hides the rostered/sold player; Put up posts /api/auction/nominate with the opening bid', async () => {
+    routeTurn(myTurn, [682829, 694973]);
+    render(<Harness />);
+    expect(await screen.findByText('Put a player up')).toBeTruthy();
+    const list = await screen.findByTestId('my-list');
+    await waitFor(() => expect(within(list).getAllByTestId('list-row')).toHaveLength(1));
+    expect(within(list).queryByText('Elly De La Cruz')).toBeNull();
+    expect(within(list).getByText('Paul Skenes')).toBeTruthy();
+    // the server list is not rewritten to drop the rostered player
+    expect(calls('/api/auction/my-list').filter(([, init]) => init?.method === 'PUT')).toHaveLength(0);
+
+    fireEvent.change(screen.getByLabelText('Opening bid'), { target: { value: '3' } });
+    fireEvent.click(within(list).getByRole('button', { name: 'Put up Paul Skenes' }));
+    await waitFor(() => expect(calls('/api/auction/nominate')).toHaveLength(1));
+    const [url, init] = calls('/api/auction/nominate')[0];
+    expect(url).toBe('/api/auction/nominate');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body)).toEqual({
+      nominatorTeamId: 1, playerId: '694973', playerName: 'Paul Skenes', startBid: 3,
+      positions: 'SP', team: 'PIT', isPitcher: true, leagueId: 20,
+    });
+  });
+
+  it("my turn: the server's 409 message shows inline", async () => {
+    routeTurn(myTurn, [694973]);
+    render(<Harness />);
+    const btn = await screen.findByRole('button', { name: 'Put up Paul Skenes' });
+    fetchJsonApi.mockImplementationOnce(async () => { throw new Error('Time is up'); });
+    fireEvent.click(btn);
+    expect((await screen.findByRole('alert')).textContent).toBe('Time is up');
+  });
+
+  it('my turn while paused: Paused, no Put up', async () => {
+    routeTurn({ ...myTurn, paused: true }, [694973]);
+    render(<Harness />);
+    expect(await screen.findByText('Paused')).toBeTruthy();
+    await screen.findByTestId('my-list');
+    expect(screen.queryAllByRole('button', { name: /^Put up/ })).toHaveLength(0);
   });
 
   it('paused: Paused replaces the bid buttons', async () => {
@@ -229,6 +290,17 @@ describe('LiveAuction · desktop', () => {
     expect(screen.getByText('Chip = most that team can bid.')).toBeTruthy();
     expect(screen.getByText('Paul Skenes')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Teams' })).toBeNull();
+  });
+
+  it('my turn on desktop: the YourTurn box replaces the lot card; players and teams panels stay', async () => {
+    routeTurn(myTurn, [694973]);
+    render(<Harness />);
+    expect(await screen.findByText('Put a player up')).toBeTruthy();
+    expect(screen.queryByTestId('lot')).toBeNull();
+    expect(screen.getByText('Putting players up')).toBeTruthy();
+    expect(screen.getByLabelText('Search players')).toBeTruthy(); // left players panel
+    expect(screen.getByLabelText('Search all players')).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'Value' })).toBeTruthy();
   });
 
   it('sound and notification toggles call the prefs handlers', async () => {

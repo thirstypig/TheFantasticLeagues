@@ -232,6 +232,22 @@ export function bidValidation(
   return { ok: true };
 }
 
+/**
+ * Client-side check for the opening bid when putting a player up: a whole
+ * number from $1 to your max bid. The server stays the authority.
+ */
+export function openingBidValidation(
+  amount: number | string,
+  myTeam: Pick<AuctionTeam, 'maxBid'> | null | undefined,
+): BidValidation {
+  if (!myTeam) return { ok: false, message: "You don't have a team in this league" };
+  const n = typeof amount === 'string' ? (amount.trim() === '' ? NaN : Number(amount)) : amount;
+  if (!Number.isInteger(n)) return { ok: false, message: 'Enter a whole number' };
+  if (n < 1) return { ok: false, message: 'Opening bid must be at least $1' };
+  if (n > myTeam.maxBid) return { ok: false, message: `Your max bid is $${myTeam.maxBid}` };
+  return { ok: true };
+}
+
 // ─── Misc ────────────────────────────────────────────────────────────────────
 
 /** Players still to be bought: open roster spots summed over every team. */

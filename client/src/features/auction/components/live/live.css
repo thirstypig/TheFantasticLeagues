@@ -164,3 +164,30 @@
     grid-template-areas: "lot teams" "players teams";
   }
 }
+
+/* Screen 9 · Your turn (put a player up) */
+.yt-h { font-family: var(--am-display); font-size: 24px; font-weight: 700; margin: 0; line-height: 1.15; }
+.yt-after { font-size: 15px; color: var(--am-text-muted); margin: 0; overflow-wrap: anywhere; }
+.yt-paused { padding: 0 12px; flex: none; }
+.yt-panel { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.yt-sec { gap: 8px; }
+.yt-x {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--am-field-line);
+  background: var(--am-field); color: var(--am-text-muted); font: inherit; font-size: 17px; cursor: pointer;
+}
+.yt-bid { gap: 6px; font-size: 17px; font-weight: 700; }
+.yt-bid .la-input { flex: none; width: 80px; }
+.yt-grid { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 16px; align-items: start; }
+@media (max-width: 1023px) { .yt-grid { grid-template-columns: minmax(0, 1fr); } }
+.yt-tablewrap { overflow: hidden; }
+.yt-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.yt-table th {
+  text-align: left; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--am-text-muted); padding: 10px 12px; border-bottom: 1px solid var(--am-border);
+}
+.yt-table td { padding: 4px 12px; border-top: 1px solid var(--am-border); height: 52px; overflow-wrap: anywhere; }
+.yt-table tbody tr:first-child td { border-top: 0; }
+.yt-table td .pc-link { font: inherit; font-weight: 600; }
+.yt-table .yt-act { text-align: right; white-space: nowrap; }
+.yt-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

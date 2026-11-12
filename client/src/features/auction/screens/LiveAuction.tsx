@@ -8,7 +8,8 @@
  * Desktop: three columns. Players | lot + bids on this player | order + teams.
  *
  * Slots for later tasks:
- *  - Task 5 (YourTurn): replaces <NominatingSlot> (the box shown while status is 'nominating').
+ *  - Screen 9 (YourTurn): while status is 'nominating' the turn box takes the lot card's place;
+ *    on my turn the put-up panel follows it (phone: pinned box, panel scrolls below).
  *  - Task 6 (CommissionerBar): renders where `{/* Task 6: CommissionerBar *\/}` sits, above the lot area (on phone, just above the pinned block, not inside it).
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -17,14 +18,14 @@ import type { PlayerSeasonStat } from '../../../api';
 import { useMediaQuery } from '../../../hooks/useMediaQuery';
 import type { ClientAuctionState, ConnectionStatus, useAuctionState } from '../hooks/useAuctionState';
 import { useMyList } from '../hooks/useMyList';
-import { lotBids, orderStrip, playersLeft, type OrderStrip as OrderStripData } from '../lib/auctionSelectors';
-import { formatClock, useClock } from '../lib/clock';
+import { lotBids, orderStrip, playersLeft } from '../lib/auctionSelectors';
 import LotHeader from '../components/live/LotHeader';
 import BidBar from '../components/live/BidBar';
 import OrderStrip from '../components/live/OrderStrip';
 import TeamsPanel from '../components/live/TeamsPanel';
 import PlayersPanel, { availablePlayers, playerValue } from '../components/live/PlayersPanel';
 import LotBids from '../components/live/LotBids';
+import YourTurn, { PutUpPanel, TurnBox, isMyTurn } from '../components/live/YourTurn';
 import TeamBoard from '../components/board/TeamBoard';
 import '../components/live/live.css';
 
@@ -88,28 +89,6 @@ function useMyMaxBid(actions: AuctionActions, myTeamId: number | null | undefine
   return { maxBid, set, clear };
 }
 
-/**
- * Task 5: YourTurn replaces this box. Shown while status is 'nominating':
- * who is choosing, the turn clock, and "You're up next" when I am next.
- */
-function NominatingSlot({ state, strip, paused }: { state: ClientAuctionState; strip: OrderStripData; paused: boolean }) {
-  const ms = useClock(paused ? null : state.nominationEndTime ?? null);
-  const now = strip.now;
-  const heading = !now ? 'Waiting for the next player' : now.isMe ? 'Your turn' : `${now.team.name} is choosing`;
-  return (
-    <div className="la-oc" data-slot="your-turn">
-      <div className="la-wait">
-        <div>
-          {strip.next?.isMe && <p className="la-cap">You're up next</p>}
-          <h2>{heading}</h2>
-        </div>
-        {paused ? <span className="la-state" style={{ padding: '0 12px' }}>Paused</span>
-          : ms !== null && <span className="la-clock" role="timer" aria-label="Time left">{formatClock(ms)}</span>}
-      </div>
-    </div>
-  );
-}
-
 function HeaderToggles({ prefs }: { prefs: LiveAuctionPrefs }) {
   return (
     <>
@@ -144,6 +123,23 @@ export default function LiveAuction({ state, actions, leagueId, myTeamId, player
 
   const listControls = myTeamId ? { has: myList.has, add: myList.add, remove: myList.remove } : null;
 
+  const myTurn = isMyTurn(state, strip);
+  const onPutUp = useCallback(async (p: PlayerSeasonStat, startBid: number) => {
+    if (!myTeamId) return;
+    await actions.nominate({
+      nominatorTeamId: myTeamId,
+      playerId: p.mlb_id || '',
+      playerName: p.player_name || 'Unknown',
+      startBid,
+      positions: p.positions || (p.is_pitcher ? 'P' : 'UT'),
+      team: p.mlb_team || 'FA',
+      isPitcher: Boolean(p.is_pitcher),
+    });
+  }, [actions, myTeamId]);
+  const putUpProps = {
+    myTeam, list: myList.list, available, paused, onPutUp, onRemove: myList.remove,
+  };
+
   const lotArea = hasLot && state.nomination ? (
     <div className="la-oc" data-testid="lot">
       <LotHeader nomination={state.nomination} teams={state.teams} value={isPhone ? null : lotValue} size={isPhone ? 'lg' : 'xl'} />
@@ -161,7 +157,9 @@ export default function LiveAuction({ state, actions, leagueId, myTeamId, player
       />
     </div>
   ) : state.status === 'nominating' ? (
-    <NominatingSlot state={state} strip={strip} paused={paused} />
+    isPhone
+      ? <TurnBox state={state} strip={strip} paused={paused} />
+      : <YourTurn state={state} strip={strip} {...putUpProps} variant="desktop" />
   ) : null;
 
   const reconnecting = connectionStatus === 'reconnecting'
@@ -180,6 +178,7 @@ export default function LiveAuction({ state, actions, leagueId, myTeamId, player
         <div className="la-pin" data-testid="pinned">
           {lotArea}
         </div>
+        {myTurn && <PutUpPanel {...putUpProps} variant="phone" />}
         <OrderStrip strip={strip} variant="phone" />
         <div className="la-seg" role="group" aria-label="Auction views">
           {(['teams', 'players', 'board'] as Tab[]).map(t => (

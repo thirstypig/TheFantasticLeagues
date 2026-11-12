@@ -46,14 +46,18 @@ export interface PlayersPanelProps {
 /** Rows rendered at once; search narrows the rest. */
 const MAX_ROWS = 100;
 
-const pos = (p: PlayerSeasonStat) => (p.positions || (p.is_pitcher ? 'P' : '')).split(/[,/]/)[0]?.trim() ?? '';
+/** First listed position (e.g. `SP`, `1B`). */
+export const primaryPos = (p: PlayerSeasonStat) => (p.positions || (p.is_pitcher ? 'P' : '')).split(/[,/]/)[0]?.trim() ?? '';
+
+/** Name search shared by the players panel and the "your turn" search. Empty query matches all. */
+export function matchPlayers(players: PlayerSeasonStat[], query: string): PlayerSeasonStat[] {
+  const q = query.trim().toLowerCase();
+  return q ? players.filter(p => (p.player_name ?? '').toLowerCase().includes(q)) : players;
+}
 
 export default function PlayersPanel({ players, myList }: PlayersPanelProps) {
   const [query, setQuery] = useState('');
-  const matches = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return q ? players.filter(p => (p.player_name ?? '').toLowerCase().includes(q)) : players;
-  }, [players, query]);
+  const matches = useMemo(() => matchPlayers(players, query), [players, query]);
   const shown = matches.slice(0, MAX_ROWS);
 
   return (
@@ -78,7 +82,7 @@ export default function PlayersPanel({ players, myList }: PlayersPanelProps) {
                 <img className="la-face" src={playerHeadshotUrl(id)} alt="" loading="lazy" />
                 <div className="la-t">
                   <b><PlayerLink mlbId={id} name={p.player_name ?? 'Unknown'} /></b>
-                  <small className="la-num">{[pos(p), abbr, v !== null ? `$${Math.round(v)}` : ''].filter(Boolean).join(' · ')}</small>
+                  <small className="la-num">{[primaryPos(p), abbr, v !== null ? `$${Math.round(v)}` : ''].filter(Boolean).join(' · ')}</small>
                 </div>
               </div>
               <div className="la-row-r">
