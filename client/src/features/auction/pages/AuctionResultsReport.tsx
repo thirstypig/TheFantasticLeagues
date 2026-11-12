@@ -8,9 +8,6 @@
  * Aurora wrapper — PR-2b will deepen them. The composite renders
  * acceptably because Aurora's `.aurora-theme` scope leaves the
  * `--lg-*` token namespace intact for legacy children.
- *
- * Legacy 93-LOC page preserved at /auction-results-classic via
- * AuctionResultsLegacy.tsx → AuctionCompleteLegacy.tsx.
  */
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';

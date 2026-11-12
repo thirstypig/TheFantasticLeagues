@@ -32,7 +32,6 @@ vi.mock("../components/PlayerExpandedRow", () => ({
 }));
 
 import AuctionComplete from "../components/AuctionComplete";
-import AuctionCompleteLegacy from "../components/AuctionCompleteLegacy";
 
 const auctionState = {
   leagueId: 1,
@@ -59,7 +58,6 @@ beforeEach(() => openCard.mockClear());
 
 describe.each([
   ["AuctionComplete", AuctionComplete],
-  ["AuctionCompleteLegacy", AuctionCompleteLegacy],
 ])("%s player card", (_name, Component) => {
   it("View detail on an expanded roster row opens the card for the stats row's mlbId", async () => {
     const C = Component as React.ComponentType<{ auctionState: never }>;

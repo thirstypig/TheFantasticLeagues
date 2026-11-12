@@ -170,10 +170,11 @@ describe("text on the accent uses --am-on-accent", () => {
       counts.lgAccent += [...style, ...className, ...css].filter((m) => m[0].includes("--lg-accent")).length;
     }
     // Counts on 2026-11-09: style 61, className 85, css 7, --lg-accent 82.
+    // Floors lowered 2026-11-11 (className 75 to 45, --lg-accent 72 to 40) after the dead legacy auction UI was deleted; className was 56 and --lg-accent 53 then.
     expect(counts.style, "style-object matches").toBeGreaterThanOrEqual(55);
-    expect(counts.className, "className matches").toBeGreaterThanOrEqual(75);
+    expect(counts.className, "className matches").toBeGreaterThanOrEqual(45);
     expect(counts.css, "CSS rule matches").toBeGreaterThanOrEqual(5);
-    expect(counts.lgAccent, "--lg-accent matches").toBeGreaterThanOrEqual(72);
+    expect(counts.lgAccent, "--lg-accent matches").toBeGreaterThanOrEqual(40);
     expect(files.some((f) => f.endsWith("commissioner.css"))).toBe(true);
   });
 
