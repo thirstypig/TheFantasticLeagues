@@ -11,7 +11,7 @@ import { PlayerLink } from '../../../components/shared/playerCard/PlayerCardProv
 import type { PlayerSeasonStat } from '../../../api';
 import { useAuctionPageData } from '../hooks/useAuctionPageData';
 import { useAuctionState } from '../hooks/useAuctionState';
-import { availablePlayers, matchPlayers, playerValue, primaryPos } from '../components/live/PlayersPanel';
+import { availablePlayers, formatValue, matchPlayers, playerValue, primaryPos } from '../components/live/PlayersPanel';
 import '../components/live/live.css';
 
 /** Search results shown at once; typing narrows the rest. */
@@ -120,7 +120,7 @@ export default function AssignPlayer() {
                 <div className="la-row" key={p.mlb_id}>
                   <div className="la-t">
                     <b><PlayerLink mlbId={id} name={p.player_name ?? 'Unknown'} /></b>
-                    <small className="la-num">{[primaryPos(p), p.mlb_team_abbr || p.mlb_team || '', v !== null ? `$${Math.round(v)}` : ''].filter(Boolean).join(' · ')}</small>
+                    <small className="la-num">{[primaryPos(p), p.mlb_team_abbr || p.mlb_team || '', formatValue(v)].filter(Boolean).join(' · ')}</small>
                   </div>
                   <button
                     type="button"

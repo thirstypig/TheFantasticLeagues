@@ -7,6 +7,7 @@ import { PlayerLink } from '../../../../components/shared/playerCard/PlayerCardP
 import { playerHeadshotUrl, teamLogoUrl } from '../../../../lib/mlbImages';
 import type { AuctionTeam, NominationState } from '../../hooks/useAuctionState';
 import { formatClock, useClock } from '../../lib/clock';
+import { formatValue } from './PlayersPanel';
 
 export interface LotHeaderProps {
   nomination: NominationState;
@@ -38,7 +39,7 @@ export default function LotHeader({ nomination, teams, value, size = 'lg' }: Lot
           <b className="la-pname"><PlayerLink mlbId={mlbId} name={nomination.playerName} /></b>
           <small>
             {pos ? `${pos} · ` : ''}nominated by {teamName(nomination.nominatorTeamId)}
-            {showValue ? ` · value $${Math.round(value as number)}` : ''}
+            {showValue ? ` · value ${formatValue(value)}` : ''}
           </small>
         </div>
         {nomination.playerTeam && (

@@ -19,7 +19,7 @@ import { playerHeadshotUrl } from '../../../../lib/mlbImages';
 import type { AuctionTeam, ClientAuctionState } from '../../hooks/useAuctionState';
 import { openingBidValidation, type OrderStrip } from '../../lib/auctionSelectors';
 import { formatClock, useClock } from '../../lib/clock';
-import { matchPlayers, playerValue, primaryPos } from './PlayersPanel';
+import { formatValue, matchPlayers, playerValue, primaryPos } from './PlayersPanel';
 
 /** True when the auction is choosing and the team on the clock is mine. */
 export function isMyTurn(state: Pick<ClientAuctionState, 'status'>, strip: OrderStrip): boolean {
@@ -84,10 +84,7 @@ const MAX_RESULTS = 25;
 
 const errMessage = (e: unknown) => (e instanceof Error && e.message ? e.message : 'Could not put that player up');
 
-const valueText = (p: PlayerSeasonStat) => {
-  const v = playerValue(p);
-  return v !== null ? `$${Math.round(v)}` : '';
-};
+const valueText = (p: PlayerSeasonStat) => formatValue(playerValue(p));
 
 export function PutUpPanel({ myTeam, list, available, paused, variant, onPutUp, onRemove }: PutUpPanelProps) {
   const [openingBid, setOpeningBid] = useState('1');

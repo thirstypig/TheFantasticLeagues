@@ -8,6 +8,16 @@ import { PlayerLink } from '../../../../components/shared/playerCard/PlayerCardP
 import { playerHeadshotUrl } from '../../../../lib/mlbImages';
 import type { AuctionTeam } from '../../hooks/useAuctionState';
 
+/**
+ * A projected value as shown on the auction screens: whole dollars, and
+ * anything below $1 (negative projections included) as `$0`. Null shows
+ * nothing. Sorting still uses the raw value.
+ */
+export const formatValue = (v: number | null | undefined): string => {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return '';
+  return `$${v < 1 ? 0 : Math.round(v)}`;
+};
+
 export const playerValue = (p: PlayerSeasonStat): number | null => {
   const v = p.dollar_value ?? p.value;
   return typeof v === 'number' && Number.isFinite(v) ? v : null;
@@ -82,7 +92,7 @@ export default function PlayersPanel({ players, myList }: PlayersPanelProps) {
                 <img className="la-face" src={playerHeadshotUrl(id)} alt="" loading="lazy" />
                 <div className="la-t">
                   <b><PlayerLink mlbId={id} name={p.player_name ?? 'Unknown'} /></b>
-                  <small className="la-num">{[primaryPos(p), abbr, v !== null ? `$${Math.round(v)}` : ''].filter(Boolean).join(' · ')}</small>
+                  <small className="la-num">{[primaryPos(p), abbr, formatValue(v)].filter(Boolean).join(' · ')}</small>
                 </div>
               </div>
               <div className="la-row-r">
