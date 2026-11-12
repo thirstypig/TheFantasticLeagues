@@ -3,9 +3,8 @@
  * Consumed by any page that renders a player row and wants a star CTA:
  * Players, Activity/AddDropTab, Trades asset selector, etc.
  *
- * The Auction watchlist intentionally uses its own localStorage-backed hook
- * (client/src/features/auction/hooks/useWatchlist.ts) for hot-loop speed;
- * D-v2 will unify with a cache-eventually-consistent pattern.
+ * The auction screens have no starred watchlist (dropped in UX step F); a
+ * team's auction "my list" lives on the server (features/auction/hooks/useMyList.ts).
  */
 
 import { useCallback, useEffect, useState } from "react";

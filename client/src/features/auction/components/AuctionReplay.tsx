@@ -33,7 +33,7 @@ interface AuctionReplayProps {
   onClose: () => void;
 }
 
-function buildLots(log: AuctionLogEvent[]): ReplayLot[] {
+export function buildLots(log: AuctionLogEvent[]): ReplayLot[] {
   const lots: ReplayLot[] = [];
   let current: Partial<ReplayLot> & { bids: ReplayLot['bids'] } | null = null;
   let lotNumber = 0;
@@ -78,6 +78,9 @@ function buildLots(log: AuctionLogEvent[]): ReplayLot[] {
         timestamp: event.timestamp,
       });
       current.endTime = event.timestamp;
+    } else if (event.type === 'WIN' && event.undone) {
+      // The commissioner undid this sale: drop the lot.
+      current = null;
     } else if (event.type === 'WIN' && current) {
       current.winnerTeamId = event.teamId || null;
       current.winnerTeamName = event.teamName || null;
@@ -86,8 +89,9 @@ function buildLots(log: AuctionLogEvent[]): ReplayLot[] {
       lots.push(current as ReplayLot);
       current = null;
     } else if (event.type === 'UNDO') {
-      // Undo removes the last completed lot
-      if (lots.length > 0) {
+      // An UNDO that names its sale (rosterId) marked that WIN undone, which
+      // was skipped above. Only a legacy UNDO removes the last completed lot.
+      if (event.rosterId == null && lots.length > 0) {
         lots.pop();
         lotNumber--;
       }
