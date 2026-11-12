@@ -6,6 +6,7 @@ import { asyncHandler } from "../../../middleware/asyncHandler.js";
 import { logger } from "../../../lib/logger.js";
 import { isPitcher as isPitcherPos } from "../../../lib/sportConfig.js";
 import { getState, readLeagueId } from "../lib/auctionStateManager.js";
+import { saleEntriesFromLog } from "../lib/salesLog.js";
 import type { AuctionState } from "../types.js";
 
 const router = Router();
@@ -342,15 +343,8 @@ router.get("/draft-report", requireAuth, requireLeagueMember("leagueId"), asyncH
   const config = state?.config ?? { budgetCap: 400, rosterSize: 23, pitcherCount: 9, batterCount: 14 };
 
   // Build auction log from state log entries (WIN events = completed picks)
-  const logEntries = (state?.log ?? [])
-    .filter(l => l.type === "WIN" && l.playerName && l.teamName && l.amount != null)
-    .sort((a, b) => a.timestamp - b.timestamp)
-    .map((l, i) => ({
-      playerName: l.playerName!,
-      teamName: l.teamName!,
-      price: l.amount!,
-      order: i + 1,
-    }));
+  // Undone sales are excluded (saleEntriesFromLog).
+  const logEntries = saleEntriesFromLog(state?.log);
 
   // Identify keepers via roster source field, attach projected values + MLB team
   const teamData = teams.map(team => {
