@@ -1,15 +1,15 @@
 /**
  * Screen 8 · Live bidding (Style Bible), phone and desktop.
  *
- * Phone (< 768px): the lot (player, price, clock, bid buttons, max-bid line),
- * the order strip and the Teams | Players | Board tabs are pinned under the
- * shell's top bar (position: sticky; the window is the scroller); the tab body
- * scrolls beneath them.
+ * Phone (< 768px): only the lot header, bid bar and max-bid line are pinned
+ * under the shell's top bar (position: sticky; the window is the scroller).
+ * The order strip, the Teams | Players | Board tabs and the tab body scroll
+ * beneath them.
  * Desktop: three columns. Players | lot + bids on this player | order + teams.
  *
  * Slots for later tasks:
  *  - Task 5 (YourTurn): replaces <NominatingSlot> (the box shown while status is 'nominating').
- *  - Task 6 (CommissionerBar): renders where `{/* Task 6: CommissionerBar *\/}` sits, above the lot area.
+ *  - Task 6 (CommissionerBar): renders where `{/* Task 6: CommissionerBar *\/}` sits, above the lot area (on phone, just above the pinned block, not inside it).
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -44,6 +44,7 @@ export interface LiveAuctionProps {
   myTeamId?: number | null;
   /** Full player feed (season stats); availability is derived here. */
   players: PlayerSeasonStat[];
+  /** Unused here; reserved for Task 6 (CommissionerBar). */
   isCommissioner: boolean;
   connectionStatus?: ConnectionStatus;
   prefs: LiveAuctionPrefs;
@@ -147,6 +148,7 @@ export default function LiveAuction({ state, actions, leagueId, myTeamId, player
     <div className="la-oc" data-testid="lot">
       <LotHeader nomination={state.nomination} teams={state.teams} value={isPhone ? null : lotValue} size={isPhone ? 'lg' : 'xl'} />
       <BidBar
+        key={state.nomination.playerId /* new lot: reset error, typing and max-bid editor */}
         nomination={state.nomination}
         myTeam={myTeam}
         bidding={hasLot}
@@ -173,17 +175,18 @@ export default function LiveAuction({ state, actions, leagueId, myTeamId, player
           <div className="la-head-r"><HeaderToggles prefs={prefs} /></div>
         </div>
         {reconnecting}
+        {/* Task 6: CommissionerBar */}
+        {/* Pinned: only the lot header, bid bar and max-bid line (controller ruling). */}
         <div className="la-pin" data-testid="pinned">
-          {/* Task 6: CommissionerBar */}
           {lotArea}
-          <OrderStrip strip={strip} variant="phone" />
-          <div className="la-seg" role="group" aria-label="Auction views">
-            {(['teams', 'players', 'board'] as Tab[]).map(t => (
-              <button key={t} type="button" aria-pressed={tab === t} onClick={() => setTab(t)}>
-                {t === 'teams' ? 'Teams' : t === 'players' ? 'Players' : 'Board'}
-              </button>
-            ))}
-          </div>
+        </div>
+        <OrderStrip strip={strip} variant="phone" />
+        <div className="la-seg" role="group" aria-label="Auction views">
+          {(['teams', 'players', 'board'] as Tab[]).map(t => (
+            <button key={t} type="button" aria-pressed={tab === t} onClick={() => setTab(t)}>
+              {t === 'teams' ? 'Teams' : t === 'players' ? 'Players' : 'Board'}
+            </button>
+          ))}
         </div>
         <div className="la-col" data-testid="tab-body">
           {tab === 'teams' && (

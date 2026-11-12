@@ -52,7 +52,7 @@
 .la-face.lg { width: 56px; height: 56px; }
 .la-face.xl { width: 84px; height: 84px; }
 .la-mlb { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--am-text-muted); }
-.la-mlb img { width: 26px; height: 26px; object-fit: contain; background: #fff; border-radius: 50%; padding: 3px; border: 1px solid var(--am-border); box-sizing: border-box; }
+.la-mlb img { width: 26px; height: 26px; object-fit: contain; background: var(--am-surface); border-radius: 50%; padding: 3px; border: 1px solid var(--am-border); box-sizing: border-box; }
 .la-top2 { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .la-top2 > div { min-width: 0; }
 .la-price { font-family: var(--am-display); font-size: 24px; font-weight: 700; margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }

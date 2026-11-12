@@ -109,7 +109,7 @@ describe('BidBar', () => {
     expect(container.textContent).toBe('');
   });
 
-  it('sets, shows and clears a max bid', async () => {
+  it('Set a max bid opens the editor and sets the typed amount', async () => {
     const p = setup();
     fireEvent.click(screen.getByRole('button', { name: 'Set a max bid' }));
     fireEvent.change(screen.getByLabelText('Max bid'), { target: { value: '40' } });

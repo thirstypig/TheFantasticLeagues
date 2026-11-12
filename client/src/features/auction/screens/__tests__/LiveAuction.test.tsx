@@ -92,7 +92,7 @@ describe('lotNumber', () => {
 describe('LiveAuction · phone', () => {
   beforeEach(() => setPhone(true));
 
-  it('pins the lot, bid buttons, max-bid line, order strip and tabs; tabs switch the body', async () => {
+  it('pins only the lot, bid buttons and max-bid line; strip and tabs scroll; tabs switch the body', async () => {
     route(baseState);
     render(<Harness />);
     expect(await screen.findByText('Auction · Lot 2')).toBeTruthy();
@@ -101,7 +101,13 @@ describe('LiveAuction · phone', () => {
     expect(within(pinned).getByRole('button', { name: 'Bid $35' })).toBeTruthy();
     expect(within(pinned).getByRole('button', { name: 'Type' })).toBeTruthy();
     expect(within(pinned).getByText(/You can spend up to/)).toBeTruthy();
-    expect(within(pinned).getByText('Order for putting players up')).toBeTruthy();
+    expect(within(pinned).getByRole('button', { name: 'Set a max bid' })).toBeTruthy();
+    // order strip and tabs are on the page but NOT pinned
+    expect(screen.getByText('Order for putting players up')).toBeTruthy();
+    expect(within(pinned).queryByText('Order for putting players up')).toBeNull();
+    expect(screen.getByRole('group', { name: 'Auction views' })).toBeTruthy();
+    expect(within(pinned).queryByRole('group', { name: 'Auction views' })).toBeNull();
+    expect(within(pinned).queryByRole('button', { name: 'Teams' })).toBeNull();
     // phone shows no value on the lot
     expect(within(pinned).getByText('SS · nominated by Bombers')).toBeTruthy();
 
@@ -163,6 +169,29 @@ describe('LiveAuction · phone', () => {
     expect(delUrl).toBe('/api/auction/proxy-bid?leagueId=20&teamId=1');
     expect(delInit.method).toBe('DELETE');
     expect(await screen.findByRole('button', { name: 'Set a max bid' })).toBeTruthy();
+  });
+
+  it('a bid error on one lot is gone once the next lot starts', async () => {
+    route(baseState);
+    const actions = {
+      bid: vi.fn().mockRejectedValue(new Error('Not enough budget')),
+      getMyProxyBid: vi.fn().mockResolvedValue(null),
+    } as unknown as LiveAuctionProps['actions'];
+    const view = (state: ClientAuctionState) => (
+      <MemoryRouter>
+        <LiveAuction state={state} actions={actions} leagueId={20} myTeamId={1} players={players} isCommissioner={false} prefs={prefs} />
+      </MemoryRouter>
+    );
+    const { rerender } = render(view(baseState));
+    fireEvent.click(screen.getByRole('button', { name: 'Bid $35' }));
+    expect((await screen.findByRole('alert')).textContent).toBe('Not enough budget');
+    rerender(view({
+      ...baseState,
+      nomination: { ...baseState.nomination!, playerId: '694973', playerName: 'Paul Skenes', currentBid: 1, highBidderTeamId: 3 },
+    }));
+    expect(screen.getByText('Paul Skenes')).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Bid $2' })).toBeTruthy();
   });
 
   it('while nominating shows the Task 5 placeholder: who is choosing and You\'re up next', async () => {
