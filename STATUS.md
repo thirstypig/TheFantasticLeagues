@@ -1,6 +1,6 @@
 # STATUS
 
-**Last updated:** 2026-11-11
+**Last updated:** 2026-11-12
 
 ## One-line description
 The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with auctions, keepers and a commissioner. It replaces spreadsheets and OnRoto for the OGBA league.
@@ -22,6 +22,7 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - **Staging:** none hosted. Railway has only `production`. "Staging" is a separate Supabase project used from a local server.
 
 ## Shipped (last 60 days)
+- 2026 re-score applied (2026-11-12): NL games only, OnRoto roster dates; Period 7 closed (no IL fees due)
 - NL-only scoring: AL games don't count; 2026 roster dates follow OnRoto (#485)
 - UX redesign:
   - commissioner hub, theme, four-tab shell, Today page (#473–#476)
@@ -33,13 +34,11 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 
 ## In progress
 - UX step F (PR open, branch feat/auction-f): auction screens 8–11 rebuilt, engine safety fixes, ~6,800 lines of dead legacy auction code deleted
-- 2026 re-score: "NL players only" ON and roster repair applied 2026-11-11; rescore apply + re-audit + close Period 7 pending
 
 ## Open bugs / known issues
-- OGBA Period 7 is still `active` (season over). Closing it auto-bills contested IL fees.
-- `ALERT_EMAIL_TO` being set to the commissioner (pending confirmation of the Railway change).
+- `ALERT_EMAIL_TO` is unset, so nightly audit alarms only log (commissioner to set it on Railway).
 - Auction: a server restart mid-auction doesn't re-arm turn/lot timers; starting an auction needs a site admin.
-- One stale P6 stat (Perdomo hits 31 vs MLB 30; 0 points)
+- 2026 final vs OnRoto (Kent's workbook): P1–P3, P5, P6 exact; P4 and P7 each have one ±1 pair (DDG/RGS, RGS/The Show). Final order identical.
 - Todos #181 (stale roster across tabs), #304 (cache cleanup), #305 (slow first standings load)
 
 ## Next phases (in order)
