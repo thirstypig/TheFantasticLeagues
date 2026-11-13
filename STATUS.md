@@ -28,7 +28,7 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
   - commissioner hub, theme, four-tab shell, Today page (#473–#476)
   - steps A–E: style, rules, commissioner, rosters, trades, players and player card (#477–#482)
   - team page (#483)
-  - step F: auction screens 8–11, auction engine safety fixes, live auction socket fixed, ~6,800 lines of dead auction code deleted (#487), plus design-review polish (phone best-available list, named undo, "you're up after") (#489), rebuilt post-auction report (#490), review polish (results title, phone team rows, turn order, grayed-button reasons) (#493), draft report "money left" fix (#492)
+  - step F: auction screens 8–11, engine safety fixes, live socket fixed, ~6,800 dead lines deleted (#487); design-review polish and rebuilt report (#489, #490, #493); "money left" fix (#492)
 - Auction reliability: timers restart after a server restart (#496); the league's commissioner can start its auction, pre-season only (#497)
 - League picked in Switch League survives reloads (#494) and shows its season (#495)
 - Sport-agnostic standings rows (#469)
