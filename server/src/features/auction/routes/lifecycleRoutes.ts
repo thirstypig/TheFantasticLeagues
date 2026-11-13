@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { prisma } from "../../../db/prisma.js";
 import { requireAuth, requireAdmin } from "../../../middleware/auth.js";
 import { requireLeagueMember } from "../../../middleware/auth.js";
@@ -6,7 +6,7 @@ import { asyncHandler } from "../../../middleware/asyncHandler.js";
 import { validateBody } from "../../../middleware/validate.js";
 import { writeAuditLog } from "../../../lib/auditLog.js";
 import { logger } from "../../../lib/logger.js";
-import { requireSeasonStatus } from "../../../middleware/seasonGuard.js";
+import { requireSeasonStatus, getCurrentSeasonStatus } from "../../../middleware/seasonGuard.js";
 import { forceAssignSchema } from "../lib/schemas.js";
 import {
   auctionStates,
@@ -57,10 +57,50 @@ function isPrismaNotFound(err: unknown): boolean {
 }
 
 // POST /api/auction/init
-router.post("/init", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+/** Leagues with a start in flight: a double tap can't start (and wipe) twice. */
+const initLocks = new Set<number>();
+
+router.post("/init", requireAuth, asyncHandler(async (req, res) => {
   const leagueId = readLeagueId(req);
   if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
+  // The league's commissioner starts its auction (the Start screen already
+  // offers them the button). A site admin can start any league's, any time.
+  if (!(await isAdminOrCommissioner(req, leagueId))) return res.status(403).json({ error: "Commissioner or admin only" });
+  if (initLocks.has(leagueId)) return res.status(409).json({ error: "The auction is already starting" });
+  initLocks.add(leagueId);
+  try {
+    if (!req.user!.isAdmin) {
+      const refusal = await commissionerStartRefusal(leagueId);
+      if (refusal) return res.status(409).json({ error: refusal });
+    }
+    await startAuction(req, res, leagueId);
+  } finally {
+    initLocks.delete(leagueId);
+  }
+}));
 
+/**
+ * Why a commissioner may not start the auction now, or null. Starting replaces
+ * the whole auction state, so it is refused once the auction is running or
+ * finished, and outside the pre-season (SETUP/DRAFT). Reads the saved row
+ * directly rather than through getState: loadState swallows DB errors and
+ * returns null, which would read as "not started" (fail open). A DB error
+ * here throws instead, so the request fails closed.
+ */
+async function commissionerStartRefusal(leagueId: number): Promise<string | null> {
+  const seasonStatus = await getCurrentSeasonStatus(leagueId);
+  if (seasonStatus !== "SETUP" && seasonStatus !== "DRAFT") return "An auction can only start before the season";
+  const row = await prisma.auctionSession.findUnique({ where: { leagueId }, select: { state: true } });
+  const saved = (row?.state as { status?: string } | null)?.status;
+  const inMemory = auctionStates.get(leagueId)?.status;
+  for (const status of [inMemory, saved]) {
+    if (status === "completed") return "This auction has already finished";
+    if (status && status !== "not_started") return "The auction is already running";
+  }
+  return null;
+}
+
+async function startAuction(req: Request, res: Response, leagueId: number) {
   // Safety net: auto-lock rules and transition Season SETUP → DRAFT if applicable
   try {
     const setupSeason = await prisma.season.findFirst({
@@ -114,7 +154,7 @@ router.post("/init", requireAuth, requireAdmin, asyncHandler(async (req, res) =>
   });
 
   res.json(sanitizeStateForBroadcast(state));
-}));
+}
 
 // POST /api/auction/finish
 router.post("/finish", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
