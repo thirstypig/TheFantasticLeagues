@@ -174,7 +174,7 @@ describe("state fields: paused / nominationEndTime", () => {
     expect(s.nominationEndTime).toBeNull();
   });
 
-  it("old persisted states without the fields load as paused=false, nominationEndTime=null", async () => {
+  it("old persisted states without the fields load as paused=false with a fresh turn clock", async () => {
     const legacy: any = createDefaultState(LEAGUE);
     delete legacy.paused;
     delete legacy.nominationEndTime;
@@ -184,9 +184,13 @@ describe("state fields: paused / nominationEndTime", () => {
     mockLoadState.mockResolvedValueOnce(legacy);
     mockPrisma.team.findMany.mockResolvedValueOnce([]);
 
+    const before = Date.now();
     const s = await getState(LEAGUE);
     expect(s.paused).toBe(false);
-    expect(s.nominationEndTime).toBeNull();
+    // the saved end time is dropped; a live turn gets a fresh clock (rearmTimersAfterLoad)
+    const end = new Date(s.nominationEndTime!).getTime();
+    expect(end).toBeGreaterThanOrEqual(before + s.config.nominationTimer * 1000);
+    clearNominationTimer(LEAGUE);
   });
 
   it("pause in the nominating phase broadcasts paused=true and clears the turn clock; resume restarts it with full time", async () => {

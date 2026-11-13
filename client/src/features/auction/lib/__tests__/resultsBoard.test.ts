@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { snapshotToBoard, type AuctionResultsSnapshot } from '../resultsBoard';
+import { resultsSubtitle, snapshotToBoard, type AuctionResultsSnapshot } from '../resultsBoard';
 
 // Shape copied from server/src/features/auction/routes/stateRoutes.ts GET /results:
 // teams carry id/name/code/budget (= dbBudget - total spent)/dbBudget/keeperSpend/
@@ -70,5 +70,12 @@ describe('snapshotToBoard', () => {
     expect(one.maxBid).toBe(7);
     const broke = snapshotToBoard({ ...snapshot, teams: [{ ...snapshot.teams[0], rosterCount: 5, budget: 3 }] }).teams[0];
     expect(broke.maxBid).toBe(0);
+  });
+});
+
+describe('resultsSubtitle', () => {
+  it('writes the total spend with a thousands comma ($3,155, not $3155)', () => {
+    const big = { ...snapshot, teams: [{ ...snapshot.teams[0], roster: [{ ...snapshot.teams[0].roster[0], price: 3155 }] }] };
+    expect(resultsSubtitle(big as AuctionResultsSnapshot)).toBe('0 sold · $3,155 spent');
   });
 });
