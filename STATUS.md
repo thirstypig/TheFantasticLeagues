@@ -34,7 +34,7 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - Legacy waivers retired (#466); standings cache fix (#465); critical CVEs cleared (#467)
 
 ## In progress
-- Nothing in flight. Step F design review: all suggestions shipped. Draft report "money left" fix in #492.
+- Small polish PR: Switch League shows each league's season ("OGBA · 2026"), and auction results write spend with a comma ("$3,155").
 
 ## Open bugs / known issues
 - Auction: starting an auction needs a site admin.
