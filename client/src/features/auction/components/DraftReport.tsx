@@ -1,8 +1,13 @@
+/*
+ * Draft report (auction retrospective, GET /auction/retrospective): league
+ * summary, bargains and overpays, spending by position, most contested
+ * players, team efficiency and spending pace. Rendered inside the report
+ * page's card, as rows (report.css), so nothing needs a table wider than a
+ * phone. Loaded on demand: the retrospective is computed on request.
+ */
 import React, { useState } from "react";
-import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
-import { ThemedTable, ThemedThead, ThemedTbody, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
-import { Glass, IridText, SectionLabel } from "../../../components/aurora/atoms";
+import "./report.css";
 
 /* ── Types (matches server response) ─────────────────────────────── */
 
@@ -27,7 +32,7 @@ interface QuarterPace {
   quarter: number; avgPrice: number; totalSpent: number; lotsCount: number;
 }
 
-interface RetrospectiveData {
+export interface RetrospectiveData {
   league: {
     totalLots: number; totalSpent: number; avgPrice: number; medianPrice: number;
     mostExpensivePlayer: { playerName: string; position: string; price: number } | null;
@@ -42,53 +47,122 @@ interface RetrospectiveData {
   spendingPace: QuarterPace[];
 }
 
-/* ── Props ───────────────────────────────────────────────────────── */
-
 interface DraftReportProps {
   leagueId: number;
   myTeamId?: number;
 }
 
-/* ── Helpers ─────────────────────────────────────────────────────── */
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+/** "+$6", "-$4", "—" for zero. */
+export const signedMoney = (n: number) => (n === 0 ? "—" : `${n > 0 ? "+" : "-"}$${Math.abs(n)}`);
 
-function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <Glass style={{ padding: 14, textAlign: "center" }}>
-      <SectionLabel style={{ marginBottom: 6 }}>{label}</SectionLabel>
-      <IridText size={22}>{value}</IridText>
-      {sub && (
-        <div
-          style={{
-            fontSize: 13,
-            color: "var(--am-text-faint)",
-            marginTop: 6,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {sub}
-        </div>
-      )}
-    </Glass>
+    <div className="ar-sec">
+      <h3 className="tb-cap">{title}</h3>
+      <div className="ar-sublist">{children}</div>
+    </div>
   );
 }
 
-const AURORA_BTN_BASE: React.CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 6,
-  padding: "6px 12px",
-  fontSize: 13,
-  fontWeight: 600,
-  borderRadius: 99,
-  background: "var(--am-chip-strong)",
-  color: "var(--am-text)",
-  border: "1px solid var(--am-border-strong)",
-  cursor: "pointer",
-};
+function Row({ title, detail, value, sub, me, valueClass }: {
+  title: React.ReactNode; detail?: React.ReactNode; value?: React.ReactNode; sub?: React.ReactNode; me?: boolean; valueClass?: string;
+}) {
+  return (
+    <div className={`ar-row${me ? " me" : ""}`}>
+      <span className="ar-row-t">
+        <b>{title}</b>
+        {detail && <small className="ar-num">{detail}</small>}
+      </span>
+      {(value || sub) && (
+        <span className="ar-row-r">
+          {value && <b className={valueClass}>{value}</b>}
+          {sub && <small>{sub}</small>}
+        </span>
+      )}
+    </div>
+  );
+}
 
-/* ── Component ───────────────────────────────────────────────────── */
+export function DraftReportBody({ data, myTeamId }: { data: RetrospectiveData; myTeamId?: number }) {
+  const lg = data.league;
+  return (
+    <div className="ar-report">
+      <Section title="League summary">
+        <Row title={plural(lg.totalLots, "lot")} detail={`avg $${lg.avgPrice} · median $${lg.medianPrice}`} value={`$${lg.totalSpent}`} sub="spent" />
+        <Row title={plural(lg.totalBidsPlaced, "bid")} detail={`${lg.avgBidsPerLot} per lot`} />
+        {lg.mostExpensivePlayer && (
+          <Row title="Most expensive" detail={`${lg.mostExpensivePlayer.playerName} · ${lg.mostExpensivePlayer.position}`} value={`$${lg.mostExpensivePlayer.price}`} />
+        )}
+        {lg.cheapestWin && (
+          <Row title="Cheapest win" detail={`${lg.cheapestWin.playerName} · ${lg.cheapestWin.position}`} value={`$${lg.cheapestWin.price}`} />
+        )}
+      </Section>
+
+      {data.bargains.length > 0 && (
+        <Section title="Top bargains">
+          {data.bargains.map(b => (
+            <Row key={b.playerName} title={b.playerName} detail={`${b.position} · paid $${b.price}, value $${b.projectedValue}`}
+              value={signedMoney(b.surplus)} valueClass="pos" />
+          ))}
+        </Section>
+      )}
+
+      {data.overpays.length > 0 && (
+        <Section title="Top overpays">
+          {data.overpays.map(o => (
+            <Row key={o.playerName} title={o.playerName} detail={`${o.position} · paid $${o.price}, value $${o.projectedValue}`}
+              value={signedMoney(o.surplus)} valueClass="neg" />
+          ))}
+        </Section>
+      )}
+
+      {data.positionSpending.length > 0 && (
+        <Section title="Spending by position">
+          {data.positionSpending.map(ps => (
+            <Row key={ps.position} title={ps.position} detail={`${plural(ps.playerCount, "player")} · avg $${ps.avgPrice}`} value={`$${ps.totalSpent}`} />
+          ))}
+        </Section>
+      )}
+
+      {data.mostContested.length > 0 && (
+        <Section title="Most contested">
+          {data.mostContested.map(mc => (
+            <Row key={mc.playerName} title={mc.playerName}
+              detail={`${mc.position} · ${plural(mc.bidCount, "bid")} · ${plural(mc.teamsInvolved, "team")}`} value={`$${mc.price}`} />
+          ))}
+        </Section>
+      )}
+
+      {data.teamEfficiency.length > 0 && (
+        <Section title="Team efficiency">
+          {data.teamEfficiency.map(te => (
+            <Row key={te.teamId} me={te.teamId === myTeamId}
+              title={<>{te.teamName}{te.teamId === myTeamId && <span className="ar-you">You</span>}</>}
+              detail={`${plural(te.playersAcquired, "player")} · $${te.totalSpent} spent · avg $${te.avgPrice}`} // budgetRemaining ignores keeper salaries; Results by team shows the true "left"
+              value={signedMoney(te.totalSurplus)} sub="vs value"
+              valueClass={te.totalSurplus > 0 ? "pos" : te.totalSurplus < 0 ? "neg" : undefined} />
+          ))}
+        </Section>
+      )}
+
+      {data.spendingPace.length > 0 && (
+        <Section title="Spending pace">
+          {data.spendingPace.map((q, i) => {
+            const prev = i > 0 ? data.spendingPace[i - 1] : null;
+            const trend = prev && q.avgPrice > 0 && prev.avgPrice > 0
+              ? q.avgPrice > prev.avgPrice ? `up from Q${prev.quarter}` : q.avgPrice < prev.avgPrice ? `down from Q${prev.quarter}` : null
+              : null;
+            return (
+              <Row key={q.quarter} title={`Q${q.quarter} · ${plural(q.lotsCount, "lot")}`} detail={`$${q.totalSpent} total`}
+                value={`$${q.avgPrice}`} sub={trend ? `avg, ${trend}` : "avg"} />
+            );
+          })}
+        </Section>
+      )}
+    </div>
+  );
+}
 
 export default function DraftReport({ leagueId, myTeamId }: DraftReportProps) {
   const [data, setData] = useState<RetrospectiveData | null>(null);
@@ -99,289 +173,29 @@ export default function DraftReport({ leagueId, myTeamId }: DraftReportProps) {
     setLoading(true);
     setError(null);
     try {
-      const result = await fetchJsonApi<RetrospectiveData>(`${API_BASE}/auction/retrospective?leagueId=${leagueId}`);
-      setData(result);
+      setData(await fetchJsonApi<RetrospectiveData>(`${API_BASE}/auction/retrospective?leagueId=${leagueId}`));
     } catch {
-      setError("Could not load draft report");
+      setError("Couldn't load the draft report.");
     } finally {
       setLoading(false);
     }
   }
 
-  if (!data) {
-    return (
-      <div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-          <SectionLabel style={{ marginBottom: 0 }}>Draft report</SectionLabel>
-          <button
-            type="button"
-            onClick={loadReport}
-            disabled={loading}
-            style={{ ...AURORA_BTN_BASE, opacity: loading ? 0.5 : 1 }}
-          >
-            {loading ? "Analyzing…" : "View draft report"}
-          </button>
-        </div>
-        {error && (
-          <div style={{ marginTop: 10, fontSize: 13, color: "var(--am-negative)" }}>
-            {error}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  const { league: lg } = data;
-
   return (
     <div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-        {/* Header */}
-        <SectionLabel style={{ marginBottom: 0 }}>Draft report</SectionLabel>
-
-        {/* ── League Summary ── */}
-        <div>
-          <SectionLabel>League Summary</SectionLabel>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
-            <StatCard label="Total Lots" value={lg.totalLots} />
-            <StatCard label="Total Spent" value={`$${lg.totalSpent}`} />
-            <StatCard label="Avg Price" value={`$${lg.avgPrice}`} />
-            <StatCard label="Median Price" value={`$${lg.medianPrice}`} />
-            <StatCard label="Total Bids" value={lg.totalBidsPlaced} />
-            <StatCard label="Avg Bids/Lot" value={lg.avgBidsPerLot} />
-            <StatCard
-              label="Most Expensive"
-              value={lg.mostExpensivePlayer ? `$${lg.mostExpensivePlayer.price}` : "—"}
-              sub={lg.mostExpensivePlayer ? `${lg.mostExpensivePlayer.playerName} (${lg.mostExpensivePlayer.position})` : undefined}
-            />
-            <StatCard
-              label="Cheapest Win"
-              value={lg.cheapestWin ? `$${lg.cheapestWin.price}` : "—"}
-              sub={lg.cheapestWin ? `${lg.cheapestWin.playerName} (${lg.cheapestWin.position})` : undefined}
-            />
-          </div>
-        </div>
-
-        {/* ── Bargains & Overpays ── */}
-        {(data.bargains.length > 0 || data.overpays.length > 0) && (
-          <div>
-            <SectionLabel>Bargains & Overpays</SectionLabel>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
-              {data.bargains.length > 0 && (
-                <Glass
-                  style={{
-                    padding: 14,
-                    border: "1px solid rgba(16, 185, 129, 0.3)",
-                    background: "rgba(16, 185, 129, 0.05)",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                    <TrendingUp size={14} style={{ color: "var(--am-positive)" }} />
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-positive)", letterSpacing: 0.4, textTransform: "uppercase" }}>
-                      Top Bargains
-                    </span>
-                  </div>
-                  <ThemedTable>
-                    <ThemedThead>
-                      <ThemedTr>
-                        <ThemedTh>Player</ThemedTh>
-                        <ThemedTh className="text-right">Price</ThemedTh>
-                        <ThemedTh className="text-right">Value</ThemedTh>
-                        <ThemedTh className="text-right">Surplus</ThemedTh>
-                      </ThemedTr>
-                    </ThemedThead>
-                    <ThemedTbody>
-                      {data.bargains.map(b => (
-                        <ThemedTr key={b.playerName}>
-                          <ThemedTd>
-                            <span className="font-medium text-[var(--lg-text-primary)]">{b.playerName}</span>
-                            <span className="text-xs text-[var(--lg-text-muted)] ml-1">{b.position}</span>
-                          </ThemedTd>
-                          <ThemedTd className="text-right tabular-nums">${b.price}</ThemedTd>
-                          <ThemedTd className="text-right tabular-nums">${b.projectedValue}</ThemedTd>
-                          <ThemedTd className="text-right tabular-nums font-semibold">
-                            <span style={{ color: "var(--am-positive)" }}>+${b.surplus}</span>
-                          </ThemedTd>
-                        </ThemedTr>
-                      ))}
-                    </ThemedTbody>
-                  </ThemedTable>
-                </Glass>
-              )}
-              {data.overpays.length > 0 && (
-                <Glass
-                  style={{
-                    padding: 14,
-                    border: "1px solid rgba(239, 68, 68, 0.3)",
-                    background: "rgba(239, 68, 68, 0.05)",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                    <TrendingDown size={14} style={{ color: "var(--am-negative)" }} />
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--am-negative)", letterSpacing: 0.4, textTransform: "uppercase" }}>
-                      Top Overpays
-                    </span>
-                  </div>
-                  <ThemedTable>
-                    <ThemedThead>
-                      <ThemedTr>
-                        <ThemedTh>Player</ThemedTh>
-                        <ThemedTh className="text-right">Price</ThemedTh>
-                        <ThemedTh className="text-right">Value</ThemedTh>
-                        <ThemedTh className="text-right">Surplus</ThemedTh>
-                      </ThemedTr>
-                    </ThemedThead>
-                    <ThemedTbody>
-                      {data.overpays.map(o => (
-                        <ThemedTr key={o.playerName}>
-                          <ThemedTd>
-                            <span className="font-medium text-[var(--lg-text-primary)]">{o.playerName}</span>
-                            <span className="text-xs text-[var(--lg-text-muted)] ml-1">{o.position}</span>
-                          </ThemedTd>
-                          <ThemedTd className="text-right tabular-nums">${o.price}</ThemedTd>
-                          <ThemedTd className="text-right tabular-nums">${o.projectedValue}</ThemedTd>
-                          <ThemedTd className="text-right tabular-nums font-semibold">
-                            <span style={{ color: "var(--am-negative)" }}>${o.surplus}</span>
-                          </ThemedTd>
-                        </ThemedTr>
-                      ))}
-                    </ThemedTbody>
-                  </ThemedTable>
-                </Glass>
-              )}
-            </div>
-          </div>
+      <div className="ar-card-h" style={data ? undefined : { marginBottom: 0 }}>
+        <h2 className="tb-cap">Draft report</h2>
+        {!data && (
+          <button type="button" className="ar-btn" onClick={loadReport} disabled={loading}>
+            {loading ? "Analyzing…" : "View draft report"}
+          </button>
         )}
-
-        {/* ── Position Spending ── */}
-        <div>
-          <SectionLabel>Spending by Position</SectionLabel>
-          <div className="overflow-x-auto">
-            <ThemedTable>
-              <ThemedThead>
-                <ThemedTr>
-                  <ThemedTh>Position</ThemedTh>
-                  <ThemedTh className="text-right">Players</ThemedTh>
-                  <ThemedTh className="text-right">Total Spent</ThemedTh>
-                  <ThemedTh className="text-right">Avg Price</ThemedTh>
-                </ThemedTr>
-              </ThemedThead>
-              <ThemedTbody>
-                {data.positionSpending.map(ps => (
-                  <ThemedTr key={ps.position}>
-                    <ThemedTd className="font-semibold text-[var(--lg-text-primary)]">{ps.position}</ThemedTd>
-                    <ThemedTd className="text-right tabular-nums">{ps.playerCount}</ThemedTd>
-                    <ThemedTd className="text-right tabular-nums">${ps.totalSpent}</ThemedTd>
-                    <ThemedTd className="text-right tabular-nums">${ps.avgPrice}</ThemedTd>
-                  </ThemedTr>
-                ))}
-              </ThemedTbody>
-            </ThemedTable>
-          </div>
-        </div>
-
-        {/* ── Most Contested ── */}
-        <div>
-          <SectionLabel>Most Contested Players</SectionLabel>
-          <div className="overflow-x-auto">
-            <ThemedTable>
-              <ThemedThead>
-                <ThemedTr>
-                  <ThemedTh>Player</ThemedTh>
-                  <ThemedTh className="text-right">Price</ThemedTh>
-                  <ThemedTh className="text-right">Bids</ThemedTh>
-                  <ThemedTh className="text-right">Teams</ThemedTh>
-                </ThemedTr>
-              </ThemedThead>
-              <ThemedTbody>
-                {data.mostContested.map(mc => (
-                  <ThemedTr key={mc.playerName}>
-                    <ThemedTd>
-                      <span className="font-medium text-[var(--lg-text-primary)]">{mc.playerName}</span>
-                      <span className="text-xs text-[var(--lg-text-muted)] ml-1">{mc.position}</span>
-                    </ThemedTd>
-                    <ThemedTd className="text-right tabular-nums font-semibold">
-                      <span style={{ color: "var(--am-text)" }}>${mc.price}</span>
-                    </ThemedTd>
-                    <ThemedTd className="text-right tabular-nums">{mc.bidCount}</ThemedTd>
-                    <ThemedTd className="text-right tabular-nums">{mc.teamsInvolved}</ThemedTd>
-                  </ThemedTr>
-                ))}
-              </ThemedTbody>
-            </ThemedTable>
-          </div>
-        </div>
-
-        {/* ── Team Efficiency ── */}
-        <div>
-          <SectionLabel>Team Efficiency</SectionLabel>
-          <div className="overflow-x-auto">
-            <ThemedTable>
-              <ThemedThead>
-                <ThemedTr>
-                  <ThemedTh>Team</ThemedTh>
-                  <ThemedTh className="text-right">Spent</ThemedTh>
-                  <ThemedTh className="text-right">Players</ThemedTh>
-                  <ThemedTh className="text-right">Avg $</ThemedTh>
-                  <ThemedTh className="text-right">Left</ThemedTh>
-                  <ThemedTh className="text-right">Surplus</ThemedTh>
-                </ThemedTr>
-              </ThemedThead>
-              <ThemedTbody>
-                {data.teamEfficiency.map(te => (
-                  <ThemedTr key={te.teamId} className={te.teamId === myTeamId ? "bg-[var(--lg-tint)]" : ""}>
-                    <ThemedTd className="font-medium text-[var(--lg-text-primary)]">{te.teamName}</ThemedTd>
-                    <ThemedTd className="text-right tabular-nums">${te.totalSpent}</ThemedTd>
-                    <ThemedTd className="text-right tabular-nums">{te.playersAcquired}</ThemedTd>
-                    <ThemedTd className="text-right tabular-nums">${te.avgPrice}</ThemedTd>
-                    <ThemedTd className="text-right tabular-nums">${te.budgetRemaining}</ThemedTd>
-                    <ThemedTd className="text-right tabular-nums font-semibold">
-                      <span
-                        style={{
-                          color:
-                            te.totalSurplus > 0 ? "var(--am-positive)" :
-                            te.totalSurplus < 0 ? "var(--am-negative)" :
-                            undefined,
-                        }}
-                      >
-                        {te.totalSurplus > 0 ? "+" : ""}{te.totalSurplus === 0 ? "—" : `$${te.totalSurplus}`}
-                      </span>
-                    </ThemedTd>
-                  </ThemedTr>
-                ))}
-              </ThemedTbody>
-            </ThemedTable>
-          </div>
-        </div>
-
-        {/* ── Spending Pace ── */}
-        <div>
-          <SectionLabel>Spending Pace</SectionLabel>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
-            {data.spendingPace.map((q, i) => {
-              const prev = i > 0 ? data.spendingPace[i - 1] : null;
-              const trend = prev && q.avgPrice > 0 && prev.avgPrice > 0
-                ? q.avgPrice > prev.avgPrice ? "up" : q.avgPrice < prev.avgPrice ? "down" : null
-                : null;
-              return (
-                <Glass key={q.quarter} style={{ padding: 14, textAlign: "center" }}>
-                  <SectionLabel style={{ marginBottom: 6 }}>
-                    Q{q.quarter} · {q.lotsCount} lots
-                  </SectionLabel>
-                  <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
-                    <IridText size={22}>${q.avgPrice}</IridText>
-                    {trend === "up" && <ArrowUpRight size={14} style={{ color: "var(--am-negative)" }} />}
-                    {trend === "down" && <ArrowDownRight size={14} style={{ color: "var(--am-positive)" }} />}
-                  </div>
-                  <div style={{ fontSize: 13, color: "var(--am-text-faint)", marginTop: 4 }}>
-                    avg · ${q.totalSpent} total
-                  </div>
-                </Glass>
-              );
-            })}
-          </div>
-        </div>
       </div>
+      {!data && !error && (
+        <p className="tb-sub" style={{ marginTop: 8 }}>Bargains, overpays, spending by position and team, and how prices moved.</p>
+      )}
+      {error && <p className="ar-error" role="alert" style={{ marginTop: 8 }}>{error}</p>}
+      {data && <DraftReportBody data={data} myTeamId={myTeamId} />}
     </div>
   );
 }

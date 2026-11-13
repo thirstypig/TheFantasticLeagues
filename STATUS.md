@@ -34,7 +34,7 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - Legacy waivers retired (#466); standings cache fix (#465); critical CVEs cleared (#467)
 
 ## In progress
-- Nothing in flight. Step F design review done 2026-11-12; open suggestions: draft report tables on phone, results title, phone team rows, turn order strip, unexplained disabled buttons.
+- Nothing in flight. Step F design review done 2026-11-12; open suggestions: results title, phone team rows, turn order strip, unexplained disabled buttons.
 
 ## Open bugs / known issues
 - Auction: a server restart mid-auction doesn't re-arm turn/lot timers; starting an auction needs a site admin.

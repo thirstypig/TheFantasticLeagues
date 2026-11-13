@@ -61,6 +61,14 @@ button.ar-row { cursor: pointer; }
   border-radius: 12px; background: var(--am-chip-strong); font-size: 13px; font-weight: 700; vertical-align: 2px;
 }
 .ar-chev { flex: none; font-size: 15px; color: var(--am-text-muted); width: 16px; text-align: center; }
+/* Draft report: titled sub-lists that run edge to edge inside the card. */
+.ar-report { display: flex; flex-direction: column; gap: 16px; }
+.ar-sec .tb-cap { margin: 0 0 4px; }
+.ar-sublist { margin: 0 -16px; border-top: 1px solid var(--am-border); border-bottom: 1px solid var(--am-border); }
+.ar-sublist > .ar-row:first-child { border-top: 0; }
+.ar-report > .ar-sec:last-child .ar-sublist { border-bottom: 0; margin-bottom: -16px; }
+.ar-row-r b.pos { color: var(--am-positive); }
+.ar-row-r b.neg { color: var(--am-negative); }
 .ar-grade { flex: none; font-family: var(--am-display); font-size: 24px; font-weight: 700; color: var(--am-text); }
 
 /* Expanded team: roster rows */
