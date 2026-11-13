@@ -121,11 +121,13 @@ function PhoneBoard({ teams, config, myTeamId, mode }: TeamBoardProps) {
 
   const needs = teamNeeds(selected, config);
   const groups = boardGroups(selected, config);
+  // Your team's chip comes first (Style Bible screen 11), so it never scrolls off.
+  const chipOrder = [...teams.filter(t => t.id === myTeamId), ...teams.filter(t => t.id !== myTeamId)];
 
   return (
     <div className="tb" data-mode={mode}>
       <div className="tb-chips" role="group" aria-label="Teams">
-        {teams.map(t => (
+        {chipOrder.map(t => (
           <button
             key={t.id}
             type="button"

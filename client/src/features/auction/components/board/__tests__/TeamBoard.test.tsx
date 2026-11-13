@@ -105,6 +105,14 @@ describe('TeamBoard — phone card', () => {
     expect(screen.getByText('Max bid $80 · 22 spots open')).toBeTruthy();
   });
 
+  it('puts my team chip first, the rest in their order', () => {
+    setPhone(true);
+    render(<TeamBoard teams={teams} config={config} mode="live" myTeamId={teams[teams.length - 1].id} />);
+    const chips = screen.getAllByRole('button').filter(b => b.className.includes('tb-chip')).map(b => b.textContent);
+    const last = teams[teams.length - 1].name;
+    expect(chips).toEqual([last, ...teams.slice(0, -1).map(t => t.name)]);
+  });
+
   it('switches the card when another team chip is tapped', () => {
     setPhone(true);
     render(<TeamBoard teams={teams} config={config} mode="live" />);

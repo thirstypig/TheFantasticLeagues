@@ -27,7 +27,7 @@ describe('BidBar', () => {
   it('shows +1, +5 and Type an amount, plus the spend line', () => {
     setup();
     expect(screen.getByRole('button', { name: 'Bid $35' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: '$39' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Bid $39' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Type an amount' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Set a max bid' })).toBeTruthy();
     expect(screen.getByText(/You can spend up to/).textContent).toBe('You can spend up to $61');
@@ -42,14 +42,14 @@ describe('BidBar', () => {
     const p = setup();
     fireEvent.click(screen.getByRole('button', { name: 'Bid $35' }));
     await waitFor(() => expect(p.onBid).toHaveBeenCalledWith(35));
-    fireEvent.click(screen.getByRole('button', { name: '$39' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Bid $39' }));
     await waitFor(() => expect(p.onBid).toHaveBeenCalledWith(39));
   });
 
   it('disables a button above my max bid', () => {
     setup({ myTeam: { ...me, maxBid: 37 } });
     expect((screen.getByRole('button', { name: 'Bid $35' }) as HTMLButtonElement).disabled).toBe(false);
-    expect((screen.getByRole('button', { name: '$39' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Bid $39' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it.each([
