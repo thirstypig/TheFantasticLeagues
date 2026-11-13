@@ -69,9 +69,31 @@ const LeagueContext = createContext<LeagueContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'fbst-league-id';
 
+type MembershipLike = { leagueId: number | string; role: string };
+
+/**
+ * Which league to show. The current pick stays while it is one of the user's
+ * (a membership, or in their league list, which covers admins). Otherwise:
+ * their primary league (first OWNER membership, else first membership), else
+ * the first league in the list. `leagues` is null until the list has loaded;
+ * until then only a membership counts, and a non-member pick waits rather
+ * than being thrown away early.
+ */
+export function resolveLeagueId(current: number, memberships: MembershipLike[], leagues: { id: number }[] | null): number {
+  const memberIds = memberships.map(m => Number(m.leagueId)).filter(n => Number.isFinite(n) && n > 0);
+  if (memberIds.includes(current)) return current;
+  if (leagues === null) return current;
+  if (leagues.some(l => l.id === current)) return current;
+  const owner = memberships.find(m => m.role === 'OWNER');
+  const primary = owner ? Number(owner.leagueId) : memberIds[0];
+  if (primary && Number.isFinite(primary)) return primary;
+  return leagues[0]?.id ?? current;
+}
+
 export function LeagueProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [leagues, setLeagues] = useState<LeagueListItem[]>([]);
+  const [leaguesLoaded, setLeaguesLoaded] = useState(false);
   const [outfieldMode, setOutfieldMode] = useState("OF");
   const [scoringFormat, setScoringFormat] = useState("ROTO");
   const [myTeamId, setMyTeamId] = useState<number | null>(null);
@@ -82,32 +104,24 @@ export function LeagueProvider({ children }: { children: React.ReactNode }) {
     return stored ? Number(stored) : 1;
   });
 
-  // Sync leagueId with user's primary membership
+  // Keep the picked league while it is still one of the user's; otherwise fall
+  // back to their primary league. Runs on every /auth/me refresh (each token
+  // refresh, about hourly), so it must never override a valid pick.
   useEffect(() => {
-    if (user?.memberships?.length) {
-      const ownerMembership = user.memberships.find(m => m.role === 'OWNER');
-      const primaryLeagueId = Number(ownerMembership?.leagueId ?? user.memberships[0].leagueId);
-      if (primaryLeagueId && Number.isFinite(primaryLeagueId)) {
-        setLeagueIdState(primaryLeagueId);
-        localStorage.setItem(STORAGE_KEY, String(primaryLeagueId));
-      }
+    if (!user) return;
+    const next = resolveLeagueId(leagueId, user.memberships ?? [], leaguesLoaded ? leagues : null);
+    if (next !== leagueId) {
+      setLeagueIdState(next);
+      localStorage.setItem(STORAGE_KEY, String(next));
     }
-  }, [user]);
-
-  // Validate stored leagueId against actual leagues — fall back if invalid
-  useEffect(() => {
-    if (leagues.length > 0 && !leagues.some(l => l.id === leagueId)) {
-      const fallback = leagues[0].id;
-      setLeagueIdState(fallback);
-      localStorage.setItem(STORAGE_KEY, String(fallback));
-    }
-  }, [leagues, leagueId]);
+  }, [user, leagues, leaguesLoaded, leagueId]);
 
   const refreshLeagues = useCallback(() => {
     if (!user) return;
     getLeagues()
       .then((resp) => setLeagues(resp.leagues ?? []))
-      .catch(() => setLeagues([]));
+      .catch(() => setLeagues([]))
+      .finally(() => setLeaguesLoaded(true));
   }, [user]);
 
   useEffect(() => {
@@ -115,6 +129,7 @@ export function LeagueProvider({ children }: { children: React.ReactNode }) {
       refreshLeagues();
     } else {
       setLeagues([]);
+      setLeaguesLoaded(false);
     }
   }, [user, refreshLeagues]);
 
