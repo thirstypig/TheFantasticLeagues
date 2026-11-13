@@ -23,6 +23,7 @@ vi.mock("../../../db/prisma.js", () => ({
     leagueMembership: { findUnique: vi.fn() },
     leagueRule: { findUnique: vi.fn(), findMany: vi.fn() },
     season: { findFirst: vi.fn() },
+    auctionSession: { findUnique: vi.fn() },
   },
 }));
 vi.mock("../../../lib/logger.js", () => ({
@@ -47,9 +48,10 @@ vi.mock("../../../middleware/auth.js", () => {
     requireCommissionerOrAdmin: () => (_req: any, _res: any, next: () => void) => next(),
   };
 });
+const seasonNow = vi.hoisted(() => ({ status: "DRAFT" as string | null }));
 vi.mock("../../../middleware/seasonGuard.js", () => ({
   requireSeasonStatus: () => (_req: unknown, _res: unknown, next: () => void) => next(),
-  getCurrentSeasonStatus: async () => "DRAFT",
+  getCurrentSeasonStatus: async () => seasonNow.status,
 }));
 vi.mock("../../../lib/auditLog.js", () => ({ writeAuditLog: vi.fn() }));
 vi.mock("../../../lib/rosterGuard.js", () => ({ assertPlayerAvailable: vi.fn() }));
@@ -400,6 +402,56 @@ describe("4: commissioner may undo and end; a plain owner may not", () => {
     const res = await supertest(app).post("/init").set(as(COMMISH)).send({ leagueId: LEAGUE });
     expect(res.status).toBe(200);
     expect(auctionStates.get(LEAGUE)!.status).toBe("nominating");
+    clearNominationTimer(LEAGUE);
+  });
+
+  it("/init: a commissioner can't start once the season is under way", async () => {
+    seasonNow.status = "IN_SEASON";
+    try {
+      auctionStates.set(LEAGUE, createDefaultState(LEAGUE));
+      const res = await supertest(app).post("/init").set(as(COMMISH)).send({ leagueId: LEAGUE });
+      expect(res.status).toBe(409);
+      expect(res.body.error).toBe("An auction can only start before the season");
+      expect(auctionStates.get(LEAGUE)!.status).toBe("not_started");
+    } finally {
+      seasonNow.status = "DRAFT";
+    }
+  });
+
+  it("/init: a saved live auction counts even when nothing is in memory (no fail-open)", async () => {
+    auctionStates.clear();
+    mockPrisma.auctionSession.findUnique.mockResolvedValueOnce({ state: { status: "bidding" } });
+    const res = await supertest(app).post("/init").set(as(COMMISH)).send({ leagueId: LEAGUE });
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe("The auction is already running");
+    expect(auctionStates.has(LEAGUE)).toBe(false);
+  });
+
+  it("/init: a DB error reading the saved auction refuses the start (fails closed)", async () => {
+    auctionStates.clear();
+    mockPrisma.auctionSession.findUnique.mockRejectedValueOnce(new Error("db down"));
+    const res = await supertest(app).post("/init").set(as(COMMISH)).send({ leagueId: LEAGUE });
+    expect(res.status).toBeGreaterThanOrEqual(500);
+    expect(auctionStates.has(LEAGUE)).toBe(false);
+  });
+
+  it("/init: a second tap while the first start is in flight is refused", async () => {
+    // Hold the first start mid-flight (its first DB read) so the two really overlap.
+    let release!: () => void;
+    const held = new Promise<null>(r => { release = () => r(null); });
+    mockPrisma.season.findFirst.mockReturnValueOnce(held as never).mockResolvedValue(null);
+    mockPrisma.leagueRule.findMany.mockResolvedValue([]);
+    mockPrisma.leagueRule.findUnique.mockResolvedValue(null);
+    mockPrisma.team.findMany.mockResolvedValue([]);
+    auctionStates.set(LEAGUE, createDefaultState(LEAGUE));
+
+    const first = supertest(app).post("/init").set(as(COMMISH)).send({ leagueId: LEAGUE }).then(r => r);
+    await vi.waitFor(() => expect(mockPrisma.season.findFirst).toHaveBeenCalled());
+    const second = await supertest(app).post("/init").set(as(COMMISH)).send({ leagueId: LEAGUE });
+    expect(second.status).toBe(409);
+    expect(second.body.error).toBe("The auction is already starting");
+    release();
+    expect((await first).status).toBe(200);
     clearNominationTimer(LEAGUE);
   });
 
