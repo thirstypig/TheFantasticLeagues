@@ -18,6 +18,11 @@ import { ACCOUNT_LINKS, activeTabFor, buildPrimaryTabs } from "../../lib/navMode
 import { Glass, SectionLabel } from "./atoms";
 import "./aurora.css";
 
+/** A league in Switch League: name plus season, since one franchise keeps its name every year ("OGBA · 2026"). */
+export function leagueOptionLabel(l: { name: string; season?: number | null }): string {
+  return l.season ? `${l.name} · ${l.season}` : l.name;
+}
+
 export default function AuroraShell({ children }: { children: React.ReactNode }) {
   const nav = useNavigate();
   const location = useLocation();
@@ -227,7 +232,7 @@ export default function AuroraShell({ children }: { children: React.ReactNode })
                           }}
                           style={popoverRowStyle(l.id === leagueId)}
                         >
-                          {l.name}
+                          {leagueOptionLabel(l)}
                         </button>
                       ))}
                     </div>

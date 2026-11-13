@@ -74,7 +74,7 @@ export function resultsSubtitle(snapshot: AuctionResultsSnapshot): string | null
   const sold = log.filter(e => e.type === 'WIN' && !e.undone).length;
   const spent = snapshot.teams.reduce((sum, t) => sum + t.roster.reduce((s, r) => s + (Number(r.price) || 0), 0), 0);
   const ends = log.filter(e => e.type === 'END').map(e => e.timestamp).filter(ts => Number.isFinite(ts) && ts > 0);
-  const parts = [`${sold} sold`, `$${spent} spent`];
+  const parts = [`${sold} sold`, `$${spent.toLocaleString('en-US')} spent`];
   if (ends.length) {
     const d = new Date(Math.max(...ends));
     parts.unshift(`Ended ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`);
