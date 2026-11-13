@@ -386,9 +386,35 @@ describe("4: commissioner may undo and end; a plain owner may not", () => {
     expect(mockBroadcast).not.toHaveBeenCalled();
   });
 
-  it("/init stays admin-only (commissioner 403)", async () => {
-    const res = await supertest(app).post("/init").set(as(COMMISH)).send({ leagueId: LEAGUE });
+  it("/init: a plain owner can't start the auction", async () => {
+    const res = await supertest(app).post("/init").set(as(OWNER_A)).send({ leagueId: LEAGUE });
     expect(res.status).toBe(403);
+  });
+
+  it("/init: the commissioner starts an auction that hasn't started", async () => {
+    mockPrisma.season.findFirst.mockResolvedValue(null);
+    mockPrisma.leagueRule.findMany.mockResolvedValue([]);
+    mockPrisma.leagueRule.findUnique.mockResolvedValue(null);
+    mockPrisma.team.findMany.mockResolvedValue([]);
+    auctionStates.set(LEAGUE, createDefaultState(LEAGUE));
+    const res = await supertest(app).post("/init").set(as(COMMISH)).send({ leagueId: LEAGUE });
+    expect(res.status).toBe(200);
+    expect(auctionStates.get(LEAGUE)!.status).toBe("nominating");
+    clearNominationTimer(LEAGUE);
+  });
+
+  it("/init: the commissioner can't restart a live or finished auction (it would wipe it)", async () => {
+    const s = seedNominating();
+    const live = await supertest(app).post("/init").set(as(COMMISH)).send({ leagueId: LEAGUE });
+    expect(live.status).toBe(409);
+    expect(live.body.error).toBe("The auction is already running");
+    expect(auctionStates.get(LEAGUE)).toBe(s);
+
+    s.status = "completed";
+    const done = await supertest(app).post("/init").set(as(COMMISH)).send({ leagueId: LEAGUE });
+    expect(done.status).toBe(409);
+    expect(done.body.error).toBe("This auction has already finished");
+    expect(auctionStates.get(LEAGUE)).toBe(s);
   });
 });
 

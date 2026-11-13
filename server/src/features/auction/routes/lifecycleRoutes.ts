@@ -57,9 +57,22 @@ function isPrismaNotFound(err: unknown): boolean {
 }
 
 // POST /api/auction/init
-router.post("/init", requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+router.post("/init", requireAuth, asyncHandler(async (req, res) => {
   const leagueId = readLeagueId(req);
   if (!leagueId) return res.status(400).json({ error: "Missing leagueId" });
+  // The league's commissioner starts its auction (the Start screen already
+  // offers them the button). Starting again replaces the whole auction state,
+  // so a commissioner can't do that to a live or finished auction; a site
+  // admin still can (and has /reset).
+  if (!(await isAdminOrCommissioner(req, leagueId))) return res.status(403).json({ error: "Commissioner or admin only" });
+  if (!req.user!.isAdmin) {
+    const current = await getState(leagueId);
+    if (current.status !== "not_started") {
+      return res.status(409).json({
+        error: current.status === "completed" ? "This auction has already finished" : "The auction is already running",
+      });
+    }
+  }
 
   // Safety net: auto-lock rules and transition Season SETUP → DRAFT if applicable
   try {
