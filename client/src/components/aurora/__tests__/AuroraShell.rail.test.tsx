@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import AuroraShell from "../AuroraShell";
+import AuroraShell, { leagueOptionLabel } from "../AuroraShell";
 
 let isAdmin = false;
 
@@ -12,7 +12,10 @@ vi.mock("../../../contexts/LeagueContext", () => ({
   useLeague: () => ({
     leagueId: 20,
     setLeagueId: vi.fn(),
-    leagues: [{ id: 20, name: "OGBA", access: { type: "MEMBER", role: "OWNER" } }],
+    leagues: [
+      { id: 20, name: "OGBA", season: 2026, access: { type: "MEMBER", role: "OWNER" } },
+      { id: 1, name: "OGBA", season: 2025, access: { type: "MEMBER", role: "OWNER" } },
+    ],
     draftMode: null,
     myTeamCode: "LDY",
     currentSeason: 2026,
@@ -88,5 +91,18 @@ describe("AuroraShell left rail", () => {
     renderAt("/");
     fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
     expect(screen.getByRole("button", { name: "Admin" })).toBeInTheDocument();
+  });
+});
+
+describe("Switch League labels", () => {
+  it("names each league with its season so same-named years are told apart", () => {
+    renderAt("/");
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    expect(screen.getByRole("button", { name: "OGBA · 2026" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "OGBA · 2025" })).toBeInTheDocument();
+  });
+
+  it("falls back to the bare name when a league has no season", () => {
+    expect(leagueOptionLabel({ name: "OGBA", season: null })).toBe("OGBA");
   });
 });
