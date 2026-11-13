@@ -1,6 +1,6 @@
 # STATUS
 
-**Last updated:** 2026-11-12
+**Last updated:** 2026-11-13
 
 ## One-line description
 The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with auctions, keepers and a commissioner. It replaces spreadsheets and OnRoto for the OGBA league.
@@ -28,13 +28,13 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
   - commissioner hub, theme, four-tab shell, Today page (#473–#476)
   - steps A–E: style, rules, commissioner, rosters, trades, players and player card (#477–#482)
   - team page (#483)
-  - step F: auction screens 8–11, auction engine safety fixes, live auction socket fixed, ~6,800 lines of dead auction code deleted (#487), plus design-review polish (phone best-available list, named undo, "you're up after") (#489), rebuilt post-auction report
+  - step F: auction screens 8–11, auction engine safety fixes, live auction socket fixed, ~6,800 lines of dead auction code deleted (#487), plus design-review polish (phone best-available list, named undo, "you're up after") (#489), rebuilt post-auction report (#490), review polish (results title, phone team rows, turn order, grayed-button reasons)
 - Sport-agnostic standings rows (#469)
 - Final 2026 audit: every gap against FanGraphs and OnRoto explained (#470, #471)
 - Legacy waivers retired (#466); standings cache fix (#465); critical CVEs cleared (#467)
 
 ## In progress
-- Nothing in flight. Step F design review done 2026-11-12; open suggestions: results title, phone team rows, turn order strip, unexplained disabled buttons.
+- Nothing in flight. Step F design review: all suggestions shipped. Draft report "money left" fix in #492.
 
 ## Open bugs / known issues
 - Auction: a server restart mid-auction doesn't re-arm turn/lot timers; starting an auction needs a site admin.

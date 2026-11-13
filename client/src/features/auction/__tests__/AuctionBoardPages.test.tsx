@@ -54,6 +54,34 @@ describe('/auction-results', () => {
     expect(await screen.findByText('REPORT PAGE')).toBeTruthy();
   });
 
+  it('a finished auction is titled Auction results with end date, sales and spend', async () => {
+    const ended = new Date(2026, 10, 12, 21, 5).getTime();
+    fetchJsonApi.mockResolvedValue({
+      ...snapshot,
+      log: [
+        { type: 'END', timestamp: ended, message: 'end' },
+        { type: 'WIN', teamId: 1, playerName: 'Juan Soto', amount: 40, timestamp: ended - 60_000, message: 'w' },
+        { type: 'WIN', teamId: 1, playerName: 'Undone Guy', amount: 5, timestamp: ended - 120_000, message: 'w', undone: true },
+      ],
+    });
+    render(<MemoryRouter><AuctionResults /></MemoryRouter>);
+    expect(await screen.findByRole('heading', { name: 'Auction results' })).toBeTruthy();
+    expect(screen.getByText('Ended Nov 12 · 1 sold · $40 spent')).toBeTruthy();
+  });
+
+  it('without an END entry the subtitle leaves the date out', async () => {
+    fetchJsonApi.mockResolvedValue(snapshot);
+    render(<MemoryRouter><AuctionResults /></MemoryRouter>);
+    expect(await screen.findByText('0 sold · $40 spent')).toBeTruthy();
+  });
+
+  it('a running auction keeps the team board title', async () => {
+    fetchJsonApi.mockResolvedValue({ ...snapshot, status: 'nominating' });
+    render(<MemoryRouter><AuctionResults /></MemoryRouter>);
+    expect(await screen.findByRole('heading', { name: 'Auction · team board' })).toBeTruthy();
+    expect(screen.queryByText(/sold ·/)).toBeNull();
+  });
+
   it('shows no link before an auction has run', async () => {
     fetchJsonApi.mockResolvedValue({ ...snapshot, status: 'not_started' });
     render(<MemoryRouter><AuctionResults /></MemoryRouter>);

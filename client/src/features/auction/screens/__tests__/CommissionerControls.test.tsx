@@ -387,3 +387,45 @@ describe('shortPlayerName / undoLabels', () => {
     expect(undoLabels({ timestamp: 1, amount: 5 }).text).toBe('Undo last sale');
   });
 });
+
+describe('Commissioner controls · why a control is grayed out', () => {
+  it('phone: with nothing sold the undo button says so; the Skip row says when it works', async () => {
+    setPhone(true);
+    route({ ...bidding, log: bidding.log.filter(e => e.type !== 'WIN') });
+    render(<Harness />);
+    const undo = await screen.findByRole('button', { name: /^Undo last sale/ }) as HTMLButtonElement;
+    expect(undo.textContent).toBe('Nothing sold yet');
+    expect(undo.disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'More ›' }));
+    const skip = screen.getByRole('button', { name: /Skip this team's turn/ });
+    expect(within(skip).getByText('Only while a team is choosing')).toBeTruthy();
+  });
+
+  it('phone: the Skip row has no reason while a team is choosing', async () => {
+    setPhone(true);
+    route(nominating);
+    render(<Harness />);
+    fireEvent.click(await screen.findByRole('button', { name: 'More ›' }));
+    expect(screen.queryByText('Only while a team is choosing')).toBeNull();
+  });
+
+  it('desktop: Undo says why in its label; a hint line says why Skip is off while a lot is up', async () => {
+    setPhone(false);
+    route(bidding);
+    render(<Harness />);
+    const hint = await screen.findByTestId('cb-hint');
+    expect(hint.textContent).toBe('Skip turn: only while a team is choosing');
+    const undo = screen.getByRole('button', { name: /^Undo last sale/ });
+    // while a player is up the label doesn't name the last sale (selling this one would change it)
+    expect(undo.textContent).toBe('Undo between players');
+    expect(undo.getAttribute('title')).toBe('Undo works between players');
+  });
+
+  it('desktop: no hint when every control works', async () => {
+    setPhone(false);
+    route(nominating);
+    render(<Harness />);
+    await screen.findByRole('button', { name: /^Undo last sale/ });
+    expect(screen.queryByTestId('cb-hint')).toBeNull();
+  });
+});

@@ -100,7 +100,7 @@ export default function BidBar({
           Bid ${plus1}
         </button>
         <button type="button" className="la-btn" disabled={busy || plus5 > myTeam.maxBid} onClick={() => bid(plus5)}>
-          ${plus5}
+          Bid ${plus5}
         </button>
         <button type="button" className="la-btn" disabled={busy} onClick={() => { setTyping(true); setError(null); }}>
           {compact ? 'Type' : 'Type an amount'}

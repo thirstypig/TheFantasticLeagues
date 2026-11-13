@@ -6,7 +6,7 @@ vi.mock('../../../../../components/shared/playerCard/PlayerCardProvider', () => 
   PlayerLink: ({ name }: { name: string }) => <span>{name}</span>,
 }));
 
-import TeamsPanel from '../TeamsPanel';
+import TeamsPanel, { phoneTeamLine } from '../TeamsPanel';
 import OrderStrip from '../OrderStrip';
 import LotBids from '../LotBids';
 import PlayersPanel, { availablePlayers } from '../PlayersPanel';
@@ -31,17 +31,16 @@ const sox = t(4, 'Black Sox', 52, 46, 1);
 const teams = [bombers, doyers, sox, dogs];
 
 describe('TeamsPanel', () => {
-  it('phone rows: name (· you), money/spots/needs line and a max chip; alert when they cannot beat the bid', () => {
+  it('phone rows: name (· you), a short money · needs line and a max chip; alert when they cannot beat the bid', () => {
     render(<TeamsPanel teams={teams} config={config} myTeamId={1} currentBid={34} variant="phone" />);
     const mine = screen.getByTestId('team-row-1');
     expect(within(mine).getByText('Los Doyers · you')).toBeTruthy();
-    expect(within(mine).getByText('$69 left · 4 spots · needs C, SS, OF, P')).toBeTruthy();
+    expect(within(mine).getByText('$69 · C · SS · OF · P')).toBeTruthy();
     expect(within(mine).getByText('max $61')).toBeTruthy();
     const b = screen.getByTestId('team-row-3');
-    expect(within(b).getByText('$31 left · 2 spots · needs SS, P')).toBeTruthy();
+    expect(within(b).getByText('$31 · SS · P')).toBeTruthy();
     expect(within(b).getByText('max $26').className).toContain('alert');
     expect(within(mine).getByText('max $61').className).not.toContain('alert');
-    expect(within(screen.getByTestId('team-row-4')).getByText(/1 spot ·/)).toBeTruthy();
     expect(screen.queryByText('Chip = most that team can bid.')).toBeNull();
   });
 
@@ -61,22 +60,45 @@ describe('TeamsPanel', () => {
   });
 });
 
+describe('phoneTeamLine', () => {
+  it('drops spots and the × so a row fits on two lines', () => {
+    expect(phoneTeamLine(345, 'H ×12, P ×7', 19)).toBe('$345 · H 12 · P 7');
+    expect(phoneTeamLine(31, 'SS, P', 2)).toBe('$31 · SS · P');
+  });
+  it('reads Full when nothing is open, spots when needs are unknown', () => {
+    expect(phoneTeamLine(4, '', 0)).toBe('$4 · Full');
+    expect(phoneTeamLine(9, '', 1)).toBe('$9 · 1 spot');
+  });
+});
+
 describe('OrderStrip', () => {
   const state = { queue: [3, 1, 4, 2], queueIndex: 0, teams };
 
-  it('phone: caption and chips read Team · now, You · next, then the rest', () => {
+  it('phone: now and next chips, then +N that shows the rest inline', () => {
     render(<OrderStrip strip={orderStrip(state, 1)} variant="phone" />);
     expect(screen.getByText('Order for putting players up')).toBeTruthy();
     expect(screen.getByText('Bombers · now')).toBeTruthy();
     expect(screen.getByText('You · next').className).toContain('on');
+    expect(screen.queryByText('Black Sox')).toBeNull();
+    const more = screen.getByRole('button', { name: 'Show the other 2 teams' });
+    expect(more.textContent).toBe('+2');
+    fireEvent.click(more);
     expect(screen.getByText('Black Sox')).toBeTruthy();
     expect(screen.getByText('Skunk Dogs')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Show the other/ })).toBeNull();
   });
 
-  it('desktop: one line under Putting players up', () => {
+  it('phone: no +N chip when only now and next are left', () => {
+    render(<OrderStrip strip={orderStrip({ ...state, queue: [3, 1] }, 1)} variant="phone" />);
+    expect(screen.queryByRole('button', { name: /Show the other/ })).toBeNull();
+  });
+
+  it('desktop: a numbered list with now, next and you marked', () => {
     const { container } = render(<OrderStrip strip={orderStrip(state, 1)} variant="desktop" />);
     expect(screen.getByText('Putting players up')).toBeTruthy();
-    expect(container.querySelector('.la-order')?.textContent).toBe('Bombers now · You next · Black Sox · Skunk Dogs');
+    const items = [...container.querySelectorAll('.la-olist li')];
+    expect(items.map(li => li.textContent)).toEqual(['1Bombersnow', '2Younext', '3Black Sox', '4Skunk Dogs']);
+    expect(items.map(li => li.className)).toEqual(['hi', 'hi me', '', '']);
   });
 
   it('when it is my turn the first chip reads You · now', () => {
