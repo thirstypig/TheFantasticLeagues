@@ -7,6 +7,7 @@ import { logger } from "../../../lib/logger.js";
 import { isPitcher as isPitcherPos } from "../../../lib/sportConfig.js";
 import { getState, readLeagueId } from "../lib/auctionStateManager.js";
 import { saleEntriesFromLog } from "../lib/salesLog.js";
+import { getAuctionDaySnapshot } from "../lib/auctionDaySnapshot.js";
 import type { AuctionState } from "../types.js";
 
 const router = Router();
@@ -92,6 +93,16 @@ router.get("/retrospective", requireAuth, requireLeagueMember("leagueId"), async
   });
   const valueMap = new Map(playerValues.map(v => [v.playerId!, v.value]));
 
+  // Money left after the auction: the team's budget minus everything on its
+  // auction-day roster, keepers included (same rule as /results). Team.budget
+  // is the STARTING budget (cap plus budget trades), never decremented.
+  const snapshot = await getAuctionDaySnapshot(leagueId);
+  const remainingByTeam = new Map(snapshot.teams.map(t => [
+    t.teamId,
+    (t.budget ?? teamMap.get(t.teamId)?.budget ?? 0) - t.rosters.reduce((s, r) => s + r.price, 0),
+  ]));
+  const budgetRemainingFor = (team: { id: number; budget: number }) => remainingByTeam.get(team.id) ?? team.budget;
+
   // ── Fallback: build from roster data when no AuctionLot records exist ──
   if (lots.length === 0) {
     const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { season: true } });
@@ -162,7 +173,7 @@ router.get("/retrospective", requireAuth, requireLeagueMember("leagueId"), async
       return {
         teamId: team.id, teamName: team.name, totalSpent: spent, playersAcquired: team.rosters.length,
         avgPrice: team.rosters.length > 0 ? Math.round((spent / team.rosters.length) * 10) / 10 : 0,
-        budgetRemaining: team.budget, bargainCount, overpayCount, totalSurplus,
+        budgetRemaining: budgetRemainingFor(team), bargainCount, overpayCount, totalSurplus,
       };
     }).sort((a, b) => b.totalSurplus - a.totalSurplus);
 
@@ -254,7 +265,7 @@ router.get("/retrospective", requireAuth, requireLeagueMember("leagueId"), async
       totalSpent: spent,
       playersAcquired: teamLots.length,
       avgPrice: teamLots.length > 0 ? Math.round((spent / teamLots.length) * 10) / 10 : 0,
-      budgetRemaining: team.budget,
+      budgetRemaining: budgetRemainingFor(team),
       bargainCount,
       overpayCount,
       totalSurplus,

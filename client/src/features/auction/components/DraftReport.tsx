@@ -139,7 +139,7 @@ export function DraftReportBody({ data, myTeamId }: { data: RetrospectiveData; m
           {data.teamEfficiency.map(te => (
             <Row key={te.teamId} me={te.teamId === myTeamId}
               title={<>{te.teamName}{te.teamId === myTeamId && <span className="ar-you">You</span>}</>}
-              detail={`${plural(te.playersAcquired, "player")} · $${te.totalSpent} spent · avg $${te.avgPrice}`} // budgetRemaining ignores keeper salaries; Results by team shows the true "left"
+              detail={`${plural(te.playersAcquired, "player")} · $${te.totalSpent} spent · $${te.budgetRemaining} left`}
               value={signedMoney(te.totalSurplus)} sub="vs value"
               valueClass={te.totalSurplus > 0 ? "pos" : te.totalSurplus < 0 ? "neg" : undefined} />
           ))}

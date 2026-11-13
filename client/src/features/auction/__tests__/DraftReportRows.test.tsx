@@ -43,7 +43,7 @@ describe("DraftReportBody", () => {
   it("team efficiency marks my team and spells out the numbers", () => {
     render(<DraftReportBody data={data} myTeamId={43} />);
     expect(screen.getByText("You").closest(".ar-row")).toHaveClass("me");
-    expect(screen.getByText("1 player · $21 spent · avg $21")).toBeInTheDocument();
+    expect(screen.getByText("1 player · $21 spent · $317 left")).toBeInTheDocument();
   });
 
   it("spending pace says which way prices moved", () => {

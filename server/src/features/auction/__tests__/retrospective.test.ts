@@ -44,6 +44,10 @@ vi.mock("../../../lib/sportConfig.js", () => ({
   positionToSlots: vi.fn(() => ["UTIL"]),
   PITCHER_CODES: new Set(["SP", "RP", "P", "CL"]),
 }));
+vi.mock("../lib/auctionDaySnapshot.js", () => ({
+  getAuctionDaySnapshot: vi.fn(),
+  getAuctionCutoff: vi.fn(),
+}));
 vi.mock("../services/auctionWsService.js", () => ({ broadcastState: vi.fn() }));
 vi.mock("../services/auctionPersistence.js", () => ({
   saveState: vi.fn().mockResolvedValue(undefined),
@@ -52,6 +56,7 @@ vi.mock("../services/auctionPersistence.js", () => ({
 }));
 
 import { prisma } from "../../../db/prisma.js";
+import { getAuctionDaySnapshot } from "../lib/auctionDaySnapshot.js";
 import express from "express";
 import { auctionRouter } from "../routes.js";
 import supertest from "supertest";
@@ -91,8 +96,18 @@ function makeLot(overrides: Record<string, any> = {}) {
   };
 }
 
+const roster = (price: number, source: string) => ({ price, source });
+function mockSnapshot(rostersByTeam: Record<number, { price: number; source: string }[]> = {}) {
+  vi.mocked(getAuctionDaySnapshot).mockResolvedValue({
+    leagueId: 1,
+    auctionCutoff: new Date("2026-03-30T00:00:00Z"),
+    teams: TEAMS.map(t => ({ teamId: t.id, teamName: t.name, teamCode: t.code, budget: t.budget, rosters: (rostersByTeam[t.id] ?? []) as any })),
+  });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  mockSnapshot();
 });
 
 describe("GET /retrospective", () => {
@@ -251,6 +266,42 @@ describe("GET /retrospective", () => {
     expect(team1.overpayCount).toBe(1);
     expect(team2.totalSpent).toBe(15);
     expect(team2.totalSurplus).toBe(5);
+  });
+
+  it("budgetRemaining is budget minus the whole auction-day roster, keepers included", async () => {
+    // Team.budget is the starting budget; it is never decremented by sales.
+    mockSnapshot({
+      1: [roster(40, "prior_season"), roster(20, "auction_2026"), roster(30, "auction_2026")],
+      2: [roster(15, "auction_2026")],
+    });
+    mockPrisma.team.findMany.mockResolvedValue(TEAMS);
+    mockPrisma.auctionLot.findMany.mockResolvedValue([
+      makeLot({ id: 1, finalPrice: 20, winnerTeamId: 1 }),
+      makeLot({ id: 2, finalPrice: 30, winnerTeamId: 1 }),
+      makeLot({ id: 3, finalPrice: 15, winnerTeamId: 2 }),
+    ]);
+    mockPrisma.playerValue.findMany.mockResolvedValue([]);
+
+    const res = await supertest(app).get("/retrospective?leagueId=1");
+    const byId = (id: number) => res.body.teamEfficiency.find((t: any) => t.teamId === id);
+    expect(byId(1).budgetRemaining).toBe(150 - 40 - 20 - 30);
+    expect(byId(2).budgetRemaining).toBe(100 - 15);
+    expect(getAuctionDaySnapshot).toHaveBeenCalledWith(1);
+  });
+
+  it("roster fallback also subtracts the auction-day roster from the budget", async () => {
+    mockSnapshot({ 1: [roster(25, "prior_season")], 2: [roster(25, "auction_2026"), roster(5, "auction_2026")] });
+    mockPrisma.team.findMany.mockResolvedValue(TEAMS.map(t => ({
+      ...t, rosters: [{ price: 25, player: { id: 10, name: "Player A", posPrimary: "SS", mlbTeam: "NYY" }, playerId: 10 }],
+    })));
+    mockPrisma.auctionLot.findMany.mockResolvedValue([]);
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+    mockPrisma.playerValue.findMany.mockResolvedValue([]);
+
+    const res = await supertest(app).get("/retrospective?leagueId=1");
+    const byId = (id: number) => res.body.teamEfficiency.find((t: any) => t.teamId === id);
+    expect(byId(1).budgetRemaining).toBe(125);
+    expect(byId(2).budgetRemaining).toBe(70);
   });
 
   it("computes spending pace quarters", async () => {
