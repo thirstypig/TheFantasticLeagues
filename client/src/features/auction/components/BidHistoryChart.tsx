@@ -1,27 +1,13 @@
 import React, { useMemo, useState } from 'react';
-import { Search, ChevronDown, ChevronUp, Trophy } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp } from 'lucide-react';
 import type { AuctionLogEvent } from '../hooks/useAuctionState';
 import { track } from '../../../lib/posthog';
 import { Glass, IridText, SectionLabel } from '../../../components/aurora/atoms';
 
-/* ================================================================
-   TEAM COLOR PALETTE
-   Assigned by team index position in the auction state.
-   Load-bearing visual identity — kept as Tailwind classes even under
-   Aurora chrome so each team's bid bars retain a distinct color.
-   ================================================================ */
-const TEAM_COLORS = [
-  { bg: 'bg-blue-500',    text: 'text-blue-500',    bar: 'bg-blue-500/80',    border: 'border-blue-500/30',   dot: 'bg-blue-400'    },
-  { bg: 'bg-emerald-500', text: 'text-emerald-500',  bar: 'bg-emerald-500/80', border: 'border-emerald-500/30', dot: 'bg-emerald-400' },
-  { bg: 'bg-amber-500',   text: 'text-amber-500',    bar: 'bg-amber-500/80',   border: 'border-amber-500/30',  dot: 'bg-amber-400'   },
-  { bg: 'bg-purple-500',  text: 'text-purple-500',   bar: 'bg-purple-500/80',  border: 'border-purple-500/30', dot: 'bg-purple-400'  },
-  { bg: 'bg-rose-500',    text: 'text-rose-500',     bar: 'bg-rose-500/80',    border: 'border-rose-500/30',   dot: 'bg-rose-400'    },
-  { bg: 'bg-cyan-500',    text: 'text-cyan-500',     bar: 'bg-cyan-500/80',    border: 'border-cyan-500/30',   dot: 'bg-cyan-400'    },
-  { bg: 'bg-orange-500',  text: 'text-orange-500',   bar: 'bg-orange-500/80',  border: 'border-orange-500/30', dot: 'bg-orange-400'  },
-  { bg: 'bg-pink-500',    text: 'text-pink-500',     bar: 'bg-pink-500/80',    border: 'border-pink-500/30',   dot: 'bg-pink-400'    },
-  { bg: 'bg-teal-500',    text: 'text-teal-500',     bar: 'bg-teal-500/80',    border: 'border-teal-500/30',   dot: 'bg-teal-400'    },
-  { bg: 'bg-indigo-500',  text: 'text-indigo-500',   bar: 'bg-indigo-500/80',  border: 'border-indigo-500/30', dot: 'bg-indigo-400'  },
-];
+/* Bars are labelled with the team name, so every bar is one neutral color;
+   the winning bid takes the accent (Style Bible: nine colors, no team rainbow). */
+const BAR = { background: 'var(--am-chip-strong)', color: 'var(--am-text)' } as const;
+const WIN_BAR = { background: 'var(--am-accent)', color: 'var(--am-on-accent)' } as const;
 
 /* ================================================================
    TYPES — derived from the auction log
@@ -49,7 +35,6 @@ interface ProcessedLot {
 
 interface BidHistoryChartProps {
   log: AuctionLogEvent[];
-  teams: { id: number; name: string; code: string }[];
 }
 
 /* ================================================================
@@ -115,9 +100,8 @@ export function buildLotData(log: AuctionLogEvent[]): ProcessedLot[] {
 /* ================================================================
    SINGLE LOT CHART — shows price escalation bars + bid timeline
    ================================================================ */
-function LotChart({ lot, teamColorMap, maxPrice }: {
+function LotChart({ lot, maxPrice }: {
   lot: ProcessedLot;
-  teamColorMap: Map<number, number>;
   maxPrice: number;
 }) {
   const barMax = Math.max(maxPrice, lot.finalPrice, 1);
@@ -156,8 +140,6 @@ function LotChart({ lot, teamColorMap, maxPrice }: {
       >
         {lot.bids.map((bid, i) => {
           const widthPct = Math.max((bid.amount / barMax) * 100, 4);
-          const colorIdx = teamColorMap.get(bid.teamId) ?? 0;
-          const color = TEAM_COLORS[colorIdx % TEAM_COLORS.length];
           const isWinner = i === lot.bids.length - 1;
           const elapsed = startTs > 0 ? Math.round((bid.timestamp - startTs) / 1000) : 0;
 
@@ -174,17 +156,17 @@ function LotChart({ lot, teamColorMap, maxPrice }: {
               {/* Bar */}
               <div className="flex-1 relative">
                 <div
-                  className={`h-6 rounded ${color.bar} transition-all duration-300 flex items-center relative`}
+                  className="h-6 rounded transition-all duration-300 flex items-center relative"
                   style={{
+                    ...(isWinner ? WIN_BAR : BAR),
                     width: `${widthPct}%`,
                     minWidth: '60px',
-                    boxShadow: isWinner ? "0 0 0 1px var(--am-positive)" : undefined,
                   }}
                 >
-                  <span className="absolute left-2 text-xs font-semibold text-white truncate pr-1">
+                  <span className="absolute left-2 font-semibold truncate pr-1" style={{ fontSize: 13 }}>
                     {bid.teamName}
                   </span>
-                  <span className="absolute right-2 text-xs font-semibold text-white tabular-nums">
+                  <span className="absolute right-2 font-semibold tabular-nums" style={{ fontSize: 13 }}>
                     ${bid.amount}
                   </span>
                 </div>
@@ -198,10 +180,7 @@ function LotChart({ lot, teamColorMap, maxPrice }: {
                 {bid.isNomination ? 'nom' : `+${elapsed}s`}
               </span>
 
-              {/* Winner badge */}
-              {isWinner && (
-                <Trophy size={12} className="shrink-0" style={{ color: "var(--am-positive)" }} />
-              )}
+              {isWinner && <span className="sr-only">won</span>}
             </div>
           );
         })}
@@ -213,18 +192,11 @@ function LotChart({ lot, teamColorMap, maxPrice }: {
 /* ================================================================
    MAIN COMPONENT
    ================================================================ */
-export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
+export default function BidHistoryChart({ log }: BidHistoryChartProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'lot' | 'price' | 'bids'>('lot');
   const [hasTracked, setHasTracked] = useState(false);
-
-  // Build team color index map
-  const teamColorMap = useMemo(() => {
-    const map = new Map<number, number>();
-    teams.forEach((t, i) => map.set(t.id, i));
-    return map;
-  }, [teams]);
 
   // Process log into lots
   const allLots = useMemo(() => buildLotData(log), [log]);
@@ -281,7 +253,7 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {/* Section heading */}
-      <SectionLabel>✦ Bid History</SectionLabel>
+      <SectionLabel>Bid history</SectionLabel>
 
       {/* Summary row */}
       <Glass>
@@ -376,23 +348,6 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
         </div>
       </div>
 
-      {/* Team color legend */}
-      <div className="flex flex-wrap gap-x-3 gap-y-1" style={{ paddingLeft: 4 }}>
-        {teams.map((team, i) => {
-          const color = TEAM_COLORS[i % TEAM_COLORS.length];
-          return (
-            <span
-              key={team.id}
-              className="inline-flex items-center gap-1"
-              style={{ fontSize: 13, color: "var(--am-text-muted)" }}
-            >
-              <span className={`w-2.5 h-2.5 rounded-full ${color.dot}`} />
-              {team.code}
-            </span>
-          );
-        })}
-      </div>
-
       {/* Lot list */}
       <Glass padded={false}>
         {filteredLots.length === 0 && (
@@ -405,8 +360,6 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
         )}
         {filteredLots.map((lot, idx) => {
           const isExpanded = expandedPlayerId === lot.playerId;
-          const colorIdx = teamColorMap.get(lot.winnerTeamId) ?? 0;
-          const winnerColor = TEAM_COLORS[colorIdx % TEAM_COLORS.length];
           const isFirst = idx === 0;
 
           return (
@@ -448,10 +401,7 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
                       {lot.playerName}
                     </div>
                     <div style={{ fontSize: 13, color: "var(--am-text-muted)" }}>
-                      <span className="inline-flex items-center gap-1">
-                        <span className={`w-2 h-2 rounded-full ${winnerColor.dot} shrink-0`} />
-                        {lot.winnerTeamName}
-                      </span>
+                      {lot.winnerTeamName}
                     </div>
                   </div>
                 </div>
@@ -477,13 +427,11 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
                   <div className="hidden sm:flex items-end gap-px h-4 w-16">
                     {lot.bids.map((bid, i) => {
                       const heightPct = Math.max((bid.amount / lot.finalPrice) * 100, 10);
-                      const cIdx = teamColorMap.get(bid.teamId) ?? 0;
-                      const c = TEAM_COLORS[cIdx % TEAM_COLORS.length];
                       return (
                         <div
                           key={i}
-                          className={`flex-1 rounded-t-sm ${c.bar}`}
-                          style={{ height: `${heightPct}%` }}
+                          className="flex-1 rounded-t-sm"
+                          style={{ height: `${heightPct}%`, background: i === lot.bids.length - 1 ? WIN_BAR.background : BAR.background }}
                         />
                       );
                     })}
@@ -507,7 +455,6 @@ export default function BidHistoryChart({ log, teams }: BidHistoryChartProps) {
                 >
                   <LotChart
                     lot={lot}
-                    teamColorMap={teamColorMap}
                     maxPrice={summary.maxPrice}
                   />
                 </div>

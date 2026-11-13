@@ -8,7 +8,7 @@ phase: null
 owner: james
 tags: [docs-system]
 links: [DOC-001]
-updated: 2026-11-12
+updated: 2026-11-13
 ---
 
 # Repo statistics
@@ -21,16 +21,16 @@ updated: 2026-11-12
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-12 from 1,967 git-tracked files.*
+*Generated 2026-11-13 from 1,967 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
 | `.ts` | 655 | 114,541 |
-| `.tsx` | 374 | 94,079 |
+| `.tsx` | 374 | 93,480 |
 | `.md` | 562 | 70,863 |
-| `.json` | 36 | 40,131 |
+| `.json` | 36 | 40,130 |
 | `.css` | 14 | 2,378 |
 | `.sql` | 40 | 2,153 |
 | `.prisma` | 1 | 1,767 |
@@ -38,7 +38,7 @@ updated: 2026-11-12
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,963** | **371,943** |
+| **All tracked** | **1,963** | **371,343** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -51,7 +51,7 @@ updated: 2026-11-12
 | Prisma migrations | 38 |
 | Server feature modules | 33 |
 | Client feature modules | 28 |
-| Cross-feature imports (ADR-015 baseline) | 85 |
+| Cross-feature imports (ADR-015 baseline) | 84 |
 
 ## Docs
 
@@ -127,7 +127,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 Planning status: 27/82 planning tasks done, 2 in progress.
 
-`server/data/planning.json` last updated **2026-05-19** (177 days ago).
+`server/data/planning.json` last updated **2026-05-19** (178 days ago).
 
-> ⚠️ The canonical roadmap source is **177 days stale**. Numbers above are honest; the *plan* they describe may not be.
+> ⚠️ The canonical roadmap source is **178 days stale**. Numbers above are honest; the *plan* they describe may not be.
 

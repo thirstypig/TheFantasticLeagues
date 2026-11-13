@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { BarChart3, TrendingUp, TrendingDown, Loader2, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { ThemedTable, ThemedThead, ThemedTbody, ThemedTh, ThemedTr, ThemedTd } from "../../../components/ui/ThemedTable";
 import { Glass, IridText, SectionLabel } from "../../../components/aurora/atoms";
@@ -110,20 +110,16 @@ export default function DraftReport({ leagueId, myTeamId }: DraftReportProps) {
 
   if (!data) {
     return (
-      <Glass>
+      <div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <BarChart3 size={18} style={{ color: "var(--am-accent)" }} />
-            <SectionLabel style={{ marginBottom: 0 }}>Draft Report</SectionLabel>
-          </div>
+          <SectionLabel style={{ marginBottom: 0 }}>Draft report</SectionLabel>
           <button
             type="button"
             onClick={loadReport}
             disabled={loading}
             style={{ ...AURORA_BTN_BASE, opacity: loading ? 0.5 : 1 }}
           >
-            {loading ? <Loader2 size={12} className="animate-spin" /> : <BarChart3 size={12} />}
-            {loading ? "Analyzing..." : "View Draft Report"}
+            {loading ? "Analyzing…" : "View draft report"}
           </button>
         </div>
         {error && (
@@ -131,20 +127,17 @@ export default function DraftReport({ leagueId, myTeamId }: DraftReportProps) {
             {error}
           </div>
         )}
-      </Glass>
+      </div>
     );
   }
 
   const { league: lg } = data;
 
   return (
-    <Glass>
+    <div>
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <BarChart3 size={18} style={{ color: "var(--am-accent)" }} />
-          <SectionLabel style={{ marginBottom: 0 }}>Draft Report</SectionLabel>
-        </div>
+        <SectionLabel style={{ marginBottom: 0 }}>Draft report</SectionLabel>
 
         {/* ── League Summary ── */}
         <div>
@@ -389,6 +382,6 @@ export default function DraftReport({ leagueId, myTeamId }: DraftReportProps) {
           </div>
         </div>
       </div>
-    </Glass>
+    </div>
   );
 }

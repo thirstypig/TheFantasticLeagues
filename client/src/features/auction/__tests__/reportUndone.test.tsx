@@ -14,11 +14,6 @@ vi.mock("../../../components/shared/playerCard/PlayerCardProvider", () => ({
 vi.mock("../../../api", () => ({
   getPlayerSeasonStatsMeta: vi.fn().mockResolvedValue({ stats: [], computedAt: null }),
 }));
-vi.mock("../../teams/api", () => ({
-  getTradeBlock: vi.fn().mockResolvedValue({ playerIds: [] }),
-  saveTradeBlock: vi.fn(),
-  getLeagueTradeBlocks: vi.fn().mockResolvedValue({ tradeBlocks: {} }),
-}));
 vi.mock("../../../contexts/LeagueContext", () => ({
   useLeague: () => ({ leagueId: 1, outfieldMode: "OF" }),
 }));
@@ -105,9 +100,8 @@ describe("C3: report header", () => {
     expect(screen.getByText("Auction ended · 3 spots left open")).toBeInTheDocument();
   });
 
-  it("'Total lots' counts auction sales (non-undone WINs), not roster rows with keepers", () => {
+  it("'lots sold' counts auction sales (non-undone WINs), not roster rows with keepers", () => {
     render(<AuctionComplete auctionState={stateWith(2, true)} />);
-    const tile = screen.getByText("Total Lots").parentElement!;
-    expect(tile.textContent).toBe("Total Lots1");
+    expect(screen.getByTestId("stat-lots").textContent).toBe("1lots sold");
   });
 });
