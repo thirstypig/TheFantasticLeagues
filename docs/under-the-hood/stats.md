@@ -21,13 +21,13 @@ updated: 2026-11-13
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-13 from 1,970 git-tracked files.*
+*Generated 2026-11-13 from 1,973 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 655 | 114,629 |
+| `.ts` | 656 | 114,853 |
 | `.tsx` | 376 | 93,654 |
 | `.md` | 562 | 70,860 |
 | `.json` | 36 | 40,130 |
@@ -38,7 +38,7 @@ updated: 2026-11-13
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,966** | **371,694** |
+| **All tracked** | **1,969** | **371,918** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -55,9 +55,9 @@ updated: 2026-11-13
 
 ## Docs
 
-**217** board-scope markdown files (`docs/` plus the four root docs), of which **150** carry frontmatter.
+**219** board-scope markdown files (`docs/` plus the four root docs), of which **152** carry frontmatter.
 
-*566 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
+*568 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
 unrelated frontmatter vocabularies and are deliberately excluded from the tables below.*
 
 > **67 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
@@ -71,6 +71,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `report` | 4 | ✅ |
 | `refactor` | 3 | ❌ off-vocabulary |
 | `tech-spec` | 3 | ✅ |
+| `stats` | 3 | ✅ |
 | `solution` | 2 | ✅ |
 | `deployment-failure` | 2 | ❌ off-vocabulary |
 | `inbox` | 1 | ✅ |
@@ -97,14 +98,13 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `privacy` | 1 | ✅ |
 | `risk` | 1 | ✅ |
 | `runbook` | 1 | ✅ |
-| `stats` | 1 | ✅ |
 | `status` | 1 | ✅ |
 
 **36 docs use a `type` outside the controlled vocabulary** (see `docs/README-DOCS.md` §4) — mostly older `docs/solutions/` and `docs/archive/` entries written before the schema existed.
 
 | Status | Docs | In vocabulary? |
 |---|---:|---|
-| `active` | 61 | ✅ |
+| `active` | 63 | ✅ |
 | `draft` | 6 | ✅ |
 | `completed` | 4 | ❌ off-vocabulary |
 | `resolved` | 4 | ❌ off-vocabulary |
