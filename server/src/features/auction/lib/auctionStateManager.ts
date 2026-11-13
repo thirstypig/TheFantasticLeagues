@@ -78,32 +78,112 @@ export function createDefaultState(leagueId: number): AuctionState {
   };
 }
 
+/** In-flight cold loads, so two requests racing after a restart share one state object (and one set of timers). */
+const hydrating = new Map<number, Promise<AuctionState>>();
+
 export async function getState(leagueId: number): Promise<AuctionState> {
-  let state = auctionStates.get(leagueId);
-  if (!state) {
-    // Try to hydrate from DB
-    const persisted = await loadState(leagueId);
-    if (persisted) {
-      // Backfill config fields for states persisted before this change
-      if (!persisted.config.sport) persisted.config.sport = "baseball";
-      if (!persisted.config.budgetCap) persisted.config.budgetCap = 400;
-      if (!persisted.config.rosterSize) persisted.config.rosterSize = 23;
-      // Backfill state fields added in UX step F. No timer survives a cold
-      // load, so the turn clock is never running at this point.
-      persisted.paused = persisted.paused ?? false;
-      persisted.nominationEndTime = null;
-      if (!persisted.config.positionLimits) {
-        persisted.config.positionLimits = await loadPositionLimits(leagueId);
-      }
-      // Refresh teams from DB to ensure fresh budgets/rosters/position counts
-      await refreshTeams(persisted);
-      auctionStates.set(leagueId, persisted);
-      return persisted;
-    }
-    state = createDefaultState(leagueId);
-    auctionStates.set(leagueId, state);
+  const cached = auctionStates.get(leagueId);
+  if (cached) return cached;
+  let pending = hydrating.get(leagueId);
+  if (!pending) {
+    pending = hydrateState(leagueId).finally(() => hydrating.delete(leagueId));
+    hydrating.set(leagueId, pending);
   }
+  return pending;
+}
+
+async function hydrateState(leagueId: number): Promise<AuctionState> {
+  // Try to hydrate from DB
+  const persisted = await loadState(leagueId);
+  if (persisted) {
+    // Backfill config fields for states persisted before this change
+    if (!persisted.config.sport) persisted.config.sport = "baseball";
+    if (!persisted.config.budgetCap) persisted.config.budgetCap = 400;
+    if (!persisted.config.rosterSize) persisted.config.rosterSize = 23;
+    // Backfill state fields added in UX step F. No timer survives a cold
+    // load, so the turn clock is never running at this point.
+    persisted.paused = persisted.paused ?? false;
+    persisted.nominationEndTime = null; // rearmTimersAfterLoad sets it again
+    if (!persisted.config.positionLimits) {
+      persisted.config.positionLimits = await loadPositionLimits(leagueId);
+    }
+    // Refresh teams from DB to ensure fresh budgets/rosters/position counts
+    await refreshTeams(persisted);
+    auctionStates.set(leagueId, persisted);
+    await rearmTimersAfterLoad(leagueId, persisted);
+    return persisted;
+  }
+  const state = createDefaultState(leagueId);
+  auctionStates.set(leagueId, state);
   return state;
+}
+
+/**
+ * Timers live only in memory, so a restart (a Railway redeploy) mid-auction
+ * used to leave a live lot that never sold and a turn clock that never ran out.
+ * After a cold load, start them again:
+ * - a running lot keeps the time it had left; if that ran out while the server
+ *   was down, bidders couldn't bid in that gap, so it gets a fresh bid timer
+ *   instead of selling the instant the server is back;
+ * - a team choosing a player gets a fresh turn clock (as /resume does).
+ * Nothing restarts while paused, outside nominating/bidding, or when the
+ * season isn't in DRAFT (a stale state must never sell or put up a player).
+ */
+export async function rearmTimersAfterLoad(leagueId: number, state: AuctionState): Promise<void> {
+  if (state.paused) return;
+  const lotRunning = state.status === 'bidding' && state.nomination?.status === 'running';
+  if (!lotRunning && state.status !== 'nominating') return;
+
+  let seasonStatus: string | null;
+  try {
+    seasonStatus = await getCurrentSeasonStatus(leagueId);
+  } catch (err) {
+    logger.error({ error: String(err), leagueId }, "Could not read season status; auction timers not restarted");
+    return;
+  }
+  if (seasonStatus !== "DRAFT") {
+    logger.warn({ leagueId, seasonStatus, status: state.status }, "Live auction state outside DRAFT; timers not restarted");
+    return;
+  }
+
+  if (lotRunning && state.nomination) {
+    const left = new Date(state.nomination.endTime).getTime() - Date.now();
+    let ms = left;
+    if (!Number.isFinite(left) || left <= 0) {
+      ms = state.config.bidTimer * 1000;
+      state.nomination.endTime = new Date(Date.now() + ms).toISOString();
+    }
+    scheduleAutoFinish(leagueId, ms);
+    logger.info({ leagueId, ms, playerName: state.nomination.playerName }, "Restarted lot timer after load");
+  } else {
+    scheduleNominationTimer(leagueId, state);
+    logger.info({ leagueId, teamId: state.queue[state.queueIndex] }, "Restarted turn clock after load");
+  }
+  state.lastUpdate = Date.now();
+  broadcastState(leagueId, state);
+  persistState(leagueId, state);
+}
+
+/**
+ * On boot, load every auction that was live (nominating or bidding) so its
+ * timers restart even before anyone opens the auction page.
+ */
+export async function rehydrateLiveAuctions(): Promise<number[]> {
+  const rows = await prisma.auctionSession.findMany({ select: { leagueId: true, state: true } });
+  const live = rows
+    .filter(r => {
+      const st = (r.state ?? {}) as Partial<AuctionState>;
+      return st.status === 'nominating' || st.status === 'bidding';
+    })
+    .map(r => r.leagueId);
+  for (const leagueId of live) {
+    try {
+      await getState(leagueId);
+    } catch (err) {
+      logger.error({ error: String(err), leagueId }, "Could not reload live auction on boot");
+    }
+  }
+  return live;
 }
 
 /** Read leagueId from query (GET) or body (POST). */

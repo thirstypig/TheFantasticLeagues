@@ -22,7 +22,7 @@ import { subscriberPagesRouter } from "./features/subscribers/pagesRouter.js";
 import { leaguesRouter } from "./features/leagues/index.js";
 import { rulesRouter } from "./features/leagues/index.js";
 import { adminRouter, validateTodoFileAtBoot } from "./features/admin/index.js";
-import { auctionRouter } from "./features/auction/index.js";
+import { auctionRouter, rehydrateLiveAuctions } from "./features/auction/index.js";
 import { draftRouter } from "./features/draft/index.js";
 import { matchupsRouter } from "./features/matchups/index.js";
 import { commissionerRouter } from "./features/commissioner/index.js";
@@ -772,6 +772,12 @@ async function main() {
 
     // Attach Auction WebSocket server to the HTTP server
     wss = attachAuctionWs(server);
+
+    // Restart the clocks of any auction that was live when the server went
+    // down (timers live only in memory).
+    rehydrateLiveAuctions()
+      .then((ids) => { if (ids.length) logger.info({ leagueIds: ids }, "Reloaded live auctions"); })
+      .catch((err) => logger.error({ error: String(err) }, "Reloading live auctions failed"));
 
     // Attach Snake Draft WebSocket server to the HTTP server
     attachDraftWs(server);
