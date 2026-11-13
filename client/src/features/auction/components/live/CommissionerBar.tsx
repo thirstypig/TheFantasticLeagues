@@ -24,6 +24,17 @@ export function canUndoSale(state: ClientAuctionState): boolean {
   return lastSales(state, 1).length > 0 && (state.status === 'nominating' || state.status === 'completed');
 }
 
+/** Why Undo is grayed out, or null when it works. */
+export function undoReason(state: ClientAuctionState): string | null {
+  if (lastSales(state, 1).length === 0) return 'Nothing sold yet';
+  return canUndoSale(state) ? null : 'Undo works between players';
+}
+
+/** Why Skip is grayed out, or null when it works. */
+export function skipReason(state: ClientAuctionState): string | null {
+  return state.status === 'nominating' ? null : 'Only while a team is choosing';
+}
+
 const NAME_SUFFIX = /^(jr\.?|sr\.?|ii|iii|iv|v)$/i;
 
 /** Last name for a button label: "Ronald Acuña Jr." -> "Acuña". */
@@ -80,6 +91,8 @@ export default function CommissionerBar({ state, actions, variant }: Commissione
   const running = state.status === 'nominating' || state.status === 'bidding' || state.status === 'paused';
   const canUndo = canUndoSale(state);
   const canSkip = state.status === 'nominating';
+  const whyNoUndo = undoReason(state);
+  const whyNoSkip = skipReason(state);
   const panelId = 'cb-more';
 
   const togglePause = () => run(paused ? actions.resume : actions.pause, paused ? 'Could not resume' : 'Could not pause');
@@ -96,10 +109,29 @@ export default function CommissionerBar({ state, actions, variant }: Commissione
       {paused ? 'Resume' : 'Pause'}
     </button>
   );
-  const undoText = undoLabels(lastSales(state, 1)[0]);
+  const sale = lastSales(state, 1)[0];
+  // A grayed Undo says why in its own label. While a player is up it doesn't
+  // name the last sale: once this player sells, Undo would undo THAT sale.
+  const undoText = !sale
+    ? { text: 'Nothing sold yet', aria: 'Undo last sale: nothing sold yet' }
+    : !canUndo
+      ? { text: 'Undo between players', aria: 'Undo last sale: works between players' }
+      : undoLabels(sale);
   const undoBtn = (
-    <button type="button" className="la-btn sm" aria-label={undoText.aria} disabled={busy || !canUndo} onClick={undo}>{undoText.text}</button>
+    <button
+      type="button"
+      className="la-btn sm"
+      aria-label={undoText.aria}
+      title={whyNoUndo ?? undefined}
+      disabled={busy || !canUndo}
+      onClick={undo}
+    >
+      {undoText.text}
+    </button>
   );
+  // Desktop's Skip button is too short to carry its reason, so a hint line does
+  // (phone shows it on the Skip row in More).
+  const desktopHint = whyNoSkip ? `Skip turn: ${whyNoSkip.toLowerCase()}` : null;
   const alert = error ? <p className="la-err cb-err" role="alert">{error}</p> : null;
 
   const confirm = (
@@ -122,8 +154,9 @@ export default function CommissionerBar({ state, actions, variant }: Commissione
           {pauseBtn}
           {undoBtn}
           <Link to="/auction/assign" className="la-btn sm cb-linkbtn">Give a player to a team</Link>
-          <button type="button" className="la-btn sm" disabled={busy || !canSkip} onClick={skip}>Skip turn</button>
+          <button type="button" className="la-btn sm" title={whyNoSkip ?? undefined} disabled={busy || !canSkip} onClick={skip}>Skip turn</button>
           <button type="button" className="la-btn sm" disabled={busy} onClick={() => setConfirmEnd(true)}>End auction</button>
+          {desktopHint && <p className="cb-hint" data-testid="cb-hint">{desktopHint}</p>}
           {alert}
         </div>
         {confirm}
@@ -156,7 +189,7 @@ export default function CommissionerBar({ state, actions, variant }: Commissione
               <span className="cb-chev" aria-hidden="true">›</span>
             </Link>
             <button type="button" className="la-row cb-row" disabled={busy || !canSkip} onClick={skip}>
-              <span className="la-t"><b>Skip this team's turn</b></span>
+              <span className="la-t"><b>Skip this team's turn</b>{whyNoSkip && <small>{whyNoSkip}</small>}</span>
               <span className="cb-chev" aria-hidden="true">›</span>
             </button>
             <button type="button" className="la-row cb-row" disabled={busy} onClick={() => setConfirmEnd(true)}>

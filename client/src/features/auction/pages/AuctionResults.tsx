@@ -1,6 +1,7 @@
 /*
  * /auction-results — Screen 11 team board built from the auction-day snapshot
- * (GET /auction/results), with `Grades and charts ›` to the full report
+ * (GET /auction/results), titled `Auction results · Ended …` once the auction
+ * is over, with `Grades and charts ›` to the full report
  * (/auction-results/report → AuctionResultsReport, the previous page, unchanged).
  * No team links here: /teams/:code shows the current roster, which would
  * contradict the auction-day snapshot.
@@ -10,7 +11,7 @@ import { Link } from 'react-router-dom';
 import { useLeague } from '../../../contexts/LeagueContext';
 import { fetchJsonApi, API_BASE } from '../../../api/base';
 import TeamBoard from '../components/board/TeamBoard';
-import { snapshotToBoard, type AuctionResultsSnapshot } from '../lib/resultsBoard';
+import { snapshotToBoard, resultsSubtitle, type AuctionResultsSnapshot } from '../lib/resultsBoard';
 import '../components/board/teamBoard.css';
 
 export default function AuctionResults() {
@@ -32,11 +33,16 @@ export default function AuctionResults() {
   }, [leagueId]);
 
   const board = snapshot && snapshot.status !== 'not_started' ? snapshotToBoard(snapshot) : null;
+  // A finished auction says so: "Auction results · Ended Nov 12 · 2 sold · $567 spent".
+  const subtitle = board && snapshot ? resultsSubtitle(snapshot) : null;
 
   return (
     <div className="aurora-theme tb-page">
       <div className="tb-head">
-        <h1 className="tb-title">Auction · team board</h1>
+        <div>
+          <h1 className="tb-title">{subtitle ? 'Auction results' : 'Auction · team board'}</h1>
+          {subtitle && <p className="tb-sub tb-num">{subtitle}</p>}
+        </div>
         {board && <Link to="/auction-results/report" className="tb-link">Grades and charts ›</Link>}
       </div>
 

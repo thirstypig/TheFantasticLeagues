@@ -101,14 +101,21 @@
   padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0;
 }
 .la-page.phone .la-box { padding: 8px 12px; gap: 6px; }
-.la-picks { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; max-width: 100%; }
+.la-picks { display: flex; gap: 6px; flex-wrap: wrap; max-width: 100%; }
 .la-pick {
   flex: none; display: inline-flex; align-items: center; min-height: 36px; padding: 0 12px;
   border-radius: 20px; border: 1px solid var(--am-field-line); background: var(--am-field);
   font-size: 15px; font-weight: 600; white-space: nowrap;
 }
 .la-pick.on { background: var(--am-accent); color: var(--am-on-accent); border-color: var(--am-accent); }
-.la-order { font-size: 15px; margin: 0; overflow-wrap: break-word; }
+button.la-pick { font: inherit; font-size: 15px; font-weight: 600; color: var(--am-text); cursor: pointer; min-width: 44px; justify-content: center; }
+.la-olist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.la-olist li { display: flex; align-items: baseline; gap: 8px; min-height: 28px; padding: 2px 0; font-size: 15px; color: var(--am-text-muted); }
+.la-olist li.hi, .la-olist li.me { color: var(--am-text); font-weight: 700; }
+.la-olist-n { flex: none; width: 16px; text-align: right; color: var(--am-text-muted); font-weight: 600; }
+.la-olist-t { min-width: 0; overflow-wrap: anywhere; }
+.la-olist small { flex: none; font-size: 13px; font-weight: 700; padding: 0 8px; border-radius: 12px; background: var(--am-chip); }
+.la-olist li.me small, .la-olist li.me .la-olist-t { color: var(--am-text); }
 
 /* Tabs (phone) */
 .la-seg { display: flex; border: 1px solid var(--am-field-line); border-radius: 22px; overflow: hidden; background: var(--am-field); }
@@ -232,6 +239,7 @@
 .cb-label { font-size: 15px; font-weight: 700; padding: 0 8px; }
 .cb-linkbtn { text-decoration: none; }
 .cb-err { flex-basis: 100%; }
+.cb-hint { flex-basis: 100%; font-size: 15px; color: var(--am-text-muted); margin: 0; }
 .cb-more { display: flex; flex-direction: column; gap: 8px; }
 .cb-row {
   width: 100%; background: none; border-left: 0; border-right: 0; border-bottom: 0;
