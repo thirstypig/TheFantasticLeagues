@@ -68,7 +68,6 @@ FBST uses **Supabase Auth** (Google/Yahoo OAuth) with JWT tokens.
 | `DATABASE_URL` | PostgreSQL connection string | All environments |
 | `SUPABASE_URL` | Supabase project URL | All environments |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase admin key | All environments |
-| `SESSION_SECRET` | JWT signing secret | All environments |
 | `ENABLE_DEV_LOGIN` | Enables `/auth/dev-login` endpoint | Local dev only |
 | `CLIENT_URL` | Production client URL for CORS | Production |
 | `ADMIN_EMAILS` | Comma-separated admin emails | Production |

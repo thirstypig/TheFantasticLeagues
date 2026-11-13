@@ -72,7 +72,7 @@ import { isRosterRuleError, type RosterRuleErrorCode } from "./lib/rosterRuleErr
 import { ADVISORY_LOCKS } from "./lib/advisoryLocks.js";
 
 // Validate required env vars at startup
-const REQUIRED_ENV = ["DATABASE_URL", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SESSION_SECRET", "IP_HASH_SECRET"];
+const REQUIRED_ENV = ["DATABASE_URL", "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "IP_HASH_SECRET"];
 for (const key of REQUIRED_ENV) {
   if (!process.env[key]) {
     console.error(`FATAL: Missing required env var: ${key}`);
