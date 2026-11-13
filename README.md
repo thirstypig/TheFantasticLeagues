@@ -65,7 +65,6 @@ cp server/.env.example server/.env
 # Edit server/.env:
 #   DATABASE_URL (Supabase pooled URL)
 #   SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
-#   SESSION_SECRET (openssl rand -hex 32)
 #   IP_HASH_SECRET (openssl rand -hex 32)
 #   GEMINI_API_KEY + ANTHROPIC_API_KEY (optional — AI features)
 #   RESEND_API_KEY (optional — email invites)
@@ -138,7 +137,7 @@ Notable surfaces:
 
 ## Deployment (Railway)
 
-- **API service** — root `server/`, start `npm start`, required env: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`, `IP_HASH_SECRET`. Railway redeploys on push to `main`.
+- **API service** — root `server/`, start `npm start`, required env: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `IP_HASH_SECRET`. Railway redeploys on push to `main`.
 - **Client** — separately hosted (or served as static asset); build with `npm run build` in `client/`, `VITE_API_BASE_URL` set to the API origin.
 - **Marketing site** — separate `thefantasticleagues-www` repo, Astro on GitHub Pages.
 

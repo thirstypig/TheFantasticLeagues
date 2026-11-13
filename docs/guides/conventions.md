@@ -33,7 +33,7 @@ Consistent patterns across the codebase ensure readability, type safety, and mai
 
 ## Environment & Secrets
 
-- **Required env vars** (`DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SESSION_SECRET`, `IP_HASH_SECRET`) validated at startup — server exits if missing
+- **Required env vars** (`DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `IP_HASH_SECRET`) validated at startup — server exits if missing
 - **IP_HASH_SECRET** must be ≥32 chars (generate with `openssl rand -hex 32`); rotate yearly per session-tracking plan R8
 - **Dev-only endpoints** gated behind explicit env vars (e.g., `ENABLE_DEV_LOGIN=true`), never `NODE_ENV` checks
 

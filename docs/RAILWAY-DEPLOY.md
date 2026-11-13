@@ -40,7 +40,6 @@ Set all of these in the Railway dashboard **before the first build** (`VITE_*` v
 | `DATABASE_URL` | `postgres://…` | From Supabase Connection Pooler |
 | `SUPABASE_URL` | `https://….supabase.co` | |
 | `SUPABASE_SERVICE_ROLE_KEY` | (secret) | |
-| `SESSION_SECRET` | (32+ hex chars) | Generate with `openssl rand -hex 32` |
 | `IP_HASH_SECRET` | (32+ hex chars) | Required — server refuses to boot without it (Session 60) |
 | `ADMIN_EMAILS` | `you@example.com` | Comma-separated |
 | `CLIENT_URL` | `https://app.thefantasticleagues.com` | For CORS |
