@@ -80,3 +80,9 @@ export async function getSeasonOrder(leagueId: number): Promise<number[]> {
     .sort((a, b) => a.totalPoints - b.totalPoints || a.teamName.localeCompare(b.teamName))
     .map((r) => r.teamId);
 }
+
+/** Team ids and names for the league (the same detail call the league context makes). */
+export async function getLeagueTeams(leagueId: number): Promise<{ id: number; name: string }[]> {
+  const res = await fetchJsonApi<{ league: { teams?: { id: number; name: string }[] } }>(`${API_BASE}/leagues/${leagueId}`);
+  return (res?.league?.teams ?? []).map((t) => ({ id: t.id, name: t.name }));
+}

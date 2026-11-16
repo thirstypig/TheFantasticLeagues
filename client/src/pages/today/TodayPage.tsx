@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useLeague } from "../../contexts/LeagueContext";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
+import { MeetingLiveBanner } from "../../features/meeting/components/MeetingLiveBanner";
 import { useTodayData } from "./useTodayData";
 import { periodHeader, summarizeRank, wireReminder } from "./todayModel";
 import { NewsSection, RankCard, Skeleton, StandingsSection, TonightSection, WireNote } from "./sections";
@@ -10,7 +11,7 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 export function TodayPage() {
-  const { leagueId, leagues, currentLeagueName, currentSeason, myTeamId, myTeamCode, myTeamResolved } = useLeague();
+  const { leagueId, leagues, currentLeagueName, currentSeason, myTeamId, myTeamCode, myTeamResolved, leagueRules } = useLeague();
   const desktop = useMediaQuery("(min-width: 1024px)");
   const hasTeam = myTeamId != null;
   const activeLeagueId = leagueId ? leagueId : null;
@@ -57,6 +58,10 @@ export function TodayPage() {
         <h1 className="today-title today-sr-only">Today</h1>
         <div className="today-sub">{sub}</div>
       </header>
+      {/* Only leagues with the live-meeting rule on pay for the one session lookup. */}
+      {hasTeam && activeLeagueId != null && leagueRules?.meeting?.live === "true" && (
+        <MeetingLiveBanner leagueId={activeLeagueId} myTeamId={myTeamId} />
+      )}
       <div className="today-grid">
         <div className="today-col">
           {reminder && <WireNote text={reminder.text} teamCode={code} />}

@@ -11,7 +11,13 @@ function errorMessage(e: unknown): string {
   return e instanceof Error ? e.message : "Could not load the meeting";
 }
 
-export function useMeetingSession(leagueId: number | null) {
+export interface MeetingSessionOptions {
+  /** Stop polling once a load finds no session (the Today banner: one request, not a 2s loop). */
+  stopWhenNoSession?: boolean;
+}
+
+export function useMeetingSession(leagueId: number | null, opts: MeetingSessionOptions = {}) {
+  const stopWhenNoSession = opts.stopWhenNoSession === true;
   const [data, setData] = useState<MeetingSessionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [skew, setSkew] = useState(0);
@@ -48,6 +54,7 @@ export function useMeetingSession(leagueId: number | null) {
     const schedule = () => {
       if (cancelled) return;
       if (dataRef.current?.session?.state.status === "ended") return;
+      if (stopWhenNoSession && dataRef.current && dataRef.current.session == null) return;
       const delay = document.visibilityState === "visible" ? VISIBLE_POLL_MS : HIDDEN_POLL_MS;
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(load, delay);
@@ -82,7 +89,7 @@ export function useMeetingSession(leagueId: number | null) {
       if (timer.current) clearTimeout(timer.current);
       timer.current = null;
     };
-  }, [leagueId, apply]);
+  }, [leagueId, apply, stopWhenNoSession]);
 
   const refresh = useCallback(() => {
     void loadRef.current();
