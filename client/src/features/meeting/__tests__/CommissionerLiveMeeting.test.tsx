@@ -144,7 +144,7 @@ describe("CommissionerLiveMeeting", () => {
   it("Enter for them submits for the team on the clock", async () => {
     const ends = new Date(Date.now() + 60_000).toISOString();
     m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnEndsAt: ends }), { version: 3 }));
-    m.getChoices.mockResolvedValue(choices({ list: [FRALEY, CASAS], roster: [ALONSO, HAYS] }));
+    m.getChoices.mockResolvedValue(choices({ list: [FRALEY, CASAS], roster: [ALONSO, HAYS], activeCount: 23 }));
     m.submitMove.mockResolvedValue(sessionResponse(state({ turnIndex: 1, turnEndsAt: ends }), { version: 4 }));
     renderScreen();
     fireEvent.click(await screen.findByRole("button", { name: "Enter for them" }));
@@ -155,6 +155,60 @@ describe("CommissionerLiveMeeting", () => {
     await waitFor(() =>
       expect(m.submitMove).toHaveBeenCalledWith(55, { teamId: 3, addPlayerId: FRALEY.playerId, dropPlayerId: HAYS.playerId, version: 3 }),
     );
+  });
+
+  it("End meeting asks first", async () => {
+    const ends = new Date(Date.now() + 60_000).toISOString();
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnEndsAt: ends }), { version: 6 }));
+    m.endMeeting.mockResolvedValue(sessionResponse(state({ status: "ended" }), { version: 7 }));
+    renderScreen();
+    fireEvent.click(await screen.findByRole("button", { name: "End meeting" }));
+    const sheet = screen.getByRole("dialog");
+    expect(within(sheet).getByText("End the meeting?")).toBeTruthy();
+    expect(within(sheet).getByText("Turns stop for everyone. You can't restart it for this period.")).toBeTruthy();
+    fireEvent.click(within(sheet).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(m.endMeeting).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "End meeting" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "End meeting" }));
+    await waitFor(() => expect(m.endMeeting).toHaveBeenCalledWith(55, 6));
+    await screen.findByText("Meeting over");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("shows Connection lost while polls fail after the first load", async () => {
+    vi.useFakeTimers();
+    const ends = new Date(Date.now() + 600_000).toISOString();
+    m.getCurrentMeeting.mockImplementation(async () => sessionResponse(state({ turnEndsAt: ends })));
+    renderScreen();
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(screen.queryByText("Connection lost. Retrying…")).toBeNull();
+    m.getCurrentMeeting.mockRejectedValue(new Error("Failed to fetch"));
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(screen.getByText("Connection lost. Retrying…")).toBeTruthy();
+    expect(screen.getByText("On the clock")).toBeTruthy();
+    m.getCurrentMeeting.mockImplementation(async () => sessionResponse(state({ turnEndsAt: ends })));
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(screen.queryByText("Connection lost. Retrying…")).toBeNull();
+  });
+
+  it("titles the screen with the period name", async () => {
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(null, { version: 0 }));
+    render(<CommissionerLiveMeeting leagueId={7} periodId={9} periodName="Period 9" teams={TEAMS} onHandOff={vi.fn()} />);
+    expect(await screen.findByRole("heading", { name: "Period 9 meeting" })).toBeTruthy();
+  });
+
+  it("disables the hand-off buttons while a hand-off is in flight", async () => {
+    const moves = [{ id: "m1", teamId: 3, add: FRALEY, drop: HAYS }];
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ status: "ended", moves }), { version: 9 }));
+    const { rerender } = render(<CommissionerLiveMeeting leagueId={7} periodId={9} teams={TEAMS} onHandOff={vi.fn()} handOffBusy />);
+    expect(((await screen.findByRole("button", { name: "Review all moves" })) as HTMLButtonElement).disabled).toBe(true);
+    m.getCurrentMeeting.mockResolvedValue(
+      sessionResponse(state({ status: "ended", moves }), { version: 9, handedOffAt: "2026-11-15T03:00:00.000Z" }),
+    );
+    rerender(<CommissionerLiveMeeting leagueId={8} periodId={9} teams={TEAMS} onHandOff={vi.fn()} handOffBusy />);
+    expect(((await screen.findByRole("button", { name: "Copy again" })) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("ended: Review all moves hands the moves off", async () => {

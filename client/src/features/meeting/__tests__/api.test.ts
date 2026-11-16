@@ -68,8 +68,8 @@ describe("submitMove", () => {
 describe("getChoices", () => {
   it("parses list and roster with the shared schema", async () => {
     const p = { playerId: 1, name: "A", pos: "OF", mlbTeam: "NYM", mlbId: 5 };
-    vi.mocked(fetchJsonApi).mockResolvedValue({ list: [p], roster: [p] });
-    expect(await getChoices(5, 2)).toEqual({ list: [p], roster: [p] });
+    vi.mocked(fetchJsonApi).mockResolvedValue({ list: [p], roster: [p], activeCount: 23 });
+    expect(await getChoices(5, 2)).toEqual({ list: [p], roster: [p], activeCount: 23 });
     expect(vi.mocked(fetchJsonApi).mock.calls[0][0]).toBe("/api/meeting/sessions/5/choices?teamId=2");
     vi.mocked(fetchJsonApi).mockResolvedValue({ list: [{ playerId: "x" }], roster: [] });
     await expect(getChoices(5, 2)).rejects.toThrow();

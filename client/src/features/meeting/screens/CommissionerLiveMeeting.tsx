@@ -4,6 +4,7 @@
 import React, { useEffect, useState } from "react";
 import type { MeetingMove, MeetingSessionResponse, MeetingState } from "@shared/api/meeting";
 import { Glass, SectionLabel } from "../../../components/aurora/atoms";
+import { ConfirmSheet } from "../../../components/shared/ConfirmSheet";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import {
   addTime,
@@ -31,8 +32,12 @@ export interface CommissionerLiveMeetingProps {
   leagueId: number;
   periodId: number;
   teams: Team[];
+  /** e.g. "Period 9"; the title reads "Period 9 meeting". */
+  periodName?: string;
   /** Called with the session's moves (and its id, for the handed-off stamp). */
   onHandOff: (moves: MeetingMove[], sessionId: number) => void;
+  /** True while the hand-off is saving: the hand-off buttons are disabled. */
+  handOffBusy?: boolean;
 }
 
 const PAGE: React.CSSProperties = { maxWidth: 1100, margin: "0 auto", padding: "16px 16px 32px", display: "grid", gap: 16 };
@@ -78,7 +83,7 @@ function OrderEditor({ order, nameOf, busy, onChange }: { order: number[]; nameO
   );
 }
 
-function NoSession({ leagueId, periodId, teams, nameOf, act }: { leagueId: number; periodId: number; teams: Team[]; nameOf: (id: number) => string; act: Act }) {
+function NoSession({ leagueId, periodId, teams, nameOf, act, title }: { leagueId: number; periodId: number; teams: Team[]; nameOf: (id: number) => string; act: Act; title: string }) {
   const [order, setOrderState] = useState<number[] | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -120,7 +125,7 @@ function NoSession({ leagueId, periodId, teams, nameOf, act }: { leagueId: numbe
   return (
     <>
       <header>
-        <h1 style={H1}>Live meeting</h1>
+        <h1 style={H1}>{title}</h1>
         <p style={{ margin: "4px 0 0", ...MUTED }}>Turn order, worst to first by season points. Change it before you open.</p>
       </header>
       {note && <p style={{ margin: 0, fontSize: 15, color: "var(--am-warning)" }}>{note}</p>}
@@ -131,7 +136,7 @@ function NoSession({ leagueId, periodId, teams, nameOf, act }: { leagueId: numbe
   );
 }
 
-function SetupOpened({ session, nameOf, act }: { session: Session; nameOf: (id: number) => string; act: Act }) {
+function SetupOpened({ session, nameOf, act, title }: { session: Session; nameOf: (id: number) => string; act: Act; title: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -150,7 +155,7 @@ function SetupOpened({ session, nameOf, act }: { session: Session; nameOf: (id: 
   return (
     <>
       <header>
-        <h1 style={H1}>Live meeting</h1>
+        <h1 style={H1}>{title}</h1>
         <p style={{ margin: "4px 0 0", ...MUTED }}>The meeting is open. Owners can see the order. Start when everyone is ready.</p>
       </header>
       <OrderEditor
@@ -217,13 +222,14 @@ function MovesSoFar({ state, teams, nameOf }: { state: MeetingState; teams: Team
   );
 }
 
-function Live({ session, data, skew, teams, nameOf, act, leagueId }: { session: Session; data: MeetingSessionResponse; skew: number; teams: Team[]; nameOf: (id: number) => string; act: Act; leagueId: number }) {
+function Live({ session, data, skew, teams, nameOf, act, leagueId, title }: { session: Session; data: MeetingSessionResponse; skew: number; teams: Team[]; nameOf: (id: number) => string; act: Act; leagueId: number; title: string }) {
   const desktop = useMediaQuery("(min-width: 1024px)");
   const s = session.state;
   const running = s.status === "running";
   const current = s.order[s.turnIndex];
   const turnKey = `${s.round}.${s.turnIndex}`;
   const [entering, setEntering] = useState<string | null>(null);
+  const [confirmEnd, setConfirmEnd] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const online = new Set(data.online);
@@ -361,14 +367,30 @@ function Live({ session, data, skew, teams, nameOf, act, leagueId }: { session: 
       ) : (
         <button type="button" disabled={busy} style={disabled(PRIMARY, busy)} onClick={() => run((v) => resumeMeeting(session.id, v))}>Resume</button>
       )}
-      <button type="button" disabled={busy} style={disabled(SECONDARY, busy)} onClick={() => run((v) => endMeeting(session.id, v))}>End meeting</button>
+      <button type="button" disabled={busy} style={disabled(SECONDARY, busy)} onClick={() => setConfirmEnd(true)}>End meeting</button>
     </div>
+  );
+
+  // Ending is irreversible: an ended session refuses every action and can't be reopened for this period.
+  const endSheet = (
+    <ConfirmSheet
+      open={confirmEnd}
+      title="End the meeting?"
+      body="Turns stop for everyone. You can't restart it for this period."
+      confirmLabel="End meeting"
+      busy={busy}
+      onConfirm={async () => {
+        await run((v) => endMeeting(session.id, v));
+        setConfirmEnd(false);
+      }}
+      onCancel={() => setConfirmEnd(false)}
+    />
   );
 
   return (
     <>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
-        <h1 style={H1}>Live meeting</h1>
+        <h1 style={H1}>{title}</h1>
         <span style={{ fontSize: 17, color: "var(--am-text-muted)" }}>{`Round ${s.round}`}</span>
       </header>
       {error && <p role="alert" style={ERROR}>{error}</p>}
@@ -382,29 +404,33 @@ function Live({ session, data, skew, teams, nameOf, act, leagueId }: { session: 
         </div>
         {desktop && order}
       </div>
+      {endSheet}
     </>
   );
 }
 
 // ─── Ended ───────────────────────────────────────────────────────────
 
-function Ended({ session, teams, nameOf, onHandOff }: { session: Session; teams: Team[]; nameOf: (id: number) => string; onHandOff: CommissionerLiveMeetingProps["onHandOff"] }) {
+function Ended({ session, teams, nameOf, onHandOff, busy, title }: { session: Session; teams: Team[]; nameOf: (id: number) => string; onHandOff: CommissionerLiveMeetingProps["onHandOff"]; busy: boolean; title: string }) {
   const s = session.state;
   const n = s.moves.length;
   return (
     <>
       <header>
-        <h1 style={H1}>Meeting over</h1>
-        <p style={{ margin: "4px 0 0", ...MUTED }}>{`${n} ${n === 1 ? "move" : "moves"} in ${s.round} ${s.round === 1 ? "round" : "rounds"} · nothing saved until you review`}</p>
+        <h1 style={H1}>{title}</h1>
+        <p style={{ margin: "4px 0 0", ...MUTED }}>
+          <b style={{ color: "var(--am-text)" }}>Meeting over</b>
+          {` · ${n} ${n === 1 ? "move" : "moves"} in ${s.round} ${s.round === 1 ? "round" : "rounds"} · nothing saved until you review`}
+        </p>
       </header>
       <MovesSoFar state={s} teams={teams} nameOf={nameOf} />
       {session.handedOffAt ? (
         <div style={{ display: "grid", gap: 8 }}>
           <p style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "var(--am-positive)" }}>Moves sent to Review</p>
-          <button type="button" style={SECONDARY} onClick={() => onHandOff(s.moves, session.id)}>Copy again</button>
+          <button type="button" disabled={busy} style={disabled(SECONDARY, busy)} onClick={() => onHandOff(s.moves, session.id)}>Copy again</button>
         </div>
       ) : (
-        <button type="button" disabled={n === 0} style={disabled(PRIMARY, n === 0)} onClick={() => onHandOff(s.moves, session.id)}>Review all moves</button>
+        <button type="button" disabled={n === 0 || busy} style={disabled(PRIMARY, n === 0 || busy)} onClick={() => onHandOff(s.moves, session.id)}>Review all moves</button>
       )}
     </>
   );
@@ -412,8 +438,9 @@ function Ended({ session, teams, nameOf, onHandOff }: { session: Session; teams:
 
 // ─── Screen ──────────────────────────────────────────────────────────
 
-export function CommissionerLiveMeeting({ leagueId, periodId, teams, onHandOff }: CommissionerLiveMeetingProps) {
+export function CommissionerLiveMeeting({ leagueId, periodId, periodName, teams, onHandOff, handOffBusy = false }: CommissionerLiveMeetingProps) {
   const { data, error, skew, act } = useMeetingSession(leagueId);
+  const title = periodName ? `${periodName} meeting` : "Live meeting";
   const nameOf = (id: number) => teams.find((t) => t.id === id)?.name ?? `Team ${id}`;
 
   let body: React.ReactNode;
@@ -423,24 +450,32 @@ export function CommissionerLiveMeeting({ leagueId, periodId, teams, onHandOff }
     // GET current may return another period's session: an ended one is history, an open one blocks.
     const session = data.session && (data.session.periodId === periodId || data.session.state.status !== "ended") ? data.session : null;
     if (!session) {
-      body = <NoSession leagueId={leagueId} periodId={periodId} teams={teams} nameOf={nameOf} act={act} />;
+      body = <NoSession leagueId={leagueId} periodId={periodId} teams={teams} nameOf={nameOf} act={act} title={title} />;
     } else if (session.periodId !== periodId) {
       body = (
         <>
-          <h1 style={H1}>Live meeting</h1>
+          <h1 style={H1}>{title}</h1>
           <p style={{ margin: 0, fontSize: 17, color: "var(--am-text)" }}>A meeting for another period is still open. End it before opening this one.</p>
         </>
       );
     } else if (session.state.status === "setup") {
-      body = <SetupOpened session={session} nameOf={nameOf} act={act} />;
+      body = <SetupOpened session={session} nameOf={nameOf} act={act} title={title} />;
     } else if (session.state.status === "ended") {
-      body = <Ended session={session} teams={teams} nameOf={nameOf} onHandOff={onHandOff} />;
+      body = <Ended session={session} teams={teams} nameOf={nameOf} onHandOff={onHandOff} busy={handOffBusy} title={title} />;
     } else {
-      body = <Live session={session} data={data} skew={skew} teams={teams} nameOf={nameOf} act={act} leagueId={leagueId} />;
+      body = <Live session={session} data={data} skew={skew} teams={teams} nameOf={nameOf} act={act} leagueId={leagueId} title={title} />;
     }
   }
 
-  return <div style={PAGE}>{body}</div>;
+  return (
+    <div style={PAGE}>
+      {/* The hook keeps the last good state and clears `error` on the next success. */}
+      {data && error && (
+        <p role="status" style={{ margin: 0, fontSize: 15, color: "var(--am-warning)" }}>Connection lost. Retrying…</p>
+      )}
+      {body}
+    </div>
+  );
 }
 
 export default CommissionerLiveMeeting;

@@ -183,6 +183,39 @@ describe("useMeetingSession races", () => {
     expect(get).toHaveBeenCalledTimes(n);
   });
 
+  it("re-arms polling when an act brings a new session after an ended one", async () => {
+    const old = response("ended", 7);
+    old.session!.periodId = 8;
+    get.mockResolvedValue(old);
+    const { result, unmount } = renderHook(() => useMeetingSession(7));
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
+    expect(get).toHaveBeenCalledTimes(1); // polling stopped on the ended session
+
+    const opened = response("running", 1);
+    opened.session!.id = 2;
+    opened.session!.state.status = "setup";
+    get.mockResolvedValue(opened);
+    await act(async () => { await result.current.act(() => Promise.resolve(opened)); });
+    expect(result.current.data?.session?.id).toBe(2);
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(get).toHaveBeenCalledTimes(2);
+    await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
+    expect(get).toHaveBeenCalledTimes(2 + 5); // still exactly one chain
+    unmount();
+  });
+
+  it("an act during a running chain does not add a second chain", async () => {
+    get.mockResolvedValue(response("running", 3));
+    const { result, unmount } = renderHook(() => useMeetingSession(7));
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    await act(async () => { await result.current.act(() => Promise.resolve(response("running", 4))); });
+    get.mockResolvedValue(response("running", 4));
+    await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
+    expect(get).toHaveBeenCalledTimes(1 + 5);
+    unmount();
+  });
+
   it("refreshes immediately when the tab becomes visible again", async () => {
     setVisibility("hidden");
     get.mockResolvedValue(response("running", 3));

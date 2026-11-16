@@ -115,7 +115,7 @@ export function TurnEntry({
 
   const drop = data.roster.find((p) => p.playerId === dropId) ?? null;
   const ready = !!add && !!drop && !busy;
-  const n = data.roster.length;
+  const n = data.activeCount;
 
   async function run(fn: () => Promise<void>) {
     setBusy(true);

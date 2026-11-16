@@ -8,7 +8,7 @@ vi.mock("../../auth/AuthProvider", () => ({
   useAuth: () => ({ me: { user: { isAdmin: false, memberships: [{ leagueId: "7", role: "COMMISSIONER" }] } } }),
 }));
 vi.mock("../../features/commissioner/pages/MeetingPage", () => ({ default: () => <div>TODAY MEETING PAGE</div> }));
-vi.mock("../../features/commissioner/api", () => ({ getCommissionerOverview: vi.fn() }));
+vi.mock("../../features/commissioner/api", () => ({ getCommissionerOverview: vi.fn(), getLeaguePeriods: vi.fn() }));
 vi.mock("../../features/meeting/api", () => ({
   getCurrentMeeting: vi.fn(),
   getSeasonOrder: vi.fn(),
@@ -47,6 +47,10 @@ beforeEach(() => {
   league.leagueId = 7;
   league.leagueRules = { meeting: { live: "true" } };
   c.getCommissionerOverview.mockResolvedValue({ league: { id: 7, name: "OGBA", season: 2026 }, teams: TEAMS } as any);
+  c.getLeaguePeriods.mockResolvedValue([
+    { id: 8, name: "Period 8", startDate: "2026-06-01T12:00:00.000Z", endDate: "2026-06-14T12:00:00.000Z", status: "completed" },
+    { id: 9, name: "Period 9", startDate: "2026-06-15T12:00:00.000Z", endDate: "2026-06-28T12:00:00.000Z", status: "pending" },
+  ] as any);
   mt.getSeasonOrder.mockResolvedValue([3, 1, 2]);
   mt.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ status: "ended", moves: MOVES }), { version: 9 }));
   mt.markHandedOff.mockResolvedValue(
@@ -72,6 +76,31 @@ describe("MeetingRoute", () => {
     renderRoute();
     expect(await screen.findByRole("button", { name: "Review all moves" })).toBeTruthy();
     expect(screen.queryByText("TODAY MEETING PAGE")).toBeNull();
+  });
+
+  it("titles the live screen with the period name", async () => {
+    renderRoute();
+    await screen.findByRole("button", { name: "Review all moves" });
+    expect(await screen.findByRole("heading", { name: "Period 9 meeting" })).toBeTruthy();
+  });
+
+  it("still renders the live screen when periods fail to load", async () => {
+    c.getLeaguePeriods.mockRejectedValue(new Error("boom"));
+    renderRoute();
+    expect(await screen.findByRole("button", { name: "Review all moves" })).toBeTruthy();
+  });
+
+  it("disables Review all moves while the hand-off is in flight", async () => {
+    let finish!: () => void;
+    mt.markHandedOff.mockImplementation(
+      () => new Promise((r) => { finish = () => r(sessionResponse(state({ status: "ended", moves: MOVES }), { version: 9 })); }),
+    );
+    renderRoute();
+    const btn = await screen.findByRole("button", { name: "Review all moves" });
+    fireEvent.click(btn);
+    await waitFor(() => expect((btn as HTMLButtonElement).disabled).toBe(true));
+    finish();
+    expect(await screen.findByText("REVIEW STUB")).toBeTruthy();
   });
 
   it("Review all moves writes the draft and navigates", async () => {

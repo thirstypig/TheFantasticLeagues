@@ -74,7 +74,10 @@ export type MeetingSessionResponse = z.infer<typeof MeetingSessionResponseSchema
 
 export const MeetingChoicesResponseSchema = z.object({
   list: z.array(MeetingPlayerSchema),
+  /** Droppable players: active (not IL), minus players already dropped in this meeting. */
   roster: z.array(MeetingPlayerSchema),
+  /** The team's active (non-IL) roster size; unchanged by meeting moves (each is add + drop). */
+  activeCount: z.number().int().nonnegative(),
 });
 export type MeetingChoicesResponse = z.infer<typeof MeetingChoicesResponseSchema>;
 

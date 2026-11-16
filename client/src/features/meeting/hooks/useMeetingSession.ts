@@ -18,6 +18,8 @@ export function useMeetingSession(leagueId: number | null) {
   const dataRef = useRef<MeetingSessionResponse | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadRef = useRef<() => Promise<void>>(async () => {});
+  /** Arms the next poll; a no-op until the effect installs it. */
+  const scheduleRef = useRef<() => void>(() => {});
 
   const genRef = useRef(0);
 
@@ -30,6 +32,10 @@ export function useMeetingSession(leagueId: number | null) {
     setData(res);
     setSkew(skewMs(res.serverNow, Date.now()));
     setError(null);
+    // Polling stops on an ended session. When a live one arrives later (e.g. an
+    // act opened a new meeting) and nothing is armed, restart the single chain.
+    // A load in flight reschedules through schedule(), which clears this timer first.
+    if (res.session?.state.status !== "ended" && timer.current == null) scheduleRef.current();
   }, []);
 
   useEffect(() => {
@@ -46,9 +52,11 @@ export function useMeetingSession(leagueId: number | null) {
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(load, delay);
     };
+    scheduleRef.current = schedule;
 
     async function load() {
       if (timer.current) clearTimeout(timer.current);
+      timer.current = null;
       const gen = ++genRef.current;
       try {
         const res = await getCurrentMeeting(leagueId as number);
@@ -69,8 +77,10 @@ export function useMeetingSession(leagueId: number | null) {
     void load();
     return () => {
       cancelled = true;
+      scheduleRef.current = () => {};
       document.removeEventListener("visibilitychange", onVisibility);
       if (timer.current) clearTimeout(timer.current);
+      timer.current = null;
     };
   }, [leagueId, apply]);
 

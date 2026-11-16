@@ -10,7 +10,7 @@ import { CommissionerOnly } from "../components/shared/CommissionerOnly";
 import { ConfirmSheet } from "../components/shared/ConfirmSheet";
 import { reportError } from "../lib/errorBus";
 import MeetingPage from "../features/commissioner/pages/MeetingPage";
-import { getCommissionerOverview } from "../features/commissioner/api";
+import { getCommissionerOverview, getLeaguePeriods } from "../features/commissioner/api";
 import { loadDraft, saveDraft } from "../features/commissioner/lib/meetingDraft";
 import { CommissionerLiveMeeting } from "../features/meeting/screens/CommissionerLiveMeeting";
 import { markHandedOff } from "../features/meeting/api";
@@ -22,6 +22,7 @@ function LiveMeeting({ leagueId, periodId }: { leagueId: number; periodId: numbe
   const navigate = useNavigate();
   const [teams, setTeams] = useState<Team[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [periodName, setPeriodName] = useState<string | undefined>(undefined);
   const [pending, setPending] = useState<Pending | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -31,10 +32,15 @@ function LiveMeeting({ leagueId, periodId }: { leagueId: number; periodId: numbe
       (res) => live && setTeams([...(res.teams ?? [])].map((t) => ({ id: t.id, name: t.name })).sort((a, b) => a.name.localeCompare(b.name))),
       () => live && setLoadFailed(true),
     );
+    // Same source as today's meeting page; the title falls back when it fails.
+    getLeaguePeriods(leagueId).then(
+      (periods) => live && setPeriodName(periods.find((p) => p.id === periodId)?.name),
+      () => {},
+    );
     return () => {
       live = false;
     };
-  }, [leagueId]);
+  }, [leagueId, periodId]);
 
   async function handOff(moves: MeetingMove[], sessionId: number) {
     setBusy(true);
@@ -73,7 +79,14 @@ function LiveMeeting({ leagueId, periodId }: { leagueId: number; periodId: numbe
 
   return (
     <>
-      <CommissionerLiveMeeting leagueId={leagueId} periodId={periodId} teams={teams} onHandOff={onHandOff} />
+      <CommissionerLiveMeeting
+        leagueId={leagueId}
+        periodId={periodId}
+        periodName={periodName}
+        teams={teams}
+        onHandOff={onHandOff}
+        handOffBusy={busy}
+      />
       <ConfirmSheet
         open={pending !== null}
         title="Replace the moves already in Review?"

@@ -11,7 +11,7 @@ const m = vi.mocked(api);
 
 beforeEach(() => {
   vi.clearAllMocks();
-  m.getChoices.mockResolvedValue(choices({ list: [FRALEY], roster: [ALONSO, HAYS] }));
+  m.getChoices.mockResolvedValue(choices({ list: [FRALEY], roster: [ALONSO, HAYS], activeCount: 23 }));
   m.searchFreeAgents.mockResolvedValue([CASAS]);
 });
 
@@ -30,7 +30,7 @@ describe("TurnEntry", () => {
     expect(screen.queryByText(/Roster stays at/)).toBeNull();
     fireEvent.change(screen.getByLabelText("Drop"), { target: { value: String(HAYS.playerId) } });
     expect((submit as HTMLButtonElement).disabled).toBe(false);
-    expect(screen.getByText("✓ Roster stays at 2 / 2")).toBeTruthy();
+    expect(screen.getByText("✓ Roster stays at 23 / 23")).toBeTruthy();
     fireEvent.click(submit);
     await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(FRALEY.playerId, HAYS.playerId));
   });
