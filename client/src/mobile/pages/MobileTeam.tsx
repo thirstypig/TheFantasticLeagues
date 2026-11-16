@@ -16,13 +16,15 @@
  * compact stat strip per the design canvas. PTS comes from the
  * standings query (same data the desktop hero card uses).
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
 import { useLeague } from "../../contexts/LeagueContext";
 import { formatEligiblePositions, ilPeriodLabel } from "../../lib/rosterDisplay";
 import { getTeams, getTeamRosterHub, updateRosterPosition, getTeamPeriodRoster, getTeamPlayerSeasonStats, type PeriodRosterEntry, type PeriodRosterStats } from "../../features/teams/api";
 import { getSeasonStandings } from "../../api";
+import { ApiError } from "../../api/base";
+import { ROSTER_CONFLICT_MESSAGE } from "../../features/teams/lib/rosterConflict";
 import { ilActivate, ilStash } from "../../features/transactions/api";
 import { reportError } from "../../lib/errorBus";
 import type { RosterHubResponse } from "@shared/api/teams";
@@ -118,6 +120,13 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
 
   const [teamId, setTeamId] = useState<number | null>(null);
   const [hub, setHub] = useState<RosterHubResponse | null>(null);
+  // Roster version token for the guarded PATCH (todo #181). Mirrors
+  // hub.rosterVersion; kept in a ref so applyMove can read the latest value
+  // without re-creating the callback on every optimistic hub update.
+  const rosterVersionRef = useRef<number | "*">("*");
+  useEffect(() => {
+    if (hub) rosterVersionRef.current = hub.rosterVersion ?? "*";
+  }, [hub]);
   const [points, setPoints] = useState<number | null>(null);
   const [rank, setRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -248,7 +257,7 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
    * the row visually moves immediately; on failure, refetches the hub
    * to restore truth from the server.
    */
-  const applyMove = useCallback(
+  const runMove = useCallback(
     async (row: RosterHubRow, nextSlot: string) => {
       if (teamId == null) return;
       setMoveSheetRow(null);
@@ -279,13 +288,42 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
           // Stash-only — server's matcher fills the freed active slot
           // from the bench. addPlayerId omitted.
           if (leagueId == null) throw new Error("leagueId not resolved");
-          await ilStash({ leagueId, teamId, stashPlayerId: row.playerId });
+          const stashRes = await ilStash({ leagueId, teamId, stashPlayerId: row.playerId });
+          // The stash transaction bumps the server's rosterVersion and returns
+          // it; carry it forward so the next move isn't a false 409.
+          const stashVersion = stashRes?.rosterVersion;
+          if (typeof stashVersion === "number") {
+            rosterVersionRef.current = stashVersion;
+            setHub((prev) => (prev ? { ...prev, rosterVersion: stashVersion } : prev));
+          } else {
+            rosterVersionRef.current = "*";
+          }
         } else {
-          await updateRosterPosition(teamId, row.rosterId, nextSlot);
+          const res = await updateRosterPosition(teamId, row.rosterId, nextSlot, undefined, rosterVersionRef.current);
+          // Each PATCH bumps the version and returns the new one; carry it forward.
+          const nextVersion = res?.rosterVersion;
+          if (typeof nextVersion === "number") {
+            rosterVersionRef.current = nextVersion;
+            setHub((prev) => (prev ? { ...prev, rosterVersion: nextVersion } : prev));
+          }
         }
       } catch (err: unknown) {
         reportError(err, { source: nextSlot === "IL" ? "mobile-team-il-stash" : "mobile-team-move" });
-        setMoveError(err instanceof Error ? err.message : "Failed to move player");
+        const isConflict = err instanceof ApiError && err.status === 409;
+        setMoveError(isConflict ? ROSTER_CONFLICT_MESSAGE : err instanceof Error ? err.message : "Failed to move player");
+        if (isConflict) {
+          // Roster changed elsewhere (another tab or the commissioner). Reload
+          // the hub so the rows AND the version token are current.
+          // Awaited inside the queued task so moves chained behind this one read
+          // the fresh token, and a late refetch can't overwrite a later move.
+          try {
+            const refreshed = await getTeamRosterHub(teamId);
+            rosterVersionRef.current = refreshed.rosterVersion ?? "*";
+            setHub(refreshed);
+          } catch {
+            rosterVersionRef.current = "*";
+          }
+        }
         // Rollback by restoring the previous slot on the row.
         setHub((prev) => {
           if (!prev) return prev;
@@ -316,7 +354,7 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
    * dropping a roster player to make room. Server picks the slot via
    * its bipartite matcher (the API doesn't accept an explicit slot).
    */
-  const applyIlActivate = useCallback(
+  const runIlActivate = useCallback(
     async (ilRow: RosterHubRow, dropTarget: RosterHubRow) => {
       if (teamId == null || leagueId == null) return;
       setIlActivateRow(null);
@@ -343,17 +381,36 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
       });
 
       try {
-        await ilActivate({
+        const activateRes = await ilActivate({
           leagueId,
           teamId,
           activatePlayerId: ilRow.playerId,
           dropPlayerId: dropTarget.playerId,
         });
+        // The activate bumped the server's rosterVersion and returned it. Set the
+        // token now: the useEffect ref sync only runs after a render, and a move
+        // queued behind this activate must not read the old one.
+        rosterVersionRef.current =
+          typeof activateRes?.rosterVersion === "number" ? activateRes.rosterVersion : "*";
+        // Mirror it into hub state too: if the refetch below fails, the hub-sync
+        // effect must not overwrite the ref with the stale pre-activate version.
+        if (typeof activateRes?.rosterVersion === "number") {
+          const v = activateRes.rosterVersion;
+          setHub((prev) => (prev ? { ...prev, rosterVersion: v } : prev));
+        }
         // Refetch the hub to get the server's authoritative slot
         // assignment for the activated player.
         try {
           const refreshed = await getTeamRosterHub(teamId);
-          setHub(refreshed);
+          // Never move the token backwards (a lagging read must not undo the
+          // version the activate itself returned).
+          const known = rosterVersionRef.current;
+          const best =
+            typeof known === "number" && typeof refreshed.rosterVersion === "number"
+              ? Math.max(known, refreshed.rosterVersion)
+              : refreshed.rosterVersion ?? known;
+          rosterVersionRef.current = best;
+          setHub(typeof best === "number" ? { ...refreshed, rosterVersion: best } : refreshed);
         } catch {
           // If the refetch fails, leave the optimistic state in place.
         }
@@ -376,6 +433,31 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
       }
     },
     [teamId, leagueId],
+  );
+
+  // Serialize roster mutations (todo #181): each one bumps the server's
+  // rosterVersion, so two in flight at once would make the second send a stale
+  // If-Match and 409 against this same phone. Chain them; each reads the
+  // version token fresh when its turn comes.
+  const moveChainRef = useRef<Promise<unknown>>(Promise.resolve());
+  const enqueue = useCallback(<T,>(task: () => Promise<T>): Promise<T> => {
+    const p = moveChainRef.current.then(task, task);
+    moveChainRef.current = p.catch(() => {});
+    return p;
+  }, []);
+  const applyMove = useCallback(
+    (row: RosterHubRow, nextSlot: string) => {
+      setMoveSheetRow(null);
+      return enqueue(() => runMove(row, nextSlot));
+    },
+    [enqueue, runMove],
+  );
+  const applyIlActivate = useCallback(
+    (ilRow: RosterHubRow, dropTarget: RosterHubRow) => {
+      setIlActivateRow(null);
+      return enqueue(() => runIlActivate(ilRow, dropTarget));
+    },
+    [enqueue, runIlActivate],
   );
 
   const teamName = hub?.team.name ?? teamCode ?? "Team";

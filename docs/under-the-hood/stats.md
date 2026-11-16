@@ -21,16 +21,16 @@ updated: 2026-11-16
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-16 from 2,011 git-tracked files.*
+*Generated 2026-11-16 from 2,022 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 677 | 117,850 |
-| `.tsx` | 389 | 96,213 |
-| `.md` | 567 | 71,686 |
-| `.json` | 36 | 40,130 |
+| `.ts` | 681 | 118,454 |
+| `.tsx` | 390 | 96,858 |
+| `.md` | 571 | 73,040 |
+| `.json` | 36 | 40,129 |
 | `.css` | 15 | 2,475 |
 | `.sql` | 41 | 2,172 |
 | `.prisma` | 1 | 1,782 |
@@ -38,7 +38,7 @@ updated: 2026-11-16
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **2,007** | **378,334** |
+| **All tracked** | **2,018** | **380,936** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -51,16 +51,16 @@ updated: 2026-11-16
 | Prisma migrations | 39 |
 | Server feature modules | 34 |
 | Client feature modules | 29 |
-| Cross-feature imports (ADR-015 baseline) | 84 |
+| Cross-feature imports (ADR-015 baseline) | 83 |
 
 ## Docs
 
-**219** board-scope markdown files (`docs/` plus the four root docs), of which **151** carry frontmatter.
+**225** board-scope markdown files (`docs/` plus the four root docs), of which **153** carry frontmatter.
 
-*571 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
+*577 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
 unrelated frontmatter vocabularies and are deliberately excluded from the tables below.*
 
-> **68 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
+> **72 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
 > or cross-linked. Retrofitting them is the largest single piece of remaining docs work.
 
 | Type | Docs | In vocabulary? |
@@ -71,6 +71,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `report` | 4 | ✅ |
 | `refactor` | 3 | ❌ off-vocabulary |
 | `tech-spec` | 3 | ✅ |
+| `stats` | 3 | ✅ |
 | `solution` | 2 | ✅ |
 | `deployment-failure` | 2 | ❌ off-vocabulary |
 | `spec` | 2 | ❌ off-vocabulary |
@@ -97,14 +98,13 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `privacy` | 1 | ✅ |
 | `risk` | 1 | ✅ |
 | `runbook` | 1 | ✅ |
-| `stats` | 1 | ✅ |
 | `status` | 1 | ✅ |
 
 **37 docs use a `type` outside the controlled vocabulary** (see `docs/README-DOCS.md` §4) — mostly older `docs/solutions/` and `docs/archive/` entries written before the schema existed.
 
 | Status | Docs | In vocabulary? |
 |---|---:|---|
-| `active` | 62 | ✅ |
+| `active` | 64 | ✅ |
 | `draft` | 6 | ✅ |
 | `completed` | 4 | ❌ off-vocabulary |
 | `resolved` | 4 | ❌ off-vocabulary |
@@ -119,12 +119,12 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 ## Open work
 
-**6 open** of 311 total to-dos.
+**5 open** of 311 total to-dos.
 
 | Priority | Open |
 |---|---:|
 | `p2` | 1 |
-| `p3` | 5 |
+| `p3` | 4 |
 
 Planning status: 27/82 planning tasks done, 2 in progress.
 

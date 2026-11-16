@@ -107,23 +107,6 @@ function TeamCard({ team, leagueAvgH, leagueAvgP, outfieldMode, onSelectPlayer }
   const [sortKey, setSortKey] = useState<RosterSortKey>("price");
   const [sortDesc, setSortDesc] = useState(true);
 
-  const MATRIX_POSITIONS = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P"];
-
-  // Optimistic position overrides for dropdowns
-  const [positionOverrides, setPositionOverrides] = useState<Record<number, string>>({});
-  const handlePositionSwap = useCallback(async (teamId: number, rosterId: number, newPos: string) => {
-    setPositionOverrides(prev => ({ ...prev, [rosterId]: newPos }));
-    try {
-      await fetchJsonApi(`${API_BASE}/teams/${teamId}/roster/${rosterId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ assignedPosition: newPos }),
-      });
-      setPositionOverrides(prev => { const n = { ...prev }; delete n[rosterId]; return n; });
-    } catch {
-      setPositionOverrides(prev => { const n = { ...prev }; delete n[rosterId]; return n; });
-    }
-  }, []);
-
   const handleSort = (key: RosterSortKey) => {
     if (key === sortKey) { setSortDesc(!sortDesc); }
     else { setSortKey(key); setSortDesc(key !== "name" && key !== "pos"); }

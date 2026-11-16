@@ -49,7 +49,7 @@ import { enqueueIlFeeReconcile } from "../../lib/outboxDrainer.js";
 import { clearPlayersCache } from "../players/services/playersListCache.js";
 import { clearStandingsCache } from "../standings/services/standingsService.js";
 import { clearAwardsCache } from "../awards/services/awardsService.js";
-import { incrementRosterVersion } from "../teams/lib/rosterVersionGuard.js";
+import { incrementRosterVersion } from "../../lib/rosterVersion.js";
 
 /**
  * Invalidate every cache keyed on (leagueId, ...) after a successful roster
@@ -451,6 +451,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
 
   // 4. Perform Transaction (Atomic) — lock team row to prevent concurrent roster limit bypass
   let appliedReassignments: AppliedReassignment[] = [];
+  let rosterVersionAfter = 0; // todo #181: returned so the client keeps a current If-Match token
   try {
   await prisma.$transaction(async (tx) => {
     // Acquire row-level lock on the team to serialize concurrent claims
@@ -751,7 +752,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
         },
       });
     }
-    await incrementRosterVersion(teamId, tx); // todo #181
+    rosterVersionAfter = await incrementRosterVersion(teamId, tx); // todo #181
   }, { timeout: 30_000 });
   } catch (err: unknown) {
     // Typed guard errors from Phase 1 libs (roster cap, overlap, ghost-IL,
@@ -798,6 +799,7 @@ router.post("/transactions/claim", requireAuth, validateBody(claimSchema), requi
     appliedReassignments,
     ilStashedPlayerId: ilStashPlayerId ?? null,
     ilStashedPlayerName: stashPlayerInfo?.name ?? null,
+    rosterVersion: rosterVersionAfter,
   };
   return res.json(claimResp);
 }));
@@ -856,6 +858,9 @@ router.post("/transactions/drop", requireAuth, validateBody(dropSchema), require
   const season = league?.season ?? new Date().getFullYear();
 
   await prisma.$transaction(async (tx) => {
+    // todo #181: Team lock (via the version bump) BEFORE the Roster write, the
+    // same order as the roster PATCH, so the two cannot deadlock (40P01).
+    await incrementRosterVersion(teamId, tx);
     await tx.roster.update({ where: { id: rosterEntry.id }, data: { releasedAt: effective, source: "DROP" } });
 
     const player = await tx.player.findUnique({ where: { id: playerId } });
@@ -872,7 +877,6 @@ router.post("/transactions/drop", requireAuth, validateBody(dropSchema), require
         transactionType: 'DROP'
       }
     });
-    await incrementRosterVersion(teamId, tx); // todo #181
   }, { timeout: 30_000 });
 
   writeAuditLog({
@@ -1173,6 +1177,7 @@ router.post(
 
     // Transaction: atomic stash + add.
     let stashAppliedReassignments: AppliedReassignment[] = [];
+    let rosterVersionAfter = 0; // todo #181: returned so the client keeps a current If-Match token
     try {
       await prisma.$transaction(async (tx) => {
         // Row-lock the team to serialize concurrent stashes.
@@ -1338,7 +1343,7 @@ router.post(
             },
           });
         }
-        await incrementRosterVersion(teamId, tx); // todo #181
+        rosterVersionAfter = await incrementRosterVersion(teamId, tx); // todo #181
       }, { timeout: 30_000 });
     } catch (err) {
       if (isRosterRuleError(err)) {
@@ -1397,6 +1402,7 @@ router.post(
       addMlbId: addPlayer?.mlbId ?? null,
       addName: addPlayer?.name ?? null,
       appliedReassignments: stashAppliedReassignments,
+      rosterVersion: rosterVersionAfter,
     };
     return res.json(stashResp);
   }),
@@ -1602,6 +1608,7 @@ router.post(
     const season = league?.season ?? new Date().getFullYear();
 
     let activateAppliedReassignments: AppliedReassignment[] = [];
+    let rosterVersionAfter = 0; // todo #181: returned so the client keeps a current If-Match token
     try {
       await prisma.$transaction(async (tx) => {
         await tx.$queryRaw`SELECT id FROM "Team" WHERE id = ${teamId} FOR UPDATE`;
@@ -1734,7 +1741,7 @@ router.post(
             },
           });
         }
-        await incrementRosterVersion(teamId, tx); // todo #181
+        rosterVersionAfter = await incrementRosterVersion(teamId, tx); // todo #181
       }, { timeout: 30_000 });
     } catch (err) {
       if (isRosterRuleError(err)) {
@@ -1770,6 +1777,7 @@ router.post(
       dropMlbId: dropPlayerInfo?.mlbId ?? null,
       dropName: dropPlayerInfo?.name ?? undefined,
       appliedReassignments: activateAppliedReassignments,
+      rosterVersion: rosterVersionAfter,
     };
     return res.json(activateResp);
   }),

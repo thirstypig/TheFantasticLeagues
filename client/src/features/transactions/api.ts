@@ -132,7 +132,7 @@ export interface IlStashParams {
     reason?: string;
 }
 
-export async function ilStash(params: IlStashParams): Promise<{ success: boolean; stashPlayerId: number; addPlayerId: number | null; stashOnly?: boolean; appliedReassignments?: AppliedReassignment[] }> {
+export async function ilStash(params: IlStashParams): Promise<{ success: boolean; stashPlayerId: number; addPlayerId: number | null; stashOnly?: boolean; appliedReassignments?: AppliedReassignment[]; rosterVersion?: number }> {
     const body = IlStashRequestSchema.parse(params);
     return fetchJsonApi(`${API_BASE}/transactions/il-stash`, {
         method: 'POST',
@@ -157,7 +157,7 @@ export interface IlActivateParams {
     reason?: string;
 }
 
-export async function ilActivate(params: IlActivateParams): Promise<{ success: boolean; activatePlayerId: number; dropPlayerId: number; appliedReassignments?: AppliedReassignment[] }> {
+export async function ilActivate(params: IlActivateParams): Promise<{ success: boolean; activatePlayerId: number; dropPlayerId: number; appliedReassignments?: AppliedReassignment[]; rosterVersion?: number }> {
     const body = IlActivateRequestSchema.parse(params);
     return fetchJsonApi(`${API_BASE}/transactions/il-activate`, {
         method: 'POST',

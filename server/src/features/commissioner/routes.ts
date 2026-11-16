@@ -28,6 +28,7 @@ import {
   BulkIlStashRequestSchema,
   CleanupDroppedRequestSchema,
 } from "../../../../shared/api/commissioner.js";
+import { incrementRosterVersion } from "../../lib/rosterVersion.js";
 
 // --- Zod Schemas ---
 
@@ -861,9 +862,12 @@ router.patch(
       }
     }
 
-    const updated = await prisma.roster.update({
-      where: { id: rosterId },
-      data: updates,
+    const updated = await prisma.$transaction(async (tx) => {
+      await incrementRosterVersion(roster.teamId, tx); // todo #181 (Team lock before Roster write)
+      return tx.roster.update({
+        where: { id: rosterId },
+        data: updates,
+      });
     });
 
     writeAuditLog({
@@ -1452,6 +1456,7 @@ router.post(
     const season = league?.season ?? new Date().getFullYear();
 
     await prisma.$transaction(async (tx) => {
+      await incrementRosterVersion(teamId, tx); // todo #181 (Team lock before Roster write)
       await tx.roster.update({
         where: { id: rosterEntry.id },
         data: { releasedAt: effective, source: "DROP" },
