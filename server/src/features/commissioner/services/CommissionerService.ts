@@ -12,9 +12,16 @@ import { invalidateLeagueRules } from "../../../lib/leagueRuleCache.js";
 const auctionImportService = new AuctionImportService();
 
 /** Categories editable at any time, regardless of the season rules lock. */
-const MUTABLE_ANY_TIME_CATEGORIES = new Set<string>(["transactions"]);
+const MUTABLE_ANY_TIME_CATEGORIES = new Set<string>(["transactions", "meeting"]);
 
 const TRADE_WINDOW_VALUES = new Set(["anytime", "meeting_day"]);
+
+const MEETING_RULE_VALUES: Record<string, { label: string; values: string[] }> = {
+  live: { label: "Owners enter own moves at the meeting", values: ["true", "false"] },
+  turn_seconds: { label: "Clock per turn", values: ["60", "120", "180"] },
+  can_add_time: { label: "You can add time", values: ["true", "false"] },
+  overtime_fee: { label: "Penalty for going over", values: ["0", "1", "5"] },
+};
 
 /** Thrown by assertValidRuleValue; routes map it to HTTP 400. */
 export class InvalidRuleValueError extends Error {
@@ -24,10 +31,16 @@ export class InvalidRuleValueError extends Error {
   }
 }
 
-/** Throws if the value is not allowed for transactions.trade_window; no-op for other rules. */
+/** Throws if the value is not allowed for transactions.trade_window or a meeting rule; no-op for other rules. */
 export function assertValidRuleValue(category: string, key: string, value: string): void {
   if (category === "transactions" && key === "trade_window" && !TRADE_WINDOW_VALUES.has(value)) {
     throw new InvalidRuleValueError("When trades are allowed must be anytime or meeting_day");
+  }
+  if (category === "meeting") {
+    const rule = MEETING_RULE_VALUES[key];
+    if (rule && !rule.values.includes(value)) {
+      throw new InvalidRuleValueError(`${rule.label} must be one of ${rule.values.join(", ")}`);
+    }
   }
 }
 
@@ -46,6 +59,10 @@ export class RulesLockedError extends Error {
  */
 export const BACKFILL_RULE_KEYS: ReadonlyArray<{ category: string; key: string }> = [
   { category: "transactions", key: "trade_window" },
+  { category: "meeting", key: "live" },
+  { category: "meeting", key: "turn_seconds" },
+  { category: "meeting", key: "can_add_time" },
+  { category: "meeting", key: "overtime_fee" },
 ];
 
 export class CommissionerService {

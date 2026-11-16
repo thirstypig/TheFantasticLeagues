@@ -22,11 +22,22 @@ interface RowSpec {
   value?: string;
   control?: "switch" | "segmented";
   ruleId?: number;
+  options?: Array<{ value: string; label: string }>;
 }
 
 const TRADE_OPTIONS = [
   { value: "meeting_day", label: "Meeting day only" },
   { value: "anytime", label: "Anytime" },
+];
+const TURN_OPTIONS = [
+  { value: "60", label: "1 min" },
+  { value: "120", label: "2 min" },
+  { value: "180", label: "3 min" },
+];
+const FEE_OPTIONS = [
+  { value: "0", label: "Off" },
+  { value: "1", label: "$1" },
+  { value: "5", label: "$5" },
 ];
 const PAYOUT_KEYS = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"].map((n) => `payout_${n}`);
 
@@ -101,6 +112,7 @@ function RulesPageBody() {
     stats_source: "overview", batter_count: "roster", pitcher_count: "roster",
     il_slot_1_cost: "il", il_slot_2_cost: "il", min_innings: "scoring",
     trade_window: "transactions", owner_self_serve: "transactions",
+    live: "meeting", turn_seconds: "meeting", can_add_time: "meeting", overtime_fee: "meeting",
     auction_budget: "draft", bid_timer: "draft", nomination_timer: "draft",
   };
   const get = (k: string) => byKey.get(`${CATEGORY_OF[k] ?? "payouts"}.${k}`);
@@ -124,8 +136,13 @@ function RulesPageBody() {
   const payoutRows = PAYOUT_KEYS.map(get).filter((r): r is CommissionerRuleRow => !!r);
   const trade = get("trade_window");
   const self = get("owner_self_serve");
-  const control = (r: CommissionerRuleRow | undefined, label: string, kind: "switch" | "segmented"): RowSpec[] =>
-    r ? [{ id: r.key, label, sources: [r], control: kind, ruleId: r.id }] : [];
+  const control = (
+    r: CommissionerRuleRow | undefined, label: string, kind: "switch" | "segmented",
+    extra?: Pick<RowSpec, "subs" | "options">,
+  ): RowSpec[] =>
+    r ? [{ id: r.key, label, sources: [r], control: kind, ruleId: r.id, ...extra }] : [];
+  const live = get("live");
+  const meetingOn = live?.value === "true";
 
   const groups: Record<string, RowSpec[]> = {
     Rosters: [...simple("stats_source", "NL players only", (v) => (v === "NL" ? "On" : "Off")), ...rosterSize],
@@ -137,8 +154,16 @@ function RulesPageBody() {
       "The app flags teams under it at close; you decide",
     ]),
     "Trades and moves": [
-      ...control(trade, "When trades are allowed", "segmented"),
+      ...control(trade, "When trades are allowed", "segmented", { options: TRADE_OPTIONS }),
       ...control(self, "Owners make their own moves", "switch"),
+    ],
+    Meeting: [
+      ...control(live, "Owners enter own moves at the meeting", "switch", meetingOn ? undefined : { subs: ["You enter them for everyone"] }),
+      ...(meetingOn ? [
+        ...control(get("turn_seconds"), "Clock per turn", "segmented", { options: TURN_OPTIONS }),
+        ...control(get("can_add_time"), "You can add time", "switch"),
+        ...control(get("overtime_fee"), "Penalty for going over", "segmented", { options: FEE_OPTIONS }),
+      ] : []),
     ],
     Auction: [
       ...simple("auction_budget", "Budget per team", (v) => `$${v}`),
@@ -194,7 +219,7 @@ function RulesPageBody() {
         {spec.control === "segmented" && (
           <RuleSegmented
             label={spec.label}
-            options={TRADE_OPTIONS}
+            options={spec.options ?? TRADE_OPTIONS}
             value={rule.value}
             disabled={busy}
             onChange={(next) => save(rule, next)}
@@ -231,7 +256,7 @@ function RulesPageBody() {
       <h1 style={{ margin: "0 0 4px", fontSize: 24, fontWeight: 700, color: "var(--am-text)" }}>Rules</h1>
       <div className="rules-cols">
         <div>{["Rosters", "IL fees", "Scoring"].map(renderGroup)}</div>
-        <div>{["Trades and moves", "Auction", "Payouts"].map(renderGroup)}</div>
+        <div>{["Trades and moves", "Meeting", "Auction", "Payouts"].map(renderGroup)}</div>
       </div>
     </div>
   );
