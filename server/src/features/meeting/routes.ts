@@ -473,11 +473,14 @@ router.get(
 
     const rosterRows = await prisma.roster.findMany({
       where: { teamId, releasedAt: null },
-      select: { playerId: true, player: { select: PLAYER_SELECT } },
+      select: { playerId: true, assignedPosition: true, player: { select: PLAYER_SELECT } },
     });
-    const roster = rosterRows.filter((r) => !dropped.has(r.playerId)).map((r) => toMeetingPlayer(r.player));
+    // IL players can't be dropped here and don't count (as on today's meeting page).
+    // Every meeting move is add + drop, so the active count holds for the whole meeting.
+    const active = rosterRows.filter((r) => r.assignedPosition !== "IL");
+    const roster = active.filter((r) => !dropped.has(r.playerId)).map((r) => toMeetingPlayer(r.player));
 
-    res.json({ list, roster });
+    res.json({ list, roster, activeCount: active.length });
   }),
 );
 

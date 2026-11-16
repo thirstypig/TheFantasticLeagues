@@ -640,7 +640,7 @@ describe("GET /leagues/:leagueId/current", () => {
 // ── Choices ──────────────────────────────────────────────────────
 
 describe("GET /sessions/:id/choices", () => {
-  it("returns the team's List minus rostered and already-picked, and roster minus drops", async () => {
+  it("returns the team's List minus rostered and already-picked, roster minus drops and IL, and the active count", async () => {
     const base = runningState([3, 4, 5]);
     const state: MeetingState = {
       ...base,
@@ -669,7 +669,13 @@ describe("GET /sessions/:id/choices", () => {
       { playerId: 102, player: p(102, "Taken") },
     ]);
     mockPrisma.roster.findMany.mockImplementation(async ({ where }: any) => {
-      if (where.teamId === 3) return [{ playerId: 200, player: p(200, "Keep") }, { playerId: 201, player: p(201, "Dropped") }];
+      if (where.teamId === 3)
+        return [
+          { playerId: 200, assignedPosition: "OF", player: p(200, "Keep") },
+          { playerId: 201, assignedPosition: "C", player: p(201, "Dropped") },
+          { playerId: 202, assignedPosition: "IL", player: p(202, "Hurt") },
+          { playerId: 203, assignedPosition: null, player: p(203, "Unslotted") },
+        ];
       return [{ playerId: 101 }];
     });
 
@@ -677,7 +683,9 @@ describe("GET /sessions/:id/choices", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.list.map((x: any) => x.playerId)).toEqual([100]);
-    expect(res.body.roster.map((x: any) => x.playerId)).toEqual([200]);
+    // IL players are neither droppable nor counted; meeting drops leave the drop list but not the count.
+    expect(res.body.roster.map((x: any) => x.playerId)).toEqual([200, 203]);
+    expect(res.body.activeCount).toBe(3);
     expect(res.body.list[0]).toEqual({ playerId: 100, name: "Free", pos: "OF", mlbTeam: "LAD", mlbId: 1100 });
     expect(mockPrisma.team.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 3, leagueId: LEAGUE } }),
@@ -699,6 +707,7 @@ describe("GET /sessions/:id/choices", () => {
     });
     const teamCall = mockPrisma.roster.findMany.mock.calls.find((c: any) => c[0].where.teamId === 3);
     expect(teamCall[0].where).toEqual({ teamId: 3, releasedAt: null });
+    expect(teamCall[0].select).toEqual(expect.objectContaining({ assignedPosition: true }));
   });
 
   it("owner of another team → 403", async () => {
