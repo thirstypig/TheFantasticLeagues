@@ -21,15 +21,15 @@ updated: 2026-11-16
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-16 from 1,972 git-tracked files.*
+*Generated 2026-11-16 from 1,974 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 657 | 115,565 |
+| `.ts` | 657 | 115,568 |
 | `.tsx` | 376 | 93,654 |
-| `.md` | 562 | 70,885 |
+| `.md` | 564 | 71,039 |
 | `.json` | 36 | 40,130 |
 | `.css` | 15 | 2,475 |
 | `.sql` | 40 | 2,153 |
@@ -38,7 +38,7 @@ updated: 2026-11-16
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,968** | **372,655** |
+| **All tracked** | **1,970** | **372,812** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -57,7 +57,7 @@ updated: 2026-11-16
 
 **217** board-scope markdown files (`docs/` plus the four root docs), of which **150** carry frontmatter.
 
-*566 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
+*568 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
 unrelated frontmatter vocabularies and are deliberately excluded from the tables below.*
 
 > **67 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
@@ -119,10 +119,11 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 ## Open work
 
-**2 open** of 308 total to-dos.
+**4 open** of 310 total to-dos.
 
 | Priority | Open |
 |---|---:|
+| `p2` | 2 |
 | `p3` | 2 |
 
 Planning status: 27/82 planning tasks done, 2 in progress.
