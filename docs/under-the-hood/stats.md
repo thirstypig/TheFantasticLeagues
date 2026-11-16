@@ -21,14 +21,14 @@ updated: 2026-11-16
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-16 from 1,987 git-tracked files.*
+*Generated 2026-11-16 from 2,002 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 666 | 117,002 |
-| `.tsx` | 379 | 94,053 |
+| `.ts` | 674 | 117,687 |
+| `.tsx` | 386 | 95,380 |
 | `.md` | 564 | 71,517 |
 | `.json` | 36 | 40,130 |
 | `.css` | 15 | 2,475 |
@@ -38,7 +38,7 @@ updated: 2026-11-16
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,983** | **375,157** |
+| **All tracked** | **1,998** | **377,169** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -50,7 +50,7 @@ updated: 2026-11-16
 | Prisma models | 67 |
 | Prisma migrations | 39 |
 | Server feature modules | 34 |
-| Client feature modules | 28 |
+| Client feature modules | 29 |
 | Cross-feature imports (ADR-015 baseline) | 84 |
 
 ## Docs
