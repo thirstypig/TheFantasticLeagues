@@ -145,7 +145,7 @@ async function main(): Promise<void> {
   const ilEvents = await prisma.transactionEvent.findMany({
     where: { playerId: { in: rosterPlayerIds }, transactionType: { in: ["IL_STASH", "IL_ACTIVATE"] }, effDate: { not: null } },
     select: { playerId: true, transactionType: true, effDate: true },
-    orderBy: { effDate: "asc" },
+    orderBy: [{ effDate: "asc" }, { id: "asc" }],
   });
   const ilWindowsByPlayer = buildIlWindows(ilEvents);
 
