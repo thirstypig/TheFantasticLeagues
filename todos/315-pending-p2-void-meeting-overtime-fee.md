@@ -1,6 +1,6 @@
 ---
 priority: p2
-issue_id: "312"
+issue_id: "315"
 tags: [payouts, league-admin, commissioner, meeting]
 dependencies: []
 ---
