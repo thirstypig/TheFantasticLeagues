@@ -3,7 +3,7 @@ import { normCode } from "../../../lib/utils.js";
 import { prisma } from "../../../db/prisma.js";
 import { TWO_WAY_PLAYERS, playerStatRoles } from "../../../lib/sportConfig.js";
 import { buildIlWindows, wasOnIlAtPeriodStart, type IlWindow } from "../../../lib/ilWindows.js";
-import { clampToPeriod, ownedOn } from "../../../lib/rosterWindow.js";
+import { clampToPeriod, overlapsPeriod, ownedOn } from "../../../lib/rosterWindow.js";
 import { getLeagueCategories, getCategoryValue } from "../lib/categoryEngine.js";
 import { onStatsChanged } from "../../../lib/statsChanged.js";
 
@@ -589,6 +589,10 @@ function scorePeriod(
  * cron fires, the same standings query retroactively re-attributes stats to
  * period-stats semantics — the original team loses credit, the new team gains.
  * This is intentional system behavior, not a bug, but it IS time-dependent.
+ *
+ * The season view does NOT call this per period; it batch-loads every period
+ * (`getSeasonStandingsUncached`) and runs the same `routeStatsSource` /
+ * `scorePeriod` on the loaded rows.
  */
 export async function computeTeamStatsFromDb(
   leagueId: number,
@@ -846,7 +850,7 @@ onStatsChanged(clearStandingsCache);
 
 /**
  * Season-level standings: sum roto points across all active/completed periods.
- * Parallelizes per-period DB calls via Promise.all (~15× faster than sequential).
+ * Loads every period in one query per table (`computeTeamStatsForPeriods`, todo #305).
  * Shared by `/api/standings/season` and `/api/reports/:leagueId`.
  * Results cached for 2 minutes; `computedAt` reflects when this row was first
  * persisted into the cache (not when the request returned), so two clients
@@ -875,22 +879,90 @@ export async function getSeasonStandings(leagueId: number): Promise<StandingsRes
   }
 }
 
+/**
+ * Team stats for every given period, batch-loaded (todo #305).
+ *
+ * Same result as calling `computeTeamStatsFromDb` once per period, but one
+ * query per table instead of ~6 per period: the per-period fan-out was ~25
+ * round-trips, serialized on a small connection pool. Each period's rows are
+ * cut out of the batched results in memory with exactly the predicates the
+ * per-period queries use, then scored by the same `scorePeriod`.
+ */
+async function computeTeamStatsForPeriods(
+  leagueId: number,
+  periods: PeriodBounds[],
+): Promise<TeamStatRow[][]> {
+  if (periods.length === 0) return [];
+
+  const minStart = new Date(Math.min(...periods.map(p => p.startDate.getTime())));
+  const maxEnd = new Date(Math.max(...periods.map(p => p.endDate.getTime())));
+  const periodIds = periods.map(p => p.id);
+
+  const [teams, allRosters, allPeriodStats] = await Promise.all([
+    prisma.team.findMany({
+      where: { leagueId },
+      select: { id: true, name: true, code: true },
+      orderBy: { id: "asc" },
+    }),
+    // Superset of every period's roster query; narrowed per period below.
+    loadOverlappingRosters(leagueId, minStart, maxEnd),
+    prisma.playerStatsPeriod.findMany({
+      where: { periodId: { in: periodIds } },
+      select: { periodId: true, playerId: true, ...STAT_SELECT },
+    }),
+  ]);
+
+  const periodStatsById = new Map<number, PeriodStatLine[]>(periodIds.map(id => [id, []]));
+  for (const row of allPeriodStats) periodStatsById.get(row.periodId)!.push(row);
+
+  const perPeriod = periods.map(period => {
+    // The per-period roster WHERE clause, applied in memory. `filter` keeps the
+    // batched query's (acquiredAt desc, id desc) order, which is the order the
+    // per-period query returns.
+    const rosters = allRosters.filter(r => overlapsPeriod(r, period));
+    const periodStats = periodStatsById.get(period.id)!;
+    const route = routeStatsSource(rosters, period, periodStats.length);
+    return { period, rosters, periodStats, route };
+  });
+
+  // IL windows are built per player from that player's own events, so one
+  // query over every period's roster players gives each period the same
+  // windows its own query would.
+  const ilPlayerIds = [...new Set(perPeriod.flatMap(p => p.rosters.map(r => r.playerId)))];
+  const dailyPeriods = perPeriod.filter(p => p.route.dailyRosters.length > 0);
+  const dailyPlayerIds = [...new Set(dailyPeriods.flatMap(p => p.route.dailyRosters.map(r => r.playerId)))];
+
+  const [ilEvents, dailyStats] = await Promise.all([
+    loadIlEvents(ilPlayerIds),
+    dailyPeriods.length > 0
+      ? loadDailyStats(
+          dailyPlayerIds,
+          new Date(Math.min(...dailyPeriods.map(p => p.period.startDate.getTime()))),
+          new Date(Math.max(...dailyPeriods.map(p => p.period.endDate.getTime()))),
+        )
+      : Promise.resolve([] as DailyStatLine[]),
+  ]);
+  const ilWindowsByPlayer = buildIlWindows(ilEvents);
+
+  return perPeriod.map(p =>
+    scorePeriod(teams, p.period, p.route, ilWindowsByPlayer, p.periodStats, dailyStats),
+  );
+}
+
 async function getSeasonStandingsUncached(leagueId: number) {
   const periods = await prisma.period.findMany({
     where: { leagueId, status: { in: ["active", "completed"] } },
-    select: { id: true },
+    select: { id: true, startDate: true, endDate: true },
     orderBy: { startDate: "asc" },
   });
 
   const periodIds = periods.map((p) => p.id);
 
-  const periodData = await Promise.all(
-    periodIds.map(async (pid) => {
-      const teamStats = await computeTeamStatsFromDb(leagueId, pid);
-      const standings = computeStandingsFromStats(teamStats);
-      return { teamStats, standings };
-    }),
-  );
+  const statsByPeriod = await computeTeamStatsForPeriods(leagueId, periods);
+  const periodData = statsByPeriod.map((teamStats) => ({
+    teamStats,
+    standings: computeStandingsFromStats(teamStats),
+  }));
 
   // Accumulate total points per team
   const pointsByTeam = new Map<number, { teamId: number; teamName: string; totalPoints: number }>();

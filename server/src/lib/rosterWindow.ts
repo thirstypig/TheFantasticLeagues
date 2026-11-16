@@ -151,6 +151,9 @@ export interface PeriodWindow {
 /**
  * Reference spec for the `roster.findMany` WHERE clause in standingsService.ts.
  * Do NOT use for JS-side filtering of already-hydrated rows — push the filter to Prisma instead.
+ * One exception: the batched season compute (todo #305) loads a superset of rosters
+ * for all periods with that same WHERE clause and narrows it to each period with
+ * this function, which must therefore stay identical to the SQL.
  *
  * SQL equivalent:
  *   acquiredAt <= endDate
