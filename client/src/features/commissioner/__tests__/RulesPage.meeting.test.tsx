@@ -80,7 +80,7 @@ describe("RulesPage Meeting group", () => {
   it("the fee row says a fee can't be undone yet", async () => {
     m.getCommissionerRules.mockResolvedValue(meetingRows("true"));
     renderPage();
-    expect(await screen.findByText("A fee can't be undone in the app yet.")).toBeTruthy();
+    expect(await screen.findByText("You can void a fee on the Money page.")).toBeTruthy();
   });
 
   it("with live on, shows all four rows and '3 min' saves 180", async () => {

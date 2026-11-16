@@ -165,7 +165,7 @@ function RulesPageBody() {
       ...(meetingOn ? [
         ...control(get("turn_seconds"), "Clock per turn", "segmented", { options: TURN_OPTIONS }),
         ...control(get("can_add_time"), "You can add time", "switch"),
-        ...control(get("overtime_fee"), "Penalty for going over", "segmented", { options: FEE_OPTIONS, subs: ["A fee can't be undone in the app yet."] }),
+        ...control(get("overtime_fee"), "Penalty for going over", "segmented", { options: FEE_OPTIONS, subs: ["You can void a fee on the Money page."] }),
       ] : []),
     ],
     Auction: [

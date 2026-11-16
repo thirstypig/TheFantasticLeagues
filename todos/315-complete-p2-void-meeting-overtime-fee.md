@@ -68,3 +68,15 @@ review fix wave, I3) to say a fee can't be undone in the app yet; this todo is t
 ## Work Log
 
 - 2026-11-15: Created from the live meeting final review (I3).
+- 2026-11-15: Done on branch feat/todo-315-void-fee.
+  - Server: `voidLedgerEntry` in `lib/financeLedger.ts` (league-scoped read; type allow-list;
+    reversal rows refused; CAS stamp on `voidedAt: null` so a lost race writes no reversal) and
+    `features/commissioner/ledgerRoutes.ts` (`GET …/ledger?type=meeting_overtime`,
+    `POST …/ledger/:entryId/void`, audit-logged `LEDGER_VOID`). Types in `shared/api/commissioner.ts`.
+  - Client: the evidence above pointed at a stub in `pages/Commissioner.tsx`, which is DEAD CODE
+    (nothing imports it; `/commissioner/:leagueId` is the hub). The fee list lives on the live
+    Money page instead (`components/MeetingFeeLedger.tsx` in `MoneyPage.tsx`), hidden when a league
+    has no meeting fees; a void reloads the balances. Rules sub-line now points at the Money page.
+  - Browser-verified locally (1440 + 390): void → confirm sheet → balance "Owes $5" → "Paid up",
+    Owed $11 → $6, hub tile $6; DB got exactly the stamp + a −$5 reversal + an audit row. Real
+    server: repeat void 409, reversal 409, owner 403. Test rows removed.
