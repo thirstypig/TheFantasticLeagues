@@ -179,8 +179,9 @@ Notable surfaces:
 
 **Phase:** In-Season 2026 - Engagement & Remote UX (April - September 2026)
 
-**Next 3 to-dos** (2 open):
+**Next 3 to-dos** (5 open):
 
+- `315` **P2** — void meeting overtime fee
 - `304` **P3** — cache refresh and vestigial cleanup
 - `305` **P3** — standings cold compute serialized on single connection
 

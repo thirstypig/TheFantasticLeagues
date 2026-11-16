@@ -33,7 +33,9 @@ const SeasonPage = React.lazy(() => import("./features/commissioner/pages/Season
 const RostersPage = React.lazy(() => import("./features/commissioner/pages/RostersPage"));
 const CommissionerTradesPage = React.lazy(() => import("./features/commissioner/pages/CommissionerTradesPage"));
 const TeamRosterPage = React.lazy(() => import("./features/commissioner/pages/TeamRosterPage"));
-const MeetingPage = React.lazy(() => import("./features/commissioner/pages/MeetingPage"));
+// Picks today's meeting page or the live meeting by the `meeting.live` rule.
+const MeetingRoute = React.lazy(() => import("./pages/MeetingRoute"));
+const OwnerMeetingPage = React.lazy(() => import("./features/meeting/pages/OwnerMeetingPage"));
 const MeetingReviewPage = React.lazy(() => import("./features/commissioner/pages/MeetingReviewPage"));
 const TradesHomePage = React.lazy(() => import("./features/trades/pages/TradesHomePage"));
 const NewTradePage = React.lazy(() => import("./features/trades/pages/NewTradePage"));
@@ -210,7 +212,7 @@ export default function App() {
                     <Route path="/commissioner/:leagueId/season" element={<ErrorBoundary name="commissioner-season"><SeasonPage /></ErrorBoundary>} />
                     <Route path="/commissioner/:leagueId/rules" element={<ErrorBoundary name="commissioner-rules"><RulesPage /></ErrorBoundary>} />
                     <Route path="/commissioner/:leagueId/meeting/:periodId/review" element={<ErrorBoundary name="commissioner-meeting-review"><MeetingReviewPage /></ErrorBoundary>} />
-                    <Route path="/commissioner/:leagueId/meeting/:periodId" element={<ErrorBoundary name="commissioner-meeting"><MeetingPage /></ErrorBoundary>} />
+                    <Route path="/commissioner/:leagueId/meeting/:periodId" element={<ErrorBoundary name="commissioner-meeting"><MeetingRoute /></ErrorBoundary>} />
                     <Route path="/commissioner/:leagueId/rosters/:teamId" element={<ErrorBoundary name="commissioner-team-roster"><TeamRosterPage /></ErrorBoundary>} />
                     <Route path="/commissioner/:leagueId/rosters" element={<ErrorBoundary name="commissioner-rosters"><RostersPage /></ErrorBoundary>} />
                     {/* Section pages. Literal sub-routes (recent, close/:periodId, start/:periodId, bill/:periodId, ...) must be declared ABOVE this catch. */}
@@ -237,6 +239,7 @@ export default function App() {
                     <Route path="/board" element={<BoardPage />} />
                     <Route path="/chat" element={<Navigate to="/board" replace />} />
                     <Route path="/leagues/:id/keepers" element={<KeeperSelection />} />
+                    <Route path="/leagues/:leagueId/meeting" element={<ErrorBoundary name="owner-meeting"><OwnerMeetingPage /></ErrorBoundary>} />
                     <Route path="/auction" element={<ErrorBoundary name="auction"><Auction /></ErrorBoundary>} />
                     <Route path="/auction/board" element={<ErrorBoundary name="auction-board"><AuctionBoard /></ErrorBoundary>} />
                     <Route path="/auction/assign" element={<ErrorBoundary name="auction-assign"><AssignPlayer /></ErrorBoundary>} />

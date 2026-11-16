@@ -20,6 +20,7 @@ import type { AuctionTeam, ClientAuctionState } from '../../hooks/useAuctionStat
 import { openingBidValidation, type OrderStrip } from '../../lib/auctionSelectors';
 import { formatClock, useClock } from '../../lib/clock';
 import { formatValue, matchPlayers, playerValue, primaryPos } from './PlayersPanel';
+import { ListHelp } from '../../../../components/shared/ListHelp';
 
 /** True when the auction is choosing and the team on the clock is mine. */
 export function isMyTurn(state: Pick<ClientAuctionState, 'status'>, strip: OrderStrip): boolean {
@@ -158,7 +159,7 @@ export function PutUpPanel({ myTeam, list, available, paused, variant, onPutUp, 
 
   const myList = (
     <div className="la-col yt-sec">
-      <p className="la-cap">Your list</p>
+      <p className="la-cap">Your list <ListHelp kind="auction" /></p>
       <div className="la-list" data-testid="my-list">
         {listPlayers.map((p, i) => {
           const id = Number(p.mlb_id);

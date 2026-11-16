@@ -20,6 +20,10 @@ function words(raw: unknown): string {
 const RULE_LABELS: Record<string, { label: string; values?: Record<string, string> }> = {
   trade_window: { label: "When trades are allowed", values: { meeting_day: "Meeting day only", anytime: "Anytime" } },
   owner_self_serve: { label: "Owners make their own moves", values: { true: "On", false: "Off" } },
+  live: { label: "Owners enter own moves at the meeting", values: { true: "On", false: "Off" } },
+  turn_seconds: { label: "Clock per turn", values: { "60": "1 min", "120": "2 min", "180": "3 min" } },
+  can_add_time: { label: "You can add time", values: { true: "On", false: "Off" } },
+  overtime_fee: { label: "Penalty for going over", values: { "0": "Off", "1": "$1", "5": "$5" } },
 };
 
 function describeOneRule(key: string, value: unknown): string {

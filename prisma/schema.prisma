@@ -338,6 +338,7 @@ model League {
   seasons                Season[]
   periods                Period[]
   auctionSession         AuctionSession?
+  meetingSessions        MeetingSession[]
   snakeDraftSession      SnakeDraftSession?
   draftPicks             DraftPick[]
   matchups               Matchup[]
@@ -1248,6 +1249,20 @@ model AuctionSession {
   updatedAt DateTime @default(now()) @updatedAt
 
   league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+}
+
+model MeetingSession {
+  id          Int       @id @default(autoincrement())
+  leagueId    Int
+  periodId    Int // the PENDING (next) period, same id today's meeting draft and Review are keyed by
+  state       Json
+  handedOffAt DateTime? // set when the moves are copied into the Review draft
+  version     Int       @default(0) // optimistic concurrency: every write is compare-and-set on version
+  updatedAt   DateTime  @default(now()) @updatedAt
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueId, periodId])
 }
 
 // ─── Snake Draft ───

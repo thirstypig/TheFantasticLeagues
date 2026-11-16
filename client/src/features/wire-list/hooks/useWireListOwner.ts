@@ -145,7 +145,7 @@ export function useWireListOwner(
       }
     } catch (err) {
       reportError(err, { source: "wire-list-owner" });
-      setError("Failed to load wire list. Please try again.");
+      setError("Failed to load list. Please try again.");
     } finally {
       setLoading(false);
     }
