@@ -303,5 +303,5 @@ export function wireReminder(wirePeriod: WaiverPeriod | null, now: Date): { text
   const h = deadline.getHours();
   const mm = String(deadline.getMinutes()).padStart(2, "0");
   const time = `${h % 12 === 0 ? 12 : h % 12}:${mm} ${h < 12 ? "AM" : "PM"}`;
-  return { text: `Wire List locks ${WEEKDAYS[deadline.getDay()]} ${time}` };
+  return { text: `List locks ${WEEKDAYS[deadline.getDay()]} ${time}` };
 }

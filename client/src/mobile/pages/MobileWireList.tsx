@@ -19,6 +19,7 @@ import DropPicker from "../../features/wire-list/components/DropPicker";
 import { MobileTopbar } from "../MobileTopbar";
 import { MCard, MSection, MLabel } from "../atoms/MCard";
 import { Glyph } from "../atoms/Glyph";
+import { ListHelp } from "../../components/shared/ListHelp";
 
 // ─── Props ───────────────────────────────────────────────────────────
 
@@ -59,7 +60,7 @@ export function MobileWireList({ teamCode }: MobileWireListProps) {
 
   const topbar = (
     <MobileTopbar
-      title="Wire List"
+      title={<>List <ListHelp kind="wire" /></>}
       subtitle={
         loading ? "Waiver picks" :
         error ? "Waiver picks" :
