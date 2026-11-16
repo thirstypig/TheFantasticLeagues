@@ -52,4 +52,30 @@ describe("ListHelp", () => {
     fireEvent.click(btn);
     expect(btn).toHaveAttribute("aria-expanded", "true");
   });
+
+  it("re-opens on mouse hover after being closed with Escape, and closes on leave", () => {
+    render(<ListHelp kind="wire" />);
+    const btn = screen.getByRole("button", { name: "What is this list?" });
+    fireEvent.click(btn);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByText(WIRE)).toBeNull();
+    // Pointer already over the button: no pointerenter, only movement.
+    fireEvent.pointerMove(btn, { pointerType: "mouse" });
+    expect(screen.getByText(WIRE)).toBeInTheDocument();
+    fireEvent.pointerLeave(btn, { pointerType: "mouse" });
+    expect(screen.queryByText(WIRE)).toBeNull();
+  });
+
+  it("renders the note outside clipping ancestors, inside the viewport gutter", () => {
+    render(
+      <div style={{ overflow: "hidden" }} data-testid="clip">
+        <ListHelp kind="wire" />
+      </div>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "What is this list?" }));
+    const note = screen.getByText(WIRE);
+    expect(screen.getByTestId("clip").contains(note)).toBe(false);
+    expect(note.style.position).toBe("fixed");
+    expect(parseFloat(note.style.left)).toBeGreaterThanOrEqual(16);
+  });
 });

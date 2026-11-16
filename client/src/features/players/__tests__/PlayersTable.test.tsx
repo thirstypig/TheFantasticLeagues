@@ -101,7 +101,7 @@ describe("PlayersTable", () => {
     expect(screen.queryByRole("link", { name: "Trade" })).toBeNull();
   });
 
-  it("shows an inline error when the wire list add fails", async () => {
+  it("shows an inline error when the List add fails", async () => {
     const onAdd = vi.fn().mockRejectedValue(new Error("Period is LOCKED"));
     renderTable([hitter()], { pendingPeriodId: 5, onWireListAdd: onAdd });
     fireEvent.click(screen.getByRole("button", { name: "+ List" }));
@@ -119,7 +119,7 @@ describe("PlayersTable", () => {
   it("own player has no action", () => {
     renderTable([hitter({ ogba_team_code: "LOS", ogba_team_id: 1 })], { pendingPeriodId: 5 });
     expect(screen.queryByRole("link", { name: "Trade" })).toBeNull();
-    expect(screen.queryByRole("button", { name: /List/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /\+ List|On List/ })).toBeNull();
   });
 
   it("shows no actions when the viewer has no team", () => {
@@ -127,7 +127,7 @@ describe("PlayersTable", () => {
       myTeamId: null, myTeamCode: null, pendingPeriodId: 5,
     });
     expect(screen.queryByRole("link", { name: "Trade" })).toBeNull();
-    expect(screen.queryByRole("button", { name: /List/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /\+ List|On List/ })).toBeNull();
   });
 
   it("M3: names carry the tab's stat group so a two-way player opens on the right side", () => {
