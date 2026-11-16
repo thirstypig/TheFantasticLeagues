@@ -198,7 +198,7 @@ export function TurnEntry({
             fontFamily: "inherit",
           }}
         >
-          <option value="">Choose a player from your roster</option>
+          <option value="">Choose a player to drop</option>
           {data.roster.map((p) => (
             <option key={p.playerId} value={p.playerId}>{`${p.name} · ${p.pos}`}</option>
           ))}

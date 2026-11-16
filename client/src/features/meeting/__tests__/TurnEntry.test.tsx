@@ -28,6 +28,7 @@ describe("TurnEntry", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Jake Fraley/ }));
     expect((submit as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByText(/Roster stays at/)).toBeNull();
+    expect(screen.getByRole("option", { name: "Choose a player to drop" })).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Drop"), { target: { value: String(HAYS.playerId) } });
     expect((submit as HTMLButtonElement).disabled).toBe(false);
     expect(screen.getByText("✓ Roster stays at 23 / 23")).toBeTruthy();

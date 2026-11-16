@@ -75,7 +75,7 @@ export async function searchFreeAgents(leagueId: number, q: string): Promise<Mee
 export async function getSeasonOrder(leagueId: number): Promise<number[]> {
   const res = await fetchJsonApi<{
     rows: { teamId: number; teamName: string; teamCode: string; periodPoints: number[]; totalPoints: number }[];
-  }>(`${API_BASE}/standings/season?leagueId=${leagueId}`);
+  }>(`${API_BASE}/season?leagueId=${leagueId}`); // standingsRouter is mounted at /api
   return [...(res.rows ?? [])]
     .sort((a, b) => a.totalPoints - b.totalPoints || a.teamName.localeCompare(b.teamName))
     .map((r) => r.teamId);

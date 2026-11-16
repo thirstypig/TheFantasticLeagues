@@ -23,7 +23,7 @@ describe("getSeasonOrder", () => {
       ],
     });
     expect(await getSeasonOrder(7)).toEqual([2, 3, 4, 1]);
-    expect(vi.mocked(fetchJsonApi).mock.calls[0][0]).toBe("/api/standings/season?leagueId=7");
+    expect(vi.mocked(fetchJsonApi).mock.calls[0][0]).toBe("/api/season?leagueId=7");
   });
 });
 
