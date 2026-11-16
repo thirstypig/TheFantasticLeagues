@@ -47,3 +47,16 @@ reading.
   ("replaying the first token…"); client `RosterMovesTab/__tests__/AddDropPanel.test.tsx`
   ("renders modal WITHOUT cascade list…", 5.9s). Likely the same class: default 5s timeouts on a
   loaded machine. Fix candidates: raise per-test timeouts for these, or find the slow await.
+- 2026-11-16: Root cause from the CI log (run 43785462207, attempt 1): `You get $` expected 12,
+  **received 30**, the unclamped restored value. The clamp runs in an effect AFTER the partner's
+  roster renders, so one commit shows "Bryce Harper" with the restored 30; `findByText("Bryce
+  Harper")` can resolve in that commit on a loaded runner. The page itself is fine (the stored
+  draft is only ever the clamped one; the old value shows for one frame). Fixed the test, plus two
+  siblings asserting the same effect's result, to wait for the result. 50/50 in a loop.
+- 2026-11-16: `myPlayersToday.test.ts`: `vi.clearAllMocks()` keeps queued `mockResolvedValueOnce`
+  values (checked: a queued value survives clearAllMocks; only a reset empties it), so one failing
+  test handed its MLB responses to the next ones. That is why one bad run showed 4 failures.
+  Fixed by `mockMlbGetJson.mockReset()` in beforeEach. Mutation: one injected failure now fails 1
+  test instead of 7.
+- 2026-11-16: The LeagueContext "failed rules refresh" CI flake was fixed in #506 (reproduced by
+  delaying getLeagues 50ms). Remaining single slow-test timeouts → todo #318.
