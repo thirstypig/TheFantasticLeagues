@@ -29,21 +29,21 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
   - steps A–E: style, rules, commissioner, rosters, trades, players and player card (#477–#482)
   - team page (#483)
   - step F: auction screens 8–11 and engine fixes (#487–#493)
-- "Wire List" is now "List" in the app, with an ⓘ help note; the auction's "Your list" has one too
+- UX G live meeting with a clock (DOC-042; #499, #502, #504), off until turned on in Rules
+- "Wire List" renamed "List", with an ⓘ help note (#498)
 - Auction reliability: timers restart after a server restart (#496); the league's commissioner can start its auction, pre-season only (#497)
 - League picked in Switch League survives reloads (#494) and shows its season (#495)
-- Final 2026 audit vs FanGraphs and OnRoto (#470, #471)
-- Legacy waivers retired (#466); cache fix (#465); CVEs cleared (#467)
+- 2026 audit vs FanGraphs/OnRoto (#470, #471); waivers retired, cache fix, CVEs (#465–#467)
 
 ## In progress
-- UX G live meeting (DOC-042), off by default: server, commissioner and owner PRs in review, browser-verified.
+- Todo PRs in review: #500 (cache cleanup), #501 (faster standings; waits on a prod diff)
 
 ## Open bugs / known issues
 - 2026 final vs OnRoto (Kent's workbook): P1–P3, P5, P6 exact; P4 and P7 each have one ±1 pair (DDG/RGS, RGS/The Show). Final order identical.
 - Todos #181 (stale roster across tabs), #304 (cache cleanup), #305 (first standings load after a stats sync takes ~1.3s)
 
 ## Next phases (in order)
-1. Merge UX G; then todo #315 (void a meeting fee)
+1. Todos #312/#313 (IL gaps in standings), then #315 (void a meeting fee)
 2. Phase 3.5: standings categories from the league's scoring settings
 3. Public auction-keeper leagues (not scheduled)
 
