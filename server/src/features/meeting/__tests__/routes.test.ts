@@ -10,7 +10,7 @@ vi.mock("../../../db/prisma.js", () => {
     leagueRule: { findMany: vi.fn() },
     team: { findUnique: vi.fn(), findMany: vi.fn(), findFirst: vi.fn() },
     teamOwnership: { findUnique: vi.fn() },
-    period: { findFirst: vi.fn() },
+    period: { findFirst: vi.fn(), findUnique: vi.fn() },
     waiverPeriod: { findFirst: vi.fn() },
     waiverAddEntry: { findMany: vi.fn() },
     player: { findUnique: vi.fn() },
@@ -26,6 +26,7 @@ vi.mock("../../../lib/logger.js", () => ({
 }));
 
 import express from "express";
+import { Prisma } from "@prisma/client";
 import supertest from "supertest";
 import { prisma } from "../../../db/prisma.js";
 import { clearMembershipCache } from "../../../middleware/auth.js";
@@ -43,6 +44,7 @@ const LEAGUE = 1;
 const COMMISH = 10; // userId with COMMISSIONER membership
 const OWNER_3 = 30; // owns team 3
 const OWNER_4 = 40; // owns team 4
+const OWNER_B = 70; // owns team 77 in another league
 const SETTINGS = { turnSeconds: 120, canAddTime: true, overtimeFee: 0 };
 
 function runningState(order = [3, 4, 5], settings = SETTINGS, nowMs = Date.now()): MeetingState {
@@ -86,7 +88,7 @@ function memberships() {
 
 /** Team ownership via Team.ownerUserId. */
 function ownership() {
-  const owners: Record<number, number> = { 3: OWNER_3, 4: OWNER_4 };
+  const owners: Record<number, number> = { 3: OWNER_3, 4: OWNER_4, 77: OWNER_B };
   mockPrisma.team.findUnique.mockImplementation(async ({ where }: any) =>
     owners[where.id] !== undefined ? { ownerUserId: owners[where.id] } : null,
   );
@@ -222,6 +224,39 @@ describe("authorization", () => {
     expect(mockPrisma.meetingSession.updateMany).not.toHaveBeenCalled();
   });
 
+  it("owner of a team in another league submitting to this session → 400 \"It isn't your turn\", no player/roster reads", async () => {
+    mockPrisma.meetingSession.findUnique.mockResolvedValue(sessionRow(runningState(), 3));
+
+    const res = await supertest(appAs(OWNER_B))
+      .post("/api/meeting/sessions/7/submit")
+      .send({ teamId: 77, addPlayerId: 100, dropPlayerId: 200, version: 3 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("It isn't your turn");
+    expect(mockPrisma.player.findUnique).not.toHaveBeenCalled();
+    expect(mockPrisma.roster.findFirst).not.toHaveBeenCalled();
+    expect(mockPrisma.roster.findMany).not.toHaveBeenCalled();
+    expect(mockPrisma.meetingSession.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("owner off the clock → 400 \"It isn't your turn\" before any player read", async () => {
+    mockPrisma.meetingSession.findUnique.mockResolvedValue(sessionRow(runningState(), 3)); // team 3 is up
+    const res = await supertest(appAs(OWNER_4))
+      .post("/api/meeting/sessions/7/submit")
+      .send({ teamId: 4, addPlayerId: 100, dropPlayerId: 200, version: 3 });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("It isn't your turn");
+    expect(mockPrisma.player.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("pass on an ended meeting → 400 \"The meeting has ended\"", async () => {
+    const ended = { ...runningState(), status: "ended" as const };
+    mockPrisma.meetingSession.findUnique.mockResolvedValue(sessionRow(ended, 3));
+    const res = await supertest(appAs(OWNER_3)).post("/api/meeting/sessions/7/pass").send({ teamId: 3, version: 3 });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("The meeting has ended");
+  });
+
   it("missing session → 404", async () => {
     mockPrisma.meetingSession.findUnique.mockResolvedValue(null);
     const res = await supertest(appAs(COMMISH)).post("/api/meeting/sessions/7/skip").send({ version: 3 });
@@ -267,6 +302,36 @@ describe("POST /leagues/:leagueId/open", () => {
     expect(args.create.state.settings).toEqual({ turnSeconds: 60, canAddTime: false, overtimeFee: 5 });
     expect(mockPrisma.team.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { leagueId: LEAGUE } }));
     expect(res.body.session.state.order).toEqual([5, 3, 4]);
+  });
+
+  it("open race: P2002 from the upsert re-reads and returns the existing session", async () => {
+    openHappyPath();
+    mockPrisma.meetingSession.upsert.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("Unique constraint failed", { code: "P2002", clientVersion: "test" }),
+    );
+    const existing = sessionRow(createMeetingState([4, 3, 5], SETTINGS), 0);
+    mockPrisma.meetingSession.findUnique.mockResolvedValue(existing);
+
+    const res = await supertest(appAs(COMMISH))
+      .post(`/api/meeting/leagues/${LEAGUE}/open`)
+      .send({ periodId: 42, order: [5, 3, 4] });
+
+    expect(res.status).toBe(200);
+    expect(mockPrisma.meetingSession.findUnique).toHaveBeenCalledWith({
+      where: { leagueId_periodId: { leagueId: LEAGUE, periodId: 42 } },
+    });
+    expect(res.body.session.id).toBe(7);
+    expect(res.body.session.state.order).toEqual([4, 3, 5]);
+  });
+
+  it("open rethrows non-P2002 upsert errors", async () => {
+    openHappyPath();
+    mockPrisma.meetingSession.upsert.mockRejectedValue(new Error("db down"));
+    const res = await supertest(appAs(COMMISH))
+      .post(`/api/meeting/leagues/${LEAGUE}/open`)
+      .send({ periodId: 42, order: [5, 3, 4] });
+    expect(res.status).toBe(500);
+    expect(mockPrisma.meetingSession.findUnique).not.toHaveBeenCalled();
   });
 
   it("open refused when live off", async () => {
@@ -373,10 +438,12 @@ describe("overtime", () => {
       },
     };
     mockPrisma.$transaction.mockImplementation(async (fn: any) => fn(tx));
+    mockPrisma.period.findUnique.mockResolvedValue({ name: "Period 8" });
 
     const res = await supertest(appAs(COMMISH)).post("/api/meeting/sessions/7/skip").send({ version: 3 });
 
     expect(res.status).toBe(200);
+    expect(mockPrisma.period.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 42 } }));
     expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
     expect(tx.meetingSession.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 7, version: 3 } }),
@@ -387,7 +454,7 @@ describe("overtime", () => {
       amount: 5,
       periodId: 42,
       teamId: 3,
-      reason: "Over time at the meeting",
+      reason: "Over time at the Period 8 meeting",
     });
     expect(order).toEqual(["cas", "ledger"]);
     // Nothing written outside the transaction client.
@@ -418,6 +485,7 @@ describe("overtime", () => {
       expect.objectContaining({ where: { id: 7, version: 3 } }),
     );
     expect(mockPrisma.financeLedger.create).not.toHaveBeenCalled();
+    expect(mockPrisma.period.findUnique).not.toHaveBeenCalled();
   });
 
   it("no ledger when the turn ends on time even with a fee", async () => {
@@ -615,7 +683,10 @@ describe("GET /sessions/:id/choices", () => {
       expect.objectContaining({ where: { id: 3, leagueId: LEAGUE } }),
     );
     expect(mockPrisma.waiverPeriod.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { leagueId: LEAGUE, status: { in: ["PENDING", "LOCKED"] } } }),
+      expect.objectContaining({
+        where: { leagueId: LEAGUE, status: { in: ["PENDING", "LOCKED"] } },
+        orderBy: { deadlineAt: "desc" },
+      }),
     );
     expect(mockPrisma.waiverAddEntry.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { periodId: 55, teamId: 3 }, orderBy: { priority: "asc" } }),
@@ -655,5 +726,13 @@ describe("POST /sessions/:id/handed-off", () => {
     expect(args.data.version).toBeUndefined();
     expect(res.body.version).toBe(6);
     expect(typeof res.body.session.handedOffAt).toBe("string");
+  });
+
+  it("refuses before the meeting has ended → 400 \"End the meeting first\"", async () => {
+    mockPrisma.meetingSession.findUnique.mockResolvedValue(sessionRow(runningState(), 6));
+    const res = await supertest(appAs(COMMISH)).post("/api/meeting/sessions/7/handed-off").send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("End the meeting first");
+    expect(mockPrisma.meetingSession.update).not.toHaveBeenCalled();
   });
 });

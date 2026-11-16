@@ -10,7 +10,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { Router, type NextFunction, type Request, type RequestHandler, type Response } from "express";
-import type { MeetingSession, Prisma } from "@prisma/client";
+import { Prisma, type MeetingSession } from "@prisma/client";
 import { prisma } from "../../db/prisma.js";
 import {
   requireAuth,
@@ -38,6 +38,7 @@ import {
 } from "../../../../shared/api/meeting.js";
 import {
   createMeetingState,
+  currentTeamId,
   reduceMeeting,
   MeetingRuleError,
   type Actor,
@@ -48,8 +49,6 @@ import { readMeetingSettings } from "./lib/settings.js";
 import { markSeen, onlineTeamIds } from "./lib/presence.js";
 
 const router = Router();
-
-const OVERTIME_REASON = "Over time at the meeting";
 
 // ─── Errors ──────────────────────────────────────────────────────────
 
@@ -151,6 +150,18 @@ async function resolveActor(req: Request, leagueId: number, teamId: number): Pro
 }
 
 /**
+ * Cheap turn check before any player/roster read, so a caller can't probe
+ * another league's rosters through submit (and gets the turn error first).
+ * Messages match the reducer's.
+ */
+function requireTurn(state: MeetingState, teamId: number): void {
+  if (state.status === "ended") throw new MeetingRuleError("The meeting has ended");
+  if (state.status !== "running" || !state.order.includes(teamId) || teamId !== currentTeamId(state)) {
+    throw new MeetingRuleError("It isn't your turn");
+  }
+}
+
+/**
  * Compare-and-set write. When the turn ran over and the league charges for it,
  * the CAS and the ledger row share one transaction; a lost CAS throws inside it
  * so no ledger row is written.
@@ -162,6 +173,8 @@ async function commit(session: LoadedSession, result: ReduceResult, actorUserId:
   const overtime = result.overtime;
 
   if (overtime && fee > 0) {
+    const period = await prisma.period.findUnique({ where: { id: session.periodId }, select: { name: true } });
+    const reason = period ? `Over time at the ${period.name} meeting` : "Over time at the meeting";
     await prisma.$transaction(async (tx) => {
       const r = await tx.meetingSession.updateMany({ where, data });
       if (r.count === 0) throw new CasLost();
@@ -171,7 +184,7 @@ async function commit(session: LoadedSession, result: ReduceResult, actorUserId:
           amount: Math.round(fee),
           periodId: session.periodId,
           teamId: overtime.teamId,
-          reason: OVERTIME_REASON,
+          reason,
           createdBy: actorUserId,
         },
       });
@@ -278,11 +291,22 @@ router.post(
       canAddTime: settings.canAddTime,
       overtimeFee: settings.overtimeFee,
     });
-    const row = await prisma.meetingSession.upsert({
-      where: { leagueId_periodId: { leagueId, periodId } },
-      create: { leagueId, periodId, state: state as unknown as Prisma.InputJsonValue },
-      update: {},
-    });
+    let row: MeetingSession;
+    try {
+      row = await prisma.meetingSession.upsert({
+        where: { leagueId_periodId: { leagueId, periodId } },
+        create: { leagueId, periodId, state: state as unknown as Prisma.InputJsonValue },
+        update: {},
+      });
+    } catch (err) {
+      // Two opens raced: the other request's insert won the unique key. Return its session.
+      if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== "P2002") throw err;
+      const existing = await prisma.meetingSession.findUnique({
+        where: { leagueId_periodId: { leagueId, periodId } },
+      });
+      if (!existing) throw err;
+      row = existing;
+    }
     res.json(toResponse(parseSession(row), leagueId, Date.now()));
   }),
 );
@@ -331,6 +355,7 @@ router.post(
   requireCommissionerOrAdmin("leagueId"),
   handle(async (_req, res) => {
     const session = res.locals.session as LoadedSession;
+    if (session.state.status !== "ended") throw new HttpError(400, "End the meeting first");
     // Not a turn-state change: no version bump.
     const row = await prisma.meetingSession.update({
       where: { id: session.id },
@@ -353,6 +378,7 @@ router.post(
     if (addPlayerId === dropPlayerId) throw new HttpError(400, "Pick a different player to drop");
 
     const actor = await resolveActor(req, session.leagueId, teamId);
+    requireTurn(session.state, teamId);
 
     const [add, drop] = await Promise.all([
       prisma.player.findUnique({ where: { id: addPlayerId }, select: PLAYER_SELECT }),
@@ -394,6 +420,7 @@ router.post(
     const session = res.locals.session as LoadedSession;
     const { teamId, version } = req.body as PassBody;
     const actor = await resolveActor(req, session.leagueId, teamId);
+    requireTurn(session.state, teamId);
     await act(req, res, version, { type: "pass", teamId }, actor);
   }),
 );
@@ -419,7 +446,8 @@ router.get(
 
     const period = await prisma.waiverPeriod.findFirst({
       where: { leagueId, status: { in: ["PENDING", "LOCKED"] } },
-      orderBy: { createdAt: "desc" },
+      // Same ordering field wire-list uses for its periods (deadlineAt); newest first.
+      orderBy: { deadlineAt: "desc" },
       select: { id: true },
     });
 
