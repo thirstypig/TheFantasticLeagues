@@ -26,8 +26,9 @@ vi.mock("../api", () => ({
   getTeamAiInsightsHistory: vi.fn().mockResolvedValue({ weeks: [] }),
 }));
 
+const ilStash = vi.hoisted(() => vi.fn());
 vi.mock("../../transactions/api", () => ({
-  ilStash: vi.fn(),
+  ilStash,
   ilActivate: vi.fn(),
   syncIlStatus: vi.fn().mockResolvedValue({ playerId: 1, mlbId: 100, mlbStatus: "Injured 10-Day", fetchedAt: new Date().toISOString() }),
 }));
@@ -170,7 +171,6 @@ import Team from "../pages/Team";
 
 import { ApiError } from "../../../api/base";
 import { updateRosterPosition } from "../api";
-import { ilStash } from "../../transactions/api";
 
 const HUB_VERSION = 7;
 
