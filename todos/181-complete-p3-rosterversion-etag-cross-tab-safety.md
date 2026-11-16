@@ -112,7 +112,7 @@ Audited against the code. **Option 1 shipped in full** — this todo's "Proposed
 | `Team.rosterVersion Int @default(0)` | `prisma/schema.prisma:447` |
 | `checkRosterVersion` / `incrementRosterVersion` | `server/src/features/teams/lib/rosterVersionGuard.ts` |
 | 409 on stale PATCH | `server/src/features/teams/routes.ts:643` |
-| Counter bumped in every mutation tx | `transactions/routes.ts` :739 :860 :1326 :1722, `teams/routes.ts:679` |
+| Counter bumped in the claim / drop / IL-stash / IL-activate txs and the roster PATCH | `transactions/routes.ts`, `teams/routes.ts` (**CORRECTED 2026-11-15: this row originally claimed "every mutation tx". Trades, the wire-list processor and the commissioner edit paths did NOT bump until the fix round below.**) |
 | `rosterVersion` on the hub response | `teams/services/teamService.ts:313` |
 | Client sends `If-Match` | `client/src/features/teams/api.ts:70` |
 | Client handles 409 | `client/src/features/teams/pages/Team.tsx:616` |
@@ -154,3 +154,20 @@ concurrency guard is the kind that works until the day it matters.
 - **Still open:** the two-tab browser smoke (controller). Known gap: the version check runs before
   the transaction, so two PATCHes landing within milliseconds can both pass; a conditional
   `updateMany({ where: { id, rosterVersion } })` inside the tx would close it.
+
+### 2026-11-15 (fix round) — every in-season roster writer now bumps; race closed
+
+- **Counter now bumped, inside the tx, by:** trades (process + reverse, both teams per player),
+  wire-list `finalizePeriod` (once per touched team), commissioner force-drop, roster-row edit,
+  `assignPlayer` (receiving team + team that lost the player), `releasePlayer` (both branches,
+  now in a tx), `executeTrade` (both teams), bulk IL stash. Helper moved to
+  `server/src/lib/rosterVersion.ts` (no new cross-feature imports; baseline shrank by one).
+- **Deliberately NOT bumped (pre-season / admin / not hub-visible):** `deleteTeam` (team row is
+  deleted), CommissionerService `importRosters`, auction (`auctionImport`, lifecycle routes,
+  state manager), draft, keeper-prep, leagues keeper flag (`isKeeper` only), admin league reset,
+  seed. These run before the season or wipe the league; no owner is editing the hub then.
+- **Race closed:** the PATCH does a compare-and-set `team.updateMany({ where: { id, rosterVersion } })`
+  as the first statement in its tx; zero rows throws `StaleRosterError`, the tx rolls back, the route
+  answers 409 with a fresh read. The pre-tx read is gone.
+- **claim / il-stash / il-activate responses carry `rosterVersion`**, so the hub batch and the
+  mobile page chain real tokens (no `*` fallback, no `+1` guess). Mobile moves are serialized.
