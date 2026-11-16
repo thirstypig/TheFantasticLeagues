@@ -18,6 +18,7 @@ vi.mock("../../api", () => ({
 vi.mock("../../features/seasons/api", () => ({ getCurrentSeason: vi.fn(async () => null) }));
 vi.mock("../../api/base", () => ({ API_BASE: "/api", fetchJsonApi: vi.fn(async () => ({})) }));
 
+import { fetchJsonApi } from "../../api/base";
 import { LeagueProvider, resolveLeagueId, useLeague } from "../LeagueContext";
 
 const member = (leagueId: number, role = "OWNER") => ({ leagueId, role });
@@ -83,5 +84,37 @@ describe("LeagueProvider", () => {
     render(<LeagueProvider><Probe /></LeagueProvider>);
     await waitFor(() => expect(screen.getByTestId("league").textContent).toBe("9"));
     expect(localStorage.getItem("fbst-league-id")).toBe("9");
+  });
+
+  it("re-reads the league rules when the tab becomes visible, keeping the old map meanwhile", async () => {
+    const fetchMock = vi.mocked(fetchJsonApi);
+    let live = "false";
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith("/rules") ? ({ rules: [{ category: "meeting", key: "live", value: live }] } as never) : ({} as never),
+    );
+    function RulesProbe() {
+      const { leagueRules } = useLeague();
+      return <p data-testid="live">{leagueRules === null ? "loading" : leagueRules.meeting?.live ?? "none"}</p>;
+    }
+    auth.user = { id: 1, memberships: [member(9)] };
+    render(<LeagueProvider><RulesProbe /></LeagueProvider>);
+    await waitFor(() => expect(screen.getByTestId("live").textContent).toBe("false"));
+
+    live = "true";
+    let resolveRules: () => void = () => {};
+    fetchMock.mockImplementationOnce(
+      (url: string) =>
+        new Promise((res) => {
+          resolveRules = () => res((url.endsWith("/rules") ? { rules: [{ category: "meeting", key: "live", value: live }] } : {}) as never);
+        }),
+    );
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); });
+    // Still showing the old map, never back to "loading", while the refresh is in flight.
+    expect(screen.getByTestId("live").textContent).toBe("false");
+    await act(async () => { resolveRules(); });
+    await waitFor(() => expect(screen.getByTestId("live").textContent).toBe("true"));
+    fetchMock.mockReset();
+    fetchMock.mockImplementation(async () => ({}) as never);
   });
 });

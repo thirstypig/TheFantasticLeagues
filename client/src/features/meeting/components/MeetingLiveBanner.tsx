@@ -1,8 +1,10 @@
 // Today's "meeting is live" banner: shown only while a session is running or
-// paused and my team is in the order. A slow poll while idle so a meeting opened later still shows.
+// paused, its period is still pending (a session left open for an earlier,
+// since-activated period is not "live"), and my team is in the order. A slow
+// poll while idle so a meeting opened later still shows, and an ended one clears.
 import React from "react";
 import { Link } from "react-router-dom";
-import { usePeriodName } from "../hooks/usePeriodName";
+import { useMeetingPeriod } from "../hooks/usePeriodName";
 import { useMeetingSession } from "../hooks/useMeetingSession";
 import { ordinal, placeInOrder } from "../lib/place";
 
@@ -12,8 +14,11 @@ export function MeetingLiveBanner({ leagueId, myTeamId }: { leagueId: number; my
   const { data } = useMeetingSession(leagueId, { idlePollMs: IDLE_POLL_MS });
   const s = data?.session?.state;
   const live = s != null && (s.status === "running" || s.status === "paused");
-  const periodName = usePeriodName(live ? leagueId : null, live ? data?.session?.periodId ?? null : null);
-  if (!s || (s.status !== "running" && s.status !== "paused")) return null;
+  const period = useMeetingPeriod(live ? leagueId : null, live ? data?.session?.periodId ?? null : null);
+  if (!s || !live) return null;
+  // Wait for the period lookup (no flash for a leftover session); a failed lookup still shows.
+  if (!period.settled || period.stale) return null;
+  const periodName = period.name;
   const place = placeInOrder(s, myTeamId);
   if (!place) return null;
   const label = `${periodName ?? "Period"} meeting is live`;

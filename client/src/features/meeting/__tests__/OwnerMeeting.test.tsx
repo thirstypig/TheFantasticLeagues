@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 vi.mock("../api", () => ({
   getCurrentMeeting: vi.fn(),
   getLeagueTeams: vi.fn(),
-  getPeriodName: vi.fn(),
+  getMeetingPeriod: vi.fn(),
   submitMove: vi.fn(),
   passTurn: vi.fn(),
   getChoices: vi.fn(),
@@ -38,7 +38,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   league.value = { leagueId: 7, myTeamId: 1 };
   m.getLeagueTeams.mockResolvedValue(TEAMS);
-  m.getPeriodName.mockResolvedValue("Period 9");
+  m.getMeetingPeriod.mockResolvedValue({ name: "Period 9", status: "pending" });
   m.getChoices.mockResolvedValue(choices({ list: [FRALEY], roster: [ALONSO], activeCount: 23 }));
   m.searchFreeAgents.mockResolvedValue([]);
 });
@@ -143,12 +143,20 @@ describe("OwnerMeetingPage", () => {
     m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 0, turnEndsAt: IN_ONE_MIN() })));
     const { unmount } = renderPage();
     expect(await screen.findByRole("heading", { name: "Period 9 meeting" })).toBeTruthy();
-    expect(m.getPeriodName).toHaveBeenCalledWith(7, 9);
-    expect(m.getPeriodName).toHaveBeenCalledTimes(1);
+    expect(m.getMeetingPeriod).toHaveBeenCalledWith(7, 9);
+    expect(m.getMeetingPeriod).toHaveBeenCalledTimes(1);
     unmount();
-    m.getPeriodName.mockRejectedValue(new Error("down"));
+    m.getMeetingPeriod.mockRejectedValue(new Error("down"));
     renderPage();
     expect(await screen.findByRole("heading", { name: "Period meeting" })).toBeTruthy();
+  });
+
+  it("a running session for a period that is no longer pending is not live", async () => {
+    m.getMeetingPeriod.mockResolvedValue({ name: "Period 8", status: "active" });
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 1, turnEndsAt: IN_ONE_MIN() }), { periodId: 8 }));
+    renderPage();
+    expect(await screen.findByText("No meeting right now.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Submit move" })).toBeNull();
   });
 
   it("pass calls passTurn with the version", async () => {
@@ -306,10 +314,19 @@ describe("MeetingLiveBanner", () => {
   });
 
   it("banner falls back to Period meeting when the name lookup fails", async () => {
-    m.getPeriodName.mockRejectedValue(new Error("down"));
+    m.getMeetingPeriod.mockRejectedValue(new Error("down"));
     m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 1 })));
     renderBanner();
     expect(await screen.findByText("Period meeting is live: you're up")).toBeTruthy();
+  });
+
+  it("banner hidden for a running session whose period is no longer pending", async () => {
+    m.getMeetingPeriod.mockResolvedValue({ name: "Period 8", status: "active" });
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 1 }), { periodId: 8 }));
+    const { container } = renderBanner();
+    await waitFor(() => expect(m.getMeetingPeriod).toHaveBeenCalledWith(7, 8));
+    await act(async () => {});
+    expect(container.textContent).toBe("");
   });
 
   it("banner says my place in the order", async () => {

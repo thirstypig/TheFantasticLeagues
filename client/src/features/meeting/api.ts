@@ -87,8 +87,9 @@ export async function getLeagueTeams(leagueId: number): Promise<{ id: number; na
   return (res?.league?.teams ?? []).map((t) => ({ id: t.id, name: t.name }));
 }
 
-/** The period's display name (e.g. "Period 9"), or undefined when it isn't in the league's list. */
-export async function getPeriodName(leagueId: number, periodId: number): Promise<string | undefined> {
-  const resp = await fetchJsonApi<{ data: { id: number; name: string }[] }>(`${API_BASE}/periods?leagueId=${leagueId}`);
-  return resp.data.find((p) => p.id === periodId)?.name;
+/** The period's display name (e.g. "Period 9") and status ("pending", "active", "completed"), or undefined when it isn't in the league's list. */
+export async function getMeetingPeriod(leagueId: number, periodId: number): Promise<{ name: string; status: string } | undefined> {
+  const resp = await fetchJsonApi<{ data: { id: number; name: string; status: string }[] }>(`${API_BASE}/periods?leagueId=${leagueId}`);
+  const p = resp.data.find((row) => row.id === periodId);
+  return p ? { name: p.name, status: p.status } : undefined;
 }

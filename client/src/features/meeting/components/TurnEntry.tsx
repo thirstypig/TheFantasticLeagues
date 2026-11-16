@@ -59,12 +59,15 @@ export function TurnEntry({
   leagueId,
   sessionId,
   teamId,
+  pickedPlayerIds = [],
   onSubmit,
   onPass,
 }: {
   leagueId: number;
   sessionId: number;
   teamId: number;
+  /** Players already added earlier in this meeting (any team): hidden from the free-agent search. */
+  pickedPlayerIds?: readonly number[];
   onSubmit: (addPlayerId: number, dropPlayerId: number) => Promise<void>;
   onPass: () => Promise<void>;
 }) {
@@ -129,6 +132,11 @@ export function TurnEntry({
     }
   }
 
+  // The free-agent search reads the rosters, which the meeting doesn't touch until
+  // Review & save; hide players another turn already took. (The List is filtered server-side.)
+  const picked = new Set(pickedPlayerIds);
+  const shown = results.filter((p) => !picked.has(p.playerId));
+
   const pick = (p: MeetingPlayer) => setAdd((cur) => (cur?.playerId === p.playerId ? null : p));
 
   return (
@@ -168,14 +176,14 @@ export function TurnEntry({
             fontFamily: "inherit",
           }}
         />
-        {results.length > 0 && (
+        {shown.length > 0 && (
           <div style={{ marginTop: 4 }}>
-            {results.map((p) => (
+            {shown.map((p) => (
               <PlayerButton key={p.playerId} p={p} picked={add?.playerId === p.playerId} onPick={() => pick(p)} />
             ))}
           </div>
         )}
-        {add && !data.list.some((p) => p.playerId === add.playerId) && !results.some((p) => p.playerId === add.playerId) && (
+        {add && !data.list.some((p) => p.playerId === add.playerId) && !shown.some((p) => p.playerId === add.playerId) && (
           <p style={{ margin: "8px 0 0", fontSize: 17, color: "var(--am-text)" }}>{`Adding ${add.name}`}</p>
         )}
       </div>

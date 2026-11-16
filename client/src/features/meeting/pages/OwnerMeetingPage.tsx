@@ -10,7 +10,7 @@ import { Countdown } from "../components/Countdown";
 import { TurnEntry } from "../components/TurnEntry";
 import { ERROR, MUTED, ROW, lastName } from "../components/styles";
 import { useMeetingSession } from "../hooks/useMeetingSession";
-import { usePeriodName } from "../hooks/usePeriodName";
+import { useMeetingPeriod } from "../hooks/usePeriodName";
 import { useTurnCue } from "../hooks/useTurnCue";
 import { ordinal, placeInOrder } from "../lib/place";
 
@@ -51,13 +51,14 @@ export function OwnerMeetingPage() {
   const teamId = leagueId != null && currentLeagueId === leagueId ? myTeamId : null;
   const session = data?.session ?? null;
   const s = session?.state;
-  const live = !!s && (s.status === "running" || s.status === "paused");
+  const period = useMeetingPeriod(leagueId, session?.periodId ?? null);
+  // A session whose period is no longer pending was left open for an earlier period: not live.
+  const live = !!s && (s.status === "running" || s.status === "paused") && !period.stale;
   const place = s && teamId != null ? placeInOrder(s, teamId) : null;
   const myTurn = live && !!place?.onClock && s?.status === "running";
   useTurnCue(data != null && teamId != null, myTurn && s ? `${session?.id}.${s.round}.${s.turnIndex}` : null);
 
-  const periodName = usePeriodName(leagueId, session?.periodId ?? null);
-  const title = `${periodName ?? "Period"} meeting`;
+  const title = `${period.name ?? "Period"} meeting`;
 
   const nameOf = (id: number) => teams.find((t) => t.id === id)?.name ?? `Team ${id}`;
 
@@ -138,6 +139,7 @@ function Live({ session, title, skew, teamId, leagueId, nameOf, place, myTurn, a
           key={`${s.round}.${s.turnIndex}`}
           leagueId={leagueId}
           sessionId={session.id}
+          pickedPlayerIds={s.moves.map((mv) => mv.add.playerId)}
           teamId={teamId}
           onSubmit={(addPlayerId, dropPlayerId) =>
             act((version) => submitMove(session.id, { teamId, addPlayerId, dropPlayerId, version }))
