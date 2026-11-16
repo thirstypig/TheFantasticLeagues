@@ -53,7 +53,7 @@ export function OwnerMeetingPage() {
   const live = !!s && (s.status === "running" || s.status === "paused");
   const place = s && teamId != null ? placeInOrder(s, teamId) : null;
   const myTurn = live && !!place?.onClock && s?.status === "running";
-  useTurnCue(data != null && teamId != null, myTurn && s ? `${s.round}.${s.turnIndex}` : null);
+  useTurnCue(data != null && teamId != null, myTurn && s ? `${session?.id}.${s.round}.${s.turnIndex}` : null);
 
   const nameOf = (id: number) => teams.find((t) => t.id === id)?.name ?? `Team ${id}`;
 

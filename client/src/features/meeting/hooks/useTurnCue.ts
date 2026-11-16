@@ -19,15 +19,20 @@ function playTone(): void {
     osc.start();
     osc.stop(ctx.currentTime + 0.25);
     void ctx.resume?.();
+    let closed = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const close = () => {
+      if (closed) return;
+      closed = true;
+      if (timer) clearTimeout(timer);
       try {
-        void ctx.close?.();
+        void ctx.close?.()?.catch?.(() => {});
       } catch {
         /* already closed */
       }
     };
     osc.onended = close;
-    setTimeout(close, 1000); // fallback so a context can't leak if onended never fires
+    timer = setTimeout(close, 1000); // fallback so a context can't leak if onended never fires
   } catch {
     /* no sound is fine */
   }

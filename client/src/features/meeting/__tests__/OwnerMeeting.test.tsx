@@ -195,6 +195,42 @@ describe("OwnerMeetingPage", () => {
     delete (window as unknown as { AudioContext?: unknown }).AudioContext;
   });
 
+  it("closes the audio context exactly once, even if the second close would reject", async () => {
+    let calls = 0;
+    const close = vi.fn(() => (++calls > 1 ? Promise.reject(new Error("closed")) : Promise.resolve()));
+    const osc: { connect: () => void; start: () => void; stop: () => void; frequency: { value: number }; type: string; onended: (() => void) | null } =
+      { connect: vi.fn(), start: vi.fn(), stop: vi.fn(), frequency: { value: 0 }, type: "sine", onended: null };
+    (window as unknown as { AudioContext: unknown }).AudioContext = vi.fn(function () {
+      return { createOscillator: () => osc, createGain: () => ({ connect: vi.fn(), gain: { value: 0 } }), destination: {}, currentTime: 0, close, resume: vi.fn() };
+    });
+    vi.useFakeTimers();
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 0, turnEndsAt: IN_ONE_MIN() })));
+    renderPage();
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 1, turnEndsAt: IN_ONE_MIN() }), { version: 2 }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    osc.onended?.();
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(close).toHaveBeenCalledTimes(1);
+    delete (window as unknown as { AudioContext?: unknown }).AudioContext;
+  });
+
+  it("a new meeting whose first turn is mine still plays the tone", async () => {
+    const start = vi.fn();
+    (window as unknown as { AudioContext: unknown }).AudioContext = vi.fn(function () {
+      return { createOscillator: () => ({ connect: vi.fn(), start, stop: vi.fn(), frequency: { value: 0 }, type: "sine" }), createGain: () => ({ connect: vi.fn(), gain: { value: 0 } }), destination: {}, currentTime: 0, close: vi.fn(), resume: vi.fn() };
+    });
+    vi.useFakeTimers();
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 1, turnEndsAt: IN_ONE_MIN() }), { id: 55 }));
+    renderPage();
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(start).not.toHaveBeenCalled();
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 1, turnEndsAt: IN_ONE_MIN() }), { id: 56, version: 1 }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(start).toHaveBeenCalledTimes(1);
+    delete (window as unknown as { AudioContext?: unknown }).AudioContext;
+  });
+
   it("restores the title on unmount", async () => {
     const original = document.title;
     m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 1, turnEndsAt: IN_ONE_MIN() })));
