@@ -78,4 +78,18 @@ describe("ListHelp", () => {
     expect(note.style.position).toBe("fixed");
     expect(parseFloat(note.style.left)).toBeGreaterThanOrEqual(16);
   });
+
+  it("stays open when a scroll event fires while the button is in view", async () => {
+    render(<ListHelp kind="wire" />);
+    fireEvent.click(screen.getByRole("button", { name: "What is this list?" }));
+    fireEvent.scroll(window);
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    expect(screen.getByText(WIRE)).toBeInTheDocument();
+  });
+
+  it("uses an opaque surface token for the note background", () => {
+    render(<ListHelp kind="wire" />);
+    fireEvent.click(screen.getByRole("button", { name: "What is this list?" }));
+    expect(screen.getByText(WIRE).style.background).toContain("--am-surface");
+  });
 });

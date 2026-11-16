@@ -20,28 +20,39 @@ export function ListHelp({ kind }: { kind: "wire" | "auction" }) {
   const noteRef = useRef<HTMLSpanElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const noteId = useId();
+  // Aurora tokens (--am-*) are scoped to .aurora-theme, so portal inside it when
+  // present; otherwise <body>. Either way the note escapes overflow:hidden cards.
+  const portalHost = () =>
+    (rootRef.current?.closest(".aurora-theme") as HTMLElement | null) ?? document.body;
   const visible = pinned || hover;
 
   // The note is portaled to <body> (ancestors clip with overflow:hidden and
   // backdrop-filter re-roots position:fixed), placed from the button's rect and
   // clamped inside the viewport with a 16px gutter.
+  const place = () => {
+    const btn = btnRef.current;
+    const note = noteRef.current;
+    if (!btn || !note) return false;
+    const r = btn.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    if (r.bottom < 0 || r.top > vh || r.right < 0 || r.left > vw) return false; // scrolled out of view
+    const w = note.offsetWidth;
+    const h = note.offsetHeight;
+    const left = Math.max(16, Math.min(r.left + r.width / 2 - w / 2, vw - 16 - w));
+    let top = r.bottom + 4;
+    if (top + h > vh - 16 && r.top - 4 - h >= 16) top = r.top - 4 - h;
+    setPos({ top, left });
+    return true;
+  };
+
   useLayoutEffect(() => {
     if (!visible) {
       setPos(null);
       return;
     }
-    const btn = btnRef.current;
-    const note = noteRef.current;
-    if (!btn || !note) return;
-    const r = btn.getBoundingClientRect();
-    const w = note.offsetWidth;
-    const h = note.offsetHeight;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const left = Math.max(16, Math.min(r.left + r.width / 2 - w / 2, vw - 16 - w));
-    let top = r.bottom + 4;
-    if (top + h > vh - 16 && r.top - 4 - h >= 16) top = r.top - 4 - h;
-    setPos({ top, left });
+    place();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, kind]);
 
   useEffect(() => {
@@ -60,11 +71,22 @@ export function ListHelp({ kind }: { kind: "wire" | "auction" }) {
     };
     document.addEventListener("keydown", onKey);
     document.addEventListener("pointerdown", onDown);
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("resize", close);
+    // Follow the button on scroll/resize (rAF-throttled); close only once it
+    // has scrolled fully out of view.
+    let raf = 0;
+    const reposition = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        if (!place()) close();
+      });
+    };
+    window.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
     return () => {
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("pointerdown", onDown);
     };
@@ -146,9 +168,9 @@ export function ListHelp({ kind }: { kind: "wire" | "auction" }) {
             maxWidth: "min(280px, calc(100vw - 32px))",
             padding: "8px 12px",
             borderRadius: 8,
-            border: "1px solid var(--lg-border-subtle)",
-            background: "var(--lg-card-bg)",
-            color: "var(--lg-text-primary)",
+            border: "1px solid var(--am-border, var(--lg-border-subtle))",
+            background: "var(--am-surface, Canvas)",
+            color: "var(--am-text, var(--lg-text-primary))",
             boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
             fontSize: 13,
             fontWeight: 500,
@@ -161,7 +183,7 @@ export function ListHelp({ kind }: { kind: "wire" | "auction" }) {
         >
           {TEXT[kind]}
         </span>,
-          document.body,
+          portalHost(),
         )}
     </span>
   );
