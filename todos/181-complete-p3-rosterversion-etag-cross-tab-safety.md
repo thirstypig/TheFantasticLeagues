@@ -110,8 +110,8 @@ Audited against the code. **Option 1 shipped in full** — this todo's "Proposed
 | Piece | Where |
 |---|---|
 | `Team.rosterVersion Int @default(0)` | `prisma/schema.prisma:447` |
-| `checkRosterVersion` / `incrementRosterVersion` | `server/src/features/teams/lib/rosterVersionGuard.ts` |
-| 409 on stale PATCH | `server/src/features/teams/routes.ts:643` |
+| `parseIfMatch` / `bumpRosterVersionIfCurrent` / `incrementRosterVersion(s)` / `StaleRosterError` | `server/src/lib/rosterVersion.ts` (originally `teams/lib/rosterVersionGuard.ts`, moved in the fix round) |
+| 409 on stale PATCH (compare-and-set inside the tx) | `server/src/features/teams/routes.ts`, the `PATCH /:teamId/roster/:rosterId` handler |
 | Counter bumped in the claim / drop / IL-stash / IL-activate txs and the roster PATCH | `transactions/routes.ts`, `teams/routes.ts` (**CORRECTED 2026-11-15: this row originally claimed "every mutation tx". Trades, the wire-list processor and the commissioner edit paths did NOT bump until the fix round below.**) |
 | `rosterVersion` on the hub response | `teams/services/teamService.ts:313` |
 | Client sends `If-Match` | `client/src/features/teams/api.ts:70` |
@@ -148,7 +148,7 @@ concurrency guard is the kind that works until the day it matters.
   Callers audited: Team.tsx and MobileTeam.tsx send the real version; TeamLegacy, DraftReportPage,
   RosterGrid and TeamRosterManager have no hub version and send `*`. No caller in server/,
   mcp-servers/ or scripts/.
-- **Tests:** server `rosterVersionGuard.test.ts`, `rosterPatchVersion.test.ts`; client
+- **Tests:** server `lib/__tests__/rosterVersion.test.ts` (was `rosterVersionGuard.test.ts`), `rosterPatchVersion.test.ts`; client
   `Team.rosterConflict.test.tsx`, `rosterVersionApi.test.ts`, two cases in `MobileTeam.test.tsx`.
   Server 409/428 paths mutation-checked (break, fail, restore).
 - **Still open:** the two-tab browser smoke (controller). Known gap: the version check runs before
@@ -170,4 +170,18 @@ concurrency guard is the kind that works until the day it matters.
   as the first statement in its tx; zero rows throws `StaleRosterError`, the tx rolls back, the route
   answers 409 with a fresh read. The pre-tx read is gone.
 - **claim / il-stash / il-activate responses carry `rosterVersion`**, so the hub batch and the
-  mobile page chain real tokens (no `*` fallback, no `+1` guess). Mobile moves are serialized.
+  mobile page chain real tokens (no `+1` guess; `*` remains only as the fallback when a response omits the version). Mobile moves are serialized.
+
+### 2026-11-15 (fix round 2)
+
+- Mobile IL activate now sets the token from its own response (a lagging hub refetch can no
+  longer move it backwards); the 409 refetch is awaited inside the queued task.
+- **Lock order:** the roster PATCH locks Team then Roster. Trades (process, reverse), `executeTrade`,
+  `assignPlayer`, wire-list finalize, `releasePlayer`, force-drop, row edit and bulk IL stash now bump
+  the Team version BEFORE their first Roster write (multi-team paths in ascending team-id order via
+  `incrementRosterVersions`), so a concurrent PATCH cannot deadlock (40P01).
+- **Follow-ups, not done here:**
+  1. A season guard or version bump for `importRosters` and admin reset-rosters.
+  2. Tests for the `releasePlayer`, force-drop, roster-row-edit and bulk-IL bumps (only trades,
+     wire-list, `assignPlayer` and `executeTrade` are covered).
+  3. Send the hub version (instead of `If-Match: *`) from the classic team page and the commissioner grid.

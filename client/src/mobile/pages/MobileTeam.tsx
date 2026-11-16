@@ -314,7 +314,15 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
         if (isConflict) {
           // Roster changed elsewhere (another tab or the commissioner). Reload
           // the hub so the rows AND the version token are current.
-          getTeamRosterHub(teamId).then((refreshed) => setHub(refreshed)).catch(() => {});
+          // Awaited inside the queued task so moves chained behind this one read
+          // the fresh token, and a late refetch can't overwrite a later move.
+          try {
+            const refreshed = await getTeamRosterHub(teamId);
+            rosterVersionRef.current = refreshed.rosterVersion ?? "*";
+            setHub(refreshed);
+          } catch {
+            rosterVersionRef.current = "*";
+          }
         }
         // Rollback by restoring the previous slot on the row.
         setHub((prev) => {
@@ -373,17 +381,30 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
       });
 
       try {
-        await ilActivate({
+        const activateRes = await ilActivate({
           leagueId,
           teamId,
           activatePlayerId: ilRow.playerId,
           dropPlayerId: dropTarget.playerId,
         });
+        // The activate bumped the server's rosterVersion and returned it. Set the
+        // token now: the useEffect ref sync only runs after a render, and a move
+        // queued behind this activate must not read the old one.
+        rosterVersionRef.current =
+          typeof activateRes?.rosterVersion === "number" ? activateRes.rosterVersion : "*";
         // Refetch the hub to get the server's authoritative slot
         // assignment for the activated player.
         try {
           const refreshed = await getTeamRosterHub(teamId);
-          setHub(refreshed);
+          // Never move the token backwards (a lagging read must not undo the
+          // version the activate itself returned).
+          const known = rosterVersionRef.current;
+          const best =
+            typeof known === "number" && typeof refreshed.rosterVersion === "number"
+              ? Math.max(known, refreshed.rosterVersion)
+              : refreshed.rosterVersion ?? known;
+          rosterVersionRef.current = best;
+          setHub(typeof best === "number" ? { ...refreshed, rosterVersion: best } : refreshed);
         } catch {
           // If the refetch fails, leave the optimistic state in place.
         }

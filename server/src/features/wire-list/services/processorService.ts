@@ -27,7 +27,7 @@ import { isEligibleForSlot } from "../../../lib/positionInherit.js";
 import { getLeagueStatsSource, getTeamsForSource } from "../../../lib/mlbTeams.js";
 import type { WaiverPeriodStatus } from "../../../../../shared/api/wireList.js";
 import { SlotChangeSchema, type SlotChange } from "../../../../../shared/api/rosterMoves.js";
-import { incrementRosterVersion } from "../../../lib/rosterVersion.js";
+import { incrementRosterVersions } from "../../../lib/rosterVersion.js";
 
 // ─── Error type ──────────────────────────────────────────────────────
 
@@ -262,8 +262,12 @@ export async function finalizePeriod(period: {
       const processedDropIds: number[] = [];
 
       let dropsConsumed = 0;
-      // todo #181: teams whose roster rows changed; bumped once each after the loop.
-      const touchedTeamIds = new Set<number>();
+      // todo #181: bump every team that will change BEFORE the first roster
+      // write, ascending team-id order (lock order matches the roster PATCH).
+      await incrementRosterVersions(
+        succeededAdds.filter((a) => a.consumedDrop).map((a) => a.teamId),
+        tx,
+      );
       const now = new Date();
       for (const add of succeededAdds) {
         if (!add.consumedDrop) continue;
@@ -337,7 +341,6 @@ export async function finalizePeriod(period: {
             assignedPosition: assignedPos,
           },
         });
-        touchedTeamIds.add(add.teamId);
 
         eventRows.push({
           rowHash: `WIRE-LIST-ADD-${crypto.randomUUID()}-${add.playerId}`,
@@ -365,9 +368,6 @@ export async function finalizePeriod(period: {
         processedAddIds.push(add.id);
         processedDropIds.push(drop.id);
         dropsConsumed++;
-      }
-      for (const teamId of touchedTeamIds) {
-        await incrementRosterVersion(teamId, tx);
       }
 
       if (eventRows.length > 0) {

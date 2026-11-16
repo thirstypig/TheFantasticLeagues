@@ -863,12 +863,11 @@ router.patch(
     }
 
     const updated = await prisma.$transaction(async (tx) => {
-      const row = await tx.roster.update({
+      await incrementRosterVersion(roster.teamId, tx); // todo #181 (Team lock before Roster write)
+      return tx.roster.update({
         where: { id: rosterId },
         data: updates,
       });
-      await incrementRosterVersion(roster.teamId, tx); // todo #181
-      return row;
     });
 
     writeAuditLog({
@@ -1457,6 +1456,7 @@ router.post(
     const season = league?.season ?? new Date().getFullYear();
 
     await prisma.$transaction(async (tx) => {
+      await incrementRosterVersion(teamId, tx); // todo #181 (Team lock before Roster write)
       await tx.roster.update({
         where: { id: rosterEntry.id },
         data: { releasedAt: effective, source: "DROP" },
@@ -1474,7 +1474,6 @@ router.post(
           transactionType: "DROP",
         },
       });
-      await incrementRosterVersion(teamId, tx); // todo #181
     }, { timeout: 30_000 });
 
     writeAuditLog({

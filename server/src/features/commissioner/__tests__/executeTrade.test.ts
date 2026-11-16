@@ -173,8 +173,10 @@ describe("CommissionerService.executeTrade — rosterVersion (todo #181)", () =>
     const bumped = mockTx.team.update.mock.calls
       .map((c: any[]) => c[0])
       .filter((a: any) => a.data?.rosterVersion);
-    expect(bumped.map((a: any) => a.where.id).sort((a: number, b: number) => a - b)).toEqual(
-      [SENDER, RECIPIENT].sort((a, b) => a - b),
+    expect(bumped.map((a: any) => a.where.id)).toEqual([SENDER, RECIPIENT].sort((a, b) => a - b));
+    // Lock order: bumps precede the first Roster write.
+    expect(Math.max(...mockTx.team.update.mock.invocationCallOrder)).toBeLessThan(
+      Math.min(...mockTx.roster.update.mock.invocationCallOrder, ...mockTx.roster.create.mock.invocationCallOrder),
     );
     for (const a of bumped) expect(a.data).toEqual({ rosterVersion: { increment: 1 } });
   });

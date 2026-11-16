@@ -8,7 +8,7 @@ import { AuctionImportService } from "../../auction/services/auctionImport.js";
 import { DEFAULT_RULES } from "../../../lib/sportConfig.js";
 import { sendInviteEmail } from "../../../lib/emailService.js";
 import { invalidateLeagueRules } from "../../../lib/leagueRuleCache.js";
-import { incrementRosterVersion } from "../../../lib/rosterVersion.js";
+import { incrementRosterVersion, incrementRosterVersions } from "../../../lib/rosterVersion.js";
 
 const auctionImportService = new AuctionImportService();
 
@@ -852,6 +852,9 @@ export class CommissionerService {
         where: { playerId: player.id, releasedAt: null, team: { leagueId } },
         select: { id: true, teamId: true },
       });
+      // todo #181: every team that loses or gains the player changes. Bump
+      // BEFORE the first roster write, ascending team-id order.
+      await incrementRosterVersions([teamId, ...priorActive.map((r) => r.teamId)], tx);
       const excludeIds: number[] = [];
       for (const row of priorActive) {
         await tx.roster.update({
@@ -859,10 +862,6 @@ export class CommissionerService {
           data: { releasedAt: effective, source: "COMMISSIONER_REASSIGN" },
         });
         excludeIds.push(row.id);
-      }
-      // todo #181: every team that lost or gained the player changed.
-      for (const tid of new Set([teamId, ...priorActive.map((r) => r.teamId)])) {
-        await incrementRosterVersion(tid, tx);
       }
 
       await assertNoOwnershipConflict(tx, {
@@ -916,12 +915,11 @@ export class CommissionerService {
       }
 
       return await prisma.$transaction(async (tx) => {
-        const row = await tx.roster.update({
+        await incrementRosterVersion(r.teamId, tx); // todo #181 (Team lock before Roster write)
+        return tx.roster.update({
           where: { id: rosterId },
           data: { releasedAt: effective },
         });
-        await incrementRosterVersion(r.teamId, tx); // todo #181
-        return row;
       });
     }
 
@@ -932,11 +930,11 @@ export class CommissionerService {
         throw new Error("Team not found");
 
       await prisma.$transaction(async (tx) => {
+        await incrementRosterVersion(teamId, tx); // todo #181 (Team lock before Roster write)
         await tx.roster.updateMany({
           where: { teamId, playerId, releasedAt: null },
           data: { releasedAt: effective },
         });
-        await incrementRosterVersion(teamId, tx); // todo #181
       });
       return { success: true };
     }
@@ -1223,6 +1221,12 @@ export class CommissionerService {
     const proposerId = items[0].senderId;
 
     const trade = await prisma.$transaction(async (tx) => {
+      // todo #181: bump every team that may change BEFORE the first roster
+      // write, ascending team-id order (lock order matches the roster PATCH).
+      await incrementRosterVersions(
+        items.filter((i) => i.assetType === "PLAYER" && i.playerId).flatMap((i) => [i.senderId, i.recipientId]),
+        tx,
+      );
       const trade = await tx.trade.create({
         data: {
           leagueId,
@@ -1274,9 +1278,6 @@ export class CommissionerService {
                 assignedPosition: tradePos,
               },
             });
-            // todo #181: both teams' rosters changed.
-            await incrementRosterVersion(item.senderId, tx);
-            await incrementRosterVersion(item.recipientId, tx);
           }
         } else if (item.assetType === "BUDGET") {
           const transferAmount = item.amount || 0;

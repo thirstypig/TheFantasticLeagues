@@ -100,7 +100,11 @@ describe("CommissionerService.assignPlayer — rosterVersion (todo #181)", () =>
       expect.objectContaining({ select: { id: true, teamId: true } }),
     );
     const bumped = mockTx.team.update.mock.calls.map((c: any[]) => c[0]);
-    expect(bumped.map((a: any) => a.where.id).sort((a: number, b: number) => a - b)).toEqual([OLD_TEAM, TEAM]);
+    expect(bumped.map((a: any) => a.where.id)).toEqual([OLD_TEAM, TEAM]); // ascending
+    // Lock order: bumps precede the first Roster write.
+    expect(Math.max(...mockTx.team.update.mock.invocationCallOrder)).toBeLessThan(
+      Math.min(...mockTx.roster.update.mock.invocationCallOrder, ...mockTx.roster.create.mock.invocationCallOrder),
+    );
     for (const a of bumped) expect(a.data).toEqual({ rosterVersion: { increment: 1 } });
     expect((mockPrisma.team as any).update).toBeUndefined();
   });

@@ -158,7 +158,7 @@ describe("POST /:id/process roster checks", () => {
     expect(mockTx.trade.update).toHaveBeenCalled();
   });
 
-  it("process bumps rosterVersion for BOTH teams of every player moved, inside the transaction (todo #181)", async () => {
+  it("process bumps rosterVersion for both teams, ascending, BEFORE the first roster write (todo #181)", async () => {
     mockPrisma.trade.findUnique.mockResolvedValue(trade(oneForOne)); // 100: 1->2, 200: 2->1
     seedProcess();
     seedDb(mockTx, [...rows(1, 100, 22), ...rows(2, 200, 23)]);
@@ -167,11 +167,19 @@ describe("POST /:id/process roster checks", () => {
     const bumped = mockTx.team.update.mock.calls
       .filter((c: any[]) => c[0]?.data?.rosterVersion)
       .map((c: any[]) => c[0]);
-    expect(bumped).toHaveLength(4); // 2 players x (sender + recipient)
+    expect(bumped).toHaveLength(2); // one bump per team, not per move
     for (const arg of bumped) {
       expect(arg.data).toEqual({ rosterVersion: { increment: 1 } });
     }
-    expect(bumped.map((a: any) => a.where.id).sort()).toEqual([1, 1, 2, 2]);
+    // Ascending team-id order, so the Team lock order is fixed and matches the PATCH.
+    expect(bumped.map((a: any) => a.where.id)).toEqual([1, 2]);
+    // Lock order: every Team bump happens before the first Roster write.
+    const lastBump = Math.max(...mockTx.team.update.mock.invocationCallOrder);
+    const firstWrite = Math.min(
+      ...mockTx.roster.update.mock.invocationCallOrder,
+      ...mockTx.roster.create.mock.invocationCallOrder,
+    );
+    expect(lastBump).toBeLessThan(firstWrite);
     // It ran on the tx client, not the global prisma.
     expect((mockPrisma.team as any).update).toBeUndefined();
   });

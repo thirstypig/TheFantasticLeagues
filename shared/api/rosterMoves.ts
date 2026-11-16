@@ -327,7 +327,8 @@ export const ClaimResponseSchema = z.object({
   name: z.string().optional(),
   appliedReassignments: z.array(AppliedReassignmentSchema).optional(),
   ilStashedPlayerId: z.number().int().positive().nullable().optional(),
-  ilStashedPlayerName: z.string().nullable().optional(),  /** Team.rosterVersion after this mutation; send as `If-Match` on the next guarded PATCH. */
+  ilStashedPlayerName: z.string().nullable().optional(),
+  /** Team.rosterVersion after this mutation; send as `If-Match` on the next guarded PATCH. */
   rosterVersion: z.number().int().optional(),
 });
 export type ClaimResponse = z.infer<typeof ClaimResponseSchema>;
@@ -346,7 +347,8 @@ export const IlStashResponseSchema = z.object({
   /** Identifying fields of the added player (null in stash-only mode). */
   addMlbId: z.number().nullable().optional(),
   addName: z.string().nullable().optional(),
-  appliedReassignments: z.array(AppliedReassignmentSchema).optional(),  /** Team.rosterVersion after this mutation; send as `If-Match` on the next guarded PATCH. */
+  appliedReassignments: z.array(AppliedReassignmentSchema).optional(),
+  /** Team.rosterVersion after this mutation; send as `If-Match` on the next guarded PATCH. */
   rosterVersion: z.number().int().optional(),
 });
 export type IlStashResponse = z.infer<typeof IlStashResponseSchema>;
@@ -362,7 +364,8 @@ export const IlActivateResponseSchema = z.object({
   activateName: z.string().optional(),
   dropMlbId: z.number().nullable().optional(),
   dropName: z.string().optional(),
-  appliedReassignments: z.array(AppliedReassignmentSchema).optional(),  /** Team.rosterVersion after this mutation; send as `If-Match` on the next guarded PATCH. */
+  appliedReassignments: z.array(AppliedReassignmentSchema).optional(),
+  /** Team.rosterVersion after this mutation; send as `If-Match` on the next guarded PATCH. */
   rosterVersion: z.number().int().optional(),
 });
 export type IlActivateResponse = z.infer<typeof IlActivateResponseSchema>;

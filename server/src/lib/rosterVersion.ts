@@ -92,3 +92,16 @@ export async function incrementRosterVersion(
   });
   return updated.rosterVersion;
 }
+
+/**
+ * Bump several teams' versions in ASCENDING team-id order. Call it BEFORE the
+ * transaction's first roster write: the roster PATCH locks Team and then Roster,
+ * so a path that writes Roster first and Team second can deadlock against it
+ * (Postgres 40P01). Taking the Team locks first, in a fixed order, removes both
+ * the inversion and the multi-team ordering hazard.
+ */
+export async function incrementRosterVersions(teamIds: Iterable<number>, tx: Tx): Promise<void> {
+  for (const id of [...new Set(teamIds)].sort((a, b) => a - b)) {
+    await incrementRosterVersion(id, tx);
+  }
+}

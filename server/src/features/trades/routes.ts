@@ -23,7 +23,7 @@ const processSchema = z.object({
 }).optional();
 import { sendTradeProposedEmail, sendTradeProcessedEmail, sendTradeVetoedEmail, notifyTeamOwners } from "../../lib/emailService.js";
 import { sendPushToTeamOwners, sendPushToLeague } from "../../lib/pushService.js";
-import { incrementRosterVersion } from "../../lib/rosterVersion.js";
+import { incrementRosterVersions } from "../../lib/rosterVersion.js";
 
 /**
  * Auto-generate AI analysis after a trade is processed.
@@ -521,6 +521,13 @@ router.post("/:id/process", requireAuth, asyncHandler(async (req, res) => {
     // Validate against the rosters as they are now, before any write.
     await assertTradeRosters(tx as any, trade.leagueId, trade.items);
 
+    // todo #181: bump every team whose roster will change BEFORE the first
+    // roster write, in ascending team-id order (lock order matches the PATCH).
+    await incrementRosterVersions(
+      trade.items.filter((i) => i.assetType === "PLAYER" && i.playerId).flatMap((i) => [i.senderId, i.recipientId]),
+      tx,
+    );
+
     for (const item of trade.items) {
       if (item.assetType === "PLAYER" && item.playerId) {
         const rosterEntry = await tx.roster.findFirst({
@@ -569,9 +576,6 @@ router.post("/:id/process", requireAuth, asyncHandler(async (req, res) => {
             assignedPosition: tradePos,
           },
         });
-        // todo #181: both teams' rosters changed; bump both version counters.
-        await incrementRosterVersion(item.senderId, tx);
-        await incrementRosterVersion(item.recipientId, tx);
       } else if (item.assetType === "BUDGET") {
         const budgetAmount = item.amount || 0;
         const senderTeam = await tx.team.findUnique({ where: { id: item.senderId }, select: { budget: true } });
@@ -836,6 +840,9 @@ router.post("/:id/reverse", requireAuth, asyncHandler(async (req, res) => {
       }
     }
 
+    // todo #181: bump before the first roster write, ascending team-id order.
+    await incrementRosterVersions(playerMoves.flatMap(({ item }) => [item.senderId, item.recipientId]), tx);
+
     for (const { item, row } of playerMoves) {
       const playerId = item.playerId as number;
       // Never end a row before it starts: process may have dated the trade to
@@ -868,9 +875,6 @@ router.post("/:id/reverse", requireAuth, asyncHandler(async (req, res) => {
           }),
         },
       });
-      // todo #181: both teams' rosters changed; bump both version counters.
-      await incrementRosterVersion(item.senderId, tx);
-      await incrementRosterVersion(item.recipientId, tx);
     }
 
     for (const item of trade.items) {

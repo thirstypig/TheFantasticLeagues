@@ -284,6 +284,10 @@ describe("finalizePeriod", () => {
     expect(result.successesByTeam.get(5)).toEqual(["Add Guy"]);
     // todo #181: the finalized team's rosterVersion is bumped on the tx client.
     expect(mockTx.team.update).toHaveBeenCalledTimes(1);
+    // Lock order: the Team bump precedes the first Roster write (release).
+    expect(mockTx.team.update.mock.invocationCallOrder[0]).toBeLessThan(
+      mockTx.roster.updateMany.mock.invocationCallOrder[0],
+    );
     expect(mockTx.team.update).toHaveBeenCalledWith({
       where: { id: 5 },
       data: { rosterVersion: { increment: 1 } },

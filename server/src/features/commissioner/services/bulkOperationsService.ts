@@ -197,6 +197,9 @@ async function stashOneIdempotent(args: {
       await assertIlSlotAvailable(tx, teamId, leagueId);
       await assertNoGhostIl(tx, teamId);
 
+      // todo #181: Team lock before the first Roster write (matches the PATCH).
+      await incrementRosterVersion(teamId, tx);
+
       // Move the player onto IL.
       await tx.roster.update({
         where: { id: stashRoster.id },
@@ -252,7 +255,6 @@ async function stashOneIdempotent(args: {
           transactionType: "IL_STASH",
         },
       });
-      await incrementRosterVersion(teamId, tx); // todo #181
     }, { timeout: 30_000 });
 
     return { kind: "stashed" };
