@@ -3,11 +3,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("../../../api/base", () => ({
   API_BASE: "/api",
   fetchJsonApi: vi.fn(),
-  parseJsonResponse: (_s: unknown, p: unknown) => p,
+  parseJsonResponse: (s: { parse: (p: unknown) => unknown }, p: unknown) => s.parse(p),
 }));
 
 import { fetchJsonApi } from "../../../api/base";
-import { getSeasonOrder, searchFreeAgents, submitMove } from "../api";
+import { getChoices, getSeasonOrder, searchFreeAgents, submitMove } from "../api";
 
 beforeEach(() => vi.mocked(fetchJsonApi).mockReset());
 
@@ -54,7 +54,7 @@ describe("searchFreeAgents", () => {
 
 describe("submitMove", () => {
   it("POSTs the body to the session route", async () => {
-    vi.mocked(fetchJsonApi).mockResolvedValue({});
+    vi.mocked(fetchJsonApi).mockResolvedValue({ session: null, version: 1, serverNow: "2026-11-15T00:00:00.000Z", online: [] });
     await submitMove(5, { teamId: 1, addPlayerId: 2, dropPlayerId: 3, version: 4 });
     const [url, init] = vi.mocked(fetchJsonApi).mock.calls[0];
     expect(url).toBe("/api/meeting/sessions/5/submit");
@@ -62,5 +62,16 @@ describe("submitMove", () => {
     expect(JSON.parse((init as RequestInit).body as string)).toEqual({
       teamId: 1, addPlayerId: 2, dropPlayerId: 3, version: 4,
     });
+  });
+});
+
+describe("getChoices", () => {
+  it("parses list and roster with the shared schema", async () => {
+    const p = { playerId: 1, name: "A", pos: "OF", mlbTeam: "NYM", mlbId: 5 };
+    vi.mocked(fetchJsonApi).mockResolvedValue({ list: [p], roster: [p] });
+    expect(await getChoices(5, 2)).toEqual({ list: [p], roster: [p] });
+    expect(vi.mocked(fetchJsonApi).mock.calls[0][0]).toBe("/api/meeting/sessions/5/choices?teamId=2");
+    vi.mocked(fetchJsonApi).mockResolvedValue({ list: [{ playerId: "x" }], roster: [] });
+    await expect(getChoices(5, 2)).rejects.toThrow();
   });
 });

@@ -72,6 +72,12 @@ export const MeetingSessionResponseSchema = z.object({
 });
 export type MeetingSessionResponse = z.infer<typeof MeetingSessionResponseSchema>;
 
+export const MeetingChoicesResponseSchema = z.object({
+  list: z.array(MeetingPlayerSchema),
+  roster: z.array(MeetingPlayerSchema),
+});
+export type MeetingChoicesResponse = z.infer<typeof MeetingChoicesResponseSchema>;
+
 // ─── Request bodies ──────────────────────────────────────────────────
 
 export const OpenBodySchema = z.object({

@@ -131,3 +131,69 @@ describe("useMeetingSession act", () => {
     unmount();
   });
 });
+
+describe("useMeetingSession races", () => {
+  it("ignores a stale poll that lands after an act response", async () => {
+    get.mockResolvedValueOnce(response("running", 3));
+    const { result, unmount } = renderHook(() => useMeetingSession(7));
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    let resolvePoll!: (r: MeetingSessionResponse) => void;
+    get.mockImplementationOnce(() => new Promise((r) => { resolvePoll = r; }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); }); // poll in flight
+    await act(async () => { await result.current.act(() => Promise.resolve(response("running", 5))); });
+    expect(result.current.data?.version).toBe(5);
+    await act(async () => { resolvePoll(response("running", 4)); await vi.advanceTimersByTimeAsync(0); });
+    expect(result.current.data?.version).toBe(5);
+    const fn = vi.fn().mockResolvedValue(response("running", 6));
+    await act(async () => { await result.current.act(fn); });
+    expect(fn).toHaveBeenCalledWith(5);
+    unmount();
+  });
+
+  it("applies a response for a different session even with a lower version", async () => {
+    get.mockResolvedValueOnce(response("running", 9));
+    const { result, unmount } = renderHook(() => useMeetingSession(7));
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    const other = response("running", 1);
+    other.session!.id = 2;
+    get.mockResolvedValue(other);
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(result.current.data?.session?.id).toBe(2);
+    unmount();
+  });
+
+  it("refresh during an in-flight poll does not stack poll chains", async () => {
+    get.mockResolvedValueOnce(response("running", 3));
+    const { result, unmount } = renderHook(() => useMeetingSession(7));
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(get).toHaveBeenCalledTimes(1);
+    let resolvePoll!: (r: MeetingSessionResponse) => void;
+    get.mockImplementationOnce(() => new Promise((r) => { resolvePoll = r; }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); }); // poll #2 in flight
+    expect(get).toHaveBeenCalledTimes(2);
+    get.mockResolvedValue(response("running", 3));
+    await act(async () => { result.current.refresh(); await vi.advanceTimersByTimeAsync(0); }); // fetch #3
+    expect(get).toHaveBeenCalledTimes(3);
+    await act(async () => { resolvePoll(response("running", 3)); await vi.advanceTimersByTimeAsync(0); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
+    expect(get).toHaveBeenCalledTimes(3 + 5); // one chain: 5 polls in 10s
+    unmount();
+    const n = get.mock.calls.length;
+    await act(async () => { await vi.advanceTimersByTimeAsync(10000); });
+    expect(get).toHaveBeenCalledTimes(n);
+  });
+
+  it("refreshes immediately when the tab becomes visible again", async () => {
+    setVisibility("hidden");
+    get.mockResolvedValue(response("running", 3));
+    const { unmount } = renderHook(() => useMeetingSession(7));
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(get).toHaveBeenCalledTimes(1);
+    setVisibility("visible");
+    await act(async () => { document.dispatchEvent(new Event("visibilitychange")); await vi.advanceTimersByTimeAsync(0); });
+    expect(get).toHaveBeenCalledTimes(2);
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(get).toHaveBeenCalledTimes(3);
+    unmount();
+  });
+});

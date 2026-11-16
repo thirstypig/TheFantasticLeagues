@@ -1,6 +1,8 @@
 import { API_BASE, fetchJsonApi, parseJsonResponse } from "../../api/base";
 import {
+  MeetingChoicesResponseSchema,
   MeetingSessionResponseSchema,
+  type MeetingChoicesResponse,
   type MeetingPlayer,
   type MeetingSessionResponse,
   type OpenBody,
@@ -34,11 +36,9 @@ export const submitMove = (id: number, body: SubmitBody) => post(`/sessions/${id
 export const passTurn = (id: number, body: PassBody) => post(`/sessions/${id}/pass`, body);
 export const markHandedOff = (id: number) => post(`/sessions/${id}/handed-off`);
 
-export function getChoices(
-  id: number,
-  teamId: number,
-): Promise<{ list: MeetingPlayer[]; roster: MeetingPlayer[] }> {
-  return fetchJsonApi(`${BASE}/sessions/${id}/choices?teamId=${teamId}`);
+export async function getChoices(id: number, teamId: number): Promise<MeetingChoicesResponse> {
+  const raw = await fetchJsonApi<unknown>(`${BASE}/sessions/${id}/choices?teamId=${teamId}`);
+  return parseJsonResponse(MeetingChoicesResponseSchema, raw, "meeting/choices");
 }
 
 interface FreeAgentRow {

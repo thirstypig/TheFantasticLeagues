@@ -19,7 +19,13 @@ export function useMeetingSession(leagueId: number | null) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadRef = useRef<() => Promise<void>>(async () => {});
 
+  const genRef = useRef(0);
+
   const apply = useCallback((res: MeetingSessionResponse) => {
+    const cur = dataRef.current;
+    // Ignore a stale (out-of-order) response for the same session; a different
+    // session id, or null -> non-null, always applies.
+    if (cur && res.version < cur.version && (res.session?.id ?? null) === (cur.session?.id ?? null)) return;
     dataRef.current = res;
     setData(res);
     setSkew(skewMs(res.serverNow, Date.now()));
@@ -37,24 +43,33 @@ export function useMeetingSession(leagueId: number | null) {
       if (cancelled) return;
       if (dataRef.current?.session?.state.status === "ended") return;
       const delay = document.visibilityState === "visible" ? VISIBLE_POLL_MS : HIDDEN_POLL_MS;
+      if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(load, delay);
     };
 
     async function load() {
       if (timer.current) clearTimeout(timer.current);
+      const gen = ++genRef.current;
       try {
         const res = await getCurrentMeeting(leagueId as number);
         if (!cancelled) apply(res);
       } catch (e) {
         if (!cancelled) setError(errorMessage(e));
       }
-      schedule();
+      // Only the latest chain reschedules; an older in-flight chain just ends.
+      if (gen === genRef.current) schedule();
     }
     loadRef.current = load;
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
 
     void load();
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", onVisibility);
       if (timer.current) clearTimeout(timer.current);
     };
   }, [leagueId, apply]);
