@@ -778,6 +778,29 @@ describe("POST /transactions/drop — Phase 2 enforcement (ENFORCE=true)", () =>
       }),
     );
   });
+
+  it("bumps rosterVersion BEFORE the first roster write (lock order matches the PATCH, todo #181)", async () => {
+    mockPrisma.roster.findFirst.mockResolvedValue({
+      id: 5, teamId: 10, playerId: 100,
+      acquiredAt: new Date("2026-04-01T00:00:00Z"),
+      assignedPosition: "IL",
+    });
+    mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+    mockTx.team.update.mockClear();
+    mockTx.roster.update.mockClear();
+
+    const res = await supertest(app).post("/transactions/drop").send({
+      leagueId: 1, teamId: 10, playerId: 100,
+    });
+
+    expect(res.status).toBe(200);
+    expect(mockTx.team.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 10 }, data: { rosterVersion: { increment: 1 } } }),
+    );
+    expect(mockTx.team.update.mock.invocationCallOrder[0]).toBeLessThan(
+      mockTx.roster.update.mock.invocationCallOrder[0],
+    );
+  });
 });
 
 describe("POST /transactions/il-stash", () => {

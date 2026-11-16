@@ -392,6 +392,12 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
         // queued behind this activate must not read the old one.
         rosterVersionRef.current =
           typeof activateRes?.rosterVersion === "number" ? activateRes.rosterVersion : "*";
+        // Mirror it into hub state too: if the refetch below fails, the hub-sync
+        // effect must not overwrite the ref with the stale pre-activate version.
+        if (typeof activateRes?.rosterVersion === "number") {
+          const v = activateRes.rosterVersion;
+          setHub((prev) => (prev ? { ...prev, rosterVersion: v } : prev));
+        }
         // Refetch the hub to get the server's authoritative slot
         // assignment for the activated player.
         try {

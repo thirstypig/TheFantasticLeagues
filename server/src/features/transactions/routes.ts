@@ -858,6 +858,9 @@ router.post("/transactions/drop", requireAuth, validateBody(dropSchema), require
   const season = league?.season ?? new Date().getFullYear();
 
   await prisma.$transaction(async (tx) => {
+    // todo #181: Team lock (via the version bump) BEFORE the Roster write, the
+    // same order as the roster PATCH, so the two cannot deadlock (40P01).
+    await incrementRosterVersion(teamId, tx);
     await tx.roster.update({ where: { id: rosterEntry.id }, data: { releasedAt: effective, source: "DROP" } });
 
     const player = await tx.player.findUnique({ where: { id: playerId } });
@@ -874,7 +877,6 @@ router.post("/transactions/drop", requireAuth, validateBody(dropSchema), require
         transactionType: 'DROP'
       }
     });
-    await incrementRosterVersion(teamId, tx); // todo #181
   }, { timeout: 30_000 });
 
   writeAuditLog({
