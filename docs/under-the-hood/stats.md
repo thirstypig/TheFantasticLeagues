@@ -8,7 +8,7 @@ phase: null
 owner: james
 tags: [docs-system]
 links: [DOC-001]
-updated: 2026-11-13
+updated: 2026-11-16
 ---
 
 # Repo statistics
@@ -21,15 +21,15 @@ updated: 2026-11-13
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-13 from 1,975 git-tracked files.*
+*Generated 2026-11-16 from 1,972 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 656 | 114,971 |
+| `.ts` | 657 | 115,565 |
 | `.tsx` | 376 | 93,654 |
-| `.md` | 564 | 70,975 |
+| `.md` | 562 | 70,885 |
 | `.json` | 36 | 40,130 |
 | `.css` | 15 | 2,475 |
 | `.sql` | 40 | 2,153 |
@@ -38,7 +38,7 @@ updated: 2026-11-13
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,971** | **372,151** |
+| **All tracked** | **1,968** | **372,655** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -55,9 +55,9 @@ updated: 2026-11-13
 
 ## Docs
 
-**219** board-scope markdown files (`docs/` plus the four root docs), of which **152** carry frontmatter.
+**217** board-scope markdown files (`docs/` plus the four root docs), of which **150** carry frontmatter.
 
-*570 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
+*566 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
 unrelated frontmatter vocabularies and are deliberately excluded from the tables below.*
 
 > **67 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
@@ -71,7 +71,6 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `report` | 4 | ✅ |
 | `refactor` | 3 | ❌ off-vocabulary |
 | `tech-spec` | 3 | ✅ |
-| `stats` | 3 | ✅ |
 | `solution` | 2 | ✅ |
 | `deployment-failure` | 2 | ❌ off-vocabulary |
 | `inbox` | 1 | ✅ |
@@ -98,13 +97,14 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `privacy` | 1 | ✅ |
 | `risk` | 1 | ✅ |
 | `runbook` | 1 | ✅ |
+| `stats` | 1 | ✅ |
 | `status` | 1 | ✅ |
 
 **36 docs use a `type` outside the controlled vocabulary** (see `docs/README-DOCS.md` §4) — mostly older `docs/solutions/` and `docs/archive/` entries written before the schema existed.
 
 | Status | Docs | In vocabulary? |
 |---|---:|---|
-| `active` | 63 | ✅ |
+| `active` | 61 | ✅ |
 | `draft` | 6 | ✅ |
 | `completed` | 4 | ❌ off-vocabulary |
 | `resolved` | 4 | ❌ off-vocabulary |
@@ -119,15 +119,15 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 ## Open work
 
-**3 open** of 308 total to-dos.
+**2 open** of 308 total to-dos.
 
 | Priority | Open |
 |---|---:|
-| `p3` | 3 |
+| `p3` | 2 |
 
 Planning status: 27/82 planning tasks done, 2 in progress.
 
-`server/data/planning.json` last updated **2026-05-19** (178 days ago).
+`server/data/planning.json` last updated **2026-05-19** (181 days ago).
 
-> ⚠️ The canonical roadmap source is **178 days stale**. Numbers above are honest; the *plan* they describe may not be.
+> ⚠️ The canonical roadmap source is **181 days stale**. Numbers above are honest; the *plan* they describe may not be.
 

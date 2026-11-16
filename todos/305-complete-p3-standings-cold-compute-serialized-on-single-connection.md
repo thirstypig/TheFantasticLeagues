@@ -66,3 +66,27 @@ serializes the whole app. This is the capacity ceiling, not user count.
 - **What is left: solution 2 (batch the per-period fan-out).** Cold computes are now rare (after each
   of ~5 daily syncs, plus the 120s TTL backstop) but each one is still ~1.3s. The "< 500ms" acceptance
   criterion is NOT met and only batching meets it. P3 because the every-120s capacity hit is gone.
+
+### 2026-11-15 — Solution 2 done (batched season compute); closing
+
+- **What changed.** `getSeasonStandingsUncached` no longer calls `computeTeamStatsFromDb` per
+  period. `computeTeamStatsForPeriods` loads periods, then teams + rosters + PSP (one query each),
+  then IL events + daily stats (one query each): at most 6 queries in 3 sequential stages for any
+  number of periods (was ~6 per period + 1; 19 for the local 3-period league, ~43 for OGBA's 7).
+  Each period is cut out of the batched rows with the per-period predicates (`overlapsPeriod`,
+  `periodId`) and scored by the same pure `routeStatsSource` / `scorePeriod` that
+  `computeTeamStatsFromDb` now uses, so the season and single-period views share one code path.
+- **Tie-breakers added** (rosters `acquiredAt desc, id desc`; IL events `effDate asc, id asc`; daily
+  `gameDate asc`). Before, Postgres returned tied rows in arbitrary order, which could move IP
+  float sums by an ulp, pick the first-wins end owner among same-timestamp rows, and order a
+  same-day IL_STASH/IL_ACTIVATE pair either way (stint closed vs open forever).
+- **Equivalence evidence.** Local DB (leagues 5 and 6, periods 1–3 + pending 8): untouched old code
+  vs new, deep-equal and JSON-identical for season and every period, 53/53 checks. Local data is
+  thin (24 rosters, no releases, no IL events, no daily rows), so `standingsService.seasonBatch.test.ts`
+  adds a WHERE-evaluating fake Prisma with 40 generated seasons (mid-period moves, trades, IL incl.
+  same-day stash+activate, PSP-less period, IP in thirds); old code == new code on all 40 was checked
+  during the work, batched == per-period is the committed assertion.
+- **Timing.** Local DB has ~0 latency, so the win is in round-trips, not local ms: median of 5,
+  connection_limit=1, old ~70–80ms vs new ~14–35ms (noisy machine); with 20ms injected per query,
+  ~159ms vs ~94ms. The < 500ms-from-Railway target was NOT measured against prod (read-only local
+  run only); follow-up: time a cold `getSeasonStandings(20)` against prod after deploy.
