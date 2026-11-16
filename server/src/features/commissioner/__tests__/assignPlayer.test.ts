@@ -16,6 +16,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const { mockPrisma, mockTx } = vi.hoisted(() => {
   const mockTx = {
+    team: { update: vi.fn(async () => ({ rosterVersion: 1 })) }, // incrementRosterVersion (todo #181)
     roster: { findMany: vi.fn(), update: vi.fn(), create: vi.fn() },
   };
   return {
@@ -85,5 +86,26 @@ describe("CommissionerService.assignPlayer — slot assignment", () => {
     arrange("TWP");
     await call("TWP");
     expect(mockTx.roster.create.mock.calls[0][0].data.assignedPosition).toBe("P");
+  });
+});
+
+describe("CommissionerService.assignPlayer — rosterVersion (todo #181)", () => {
+  it("bumps the receiving team AND the team that lost the player, on the tx client", async () => {
+    arrange("LF");
+    const OLD_TEAM = 77;
+    mockTx.roster.findMany.mockResolvedValue([{ id: 31, teamId: OLD_TEAM }]);
+    mockTx.roster.update.mockResolvedValue({});
+    await call("LF");
+    expect(mockTx.roster.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ select: { id: true, teamId: true } }),
+    );
+    const bumped = mockTx.team.update.mock.calls.map((c: any[]) => c[0]);
+    expect(bumped.map((a: any) => a.where.id)).toEqual([OLD_TEAM, TEAM]); // ascending
+    // Lock order: bumps precede the first Roster write.
+    expect(Math.max(...mockTx.team.update.mock.invocationCallOrder)).toBeLessThan(
+      Math.min(...mockTx.roster.update.mock.invocationCallOrder, ...mockTx.roster.create.mock.invocationCallOrder),
+    );
+    for (const a of bumped) expect(a.data).toEqual({ rosterVersion: { increment: 1 } });
+    expect((mockPrisma.team as any).update).toBeUndefined();
   });
 });

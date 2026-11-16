@@ -17,6 +17,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../../../../db/prisma.js", () => {
   const tx = {
+    team: { update: vi.fn(async () => ({ rosterVersion: 1 })) }, // incrementRosterVersion (todo #181)
     waiverPeriod: {
       updateMany: vi.fn(),
       update: vi.fn(),
@@ -281,6 +282,17 @@ describe("finalizePeriod", () => {
     expect(result.dropsConsumed).toBe(1);
     expect(result.period.status).toBe("PROCESSED");
     expect(result.successesByTeam.get(5)).toEqual(["Add Guy"]);
+    // todo #181: the finalized team's rosterVersion is bumped on the tx client.
+    expect(mockTx.team.update).toHaveBeenCalledTimes(1);
+    // Lock order: the Team bump precedes the first Roster write (release).
+    expect(mockTx.team.update.mock.invocationCallOrder[0]).toBeLessThan(
+      mockTx.roster.updateMany.mock.invocationCallOrder[0],
+    );
+    expect(mockTx.team.update).toHaveBeenCalledWith({
+      where: { id: 5 },
+      data: { rosterVersion: { increment: 1 } },
+      select: { rosterVersion: true },
+    });
   });
 
   it("PENDING add blocks finalize → throws 409 FINALIZE_BLOCKED with pendingAdds in extra", async () => {

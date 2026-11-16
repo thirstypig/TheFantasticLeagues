@@ -389,7 +389,7 @@ describe("wireReminder", () => {
 
   it("wire reminder appears within 48 hours of a pending deadline", () => {
     expect(wireReminder(wp({}), new Date(2026, 5, 20, 12, 0, 0))).toEqual({
-      text: "Wire List locks Sun 11:00 PM",
+      text: "List locks Sun 11:00 PM",
     });
   });
 

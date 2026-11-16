@@ -5,6 +5,7 @@ import { MobileTeam } from "../pages/MobileTeam";
 import { getTeams, getTeamRosterHub, updateRosterPosition, getTeamPeriodRoster } from "../../features/teams/api";
 import { ilActivate, ilStash } from "../../features/transactions/api";
 import { getSeasonStandings } from "../../api";
+import { ApiError } from "../../api/base";
 
 vi.mock("../../contexts/LeagueContext", () => ({
   useLeague: () => ({ leagueId: 20, myTeamId: 101, outfieldMode: "OF" }),
@@ -38,6 +39,7 @@ vi.mock("../../lib/errorBus", () => ({
 const SAMPLE_HUB = {
   team: { id: 101, leagueId: 20, name: "Los Doyers", owner: "James", budget: 48 },
   period: null,
+  rosterVersion: 5,
   hitters: [
     // AB=200, H=61 → combined AVG = 61/200 = .305; HR=30+20=50; RBI=90+75=165; SB=12+1=13
     { rosterId: 1, playerId: 1, mlbId: 100, playerName: "Mookie Betts", posPrimary: "OF", posList: "OF,2B", position: "OF", assignedPosition: "OF", isPitcher: false, mlbTeam: "LAD", AB: 100, H: 30, AVG: 0.300, HR: 30, RBI: 90, SB: 12 },
@@ -166,10 +168,102 @@ describe("MobileTeam (read-only)", () => {
     const benchBtn = screen.getAllByTestId("mobile-team-move-slot").find((b) => b.getAttribute("data-slot") === "BN")!;
     fireEvent.click(benchBtn);
     await waitFor(() => {
-      expect(updateRosterPosition).toHaveBeenCalledWith(101, 1, "BN");
+      expect(updateRosterPosition).toHaveBeenCalledWith(101, 1, "BN", undefined, 5);
     });
     // Sheet should close after pick
     expect(screen.queryByTestId("mobile-team-move-sheet")).not.toBeInTheDocument();
+  });
+
+  it("on a 409 (roster changed elsewhere) shows the server message and reloads the hub for a fresh version", async () => {
+    vi.mocked(updateRosterPosition).mockRejectedValueOnce(
+      new ApiError({
+        message: "Roster changed since you last loaded it",
+        status: 409,
+        url: "/api/teams/101/roster/1",
+        requestId: null,
+        body: { rosterVersion: 9 },
+        serverMessage: "Roster changed since you last loaded it",
+      }),
+    );
+    renderTeam("LDY");
+    await screen.findByText("Mookie Betts");
+    const hubCallsBefore = vi.mocked(getTeamRosterHub).mock.calls.length;
+    vi.mocked(getTeamRosterHub).mockResolvedValue({ ...SAMPLE_HUB, rosterVersion: 9 } as any);
+    const mookieRow = screen.getAllByTestId("mobile-team-row")[0];
+    fireEvent.click(within(mookieRow).getByTestId("mobile-team-move-btn"));
+    await screen.findByTestId("mobile-team-move-sheet");
+    const benchBtn = screen.getAllByTestId("mobile-team-move-slot").find((b) => b.getAttribute("data-slot") === "BN")!;
+    fireEvent.click(benchBtn);
+    await waitFor(() => {
+      expect(screen.getByTestId("mobile-team-move-error")).toHaveTextContent(
+        "The roster changed in another tab or by the commissioner. We reloaded the latest roster. Check your changes and save again.",
+      );
+    });
+    await waitFor(() => {
+      expect(vi.mocked(getTeamRosterHub).mock.calls.length).toBeGreaterThan(hubCallsBefore);
+    });
+  });
+
+  it("sends the new version from the previous PATCH response on the next move", async () => {
+    vi.mocked(updateRosterPosition).mockResolvedValue({ roster: { id: 1 }, rosterVersion: 6 } as any);
+    renderTeam("LDY");
+    await screen.findByText("Mookie Betts");
+    for (const rowIdx of [0, 1]) {
+      const row = screen.getAllByTestId("mobile-team-row")[rowIdx];
+      fireEvent.click(within(row).getByTestId("mobile-team-move-btn"));
+      await screen.findByTestId("mobile-team-move-sheet");
+      const bench = screen.getAllByTestId("mobile-team-move-slot").find((b) => b.getAttribute("data-slot") === "BN")!;
+      fireEvent.click(bench);
+      await waitFor(() => expect(updateRosterPosition).toHaveBeenCalledTimes(rowIdx + 1));
+    }
+    const calls = vi.mocked(updateRosterPosition).mock.calls;
+    expect(calls[0][4]).toBe(5);
+    expect(calls[1][4]).toBe(6);
+  });
+
+  it("serializes moves: the second PATCH waits for the first and sends the version it returned", async () => {
+    let releaseFirst!: (v: unknown) => void;
+    vi.mocked(updateRosterPosition)
+      .mockImplementationOnce(() => new Promise((res) => { releaseFirst = res; }) as any)
+      .mockResolvedValueOnce({ roster: { id: 2 }, rosterVersion: 7 } as any);
+    renderTeam("LDY");
+    await screen.findByText("Mookie Betts");
+    for (const name of ["Mookie Betts", "Will Smith"]) {
+      // Rows re-sort after the optimistic move, so find each by player name.
+      const row = screen.getAllByTestId("mobile-team-row").find((r) => within(r).queryByText(name))!;
+      fireEvent.click(within(row).getByTestId("mobile-team-move-btn"));
+      const slots = await screen.findAllByTestId("mobile-team-move-slot");
+      const bench = slots.find((b) => b.getAttribute("data-slot") === "BN")!;
+      expect(bench).toBeTruthy();
+      fireEvent.click(bench);
+      await waitFor(() => expect(screen.queryByTestId("mobile-team-move-sheet")).not.toBeInTheDocument());
+    }
+    await waitFor(() => expect(updateRosterPosition).toHaveBeenCalledTimes(1));
+    // Give the second move every chance to (wrongly) fire while the first is in flight.
+    await new Promise((r) => setTimeout(r, 30));
+    expect(updateRosterPosition).toHaveBeenCalledTimes(1);
+    releaseFirst({ roster: { id: 1 }, rosterVersion: 6 });
+    await waitFor(() => expect(updateRosterPosition).toHaveBeenCalledTimes(2));
+    const calls = vi.mocked(updateRosterPosition).mock.calls;
+    expect(calls[0][4]).toBe(5);
+    expect(calls[1][4]).toBe(6);
+  });
+
+  it("an IL stash carries the response's version into the next move (no +1 guess)", async () => {
+    vi.mocked(ilStash).mockResolvedValueOnce({ success: true, stashPlayerId: 1, addPlayerId: null, rosterVersion: 9 } as any);
+    renderTeam("LDY");
+    await screen.findByText("Mookie Betts");
+    let row = screen.getAllByTestId("mobile-team-row")[0];
+    fireEvent.click(within(row).getByTestId("mobile-team-move-btn"));
+    await screen.findByTestId("mobile-team-move-sheet");
+    fireEvent.click(screen.getAllByTestId("mobile-team-move-slot").find((b) => b.getAttribute("data-slot") === "IL")!);
+    await waitFor(() => expect(ilStash).toHaveBeenCalledTimes(1));
+    row = screen.getAllByTestId("mobile-team-row")[0];
+    fireEvent.click(within(row).getByTestId("mobile-team-move-btn"));
+    await screen.findByTestId("mobile-team-move-sheet");
+    fireEvent.click(screen.getAllByTestId("mobile-team-move-slot").find((b) => b.getAttribute("data-slot") === "BN")!);
+    await waitFor(() => expect(updateRosterPosition).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(updateRosterPosition).mock.calls[0][4]).toBe(9);
   });
 
   it("rolls back on API failure and surfaces an error toast", async () => {
@@ -233,6 +327,74 @@ describe("MobileTeam (read-only)", () => {
     // Drop candidates = all active hitters + pitchers (Mookie + Will + Glasnow + Buehler)
     const targets = screen.getAllByTestId("mobile-team-il-activate-drop-target");
     expect(targets.length).toBe(4);
+  });
+
+  it("a move after an IL activate sends the activate's returned version, even if the hub refetch lags", async () => {
+    vi.mocked(ilActivate).mockResolvedValueOnce({ success: true, activatePlayerId: 20, dropPlayerId: 1, rosterVersion: 20 } as any);
+    renderTeam("LDY");
+    await screen.findByText("Mookie Betts");
+    fireEvent.click(screen.getByRole("tab", { name: "IL" }));
+    await screen.findByText("Clayton Kershaw");
+    fireEvent.click(within(screen.getAllByTestId("mobile-team-row")[0]).getByTestId("mobile-team-move-btn"));
+    await screen.findByTestId("mobile-team-il-activate-sheet");
+    // The refetch still returns the OLD version (replica lag): rosterVersion 5.
+    fireEvent.click(screen.getAllByTestId("mobile-team-il-activate-drop-target")[0]);
+    await waitFor(() => expect(ilActivate).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(vi.mocked(getTeamRosterHub).mock.calls.length).toBeGreaterThan(1));
+    fireEvent.click(screen.getByRole("tab", { name: "Hitters" }));
+    const row = (await screen.findAllByTestId("mobile-team-row")).find((r) => within(r).queryByText("Will Smith"))!;
+    fireEvent.click(within(row).getByTestId("mobile-team-move-btn"));
+    const slots = await screen.findAllByTestId("mobile-team-move-slot");
+    fireEvent.click(slots.find((b) => b.getAttribute("data-slot") === "BN")!);
+    await waitFor(() => expect(updateRosterPosition).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(updateRosterPosition).mock.calls[0][4]).toBe(20);
+  });
+
+  it("a move after an IL activate whose hub refetch FAILS still sends the activate's version", async () => {
+    vi.mocked(ilActivate).mockResolvedValueOnce({ success: true, activatePlayerId: 20, dropPlayerId: 1, rosterVersion: 20 } as any);
+    renderTeam("LDY");
+    await screen.findByText("Mookie Betts");
+    fireEvent.click(screen.getByRole("tab", { name: "IL" }));
+    await screen.findByText("Clayton Kershaw");
+    fireEvent.click(within(screen.getAllByTestId("mobile-team-row")[0]).getByTestId("mobile-team-move-btn"));
+    await screen.findByTestId("mobile-team-il-activate-sheet");
+    vi.mocked(getTeamRosterHub).mockRejectedValueOnce(new Error("network"));
+    fireEvent.click(screen.getAllByTestId("mobile-team-il-activate-drop-target")[0]);
+    await waitFor(() => expect(ilActivate).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(vi.mocked(getTeamRosterHub).mock.calls.length).toBeGreaterThan(1));
+    fireEvent.click(screen.getByRole("tab", { name: "Hitters" }));
+    const row = (await screen.findAllByTestId("mobile-team-row")).find((r) => within(r).queryByText("Will Smith"))!;
+    fireEvent.click(within(row).getByTestId("mobile-team-move-btn"));
+    const slots = await screen.findAllByTestId("mobile-team-move-slot");
+    fireEvent.click(slots.find((b) => b.getAttribute("data-slot") === "BN")!);
+    await waitFor(() => expect(updateRosterPosition).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(updateRosterPosition).mock.calls[0][4]).toBe(20);
+  });
+
+  it("a move queued behind a 409 waits for the hub refetch and sends the fresh version", async () => {
+    let releaseHub!: (v: unknown) => void;
+    vi.mocked(updateRosterPosition)
+      .mockRejectedValueOnce(
+        new ApiError({ message: "stale", status: 409, url: "/x", requestId: null, body: {}, serverMessage: "stale" }),
+      )
+      .mockResolvedValueOnce({ roster: { id: 2 }, rosterVersion: 31 } as any);
+    renderTeam("LDY");
+    await screen.findByText("Mookie Betts");
+    // Next hub read (the 409 refetch) is held open, and returns version 30.
+    vi.mocked(getTeamRosterHub).mockImplementationOnce(() => new Promise((res) => { releaseHub = res; }) as any);
+    for (const name of ["Mookie Betts", "Will Smith"]) {
+      const row = screen.getAllByTestId("mobile-team-row").find((r) => within(r).queryByText(name))!;
+      fireEvent.click(within(row).getByTestId("mobile-team-move-btn"));
+      const slots = await screen.findAllByTestId("mobile-team-move-slot");
+      fireEvent.click(slots.find((b) => b.getAttribute("data-slot") === "BN")!);
+      await waitFor(() => expect(screen.queryByTestId("mobile-team-move-sheet")).not.toBeInTheDocument());
+    }
+    await waitFor(() => expect(updateRosterPosition).toHaveBeenCalledTimes(1));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(updateRosterPosition).toHaveBeenCalledTimes(1); // still waiting on the refetch
+    releaseHub({ ...SAMPLE_HUB, rosterVersion: 30 });
+    await waitFor(() => expect(updateRosterPosition).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(updateRosterPosition).mock.calls[1][4]).toBe(30);
   });
 
   it("calls ilActivate with the right player ids when a drop target is picked", async () => {

@@ -1,5 +1,4 @@
 ---
-status: complete
 priority: p2
 issue_id: 312
 tags: [standings, scoring, il, transactions]

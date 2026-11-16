@@ -30,7 +30,9 @@ import { useAuth } from "../../../auth/AuthProvider";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { getTeams, getTeamRosterHub, getSeasonStandings } from "../../../api";
 import { fetchJsonApi, API_BASE, ApiError } from "../../../api/base";
+import { ROSTER_CONFLICT_MESSAGE } from "../lib/rosterConflict";
 import { DataFreshness } from "../../../components/shared/DataFreshness";
+import { ListHelp } from "../../../components/shared/ListHelp";
 import WatchlistPanel from "../../watchlist/components/WatchlistPanel";
 import TradingBlockPanel from "../../trading-block/components/TradingBlockPanel";
 import { getTeamPeriodRoster, type PeriodRosterEntry, updateRosterPosition } from "../api";
@@ -562,10 +564,6 @@ export default function Team() {
 
   /* ── Pending changes (Hub scenario: swap only) ────────────────────── */
 
-  // Ref for queuing a toast from saveFn before showToast is defined in the
-  // component body. Drained after showToast is available (see below).
-  const pendingToastRef = useRef<string | null>(null);
-
   // Save fn: serialize pending swaps to PATCH /api/teams/:teamId/roster/:rosterId
   // calls. Atomicity per direction-lock #4: if any single mutation fails,
   // we fail the whole batch and keep the queue in place so the user can
@@ -585,8 +583,14 @@ export default function Team() {
     // swap mutation accepts the date as advisory only (no period
     // recompute) — claim/il-stash/il-activate use it for real.
     const effectiveDate = ctx.effectiveDate ?? undefined;
-    // Snapshot rosterVersion at batch-start so all swap calls send the same token.
-    const currentRosterVersion = rosterVersion;
+    // Version token for the guarded swap PATCH (todo #181). Starts from the
+    // version the hub was loaded at. Every successful swap PATCH bumps the
+    // server counter and returns the new value, so each call must send the
+    // PREVIOUS response's version, not the batch-start one (re-sending the
+    // batch-start token would 409 on the second half of every swap).
+    // Claim / IL responses carry the new version too; "*" (match any) is only
+    // the fallback if a server response omits it.
+    let versionToken: number | "*" = rosterVersion;
     // Atomic-on-failure (FA-#4 inherits from Hub-#4): each entry runs
     // sequentially; first failure throws and aborts the rest. Earlier
     // successful mutations are NOT rolled back — server matcher reads
@@ -594,27 +598,37 @@ export default function Team() {
     for (const change of changes) {
       if (change.kind === "swap") {
         try {
-          await updateRosterPosition(tid, change.from.rosterId, change.to.slot, effectiveDate, currentRosterVersion);
-          await updateRosterPosition(tid, change.to.rosterId, change.from.slot, effectiveDate, currentRosterVersion);
+          const first = await updateRosterPosition(tid, change.from.rosterId, change.to.slot, effectiveDate, versionToken);
+          if (first.rosterVersion != null) versionToken = first.rosterVersion;
+          const second = await updateRosterPosition(tid, change.to.rosterId, change.from.slot, effectiveDate, versionToken);
+          if (second.rosterVersion != null) versionToken = second.rosterVersion;
         } catch (err) {
-          // 409 Conflict — roster mutated in another tab or by commissioner.
+          // 409 Conflict: the roster changed in another tab or by the
+          // commissioner. Reload the hub (fresh rows + fresh version) and
+          // THROW so the queue is kept and the error banner shows. Returning
+          // normally here would make usePendingChanges treat the save as a
+          // success and drop the owner's queued changes.
           if (err instanceof ApiError && err.status === 409) {
-            pendingToastRef.current = "Roster changed by another tab — refreshed";
             setReloadKey(k => k + 1);
-            return;
+            throw new Error(ROSTER_CONFLICT_MESSAGE);
           }
           const msg = err instanceof Error ? err.message : "Save failed";
           throw new Error(`Save failed on ${change.from.slot} ↔ ${change.to.slot}: ${msg}`);
         }
         continue;
       }
+      // Claim / IL mutations are not If-Match-guarded but they bump the
+      // counter and return the new version; carry it forward. An older server
+      // that omits it leaves us on "*" (match any) for later swaps.
+      const nextVersion = (r: { rosterVersion?: number } | null | undefined): number | "*" =>
+        typeof r?.rosterVersion === "number" ? r.rosterVersion : "*";
       if (change.kind === "fa_add") {
         // FA scenario save: dispatch to the existing /transactions/claim
         // endpoint. Server's bipartite matcher resolves slots; we only
         // need to send mlbId + dropPlayerId (the displaced roster
         // player's playerId). Mirrors AddDropPanel's wire shape.
         try {
-          await fetchJsonApi(`${API_BASE}/transactions/claim`, {
+          const claimRes = await fetchJsonApi<{ rosterVersion?: number }>(`${API_BASE}/transactions/claim`, {
             method: "POST",
             body: JSON.stringify({
               leagueId,
@@ -625,6 +639,7 @@ export default function Team() {
               ...(effectiveDate ? { effectiveDate } : {}),
             }),
           });
+          versionToken = nextVersion(claimRes);
         } catch (err) {
           const msg = err instanceof Error ? err.message : "Save failed";
           throw new Error(`Save failed on add ${change.faName} · drop ${change.displaced.name}: ${msg}`);
@@ -639,13 +654,14 @@ export default function Team() {
         // position-eligible bench replacement exists. Per IL #6 the UI
         // surfaces a "Add a FA to fill this slot" chip post-save.
         try {
-          await ilStash({
+          const stashRes = await ilStash({
             leagueId,
             teamId: tid,
             stashPlayerId: change.playerId,
             // stashOnly mode — addPlayerId omitted intentionally.
             ...(effectiveDate ? { effectiveDate } : {}),
           });
+          versionToken = nextVersion(stashRes);
         } catch (err) {
           const msg = err instanceof Error ? err.message : "Save failed";
           throw new Error(`Save failed on stash ${change.name}: ${msg}`);
@@ -664,13 +680,14 @@ export default function Team() {
           );
         }
         try {
-          await ilActivate({
+          const activateRes = await ilActivate({
             leagueId,
             teamId: tid,
             activatePlayerId: change.playerId,
             dropPlayerId: change.displaced.playerId,
             ...(effectiveDate ? { effectiveDate } : {}),
           });
+          versionToken = nextVersion(activateRes);
         } catch (err) {
           const msg = err instanceof Error ? err.message : "Save failed";
           throw new Error(`Save failed on activate ${change.name}: ${msg}`);
@@ -678,6 +695,9 @@ export default function Team() {
         continue;
       }
     }
+    // Keep the latest known version so a quick second save (before the
+    // reload below lands) doesn't send the stale pre-save token and false-409.
+    if (typeof versionToken === "number") setRosterVersion(versionToken);
     // Refresh the roster on success so the UI snaps to the canonical
     // server state (and any matcher-driven cascades show up).
     setReloadKey(k => k + 1);
@@ -785,13 +805,6 @@ export default function Team() {
   useEffect(() => () => {
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
   }, []);
-  // Drain any toast queued by saveFn (409 conflict path). saveFn is defined
-  // before showToast so it uses pendingToastRef to avoid a TDZ reference error.
-  if (pendingToastRef.current) {
-    const msg = pendingToastRef.current;
-    pendingToastRef.current = null;
-    showToast(msg);
-  }
 
   /* ── FA panel (FA scenario) ────────────────────────────────────── */
 
@@ -1718,7 +1731,7 @@ export default function Team() {
               </div>
               <div style={{ gridColumn: "span 4" }}>
                 <Glass>
-                  <SectionLabel>✦ Waiver Wire List</SectionLabel>
+                  <SectionLabel>✦ Waiver List <ListHelp kind="wire" /></SectionLabel>
                   <p style={{ fontSize: 13, color: "var(--am-text-muted)", margin: "8px 0 14px", lineHeight: 1.5 }}>
                     Rank your add and drop priorities for this period. Adds run top-down at the deadline; each successful add consumes the next pending drop.
                   </p>
@@ -1731,7 +1744,7 @@ export default function Team() {
                       fontSize: 13, fontWeight: 600, textDecoration: "none",
                     }}
                   >
-                    Open wire list →
+                    Open list →
                   </Link>
                 </Glass>
               </div>

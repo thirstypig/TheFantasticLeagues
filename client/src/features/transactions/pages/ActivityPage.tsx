@@ -346,7 +346,7 @@ export default function ActivityPage() {
                       to={`/teams/${myCode}/wire-list`}
                       style={{ display: "inline-block", marginTop: 12, fontSize: 13, fontWeight: 600, color: "var(--am-text)" }}
                     >
-                      Queue waiver moves on your Wire List →
+                      Queue waiver moves on your List →
                     </Link>
                   )}
                 </Glass>

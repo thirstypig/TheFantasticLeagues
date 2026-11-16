@@ -444,10 +444,11 @@ not summarize the diff. PRs land before session end whenever possible
 
 **Phase:** In-Season 2026 - Engagement & Remote UX (April - September 2026)
 
-**Next 3 to-dos** (2 open):
+**Next 3 to-dos** (6 open):
 
-- `181` **P3** — rosterversion etag cross tab safety
-- `304` **P3** — cache refresh and vestigial cleanup
+- `312` **P2** — standings il stint never closed by drop or release
+- `313` **P2** — standings il events not filtered by league
+- `315` **P2** — void meeting overtime fee
 
 Roadmap: [`docs/product/roadmap.md`](docs/product/roadmap.md) · Docs map: [`docs/README-DOCS.md`](docs/README-DOCS.md)
 
