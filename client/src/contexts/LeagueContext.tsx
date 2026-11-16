@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { getLeagues } from '../api';
 import { getCurrentSeason, type SeasonStatus } from '../features/seasons/api';
 import { fetchJsonApi, API_BASE } from '../api/base';
@@ -184,10 +184,17 @@ export function LeagueProvider({ children }: { children: React.ReactNode }) {
   // returns `{ rules, grouped, leagueId }`; we normalize to a flat map.
   const [leagueRules, setLeagueRules] = useState<LeagueRuleMap | null>(null);
   const [rulesTick, setRulesTick] = useState(0);
+  // Clear to null (loading) only when the league changes. A refresh of the same
+  // league keeps the current map until the new one lands, so consumers that
+  // treat null as "loading" don't flicker.
+  const rulesLeagueRef = useRef<number | null>(null);
   useEffect(() => {
     if (!user || !leagueId) return;
     let canceled = false;
-    setLeagueRules(null);
+    if (rulesLeagueRef.current !== leagueId) {
+      rulesLeagueRef.current = leagueId;
+      setLeagueRules(null);
+    }
     fetchJsonApi<{ rules: Array<{ category: string; key: string; value: string }> }>(
       `${API_BASE}/leagues/${leagueId}/rules`,
     )
@@ -203,13 +210,27 @@ export function LeagueProvider({ children }: { children: React.ReactNode }) {
         if (canceled) return;
         // Rules endpoint requires league membership; non-members will 403 here.
         // Fail-to-empty so consumers can still render — they'll treat missing
-        // toggles as "off" (their own fail-closed default).
-        setLeagueRules({});
+        // toggles as "off" (their own fail-closed default). A failed refresh of
+        // a map we already have (e.g. a phone back on the tab with no network)
+        // keeps it: wiping it would flip meeting.live and owner_self_serve off.
+        setLeagueRules((prev) => prev ?? {});
       });
     return () => { canceled = true; };
   }, [user, leagueId, rulesTick]);
 
   const refreshLeagueRules = useCallback(() => setRulesTick((t) => t + 1), []);
+
+  // Re-read the rules when the tab comes back, so a switch the commissioner
+  // flipped elsewhere (e.g. meeting.live, which gates Today's banner and the
+  // meeting route) reaches an open tab without a full reload.
+  useEffect(() => {
+    if (!user || !leagueId) return;
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refreshLeagueRules();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [user, leagueId, refreshLeagueRules]);
 
   const setLeagueId = useCallback((id: number) => {
     setLeagueIdState(id);

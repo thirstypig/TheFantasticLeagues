@@ -235,7 +235,7 @@ export default function TeamRosterManager({ teamId, roster, onUpdate }: TeamRost
     setItems(updatedItems);
     
     try {
-        await updateRosterPosition(teamId, playerId, newPos === "BN" ? null : newPos);
+        await updateRosterPosition(teamId, playerId, newPos === "BN" ? null : newPos, undefined, "*");
         onUpdate(); 
     } catch (e) {
         console.error(e);

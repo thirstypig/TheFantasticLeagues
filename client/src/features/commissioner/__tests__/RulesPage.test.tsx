@@ -2,12 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
-const league = vi.hoisted(() => ({ seasonStatus: "IN_SEASON" as string, contextLeagueId: 20 }));
+const league = vi.hoisted(() => ({ seasonStatus: "IN_SEASON" as string, contextLeagueId: 20, refreshLeagueRules: vi.fn() }));
 const auth = vi.hoisted(() => ({ user: { isAdmin: false, memberships: [{ leagueId: "20", role: "COMMISSIONER" }] } as any }));
 vi.mock("../../../auth/AuthProvider", () => ({ useAuth: () => ({ me: { user: auth.user } }) }));
 
 vi.mock("../../../contexts/LeagueContext", () => ({
-  useLeague: () => ({ leagueId: league.contextLeagueId, seasonStatus: league.seasonStatus }),
+  useLeague: () => ({ leagueId: league.contextLeagueId, seasonStatus: league.seasonStatus, refreshLeagueRules: league.refreshLeagueRules }),
 }));
 
 vi.mock("../api", () => ({

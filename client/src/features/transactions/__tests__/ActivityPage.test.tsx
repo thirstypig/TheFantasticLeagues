@@ -134,7 +134,7 @@ describe("ActivityPage", () => {
   it("commissioner-only league: an owner is pointed to their own Wire List", async () => {
     leagueCtx = { leagueId: 1, myTeamId: 10, leagueRules: {} };
     renderPage();
-    const link = await screen.findByRole("link", { name: /wire list/i });
+    const link = await screen.findByRole("link", { name: /your list/i });
     expect(link).toHaveAttribute("href", "/teams/ACE/wire-list");
     expect(screen.queryByTestId("roster-moves-tab")).not.toBeInTheDocument();
   });
@@ -146,7 +146,7 @@ describe("ActivityPage", () => {
     } as any);
     renderPage();
     await screen.findByText(/commissioner-only/i);
-    expect(screen.queryByRole("link", { name: /wire list/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /your list/i })).not.toBeInTheDocument();
   });
 
   it("calls all APIs on mount", async () => {

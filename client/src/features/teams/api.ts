@@ -56,18 +56,20 @@ export async function updateRosterPosition(
    * update Roster.acquiredAt today (server logs it for audit, doesn't
    * recompute period stats). Pass YYYY-MM-DD or full ISO datetime.
    */
-  effectiveDate?: string,
+  effectiveDate: string | undefined,
   /**
-   * Optimistic-concurrency token (todo #181). When provided, sent as the
-   * `If-Match` header. Server returns 409 when the roster has changed since
-   * the client last fetched it.
+   * Optimistic-concurrency token (todo #181), sent as the `If-Match` header.
+   * REQUIRED: the server answers 428 without it and 409 when it is stale.
+   * Pass the `rosterVersion` from the hub load (or from the previous PATCH
+   * response). Pass "*" only from screens that never load the roster hub and
+   * so have no version to send (last-writer-wins, as before the guard).
    */
-  rosterVersion?: number,
+  rosterVersion: number | "*",
 ): Promise<UpdateRosterPositionResponse & { rosterVersion?: number }> {
   const body: Record<string, unknown> = { assignedPosition: position };
   if (effectiveDate) body.effectiveDate = effectiveDate;
   const extraHeaders: Record<string, string> = {};
-  if (rosterVersion != null) extraHeaders["If-Match"] = String(rosterVersion);
+  extraHeaders["If-Match"] = String(rosterVersion);
   return fetchJsonApi<UpdateRosterPositionResponse & { rosterVersion?: number }>(
     `${API_BASE}/teams/${teamId}/roster/${rosterId}`,
     {

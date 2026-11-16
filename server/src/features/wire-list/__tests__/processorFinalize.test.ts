@@ -16,7 +16,8 @@
  *   - 1 waiverDropEntry.updateMany (UNUSED)
  *   - 1 waiverPeriod.update (PROCESSED)
  *
- * Total for 5 adds: 1 + 1 + 5*3 (blocker) + 1 + 5*2 + 4 = 32 (≤35 budget).
+ * Plus 1 team.update per distinct team (rosterVersion bump, todo #181): 5.
+ * Total for 5 adds: 1 + 1 + 5*3 (blocker) + 1 + 5*2 + 4 + 5 = 37 (≤40 budget).
  * Pre-batching the same fixture issued ≥7*5 (loop body) + 5*3 (blockers)
  * + 4 outer = 54.
  */
@@ -38,6 +39,7 @@ function makeTxFn(name: string, ret: any = { count: 1 }) {
 
 vi.mock("../../../db/prisma.js", () => {
   const tx = {
+    team: { update: makeTxFn("team.update", { rosterVersion: 1 }) }, // incrementRosterVersion (todo #181)
     waiverPeriod: {
       updateMany: makeTxFn("waiverPeriod.updateMany", { count: 1 }),
       update: makeTxFn("waiverPeriod.update", { id: 1, status: "PROCESSED" }),
@@ -174,7 +176,7 @@ beforeEach(() => {
 });
 
 describe("wire-list finalize — call-count budget (todo #160)", () => {
-  it("performs ≤35 prisma calls inside tx for a 5-succeeded-add finalize", async () => {
+  it("performs ≤40 prisma calls inside tx for a 5-succeeded-add finalize", async () => {
     mockPrisma.waiverPeriod.findUnique.mockResolvedValue({
       id: 1,
       leagueId: 2,
@@ -189,10 +191,10 @@ describe("wire-list finalize — call-count budget (todo #160)", () => {
     expect(res.body.addsApplied).toBe(5);
     expect(res.body.dropsConsumed).toBe(5);
 
-    // Budget: ≤35 prisma calls inside the tx for 5 adds.
+    // Budget: ≤40 prisma calls inside the tx for 5 adds (37 + headroom).
     // Pre-batching this fixture would have issued ≥54 calls
     // (7 per add in the body + 3 per add in blocker pass + 4 outer).
-    expect(prismaCallCount).toBeLessThanOrEqual(35);
+    expect(prismaCallCount).toBeLessThanOrEqual(40);
 
     // Verify batched writes happened exactly once each.
     const flushes = txCallLog.filter(

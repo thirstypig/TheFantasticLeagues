@@ -289,7 +289,7 @@ function CommissionerHubBody() {
     <div style={{ display: "flex", flexWrap: "wrap", columnGap: 16 }}>
       <LinkRow to={`${base}/recent`}>History ›</LinkRow>
       <LinkRow to={`${base}/scoring`}>Scoring categories ›</LinkRow>
-      <LinkRow to={`${base}/wire-list`}>Wire List settings ›</LinkRow>
+      <LinkRow to={`${base}/wire-list`}>List settings ›</LinkRow>
     </div>
   );
 
