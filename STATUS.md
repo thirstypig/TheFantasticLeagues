@@ -45,7 +45,7 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - Todo #304 (cache cleanup)
 
 ## Next phases (in order)
-1. Todos #312/#313 (IL gaps in standings), then #315 (void a meeting fee)
+1. Merge #505; then todo #315 (void a meeting fee)
 2. Phase 3.5: standings categories from the league's scoring settings
 3. Public auction-keeper leagues (not scheduled)
 

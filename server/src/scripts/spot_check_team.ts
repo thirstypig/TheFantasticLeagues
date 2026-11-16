@@ -3,7 +3,7 @@
  * Helps identify missing/wrong PSP rows.
  */
 import { prisma } from "../db/prisma.js";
-import { buildIlWindows, wasOnIlAtPeriodStart } from "../lib/ilWindows.js";
+import { buildIlWindows, wasOnIlAtPeriodStart, ilEventsQuery } from "../lib/ilWindows.js";
 
 const PITCHER_CODES = new Set(["P", "SP", "RP", "CL", "TWP"]);
 const leagueId = 20;
@@ -31,15 +31,7 @@ async function main() {
     },
   });
 
-  const ilEvents = await prisma.transactionEvent.findMany({
-    where: {
-      playerId: { in: rosters.map(r => r.playerId) },
-      transactionType: { in: ["IL_STASH","IL_ACTIVATE"] },
-      effDate: { not: null },
-    },
-    select: { playerId: true, transactionType: true, effDate: true },
-    orderBy: [{ effDate: "asc" }, { id: "asc" }],
-  });
+  const ilEvents = await prisma.transactionEvent.findMany(ilEventsQuery(leagueId, rosters.map(r => r.playerId)));
   const ilWindowsByPlayer = buildIlWindows(ilEvents);
 
   console.log(`\n${team.name} (${team.code}) — pitcher PSP by period\n`);

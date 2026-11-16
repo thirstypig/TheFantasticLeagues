@@ -9,7 +9,7 @@ import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { logger } from "../../lib/logger.js";
 import { computeStandingsFromStats, type TeamStatRow } from "../standings/services/standingsService.js";
-import { buildIlWindows, wasOnIlAtPeriodStart } from "../../lib/ilWindows.js";
+import { buildIlWindows, ilEventsQuery, wasOnIlAtPeriodStart } from "../../lib/ilWindows.js";
 import { periodOverlapFilter } from "../../lib/rosterWindow.js";
 import { isEligibleForSlot } from "../../lib/positionInherit.js";
 import {
@@ -472,16 +472,7 @@ router.get("/:id/period-roster", requireAuth, asyncHandler(async (req, res) => {
     prisma.playerStatsPeriod.findMany({
       where: { periodId, playerId: { in: playerIds } },
     }),
-    prisma.transactionEvent.findMany({
-      where: {
-        playerId: { in: playerIds },
-        leagueId: period.leagueId,
-        transactionType: { in: ["IL_STASH", "IL_ACTIVATE"] },
-        effDate: { not: null },
-      },
-      select: { playerId: true, transactionType: true, effDate: true },
-      orderBy: { effDate: "asc" },
-    }),
+    prisma.transactionEvent.findMany(ilEventsQuery(period.leagueId, playerIds)),
   ]);
   const statsMap = new Map(periodStats.map(s => [s.playerId, s]));
   const ilWindowsByPlayer = buildIlWindows(ilEvents);
