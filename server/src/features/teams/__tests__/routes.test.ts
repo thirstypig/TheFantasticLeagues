@@ -4,6 +4,8 @@ import { buildIlWindows, wasOnIlAtPeriodStart } from "../../../lib/ilWindows.js"
 vi.mock("../../../db/prisma.js", () => ({
   prisma: {
     team: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+    tradingBlock: { findMany: vi.fn(), deleteMany: vi.fn(), upsert: vi.fn() },
+    $transaction: vi.fn(),
     leagueMembership: { findUnique: vi.fn(), findMany: vi.fn() },
     roster: { findUnique: vi.fn(), update: vi.fn(), findMany: vi.fn() },
     period: { findUnique: vi.fn() },
@@ -196,241 +198,105 @@ describe("team summary - league membership check (IDOR fix)", () => {
   });
 });
 
-// ─── Trade Block Endpoints ────────────────────────────────────────────────
+// ─── Trade Block Endpoints (TradingBlock table is the single source — todo #304) ──
 
 describe("GET /api/teams/:teamId/trade-block", () => {
-  it("returns trade block playerIds for a team", async () => {
-    mockPrisma.team.findUnique.mockResolvedValue({
-      id: 10,
-      leagueId: 1,
-      tradeBlockPlayerIds: [101, 102, 103],
-    });
-    mockPrisma.leagueMembership.findUnique.mockResolvedValue({ leagueId: 1, userId: 1, role: "OWNER" });
-
-    const req = mockReq({ params: { teamId: "10" } });
-    const res = mockRes();
-
-    const teamId = Number(req.params.teamId);
-    const team = await prisma.team.findUnique({
-      where: { id: teamId },
-      select: { tradeBlockPlayerIds: true, leagueId: true },
-    });
-
-    expect(team).toBeTruthy();
-    const playerIds = Array.isArray(team!.tradeBlockPlayerIds)
-      ? (team!.tradeBlockPlayerIds as number[])
-      : [];
-
-    res.json({ playerIds });
-
-    expect(res.json).toHaveBeenCalledWith({ playerIds: [101, 102, 103] });
-  });
-
-  it("returns empty array when no trade block set", async () => {
-    mockPrisma.team.findUnique.mockResolvedValue({
-      id: 10,
-      leagueId: 1,
-      tradeBlockPlayerIds: [],
-    });
+  it("reads playerIds from the TradingBlock table, not Team.tradeBlockPlayerIds", async () => {
+    mockPrisma.team.findUnique.mockResolvedValue({ leagueId: 1 });
     mockPrisma.leagueMembership.findUnique.mockResolvedValue({ leagueId: 1, userId: 1 });
+    mockPrisma.tradingBlock.findMany.mockResolvedValue([{ playerId: 101 }, { playerId: 102 }]);
 
-    const team = await prisma.team.findUnique({
-      where: { id: 10 },
-      select: { tradeBlockPlayerIds: true, leagueId: true },
-    });
+    const res = await supertest(testApp).get("/api/teams/10/trade-block");
 
-    const playerIds = Array.isArray(team!.tradeBlockPlayerIds)
-      ? (team!.tradeBlockPlayerIds as number[])
-      : [];
-
-    expect(playerIds).toEqual([]);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ playerIds: [101, 102] });
+    expect(mockPrisma.tradingBlock.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { teamId: 10 } }),
+    );
+    const teamSelect = mockPrisma.team.findUnique.mock.calls[0][0].select;
+    expect(teamSelect).not.toHaveProperty("tradeBlockPlayerIds");
   });
 
-  it("returns 404 for non-existent team", async () => {
-    mockPrisma.team.findUnique.mockResolvedValue(null);
+  it("returns 404 for an unknown team and 403 for a non-member", async () => {
+    mockPrisma.team.findUnique.mockResolvedValueOnce(null);
+    expect((await supertest(testApp).get("/api/teams/10/trade-block")).status).toBe(404);
 
-    const req = mockReq({ params: { teamId: "999" } });
-    const res = mockRes();
-
-    const team = await prisma.team.findUnique({
-      where: { id: 999 },
-      select: { tradeBlockPlayerIds: true, leagueId: true },
-    });
-
-    if (!team) {
-      res.status(404).json({ error: "Team not found" });
-    }
-
-    expect(res.status).toHaveBeenCalledWith(404);
+    mockPrisma.team.findUnique.mockResolvedValueOnce({ leagueId: 1 });
+    mockPrisma.leagueMembership.findUnique.mockResolvedValueOnce(null);
+    expect((await supertest(testApp).get("/api/teams/10/trade-block")).status).toBe(403);
+    expect(mockPrisma.tradingBlock.findMany).not.toHaveBeenCalled();
   });
 });
 
 describe("POST /api/teams/:teamId/trade-block", () => {
-  it("saves valid playerIds that are on the active roster", async () => {
-    mockPrisma.roster.findMany.mockResolvedValue([
-      { playerId: 101 },
-      { playerId: 102 },
-      { playerId: 103 },
-    ]);
-    mockPrisma.team.update.mockResolvedValue({ id: 10, tradeBlockPlayerIds: [101, 102] });
+  it("syncs TradingBlock rows to the roster-valid ids and never writes the JSON column", async () => {
+    mockPrisma.roster.findMany.mockResolvedValue([{ playerId: 101 }, { playerId: 102 }]);
+    mockPrisma.tradingBlock.deleteMany.mockReturnValue("DEL");
+    mockPrisma.tradingBlock.upsert.mockImplementation((a: any) => `UP${a.create.playerId}`);
+    mockPrisma.$transaction.mockResolvedValue([]);
 
-    const req = mockReq({
-      params: { teamId: "10" },
-      body: { playerIds: [101, 102] },
+    // 999 is not on the active roster and must be dropped
+    const res = await supertest(testApp)
+      .post("/api/teams/10/trade-block")
+      .send({ playerIds: [101, 102, 999] });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ playerIds: [101, 102] });
+    expect(mockPrisma.roster.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { teamId: 10, releasedAt: null } }),
+    );
+    expect(mockPrisma.tradingBlock.deleteMany).toHaveBeenCalledWith({
+      where: { teamId: 10, playerId: { notIn: [101, 102] } },
     });
-    const res = mockRes();
-
-    const teamId = Number(req.params.teamId);
-    const { playerIds } = req.body as { playerIds: number[] };
-
-    const activeRoster = await prisma.roster.findMany({
-      where: { teamId, releasedAt: null },
-      select: { playerId: true },
-    });
-    const rosterPlayerIds = new Set(activeRoster.map((r: any) => r.playerId));
-    const validPlayerIds = playerIds.filter((id: number) => rosterPlayerIds.has(id));
-
-    await prisma.team.update({
-      where: { id: teamId },
-      data: { tradeBlockPlayerIds: validPlayerIds },
-    });
-
-    res.json({ playerIds: validPlayerIds });
-
-    expect(validPlayerIds).toEqual([101, 102]);
-    expect(mockPrisma.team.update).toHaveBeenCalledWith({
-      where: { id: 10 },
-      data: { tradeBlockPlayerIds: [101, 102] },
-    });
+    expect(mockPrisma.tradingBlock.upsert).toHaveBeenCalledTimes(2);
+    expect(mockPrisma.tradingBlock.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { teamId_playerId: { teamId: 10, playerId: 101 } },
+        update: {}, // existing rows keep their askingFor note
+      }),
+    );
+    expect(mockPrisma.$transaction).toHaveBeenCalledWith(["DEL", "UP101", "UP102"]);
+    expect(mockPrisma.team.update).not.toHaveBeenCalled();
   });
 
-  it("filters out playerIds not on the active roster", async () => {
-    // Only 101 is on the roster
-    mockPrisma.roster.findMany.mockResolvedValue([
-      { playerId: 101 },
-    ]);
-    mockPrisma.team.update.mockResolvedValue({ id: 10, tradeBlockPlayerIds: [101] });
-
-    const req = mockReq({
-      params: { teamId: "10" },
-      body: { playerIds: [101, 999, 888] },
-    });
-    const res = mockRes();
-
-    const teamId = Number(req.params.teamId);
-    const { playerIds } = req.body as { playerIds: number[] };
-
-    const activeRoster = await prisma.roster.findMany({
-      where: { teamId, releasedAt: null },
-      select: { playerId: true },
-    });
-    const rosterPlayerIds = new Set(activeRoster.map((r: any) => r.playerId));
-    const validPlayerIds = playerIds.filter((id: number) => rosterPlayerIds.has(id));
-
-    await prisma.team.update({
-      where: { id: teamId },
-      data: { tradeBlockPlayerIds: validPlayerIds },
-    });
-
-    res.json({ playerIds: validPlayerIds });
-
-    // Only 101 should be saved, 999 and 888 filtered out
-    expect(validPlayerIds).toEqual([101]);
-    expect(mockPrisma.team.update).toHaveBeenCalledWith({
-      where: { id: 10 },
-      data: { tradeBlockPlayerIds: [101] },
-    });
-  });
-
-  it("can clear the trade block with an empty array", async () => {
+  it("an empty list clears the team's whole block", async () => {
     mockPrisma.roster.findMany.mockResolvedValue([{ playerId: 101 }]);
-    mockPrisma.team.update.mockResolvedValue({ id: 10, tradeBlockPlayerIds: [] });
+    mockPrisma.tradingBlock.deleteMany.mockReturnValue("DEL");
+    mockPrisma.$transaction.mockResolvedValue([]);
 
-    const req = mockReq({
-      params: { teamId: "10" },
-      body: { playerIds: [] },
+    const res = await supertest(testApp).post("/api/teams/10/trade-block").send({ playerIds: [] });
+
+    expect(res.body).toEqual({ playerIds: [] });
+    expect(mockPrisma.tradingBlock.deleteMany).toHaveBeenCalledWith({
+      where: { teamId: 10, playerId: { notIn: [] } },
     });
-    const res = mockRes();
-
-    const teamId = Number(req.params.teamId);
-    const { playerIds } = req.body as { playerIds: number[] };
-    const activeRoster = await prisma.roster.findMany({
-      where: { teamId, releasedAt: null },
-      select: { playerId: true },
-    });
-    const rosterPlayerIds = new Set(activeRoster.map((r: any) => r.playerId));
-    const validPlayerIds = playerIds.filter((id: number) => rosterPlayerIds.has(id));
-
-    await prisma.team.update({
-      where: { id: teamId },
-      data: { tradeBlockPlayerIds: validPlayerIds },
-    });
-
-    res.json({ playerIds: validPlayerIds });
-
-    expect(validPlayerIds).toEqual([]);
-    expect(mockPrisma.team.update).toHaveBeenCalledWith({
-      where: { id: 10 },
-      data: { tradeBlockPlayerIds: [] },
-    });
+    expect(mockPrisma.tradingBlock.upsert).not.toHaveBeenCalled();
   });
 });
 
 describe("GET /api/teams/trade-block/league", () => {
-  it("returns trade blocks for all teams in a league", async () => {
+  it("groups TradingBlock rows by team, scoped to the league", async () => {
     mockPrisma.leagueMembership.findUnique.mockResolvedValue({ leagueId: 1, userId: 1 });
-    mockPrisma.team.findMany.mockResolvedValue([
-      { id: 10, tradeBlockPlayerIds: [101, 102] },
-      { id: 11, tradeBlockPlayerIds: [] },
-      { id: 12, tradeBlockPlayerIds: [201] },
+    mockPrisma.tradingBlock.findMany.mockResolvedValue([
+      { teamId: 10, playerId: 101 },
+      { teamId: 12, playerId: 201 },
+      { teamId: 10, playerId: 102 },
     ]);
 
-    const teams = await prisma.team.findMany({
-      where: { leagueId: 1 },
-      select: { id: true, tradeBlockPlayerIds: true },
-    });
+    const res = await supertest(testApp).get("/api/teams/trade-block/league?leagueId=1");
 
-    const tradeBlocks: Record<number, number[]> = {};
-    for (const team of teams) {
-      const ids = Array.isArray(team.tradeBlockPlayerIds)
-        ? (team.tradeBlockPlayerIds as number[])
-        : [];
-      if (ids.length > 0) {
-        tradeBlocks[team.id] = ids;
-      }
-    }
-
-    // Team 11 has empty array, should not appear
-    expect(tradeBlocks).toEqual({
-      10: [101, 102],
-      12: [201],
-    });
-    expect(tradeBlocks[11]).toBeUndefined();
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ tradeBlocks: { 10: [101, 102], 12: [201] } });
+    expect(mockPrisma.tradingBlock.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { team: { leagueId: 1 } } }),
+    );
   });
 
-  it("returns empty object when no team has trade block selections", async () => {
+  it("omits teams with nothing on the block", async () => {
     mockPrisma.leagueMembership.findUnique.mockResolvedValue({ leagueId: 1, userId: 1 });
-    mockPrisma.team.findMany.mockResolvedValue([
-      { id: 10, tradeBlockPlayerIds: [] },
-      { id: 11, tradeBlockPlayerIds: [] },
-    ]);
-
-    const teams = await prisma.team.findMany({
-      where: { leagueId: 1 },
-      select: { id: true, tradeBlockPlayerIds: true },
-    });
-
-    const tradeBlocks: Record<number, number[]> = {};
-    for (const team of teams) {
-      const ids = Array.isArray(team.tradeBlockPlayerIds)
-        ? (team.tradeBlockPlayerIds as number[])
-        : [];
-      if (ids.length > 0) {
-        tradeBlocks[team.id] = ids;
-      }
-    }
-
-    expect(tradeBlocks).toEqual({});
+    mockPrisma.tradingBlock.findMany.mockResolvedValue([]);
+    const res = await supertest(testApp).get("/api/teams/trade-block/league?leagueId=1");
+    expect(res.body).toEqual({ tradeBlocks: {} });
   });
 });
 

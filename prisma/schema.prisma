@@ -450,6 +450,7 @@ model Team {
   waiverPriorityOverride Int?
 
   // Trade Block: JSON array of playerIds the owner has flagged as available for trade
+  /// @deprecated Not read or written by any code (todo #304). The TradingBlock table is the single source of truth. Column to be dropped in a follow-up migration.
   tradeBlockPlayerIds Json @default("[]")
 
   // Trade Relations
