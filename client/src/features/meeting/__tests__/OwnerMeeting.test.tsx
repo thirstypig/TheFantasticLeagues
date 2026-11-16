@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 vi.mock("../api", () => ({
   getCurrentMeeting: vi.fn(),
   getLeagueTeams: vi.fn(),
+  getPeriodName: vi.fn(),
   submitMove: vi.fn(),
   passTurn: vi.fn(),
   getChoices: vi.fn(),
@@ -37,6 +38,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   league.value = { leagueId: 7, myTeamId: 1 };
   m.getLeagueTeams.mockResolvedValue(TEAMS);
+  m.getPeriodName.mockResolvedValue("Period 9");
   m.getChoices.mockResolvedValue(choices({ list: [FRALEY], roster: [ALONSO], activeCount: 23 }));
   m.searchFreeAgents.mockResolvedValue([]);
 });
@@ -135,6 +137,18 @@ describe("OwnerMeetingPage", () => {
     await screen.findByRole("button", { name: "Submit move" });
     expect(ctx).not.toHaveBeenCalled();
     delete (window as unknown as { AudioContext?: unknown }).AudioContext;
+  });
+
+  it("header uses the period name, fetched once, and falls back when the lookup fails", async () => {
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 0, turnEndsAt: IN_ONE_MIN() })));
+    const { unmount } = renderPage();
+    expect(await screen.findByRole("heading", { name: "Period 9 meeting" })).toBeTruthy();
+    expect(m.getPeriodName).toHaveBeenCalledWith(7, 9);
+    expect(m.getPeriodName).toHaveBeenCalledTimes(1);
+    unmount();
+    m.getPeriodName.mockRejectedValue(new Error("down"));
+    renderPage();
+    expect(await screen.findByRole("heading", { name: "Period meeting" })).toBeTruthy();
   });
 
   it("pass calls passTurn with the version", async () => {
@@ -287,14 +301,21 @@ describe("MeetingLiveBanner", () => {
   it("banner says you're up", async () => {
     m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 1 })));
     renderBanner();
-    const link = await screen.findByRole("link", { name: /Period meeting is live: you.re up/ });
+    const link = await screen.findByRole("link", { name: /Period 9 meeting is live: you.re up/ });
     expect(link.getAttribute("href")).toBe("/leagues/7/meeting");
+  });
+
+  it("banner falls back to Period meeting when the name lookup fails", async () => {
+    m.getPeriodName.mockRejectedValue(new Error("down"));
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 1 })));
+    renderBanner();
+    expect(await screen.findByText("Period meeting is live: you're up")).toBeTruthy();
   });
 
   it("banner says my place in the order", async () => {
     m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 0, status: "paused" })));
     renderBanner();
-    expect(await screen.findByText("Period meeting is live: you're 2nd")).toBeTruthy();
+    expect(await screen.findByText("Period 9 meeting is live: you're 2nd")).toBeTruthy();
   });
 
   function setVisibility(v: "visible" | "hidden") {
@@ -312,7 +333,7 @@ describe("MeetingLiveBanner", () => {
     m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 0 }), { version: 1 }));
     await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
     expect(m.getCurrentMeeting).toHaveBeenCalledTimes(2);
-    expect(container.textContent).toContain("Period meeting is live: you're 2nd");
+    expect(container.textContent).toContain("Period 9 meeting is live: you're 2nd");
 
     // Hidden: an idle chain does not poll.
     vi.useRealTimers();

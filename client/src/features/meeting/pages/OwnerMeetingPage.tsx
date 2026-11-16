@@ -10,6 +10,7 @@ import { Countdown } from "../components/Countdown";
 import { TurnEntry } from "../components/TurnEntry";
 import { ERROR, MUTED, ROW, lastName } from "../components/styles";
 import { useMeetingSession } from "../hooks/useMeetingSession";
+import { usePeriodName } from "../hooks/usePeriodName";
 import { useTurnCue } from "../hooks/useTurnCue";
 import { ordinal, placeInOrder } from "../lib/place";
 
@@ -55,6 +56,9 @@ export function OwnerMeetingPage() {
   const myTurn = live && !!place?.onClock && s?.status === "running";
   useTurnCue(data != null && teamId != null, myTurn && s ? `${session?.id}.${s.round}.${s.turnIndex}` : null);
 
+  const periodName = usePeriodName(leagueId, session?.periodId ?? null);
+  const title = `${periodName ?? "Period"} meeting`;
+
   const nameOf = (id: number) => teams.find((t) => t.id === id)?.name ?? `Team ${id}`;
 
   let body: React.ReactNode;
@@ -74,6 +78,7 @@ export function OwnerMeetingPage() {
         teamId={teamId}
         leagueId={leagueId}
         nameOf={nameOf}
+        title={title}
         place={place}
         myTurn={myTurn}
         act={act}
@@ -91,8 +96,9 @@ export function OwnerMeetingPage() {
 
 type Session = NonNullable<MeetingSessionResponse["session"]>;
 
-function Live({ session, skew, teamId, leagueId, nameOf, place, myTurn, act }: {
+function Live({ session, title, skew, teamId, leagueId, nameOf, place, myTurn, act }: {
   session: Session;
+  title: string;
   skew: number;
   teamId: number;
   leagueId: number;
@@ -121,7 +127,7 @@ function Live({ session, skew, teamId, leagueId, nameOf, place, myTurn, act }: {
           </>
         ) : (
           <>
-            <h1 style={H1}>Period meeting</h1>
+            <h1 style={H1}>{title}</h1>
             <p style={{ margin: 0, ...MUTED }}>{`Round ${s.round}${paused ? " · Paused" : ""}`}</p>
           </>
         )}
