@@ -24,6 +24,14 @@ describe("describeChange: commissioner-management actions", () => {
     ] }), [])).toBe("Changed a league rule: When trades are allowed → Meeting day only; Owners make their own moves → Off");
     expect(describeChange(c("RULES_UPDATE", { leagueId: 20, updateCount: 1, changes: [] }), [])).toBe("Changed a league rule");
   });
+  it("RULES_UPDATE meeting rules read in plain words", () => {
+    const one = (key: string, value: string) => describeChange(c("RULES_UPDATE", { leagueId: 20, changes: [{ category: "meeting", key, value }] }), []);
+    expect(one("live", "true")).toBe("Changed a league rule: Owners enter own moves at the meeting → On");
+    expect(one("turn_seconds", "180")).toBe("Changed a league rule: Clock per turn → 3 min");
+    expect(one("can_add_time", "false")).toBe("Changed a league rule: You can add time → Off");
+    expect(one("overtime_fee", "0")).toBe("Changed a league rule: Penalty for going over → Off");
+    expect(one("overtime_fee", "5")).toBe("Changed a league rule: Penalty for going over → $5");
+  });
   it("RULES_UPDATE without key (bulk PUT logs only updateCount)", () => {
     expect(describeChange(c("RULES_UPDATE", { updateCount: 3 }), [])).toBe("Changed a league rule");
     expect(describeChange(c("RULES_UPDATE"), [])).toBe("Changed a league rule");
