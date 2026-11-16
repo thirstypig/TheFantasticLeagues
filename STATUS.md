@@ -36,11 +36,12 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - Legacy waivers retired (#466); standings cache fix (#465); critical CVEs cleared (#467)
 
 ## In progress
+- Todos #312/#313 fix in review (IL stints close on a drop; IL events per league)
 - UX G: live meeting with a clock (starting design).
 
 ## Open bugs / known issues
 - 2026 final vs OnRoto (Kent's workbook): P1–P3, P5, P6 exact; P4 and P7 each have one ±1 pair (DDG/RGS, RGS/The Show). Final order identical.
-- Todos #312/#313 (standings IL events: stints never closed by a drop; not filtered by league; possibly money-affecting, unsized), #181 (stale roster across tabs), #304 (cache cleanup)
+- Todos #181 (stale roster across tabs), #304 (cache cleanup)
 
 ## Next phases (in order)
 1. UX G: live meeting with a clock

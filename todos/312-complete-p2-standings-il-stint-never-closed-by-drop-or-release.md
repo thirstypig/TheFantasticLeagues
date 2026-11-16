@@ -1,4 +1,5 @@
 ---
+status: complete
 priority: p2
 issue_id: 312
 tags: [standings, scoring, il, transactions]
@@ -86,3 +87,15 @@ WHERE NOT EXISTS (            -- standings would still see the stint open at p.s
 )
 ORDER BY roster_league, period_id, c."playerId";
 ```
+
+## Resolution (2026-11-15, branch fix/todo-312-313, stacked on #501)
+One shared query, `ilEventsQuery(leagueId, playerIds)` in `server/src/lib/ilWindows.ts`: league-scoped,
+the full `IL_WINDOW_EVENT_TYPES` set, ordered `effDate asc, id asc`. Used by both standings paths,
+the team page (`teamService`), the period-roster route (`teams/routes.ts:473`, a sixth copy this
+todo missed: league-scoped already, but two-type) and all five audit scripts.
+Tests: the batched-season hand-checked world gained a stash → DROP → re-added player (#312) and a
+cross-league stash (#313); the random worlds now carry league-tagged events, cross-league events
+and IL_RELEASE. Mutation-checked: removing the league filter fails the #313 assertion (0 vs 9);
+restoring the two-type filter fails the #312 assertion (0 vs 6).
+Prod sizing: run the queries above before merge; any rows are standings changes the commissioner
+signs off.

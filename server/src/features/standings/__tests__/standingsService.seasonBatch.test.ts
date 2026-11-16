@@ -223,19 +223,25 @@ function randomWorld(seed: number, pspInActive: boolean): World {
   // IL history, incl. same-day stash+activate pairs, orphans, DROPs and null dates.
   let txId = 0;
   const transactionEvent: Row[] = [];
+  // A fifth of the events belong to the other league (players are shared across leagues).
   for (let i = 0; i < 30; i++) {
     const p = pick(player).id;
     const d = pick(moveDates);
+    const leagueId = r() < 0.8 ? LEAGUE : OTHER_LEAGUE;
     const kind = r();
     if (kind < 0.35) {
-      transactionEvent.push({ id: ++txId, playerId: p, transactionType: "IL_STASH", effDate: d });
-      if (r() < 0.6) transactionEvent.push({ id: ++txId, playerId: p, transactionType: "IL_ACTIVATE", effDate: r() < 0.3 ? d : new Date(d.getTime() + 9 * DAY) });
+      transactionEvent.push({ id: ++txId, leagueId, playerId: p, transactionType: "IL_STASH", effDate: d });
+      const close = r();
+      const closeDate = r() < 0.3 ? d : new Date(d.getTime() + 9 * DAY);
+      if (close < 0.45) transactionEvent.push({ id: ++txId, leagueId, playerId: p, transactionType: "IL_ACTIVATE", effDate: closeDate });
+      else if (close < 0.6) transactionEvent.push({ id: ++txId, leagueId, playerId: p, transactionType: "IL_RELEASE", effDate: closeDate });
+      else if (close < 0.75) transactionEvent.push({ id: ++txId, leagueId, playerId: p, transactionType: "DROP", effDate: closeDate });
     } else if (kind < 0.5) {
-      transactionEvent.push({ id: ++txId, playerId: p, transactionType: "IL_ACTIVATE", effDate: d });
+      transactionEvent.push({ id: ++txId, leagueId, playerId: p, transactionType: "IL_ACTIVATE", effDate: d });
     } else if (kind < 0.7) {
-      transactionEvent.push({ id: ++txId, playerId: p, transactionType: "DROP", effDate: d });
+      transactionEvent.push({ id: ++txId, leagueId, playerId: p, transactionType: "DROP", effDate: d });
     } else if (kind < 0.8) {
-      transactionEvent.push({ id: ++txId, playerId: p, transactionType: "IL_STASH", effDate: null });
+      transactionEvent.push({ id: ++txId, leagueId, playerId: p, transactionType: "IL_STASH", effDate: null });
     }
   }
 
@@ -397,7 +403,7 @@ describe("batched season standings: hand-checked attribution", () => {
     return {
       period: [P1, P2].map((p) => ({ ...p })),
       team: [1, 2, 3].map((id) => ({ id, leagueId: LEAGUE, name: `Team ${id}`, code: `T${id}` })),
-      player: [1, 2, 3, 4].map((id) => ({ id, mlbId: 700000 + id, posPrimary: "OF" })),
+      player: [1, 2, 3, 4, 5, 6].map((id) => ({ id, mlbId: 700000 + id, posPrimary: "OF" })),
       roster: [
         // 1: dropped by team 1 mid-P1 (04-10), added by team 2 the same day.
         { id: 1, teamId: 1, playerId: 1, acquiredAt: utc("2026-03-25"), releasedAt: utc("2026-04-10"), assignedPosition: "OF" },
@@ -409,11 +415,20 @@ describe("batched season standings: hand-checked attribution", () => {
         { id: 5, teamId: 3, playerId: 3, acquiredAt: utc("2026-03-25"), releasedAt: null, assignedPosition: "IL" },
         // 4: team 2, same-day IL stash + activate on the P2 start date — not on IL.
         { id: 6, teamId: 2, playerId: 4, acquiredAt: utc("2026-03-25"), releasedAt: null, assignedPosition: "OF" },
+        // 5: team 1 stashes him on IL (04-05), drops him while on IL (04-12),
+        //    and re-adds him at the P2 boundary (todo #312).
+        { id: 7, teamId: 1, playerId: 5, acquiredAt: utc("2026-03-25"), releasedAt: utc("2026-04-12"), assignedPosition: "IL" },
+        { id: 8, teamId: 1, playerId: 5, acquiredAt: utc("2026-04-29"), releasedAt: null, assignedPosition: "OF" },
+        // 6: team 3 all season; only the OTHER league stashed him on IL (todo #313).
+        { id: 9, teamId: 3, playerId: 6, acquiredAt: utc("2026-03-25"), releasedAt: null, assignedPosition: "OF" },
       ],
       transactionEvent: [
-        { id: 1, playerId: 3, transactionType: "IL_STASH", effDate: utc("2026-04-20") },
-        { id: 2, playerId: 4, transactionType: "IL_STASH", effDate: utc("2026-04-29") },
-        { id: 3, playerId: 4, transactionType: "IL_ACTIVATE", effDate: utc("2026-04-29") },
+        { id: 1, leagueId: LEAGUE, playerId: 3, transactionType: "IL_STASH", effDate: utc("2026-04-20") },
+        { id: 2, leagueId: LEAGUE, playerId: 4, transactionType: "IL_STASH", effDate: utc("2026-04-29") },
+        { id: 3, leagueId: LEAGUE, playerId: 4, transactionType: "IL_ACTIVATE", effDate: utc("2026-04-29") },
+        { id: 4, leagueId: LEAGUE, playerId: 5, transactionType: "IL_STASH", effDate: utc("2026-04-05") },
+        { id: 5, leagueId: LEAGUE, playerId: 5, transactionType: "DROP", effDate: utc("2026-04-12") },
+        { id: 6, leagueId: OTHER_LEAGUE, playerId: 6, transactionType: "IL_STASH", effDate: utc("2026-04-20") },
       ],
       playerStatsDaily: [
         { id: 1, playerId: 1, gameDate: utc("2026-04-05"), ...ZERO, R: 1 },  // team 1's
@@ -428,6 +443,8 @@ describe("batched season standings: hand-checked attribution", () => {
         { id: 5, periodId: 12, playerId: 3, ...ZERO, RBI: 70 },
         { id: 6, periodId: 12, playerId: 4, ...ZERO, SB: 3 },
         { id: 7, periodId: 12, playerId: 1, ...ZERO, R: 4 },
+        { id: 8, periodId: 12, playerId: 5, ...ZERO, SB: 6 },
+        { id: 9, periodId: 12, playerId: 6, ...ZERO, SB: 9 },
       ],
     };
   }
@@ -453,6 +470,10 @@ describe("batched season standings: hand-checked attribution", () => {
     expect(stat(p2, 3, "RBI")).toBe(0);
     // Same-day stash + activate closes the stint at once: player 4 counts.
     expect(stat(p2, 2, "SB")).toBe(3);
+    // #312: a DROP closes the IL stint, so the re-added player counts in P2.
+    expect(stat(p2, 1, "SB")).toBe(6);
+    // #313: another league's IL stash doesn't exclude this league's player.
+    expect(stat(p2, 3, "SB")).toBe(9);
 
     expect(JSON.stringify(s.periodData)).toBe(JSON.stringify((await seasonPerPeriod()).periodData));
   });

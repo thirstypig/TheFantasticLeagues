@@ -20,7 +20,7 @@
 import { writeFileSync, mkdirSync } from "node:fs";
 import { prisma } from "../db/prisma.js";
 import { reconcilePeriodStats } from "../features/players/services/mlbStatsSyncService.js";
-import { buildIlWindows, wasOnIlAtPeriodStart } from "../lib/ilWindows.js";
+import { buildIlWindows, wasOnIlAtPeriodStart, ilEventsQuery } from "../lib/ilWindows.js";
 import { parseFgStandings } from "../lib/audit/fgStandingsParser.js";
 import { classifyTeamDelta } from "../lib/audit/classifier.js";
 import { computeTeamPeriodTotals, findCoverageGaps, findMidPeriodPlayers, type RosterStint, type DailyByPlayer } from "../lib/audit/fbstTotals.js";
@@ -142,11 +142,7 @@ async function main(): Promise<void> {
   const playerNameById = new Map<number, string>(rosterRows.map((r) => [r.playerId, r.player.name]));
   const rosterPlayerIds = [...new Set(rosterRows.map((r) => r.playerId))];
 
-  const ilEvents = await prisma.transactionEvent.findMany({
-    where: { playerId: { in: rosterPlayerIds }, transactionType: { in: ["IL_STASH", "IL_ACTIVATE"] }, effDate: { not: null } },
-    select: { playerId: true, transactionType: true, effDate: true },
-    orderBy: [{ effDate: "asc" }, { id: "asc" }],
-  });
+  const ilEvents = await prisma.transactionEvent.findMany(ilEventsQuery(leagueId, rosterPlayerIds));
   const ilWindowsByPlayer = buildIlWindows(ilEvents);
 
   // ===================== CORRECTNESS LEG: target period only =====================
