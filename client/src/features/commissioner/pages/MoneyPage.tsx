@@ -8,6 +8,7 @@ import { useToast } from "../../../contexts/ToastContext";
 import { CardError, LINK, PRIMARY, SECONDARY, Skeleton, useLoad } from "../components/cardParts";
 import { getCommissionerOverview, getLeagueBalances, getLeaguePeriods, getUnbilledPeriods, updateLeague } from "../api";
 import { CommissionerOnly } from "../components/CommissionerOnly";
+import { MeetingFeeLedger } from "../components/MeetingFeeLedger";
 import "../commissioner.css";
 
 const usd = (n: number) => `$${n.toLocaleString("en-US")}`;
@@ -128,7 +129,9 @@ function MoneyPageBody() {
   const leagueId = Number(useParams().leagueId);
   const base = `/commissioner/${leagueId}`;
   const overview = useLoad(() => getCommissionerOverview(leagueId), [leagueId]);
-  const balances = useLoad(() => getLeagueBalances(leagueId), [leagueId]);
+  // Bumped after a fee is voided so the balances reload.
+  const [balancesVersion, setBalancesVersion] = useState(0);
+  const balances = useLoad(() => getLeagueBalances(leagueId), [leagueId, balancesVersion]);
   const unbilled = useLoad(() => getUnbilledPeriods(leagueId), [leagueId]);
   const periods = useLoad(() => getLeaguePeriods(leagueId), [leagueId]);
   const [savedFee, setSavedFee] = useState<Fee | null>(null);
@@ -213,6 +216,8 @@ function MoneyPageBody() {
             </table>
           )}
         </div>
+
+        <MeetingFeeLedger leagueId={leagueId} onVoided={() => setBalancesVersion((v) => v + 1)} />
 
         {fee && <EntryFeeRow leagueId={leagueId} fee={fee} onSaved={setSavedFee} />}
 

@@ -10,6 +10,8 @@
  *   - POST /api/commissioner/:leagueId/bulk-il-stash
  *   - POST /api/commissioner/:leagueId/cleanup-dropped
  *   - GET  /api/commissioner/:leagueId/balances
+ *   - GET  /api/commissioner/:leagueId/ledger?type=meeting_overtime
+ *   - POST /api/commissioner/:leagueId/ledger/:entryId/void
  */
 import { z } from "zod";
 
@@ -117,3 +119,45 @@ export const LeagueBalancesResponseSchema = z.object({
   balances: z.array(TeamBalanceRowSchema),
 });
 export type LeagueBalancesResponse = z.infer<typeof LeagueBalancesResponseSchema>;
+
+// ── Ledger entries + void (todo #315) ────────────────────────────────
+
+/**
+ * Ledger types a commissioner can void from Commissioner → Finances → Ledger.
+ * Meeting fees only for now; IL fees keep their reconcile path.
+ */
+export const VOIDABLE_LEDGER_TYPES = ["meeting_overtime"] as const;
+export type VoidableLedgerType = (typeof VOIDABLE_LEDGER_TYPES)[number];
+
+/**
+ * One original charge (never a reversal row) with its void state. A voided
+ * row still counts toward the balance; its reversal cancels it (todo #311).
+ */
+export const LedgerEntryRowSchema = z.object({
+  id: z.number().int().positive(),
+  teamId: z.number().int().positive(),
+  teamName: z.string(),
+  periodId: z.number().int().positive().nullable(),
+  periodName: z.string().nullable(),
+  type: z.string(),
+  amount: z.number().int(),
+  reason: z.string().nullable(),
+  /** ISO timestamp the charge was written. */
+  ts: z.string(),
+  /** ISO timestamp of the void, or null while the charge stands. */
+  voidedAt: z.string().nullable(),
+});
+export type LedgerEntryRow = z.infer<typeof LedgerEntryRowSchema>;
+
+export const LedgerEntriesResponseSchema = z.object({
+  entries: z.array(LedgerEntryRowSchema),
+});
+export type LedgerEntriesResponse = z.infer<typeof LedgerEntriesResponseSchema>;
+
+export const VoidLedgerEntryResponseSchema = z.object({
+  entryId: z.number().int().positive(),
+  reversalId: z.number().int().positive(),
+  teamId: z.number().int().positive(),
+  amount: z.number().int(),
+});
+export type VoidLedgerEntryResponse = z.infer<typeof VoidLedgerEntryResponseSchema>;

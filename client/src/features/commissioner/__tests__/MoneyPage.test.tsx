@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 const mockToast = vi.fn();
@@ -14,6 +14,8 @@ vi.mock("../api", () => ({
   getUnbilledPeriods: vi.fn(),
   getLeaguePeriods: vi.fn(),
   updateLeague: vi.fn(),
+  getMeetingFees: vi.fn(),
+  voidLedgerEntry: vi.fn(),
 }));
 
 import * as api from "../api";
@@ -48,6 +50,7 @@ beforeEach(() => {
     { teamId: 4, teamName: "Owes More", balance: 50 },
   ]);
   m.getUnbilledPeriods.mockResolvedValue([]);
+  m.getMeetingFees.mockResolvedValue([]);
   m.getLeaguePeriods.mockResolvedValue([
     { id: 7, name: "Period 7", startDate: "", endDate: "", status: "completed" },
     { id: 8, name: "Period 8", startDate: "", endDate: "", status: "completed" },
@@ -123,6 +126,19 @@ describe("MoneyPage", () => {
     await screen.findByText("Entry fee not set");
     expect(screen.queryByTestId("prize-pool")).toBeNull();
     expect(screen.getByRole("button", { name: "Edit entry fee" })).toBeTruthy();
+  });
+
+  it("shows meeting fees, and a void reloads the balances", async () => {
+    m.getMeetingFees
+      .mockResolvedValueOnce([{ id: 31, teamId: 4, teamName: "Owes More", periodId: 8, periodName: "Period 8", type: "meeting_overtime", amount: 5, reason: "Over time at the Period 8 meeting", ts: "2026-11-15T20:00:00.000Z", voidedAt: null }])
+      .mockResolvedValue([{ id: 31, teamId: 4, teamName: "Owes More", periodId: 8, periodName: "Period 8", type: "meeting_overtime", amount: 5, reason: "Over time at the Period 8 meeting", ts: "2026-11-15T20:00:00.000Z", voidedAt: "2026-11-15T21:00:00.000Z" }]);
+    m.voidLedgerEntry.mockResolvedValue({ entryId: 31, reversalId: 32, teamId: 4, amount: 5 });
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Void Owes More's $5 fee" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Void fee" }));
+    await waitFor(() => expect(m.voidLedgerEntry).toHaveBeenCalledWith(20, 31));
+    await waitFor(() => expect(m.getLeagueBalances).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("Voided")).toBeTruthy();
   });
 
   it("never renders coming-soon or ledger placeholders", async () => {

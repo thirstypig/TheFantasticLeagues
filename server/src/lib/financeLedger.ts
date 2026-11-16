@@ -96,3 +96,55 @@ export async function leagueBalances(
     balance: netBalance(byTeam.get(t.id) ?? []),
   }));
 }
+
+export type VoidLedgerResult =
+  | { ok: true; entryId: number; reversalId: number; teamId: number; amount: number }
+  | { ok: false; status: 400 | 404 | 409; error: string };
+
+/**
+ * Void one ledger row the append-only way: stamp `voidedAt` on it AND append a
+ * negated contra-entry pointing at it (`reversalOf`). Run it inside a
+ * `$transaction` so the two writes land together.
+ *
+ * - The read is scoped to the league, so another league's row is a 404.
+ * - Only `voidableTypes` can be voided; a reversal row never can.
+ * - The stamp is a compare-and-set on `voidedAt: null`: of two concurrent
+ *   voids exactly one stamps the row, and the loser writes no reversal. Without
+ *   it both would append a contra-entry and refund the fee twice.
+ */
+export async function voidLedgerEntry(
+  tx: TxClient,
+  opts: { leagueId: number; entryId: number; actorUserId: number; voidableTypes: readonly string[] },
+): Promise<VoidLedgerResult> {
+  const row = await tx.financeLedger.findFirst({
+    where: { id: opts.entryId, team: { leagueId: opts.leagueId } },
+    select: { id: true, teamId: true, periodId: true, playerId: true, type: true, amount: true, voidedAt: true, reversalOf: true },
+  });
+  if (!row) return { ok: false, status: 404, error: "Ledger entry not found." };
+  if (row.reversalOf != null) return { ok: false, status: 409, error: "A reversal can't be voided." };
+  if (!opts.voidableTypes.includes(row.type)) {
+    return { ok: false, status: 400, error: "This kind of entry can't be voided here." };
+  }
+  const already = { ok: false, status: 409, error: "This fee was already voided." } as const;
+  if (row.voidedAt) return already;
+
+  const stamped = await tx.financeLedger.updateMany({
+    where: { id: row.id, voidedAt: null },
+    data: { voidedAt: new Date() },
+  });
+  if (stamped.count !== 1) return already;
+
+  const reversal = await tx.financeLedger.create({
+    data: {
+      teamId: row.teamId,
+      periodId: row.periodId,
+      playerId: row.playerId,
+      type: row.type,
+      amount: -row.amount,
+      reversalOf: row.id,
+      createdBy: opts.actorUserId,
+      reason: `Void of ledger #${row.id} by commissioner`,
+    },
+  });
+  return { ok: true, entryId: row.id, reversalId: reversal.id, teamId: row.teamId, amount: row.amount };
+}

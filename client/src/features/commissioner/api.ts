@@ -1,5 +1,11 @@
 import { fetchJsonApi, API_BASE, ApiError } from "../../api/base";
-import type { TeamBalanceRow, LeagueBalancesResponse } from "@shared/api/commissioner";
+import type {
+  TeamBalanceRow,
+  LeagueBalancesResponse,
+  LedgerEntryRow,
+  LedgerEntriesResponse,
+  VoidLedgerEntryResponse,
+} from "@shared/api/commissioner";
 
 // --- Types ---
 
@@ -95,6 +101,25 @@ export async function getAvailableUsers(leagueId: number): Promise<AvailableUser
 export async function getLeagueBalances(leagueId: number): Promise<TeamBalanceRow[]> {
   const resp = await fetchJsonApi<LeagueBalancesResponse>(`${API_BASE}/commissioner/${leagueId}/balances`);
   return resp.balances;
+}
+
+/** Meeting fees for the league, newest first, each with its void state (todo #315). */
+export async function getMeetingFees(leagueId: number): Promise<LedgerEntryRow[]> {
+  const resp = await fetchJsonApi<LedgerEntriesResponse>(
+    `${API_BASE}/commissioner/${leagueId}/ledger?type=meeting_overtime`,
+  );
+  return resp.entries;
+}
+
+/**
+ * Void one meeting fee. The server stamps the fee voided and adds a matching
+ * credit; the team's balance drops by the fee. Refused (409) if already voided.
+ */
+export async function voidLedgerEntry(leagueId: number, entryId: number): Promise<VoidLedgerEntryResponse> {
+  return fetchJsonApi<VoidLedgerEntryResponse>(
+    `${API_BASE}/commissioner/${leagueId}/ledger/${entryId}/void`,
+    { method: "POST" },
+  );
 }
 
 export async function getPriorTeams(leagueId: number): Promise<PriorTeam[]> {

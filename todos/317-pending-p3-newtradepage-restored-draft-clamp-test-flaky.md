@@ -41,3 +41,9 @@ reading.
 ## Work Log
 
 - 2026-11-15: Logged from the live meeting final review; failed once in run 43785462207.
+- 2026-11-15: Three more tests failed once under full-suite load and passed on every rerun, alone
+  and in the full suite (same on main): server `mlb-feed/__tests__/myPlayersToday.test.ts`
+  ("emits LIVE game state…", 5002ms timeout) and `teams/__tests__/rosterPatchVersion.test.ts`
+  ("replaying the first token…"); client `RosterMovesTab/__tests__/AddDropPanel.test.tsx`
+  ("renders modal WITHOUT cascade list…", 5.9s). Likely the same class: default 5s timeouts on a
+  loaded machine. Fix candidates: raise per-test timeouts for these, or find the slow await.
