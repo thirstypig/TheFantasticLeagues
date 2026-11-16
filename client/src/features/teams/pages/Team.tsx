@@ -31,6 +31,7 @@ import { useLeague } from "../../../contexts/LeagueContext";
 import { getTeams, getTeamRosterHub, getSeasonStandings } from "../../../api";
 import { fetchJsonApi, API_BASE, ApiError } from "../../../api/base";
 import { DataFreshness } from "../../../components/shared/DataFreshness";
+import { ListHelp } from "../../../components/shared/ListHelp";
 import WatchlistPanel from "../../watchlist/components/WatchlistPanel";
 import TradingBlockPanel from "../../trading-block/components/TradingBlockPanel";
 import { getTeamPeriodRoster, type PeriodRosterEntry, updateRosterPosition } from "../api";
@@ -1718,7 +1719,7 @@ export default function Team() {
               </div>
               <div style={{ gridColumn: "span 4" }}>
                 <Glass>
-                  <SectionLabel>✦ Waiver Wire List</SectionLabel>
+                  <SectionLabel>✦ Waiver List <ListHelp kind="wire" /></SectionLabel>
                   <p style={{ fontSize: 13, color: "var(--am-text-muted)", margin: "8px 0 14px", lineHeight: 1.5 }}>
                     Rank your add and drop priorities for this period. Adds run top-down at the deadline; each successful add consumes the next pending drop.
                   </p>
@@ -1731,7 +1732,7 @@ export default function Team() {
                       fontSize: 13, fontWeight: 600, textDecoration: "none",
                     }}
                   >
-                    Open wire list →
+                    Open list →
                   </Link>
                 </Glass>
               </div>

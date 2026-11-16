@@ -234,11 +234,11 @@ describe("Aurora Team — Watchlist / Trading Block / Wire List cards", () => {
       expect(screen.getByText(/Watchlist/i)).toBeInTheDocument();
     });
     expect(screen.getByText(/Trading Block/i)).toBeInTheDocument();
-    expect(screen.getByText(/Waiver Wire List/i)).toBeInTheDocument();
+    expect(screen.getByText(/Waiver List/i)).toBeInTheDocument();
 
     // The wire-list link must point at the per-team route — regression
     // guard against #272's link target being lost in a future refactor.
-    const wireLink = screen.getByRole("link", { name: /Open wire list/i });
+    const wireLink = screen.getByRole("link", { name: /Open list/i });
     expect(wireLink).toHaveAttribute("href", "/teams/ACES/wire-list");
 
     // The watchlist + trading-block stubs render — confirms they're
@@ -258,7 +258,7 @@ describe("Aurora Team — Watchlist / Trading Block / Wire List cards", () => {
 
     expect(screen.queryByText(/Watchlist/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Trading Block/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Waiver Wire List/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Waiver List/i)).not.toBeInTheDocument();
     expect(screen.queryByTestId("watchlist-panel-stub")).not.toBeInTheDocument();
   });
 
@@ -271,7 +271,7 @@ describe("Aurora Team — Watchlist / Trading Block / Wire List cards", () => {
 
     expect(screen.queryByText(/Watchlist/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Trading Block/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Waiver Wire List/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Waiver List/i)).not.toBeInTheDocument();
   });
 
   it("hides the three cards during COMPLETED — season over, transactions closed", async () => {
@@ -283,7 +283,7 @@ describe("Aurora Team — Watchlist / Trading Block / Wire List cards", () => {
 
     expect(screen.queryByText(/Watchlist/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Trading Block/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Waiver Wire List/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Waiver List/i)).not.toBeInTheDocument();
   });
 });
 

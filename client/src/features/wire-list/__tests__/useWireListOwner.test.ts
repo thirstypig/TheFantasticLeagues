@@ -152,7 +152,7 @@ describe("useWireListOwner — error handling", () => {
     const { result } = renderHook(() => useWireListOwner(20, "LDY"));
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(result.current.error).toBe("Failed to load wire list. Please try again.");
+    expect(result.current.error).toBe("Failed to load list. Please try again.");
     expect(reportError).toHaveBeenCalledOnce();
   });
 
@@ -166,7 +166,7 @@ describe("useWireListOwner — error handling", () => {
 
     expect(result.current.error).not.toContain("db connection");
     expect(result.current.error).not.toContain("10.0.0.1");
-    expect(result.current.error).toBe("Failed to load wire list. Please try again.");
+    expect(result.current.error).toBe("Failed to load list. Please try again.");
   });
 
   it("sets error state when team code is not found", async () => {
