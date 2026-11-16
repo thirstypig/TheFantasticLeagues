@@ -7,7 +7,7 @@
 // what the owner sees when the server answers 409.
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, cleanup, act } from "@testing-library/react";
+import { render, screen, waitFor, cleanup, act, fireEvent } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 vi.mock("../../../api", () => ({
@@ -61,7 +61,15 @@ vi.mock("../components/RosterHub", async () => {
   const actual = await vi.importActual<any>("../components/RosterHub");
   return {
     ...actual,
-    RosterHubV3: () => <div data-testid="roster-hub-v3-stub" />,
+    // Minimal stand-in that exposes what the save flow needs: the pending
+    // count, the save-error banner text and a Save button wired to onSave.
+    RosterHubV3: (props: any) => (
+      <div data-testid="roster-hub-v3-stub">
+        <span data-testid="pending-count">{props.pendingCount}</span>
+        {props.saveError && <div role="alert" data-testid="save-error">{props.saveError}</div>}
+        <button onClick={props.onSave}>Save</button>
+      </div>
+    ),
     SubrouteContainer: ({ children }: any) => <div>{children}</div>,
     FreeAgentPanel: () => null,
     DropPool: () => null,
@@ -73,8 +81,9 @@ vi.mock("../hooks/useFreeAgents", () => ({
   useFreeAgents: () => ({ data: [], loading: false, error: null }),
 }));
 
+const dragCaptured: { opts: any } = { opts: null };
 vi.mock("../hooks/useRosterHubDrag", () => ({
-  useRosterHubDrag: () => ({
+  useRosterHubDrag: (opts: any) => (dragCaptured.opts = opts, {
     selectedRosterId: null,
     selectRow: vi.fn(),
     clearSelection: vi.fn(),
@@ -254,8 +263,8 @@ describe("Team page save: rosterVersion / If-Match (todo #181)", () => {
     expect(calls[3]).toEqual([10, 4, "1B", undefined, 10]);
   });
 
-  it("falls back to If-Match: * for a swap that follows a claim/IL mutation in the same batch", async () => {
-    vi.mocked(ilStash).mockResolvedValue({ success: true } as any);
+  it("falls back to If-Match: * when an older server's claim/IL response carries no version", async () => {
+    ilStash.mockResolvedValue({ success: true } as any);
     vi.mocked(updateRosterPosition).mockResolvedValue({ roster: { id: 1 }, rosterVersion: 99 } as any);
     await renderLoadedTeam();
 
@@ -298,6 +307,82 @@ describe("Team page save: rosterVersion / If-Match (todo #181)", () => {
     await waitFor(() =>
       expect(vi.mocked(getTeamRosterHub).mock.calls.length).toBeGreaterThan(hubCallsBefore),
     );
+  });
+
+  it("renders the conflict banner and keeps the queued swap when the server answers 409 (through the real hook)", async () => {
+    vi.mocked(updateRosterPosition).mockRejectedValueOnce(conflict409());
+    await renderLoadedTeam();
+    await waitFor(() => expect(dragCaptured.opts?.onSwap).toBeTypeOf("function"));
+    act(() => {
+      dragCaptured.opts.onSwap({
+        kind: "swap",
+        from: { rosterId: 1, playerId: 101, slot: "2B" },
+        to: { rosterId: 2, playerId: 102, slot: "SS" },
+      });
+    });
+    await waitFor(() => expect(screen.getByTestId("pending-count")).toHaveTextContent("1"));
+    fireEvent.click(screen.getByText("Save"));
+    const banner = await screen.findByTestId("save-error");
+    expect(banner).toHaveTextContent(/roster changed in another tab or by the commissioner/i);
+    // Not a silent success: the queued change is still there.
+    expect(screen.getByTestId("pending-count")).toHaveTextContent("1");
+    expect(updateRosterPosition).toHaveBeenCalledWith(10, 1, "SS", undefined, HUB_VERSION);
+  });
+
+  it("a swap after a claim sends the claim response's version, not *", async () => {
+    const fetchMock = vi.fn().mockImplementation(async () =>
+      new Response(JSON.stringify({ success: true, playerId: 5, rosterVersion: 8 }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    vi.mocked(updateRosterPosition).mockResolvedValue({ roster: { id: 3 }, rosterVersion: 9 } as any);
+    await renderLoadedTeam();
+    await act(async () => {
+      await captured.opts.saveFn(
+        [
+          {
+            id: "fa1",
+            kind: "fa_add",
+            mlbId: 555,
+            playerId: 5,
+            faName: "Echo",
+            displaced: { playerId: 104, name: "Delta" },
+          },
+          swap(3, 4, "1B", "3B"),
+        ],
+        { effectiveDate: null },
+      );
+    });
+    vi.unstubAllGlobals();
+    expect(vi.mocked(updateRosterPosition).mock.calls[0]).toEqual([10, 3, "3B", undefined, 8]);
+  });
+
+  it("a swap after an IL stash/activate sends that response's version", async () => {
+    ilStash.mockResolvedValue({ success: true, rosterVersion: 12 });
+    vi.mocked(updateRosterPosition).mockResolvedValue({ roster: { id: 3 }, rosterVersion: 13 } as any);
+    await renderLoadedTeam();
+    await act(async () => {
+      await captured.opts.saveFn(
+        [{ id: "il1", kind: "il_stash", playerId: 101, name: "Alpha" }, swap(3, 4, "1B", "3B")],
+        { effectiveDate: null },
+      );
+    });
+    expect(vi.mocked(updateRosterPosition).mock.calls[0][4]).toBe(12);
+  });
+
+  it("keeps the latest version after a successful save, so a quick second save does not send the stale token", async () => {
+    vi.mocked(updateRosterPosition).mockResolvedValue({ roster: { id: 1 }, rosterVersion: 8 } as any);
+    await renderLoadedTeam();
+    // Make the post-save hub reload hang, as it does for a moment in real life.
+    vi.mocked(getTeamRosterHub).mockReturnValue(new Promise(() => {}) as any);
+    await act(async () => {
+      await captured.opts.saveFn([swap(1, 2, "2B", "SS")], { effectiveDate: null });
+    });
+    vi.mocked(updateRosterPosition).mockClear();
+    vi.mocked(updateRosterPosition).mockResolvedValue({ roster: { id: 3 }, rosterVersion: 10 } as any);
+    await act(async () => {
+      await captured.opts.saveFn([swap(3, 4, "1B", "3B")], { effectiveDate: null });
+    });
+    expect(vi.mocked(updateRosterPosition).mock.calls[0][4]).toBe(8);
   });
 
   it("a non-409 failure keeps the per-row error message and does not reload the hub", async () => {

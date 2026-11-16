@@ -1,7 +1,7 @@
 {
   "_comment": "Grandfathered cross-feature imports — see docs/engineering/adrs/ADR-015-feature-module-boundaries.md. This list may SHRINK but must never grow. Regenerate only after legitimately removing a violation. Entries are DISTINCT side|file|specifier keys; a file importing one specifier twice counts once.",
-  "generated": "2026-11-13",
-  "count": 84,
+  "generated": "2026-11-16",
+  "count": 83,
   "allowed": [
     "client|client/src/features/admin/components/AdminLeagueTools.tsx|../../commissioner/api",
     "client|client/src/features/admin/components/AdminLeagueTools.tsx|../../leagues/api",
@@ -85,7 +85,6 @@
     "server|server/src/features/transactions/routes.ts|../awards/services/awardsService.js",
     "server|server/src/features/transactions/routes.ts|../players/services/playersListCache.js",
     "server|server/src/features/transactions/routes.ts|../standings/services/standingsService.js",
-    "server|server/src/features/transactions/routes.ts|../teams/lib/rosterVersionGuard.js",
     "server|server/src/features/wire-list/routes.ts|../transactions/lib/freeAgent.js"
   ]
 }

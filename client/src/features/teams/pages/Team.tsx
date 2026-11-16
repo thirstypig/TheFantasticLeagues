@@ -30,6 +30,7 @@ import { useAuth } from "../../../auth/AuthProvider";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { getTeams, getTeamRosterHub, getSeasonStandings } from "../../../api";
 import { fetchJsonApi, API_BASE, ApiError } from "../../../api/base";
+import { ROSTER_CONFLICT_MESSAGE } from "../lib/rosterConflict";
 import { DataFreshness } from "../../../components/shared/DataFreshness";
 import WatchlistPanel from "../../watchlist/components/WatchlistPanel";
 import TradingBlockPanel from "../../trading-block/components/TradingBlockPanel";
@@ -118,9 +119,6 @@ type HubPlayerCacheEntry = {
   player: RosterHubPlayer;
 };
 
-/** Shown in the save-error banner when the server rejects a stale roster PATCH (409). */
-const ROSTER_CONFLICT_MESSAGE =
-  "The roster changed in another tab or by the commissioner. We reloaded the latest roster. Check your changes and save again.";
 const POS_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P", "SP", "RP", "IL"];
 const PITCHER_POS = new Set(["P", "SP", "RP"]);
 
@@ -589,8 +587,8 @@ export default function Team() {
     // server counter and returns the new value, so each call must send the
     // PREVIOUS response's version, not the batch-start one (re-sending the
     // batch-start token would 409 on the second half of every swap).
-    // "*" (match any) is used once another mutation type in this same batch
-    // has moved the counter by an amount this client was not told.
+    // Claim / IL responses carry the new version too; "*" (match any) is only
+    // the fallback if a server response omits it.
     let versionToken: number | "*" = rosterVersion;
     // Atomic-on-failure (FA-#4 inherits from Hub-#4): each entry runs
     // sequentially; first failure throws and aborts the rest. Earlier
@@ -618,16 +616,18 @@ export default function Team() {
         }
         continue;
       }
-      // Claim / IL mutations are not version-guarded and bump the counter
-      // server-side without returning it.
-      versionToken = "*";
+      // Claim / IL mutations are not If-Match-guarded but they bump the
+      // counter and return the new version; carry it forward. An older server
+      // that omits it leaves us on "*" (match any) for later swaps.
+      const nextVersion = (r: { rosterVersion?: number } | null | undefined): number | "*" =>
+        typeof r?.rosterVersion === "number" ? r.rosterVersion : "*";
       if (change.kind === "fa_add") {
         // FA scenario save: dispatch to the existing /transactions/claim
         // endpoint. Server's bipartite matcher resolves slots; we only
         // need to send mlbId + dropPlayerId (the displaced roster
         // player's playerId). Mirrors AddDropPanel's wire shape.
         try {
-          await fetchJsonApi(`${API_BASE}/transactions/claim`, {
+          const claimRes = await fetchJsonApi<{ rosterVersion?: number }>(`${API_BASE}/transactions/claim`, {
             method: "POST",
             body: JSON.stringify({
               leagueId,
@@ -638,6 +638,7 @@ export default function Team() {
               ...(effectiveDate ? { effectiveDate } : {}),
             }),
           });
+          versionToken = nextVersion(claimRes);
         } catch (err) {
           const msg = err instanceof Error ? err.message : "Save failed";
           throw new Error(`Save failed on add ${change.faName} · drop ${change.displaced.name}: ${msg}`);
@@ -652,13 +653,14 @@ export default function Team() {
         // position-eligible bench replacement exists. Per IL #6 the UI
         // surfaces a "Add a FA to fill this slot" chip post-save.
         try {
-          await ilStash({
+          const stashRes = await ilStash({
             leagueId,
             teamId: tid,
             stashPlayerId: change.playerId,
             // stashOnly mode — addPlayerId omitted intentionally.
             ...(effectiveDate ? { effectiveDate } : {}),
           });
+          versionToken = nextVersion(stashRes);
         } catch (err) {
           const msg = err instanceof Error ? err.message : "Save failed";
           throw new Error(`Save failed on stash ${change.name}: ${msg}`);
@@ -677,13 +679,14 @@ export default function Team() {
           );
         }
         try {
-          await ilActivate({
+          const activateRes = await ilActivate({
             leagueId,
             teamId: tid,
             activatePlayerId: change.playerId,
             dropPlayerId: change.displaced.playerId,
             ...(effectiveDate ? { effectiveDate } : {}),
           });
+          versionToken = nextVersion(activateRes);
         } catch (err) {
           const msg = err instanceof Error ? err.message : "Save failed";
           throw new Error(`Save failed on activate ${change.name}: ${msg}`);
@@ -691,6 +694,9 @@ export default function Team() {
         continue;
       }
     }
+    // Keep the latest known version so a quick second save (before the
+    // reload below lands) doesn't send the stale pre-save token and false-409.
+    if (typeof versionToken === "number") setRosterVersion(versionToken);
     // Refresh the roster on success so the UI snaps to the canonical
     // server state (and any matcher-driven cascades show up).
     setReloadKey(k => k + 1);

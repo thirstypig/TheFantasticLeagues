@@ -24,6 +24,7 @@ import { formatEligiblePositions, ilPeriodLabel } from "../../lib/rosterDisplay"
 import { getTeams, getTeamRosterHub, updateRosterPosition, getTeamPeriodRoster, getTeamPlayerSeasonStats, type PeriodRosterEntry, type PeriodRosterStats } from "../../features/teams/api";
 import { getSeasonStandings } from "../../api";
 import { ApiError } from "../../api/base";
+import { ROSTER_CONFLICT_MESSAGE } from "../../features/teams/lib/rosterConflict";
 import { ilActivate, ilStash } from "../../features/transactions/api";
 import { reportError } from "../../lib/errorBus";
 import type { RosterHubResponse } from "@shared/api/teams";
@@ -256,7 +257,7 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
    * the row visually moves immediately; on failure, refetches the hub
    * to restore truth from the server.
    */
-  const applyMove = useCallback(
+  const runMove = useCallback(
     async (row: RosterHubRow, nextSlot: string) => {
       if (teamId == null) return;
       setMoveSheetRow(null);
@@ -287,10 +288,16 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
           // Stash-only — server's matcher fills the freed active slot
           // from the bench. addPlayerId omitted.
           if (leagueId == null) throw new Error("leagueId not resolved");
-          await ilStash({ leagueId, teamId, stashPlayerId: row.playerId });
-          // The stash transaction bumps the server's rosterVersion by one
-          // without returning it; track that so the next move isn't a false 409.
-          setHub((prev) => (prev && typeof prev.rosterVersion === "number" ? { ...prev, rosterVersion: prev.rosterVersion + 1 } : prev));
+          const stashRes = await ilStash({ leagueId, teamId, stashPlayerId: row.playerId });
+          // The stash transaction bumps the server's rosterVersion and returns
+          // it; carry it forward so the next move isn't a false 409.
+          const stashVersion = stashRes?.rosterVersion;
+          if (typeof stashVersion === "number") {
+            rosterVersionRef.current = stashVersion;
+            setHub((prev) => (prev ? { ...prev, rosterVersion: stashVersion } : prev));
+          } else {
+            rosterVersionRef.current = "*";
+          }
         } else {
           const res = await updateRosterPosition(teamId, row.rosterId, nextSlot, undefined, rosterVersionRef.current);
           // Each PATCH bumps the version and returns the new one; carry it forward.
@@ -302,8 +309,9 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
         }
       } catch (err: unknown) {
         reportError(err, { source: nextSlot === "IL" ? "mobile-team-il-stash" : "mobile-team-move" });
-        setMoveError(err instanceof Error ? err.message : "Failed to move player");
-        if (err instanceof ApiError && err.status === 409) {
+        const isConflict = err instanceof ApiError && err.status === 409;
+        setMoveError(isConflict ? ROSTER_CONFLICT_MESSAGE : err instanceof Error ? err.message : "Failed to move player");
+        if (isConflict) {
           // Roster changed elsewhere (another tab or the commissioner). Reload
           // the hub so the rows AND the version token are current.
           getTeamRosterHub(teamId).then((refreshed) => setHub(refreshed)).catch(() => {});
@@ -338,7 +346,7 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
    * dropping a roster player to make room. Server picks the slot via
    * its bipartite matcher (the API doesn't accept an explicit slot).
    */
-  const applyIlActivate = useCallback(
+  const runIlActivate = useCallback(
     async (ilRow: RosterHubRow, dropTarget: RosterHubRow) => {
       if (teamId == null || leagueId == null) return;
       setIlActivateRow(null);
@@ -398,6 +406,31 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
       }
     },
     [teamId, leagueId],
+  );
+
+  // Serialize roster mutations (todo #181): each one bumps the server's
+  // rosterVersion, so two in flight at once would make the second send a stale
+  // If-Match and 409 against this same phone. Chain them; each reads the
+  // version token fresh when its turn comes.
+  const moveChainRef = useRef<Promise<unknown>>(Promise.resolve());
+  const enqueue = useCallback(<T,>(task: () => Promise<T>): Promise<T> => {
+    const p = moveChainRef.current.then(task, task);
+    moveChainRef.current = p.catch(() => {});
+    return p;
+  }, []);
+  const applyMove = useCallback(
+    (row: RosterHubRow, nextSlot: string) => {
+      setMoveSheetRow(null);
+      return enqueue(() => runMove(row, nextSlot));
+    },
+    [enqueue, runMove],
+  );
+  const applyIlActivate = useCallback(
+    (ilRow: RosterHubRow, dropTarget: RosterHubRow) => {
+      setIlActivateRow(null);
+      return enqueue(() => runIlActivate(ilRow, dropTarget));
+    },
+    [enqueue, runIlActivate],
   );
 
   const teamName = hub?.team.name ?? teamCode ?? "Team";
