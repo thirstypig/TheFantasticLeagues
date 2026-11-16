@@ -28,7 +28,7 @@
   - `turn_seconds`: `"60"|"120"|"180"`, default `"120"`;
   - `can_add_time`: `"true"|"false"`, default `"true"`;
   - `overtime_fee`: `"0"|"1"|"5"`, default `"0"`.
-- **Ledger row** on overtime: `type: "meeting_overtime"`, `amount: overtimeFee` (positive), `periodId: <session.periodId>`, `teamId: <team on the clock>`, `reason: "Over time at the meeting"`.
+- **Ledger row** on overtime: `type: "meeting_overtime"`, `amount: overtimeFee` (positive), `periodId: <session.periodId>`, `teamId: <team on the clock>`, `reason: "Over time at the <Period.name> meeting"` (e.g. "Over time at the Period 8 meeting"; ruled 2026-11-15 to follow the spec).
 - **Copy:** user-visible "Wire List" becomes "List".
   - Wire help text: `Your wire list: players you'd pick up between periods, in order.`
   - Auction help text: `Your auction list: players you plan to put up, in order. If your clock runs out, the top one goes up.`
@@ -219,7 +219,7 @@ Route rules:
   - `submit and skip race → second gets 409` (`updateMany` resolves `{count:0}` the second time).
   - `owner of another team → 403`.
   - `open refused while period active` / `open refused when live off` / `open refused during List run`.
-  - `overtime writes ledger in same transaction`: expect `financeLedger.create` data `{ type: "meeting_overtime", amount: 5, periodId: 42, teamId: 3, reason: "Over time at the meeting" }`.
+  - `overtime writes ledger in same transaction`: expect `financeLedger.create` data `{ type: "meeting_overtime", amount: 5, periodId: 42, teamId: 3, reason: "Over time at the Period 8 meeting" }`.
   - `no ledger when fee is 0`.
   - `rostered add → 400 "That player is already on a team"`, and the roster query includes `team: { leagueId }`.
   - `GET current returns serverNow and online ids`.
