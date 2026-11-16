@@ -125,6 +125,28 @@ describe("syncAllPlayers", () => {
     });
   });
 
+  it("refreshes an existing player's mlbTeam in the DB when traded (todo #304)", async () => {
+    mockMlbGetJson
+      .mockResolvedValueOnce(mockTeams)
+      .mockResolvedValueOnce({
+        roster: [
+          { person: { id: 660271, fullName: "Shohei Ohtani" }, position: { abbreviation: "DH", type: "Hitter" } },
+        ],
+      });
+    mockPrisma.player.findMany.mockResolvedValue([{ id: 1, mlbId: 660271, mlbTeam: "NYY" }]);
+    mockPrisma.player.update.mockResolvedValue({ id: 1 });
+
+    await syncAllPlayers(2026);
+
+    // The write must carry the NEW team, keyed by the existing row.
+    expect(mockPrisma.player.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 1 }, data: expect.objectContaining({ mlbTeam: "LAD" }) }),
+    );
+    // Roster reads use the default (10 min) cache TTL — no long TTL that would
+    // extend the staleness window beyond the daily cron cadence.
+    for (const call of mockMlbGetJson.mock.calls) expect(call).toHaveLength(1);
+  });
+
   it("continues on roster fetch failure", async () => {
     mockMlbGetJson
       .mockResolvedValueOnce({
