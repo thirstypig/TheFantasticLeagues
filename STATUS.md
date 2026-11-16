@@ -32,22 +32,22 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - UX G live meeting with a clock (DOC-042; #499, #502, #504), off until turned on in Rules
 - "Wire List" renamed "List", with an ⓘ help note (#498)
 - Stale tabs can't overwrite a newer roster (#503)
-- Season standings load in 6 queries, not ~45 (#501; prod-verified)
+- Season standings load in 6 queries, not ~45 (#501); IL stints close on a drop, IL events per league (#505)
+- Commissioner can void a meeting fee on the Money page (#506)
 - Auction reliability: timers restart after a server restart (#496); the league's commissioner can start its auction, pre-season only (#497)
 - League picked in Switch League survives reloads (#494) and shows its season (#495)
 - 2026 audit vs FanGraphs/OnRoto (#470, #471); waivers retired, cache fix, CVEs (#465–#467)
 
 ## In progress
-- In review: #500 (cache cleanup), #505 (IL stints close on a drop; IL events per league), meeting-fee void (todo #315)
+- In review: #500 (cache cleanup)
 
 ## Open bugs / known issues
 - 2026 final vs OnRoto: P1–P3, P5, P6 exact; P4 and P7 each have one ±1 pair (DDG/RGS, RGS/The Show). Final order identical.
 - Todo #304 (cache cleanup)
 
 ## Next phases (in order)
-1. Merge #505 and the meeting-fee void
-2. Phase 3.5: standings categories from the league's scoring settings
-3. Public auction-keeper leagues (not scheduled)
+1. Phase 3.5: standings categories from the league's scoring settings
+2. Public auction-keeper leagues (not scheduled)
 
 ## Decisions changed recently
 - 2026-11-11: AL games don't count in NL-only leagues (OnRoto's rule)

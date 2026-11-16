@@ -29,7 +29,7 @@ import { fileURLToPath } from "node:url";
 import { prisma } from "../db/prisma.js";
 import { TWO_WAY_PLAYERS } from "../lib/sportConfig.js";
 import { playerStatRoles } from "../lib/sports/baseball.js";
-import { buildIlWindows } from "../lib/ilWindows.js";
+import { buildIlWindows, ilEventsQuery } from "../lib/ilWindows.js";
 
 /* ── Pure core (unit-tested in __tests__/audit-mlb-crosscheck.test.ts) ── */
 
@@ -182,11 +182,7 @@ async function main() {
       player: { select: { mlbId: true, posPrimary: true, name: true } },
     },
   });
-  const ilEvents = await prisma.transactionEvent.findMany({
-    where: { playerId: { in: rosters.map((r) => r.playerId) }, transactionType: { in: ["IL_STASH", "IL_ACTIVATE"] }, effDate: { not: null } },
-    select: { playerId: true, transactionType: true, effDate: true },
-    orderBy: [{ effDate: "asc" }, { id: "asc" }],
-  });
+  const ilEvents = await prisma.transactionEvent.findMany(ilEventsQuery(leagueId, rosters.map((r) => r.playerId)));
   const ilWindows = buildIlWindows(ilEvents);
 
   console.log(`\nMLB ground-truth cross-check — league ${leagueId} (self-aligning per player; no fixed as-of cutoff)\n`);

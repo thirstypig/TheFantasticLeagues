@@ -3,7 +3,7 @@
  * Run: cd server && npx tsx src/scripts/audit_period.ts [leagueId]
  */
 import { prisma } from "../db/prisma.js";
-import { buildIlWindows, wasOnIlAtPeriodStart } from "../lib/ilWindows.js";
+import { buildIlWindows, wasOnIlAtPeriodStart, ilEventsQuery } from "../lib/ilWindows.js";
 
 const PITCHER_CODES = new Set(["P", "SP", "RP", "CL", "TWP"]);
 
@@ -32,11 +32,7 @@ async function main() {
   });
 
   const rosterPlayerIds = [...new Set(rosters.map(r => r.playerId))];
-  const ilEvents = await prisma.transactionEvent.findMany({
-    where: { playerId: { in: rosterPlayerIds }, transactionType: { in: ["IL_STASH", "IL_ACTIVATE"] }, effDate: { not: null } },
-    select: { playerId: true, transactionType: true, effDate: true },
-    orderBy: [{ effDate: "asc" }, { id: "asc" }],
-  });
+  const ilEvents = await prisma.transactionEvent.findMany(ilEventsQuery(leagueId, rosterPlayerIds));
   const ilWindowsByPlayer = buildIlWindows(ilEvents);
 
   type Acc = { R: number; HR: number; RBI: number; SB: number; H: number; AB: number; W: number; S: number; K: number; ER: number; IP: number; BB_H: number };

@@ -2,7 +2,7 @@
 import { prisma } from "../../../db/prisma.js";
 import { POINTS_CANDIDATES } from "../../../constants/stats.js";
 import { isPosGamesRecord } from "../../../lib/jsonGuards.js";
-import { buildIlWindows, IL_WINDOW_EVENT_TYPES } from "../../../lib/ilWindows.js";
+import { buildIlWindows, ilEventsQuery } from "../../../lib/ilWindows.js";
 import type { RosterHubResponse } from "@shared/api/teams.js";
 
 const POS_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P", "SP", "RP", "IL"];
@@ -301,16 +301,7 @@ export class TeamService {
         select: { id: true, name: true, status: true, startDate: true, endDate: true },
         orderBy: { startDate: "asc" },
       });
-      const ilEvents = await prisma.transactionEvent.findMany({
-        where: {
-          leagueId: summary.team.leagueId,
-          playerId: { in: ilRows.map((r) => r.playerId) },
-          transactionType: { in: [...IL_WINDOW_EVENT_TYPES] },
-          effDate: { not: null },
-        },
-        select: { playerId: true, transactionType: true, effDate: true },
-        orderBy: { effDate: "asc" },
-      });
+      const ilEvents = await prisma.transactionEvent.findMany(ilEventsQuery(summary.team.leagueId, ilRows.map((r) => r.playerId)));
       const windows = buildIlWindows(ilEvents);
       for (const r of ilRows) {
         const open = (windows.get(r.playerId) ?? []).filter((w) => w.endDate === null).pop();

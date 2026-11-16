@@ -31,7 +31,7 @@ import { fileURLToPath } from "node:url";
 import { prisma } from "../db/prisma.js";
 import { computeCategoryRows, computeStandingsFromStats } from "../features/standings/services/standingsService.js";
 import { TWO_WAY_PLAYERS, playerStatRoles } from "../lib/sportConfig.js";
-import { buildIlWindows, wasOnIlAtPeriodStart, type IlWindow } from "../lib/ilWindows.js";
+import { buildIlWindows, wasOnIlAtPeriodStart, type IlWindow, ilEventsQuery } from "../lib/ilWindows.js";
 
 export type Accum = {
   R: number; HR: number; RBI: number; SB: number; H: number; AB: number;
@@ -167,15 +167,7 @@ async function main() {
   // IL_STASH/IL_ACTIVATE TransactionEvent rows so closed-period attribution
   // doesn't depend on the CURRENT `assignedPosition` value.
   const rosterPlayerIds = [...new Set(rosters.map((r) => r.playerId))];
-  const ilEvents = await prisma.transactionEvent.findMany({
-    where: {
-      playerId: { in: rosterPlayerIds },
-      transactionType: { in: ["IL_STASH", "IL_ACTIVATE"] },
-      effDate: { not: null },
-    },
-    select: { playerId: true, transactionType: true, effDate: true },
-    orderBy: [{ effDate: "asc" }, { id: "asc" }],
-  });
+  const ilEvents = await prisma.transactionEvent.findMany(ilEventsQuery(leagueId, rosterPlayerIds));
   const ilWindowsByPlayer = buildIlWindows(ilEvents);
 
   const teamAccum = new Map<number, Accum>(teams.map((t) => [t.id, zeroAccum()]));

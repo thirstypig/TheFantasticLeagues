@@ -2,7 +2,7 @@
 import { normCode } from "../../../lib/utils.js";
 import { prisma } from "../../../db/prisma.js";
 import { TWO_WAY_PLAYERS, playerStatRoles } from "../../../lib/sportConfig.js";
-import { buildIlWindows, wasOnIlAtPeriodStart, type IlWindow } from "../../../lib/ilWindows.js";
+import { buildIlWindows, ilEventsQuery, wasOnIlAtPeriodStart, type IlWindow } from "../../../lib/ilWindows.js";
 import { clampToPeriod, overlapsPeriod, ownedOn } from "../../../lib/rosterWindow.js";
 import { getLeagueCategories, getCategoryValue } from "../lib/categoryEngine.js";
 import { onStatsChanged } from "../../../lib/statsChanged.js";
@@ -456,16 +456,8 @@ function loadOverlappingRosters(leagueId: number, from: Date, to: Date): Promise
   });
 }
 
-function loadIlEvents(playerIds: number[]) {
-  return prisma.transactionEvent.findMany({
-    where: {
-      playerId: { in: playerIds },
-      transactionType: { in: ["IL_STASH", "IL_ACTIVATE"] },
-      effDate: { not: null },
-    },
-    select: { playerId: true, transactionType: true, effDate: true },
-    orderBy: [{ effDate: "asc" }, { id: "asc" }],
-  });
+function loadIlEvents(leagueId: number, playerIds: number[]) {
+  return prisma.transactionEvent.findMany(ilEventsQuery(leagueId, playerIds));
 }
 
 function loadDailyStats(playerIds: number[], from: Date, to: Date): Promise<DailyStatLine[]> {
@@ -617,7 +609,7 @@ export async function computeTeamStatsFromDb(
   // not retroactively applied to periods when they were active.
   const rosterPlayerIds = [...new Set(rosters.map(r => r.playerId))];
   const [ilEvents, periodStatCount] = await Promise.all([
-    loadIlEvents(rosterPlayerIds),
+    loadIlEvents(leagueId, rosterPlayerIds),
     prisma.playerStatsPeriod.count({ where: { periodId } }),
   ]);
   const ilWindowsByPlayer = buildIlWindows(ilEvents);
@@ -933,7 +925,7 @@ async function computeTeamStatsForPeriods(
   const dailyPlayerIds = [...new Set(dailyPeriods.flatMap(p => p.route.dailyRosters.map(r => r.playerId)))];
 
   const [ilEvents, dailyStats] = await Promise.all([
-    loadIlEvents(ilPlayerIds),
+    loadIlEvents(leagueId, ilPlayerIds),
     dailyPeriods.length > 0
       ? loadDailyStats(
           dailyPlayerIds,
