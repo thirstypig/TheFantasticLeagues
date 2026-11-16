@@ -14,6 +14,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Glass, SectionLabel, Chip } from "../../../components/aurora/atoms";
 import "../wireList.css";
+import { ListHelp } from "../../../components/shared/ListHelp";
 import { CommissionerOnly } from "../../../components/shared/CommissionerOnly";
 import { ApiError } from "../../../api/base";
 import { getTeams } from "../../../api";
@@ -222,7 +223,7 @@ function WireListCommissionerPageBody() {
     return (
       <Glass>
         <div style={{ padding: 24 }}>
-          <SectionLabel>Wire List · Commissioner</SectionLabel>
+          <SectionLabel>List <ListHelp kind="wire" /> · Commissioner</SectionLabel>
           <div style={{ marginTop: 12, fontSize: 15, color: "var(--am-text-muted)" }}>
             No waiver periods yet. Create one to get started.
           </div>
@@ -251,7 +252,7 @@ function WireListCommissionerPageBody() {
       <div style={{ padding: 24 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
           <div>
-            <SectionLabel>Wire List · Commissioner</SectionLabel>
+            <SectionLabel>List <ListHelp kind="wire" /> · Commissioner</SectionLabel>
             <div style={{ fontFamily: "var(--am-display)", fontSize: 17, color: "var(--am-text)", marginTop: 4 }}>
               Period #{period.id} · {new Date(period.deadlineAt).toLocaleString()}
             </div>

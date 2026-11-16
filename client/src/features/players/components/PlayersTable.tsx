@@ -73,7 +73,7 @@ function Action({
   if (!owned) {
     if (pendingPeriodId == null) return null;
     if (listedIds.has(row.id)) {
-      return <button type="button" className="pt-btn pt-btn-done" disabled>On Wire List</button>;
+      return <button type="button" className="pt-btn pt-btn-done" disabled>On List</button>;
     }
     const add = async () => {
       setBusy(true);
@@ -88,7 +88,7 @@ function Action({
     };
     return (
       <span className="pt-action">
-        <button type="button" className="pt-btn" disabled={busy} onClick={add}>+ Wire List</button>
+        <button type="button" className="pt-btn" disabled={busy} onClick={add}>+ List</button>
         {error && <span role="alert" className="pt-error">{error}</span>}
       </span>
     );

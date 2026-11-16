@@ -18,6 +18,7 @@ import AddPicker from "../components/AddPicker";
 import DropPicker from "../components/DropPicker";
 import type { SlotChange } from "@shared/api/rosterMoves";
 import "../wireList.css";
+import { ListHelp } from "../../../components/shared/ListHelp";
 
 // ─── Page ────────────────────────────────────────────────────────────
 
@@ -97,7 +98,7 @@ export default function WireListOwnerPage() {
       <div style={{ padding: 24 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
           <div>
-            <SectionLabel>Waiver Wire List</SectionLabel>
+            <SectionLabel>Waiver List <ListHelp kind="wire" /></SectionLabel>
             <div style={{ fontFamily: "var(--am-display)", fontSize: 17, color: "var(--am-text)", marginTop: 4 }}>
               Locks {formatDeadline(period.deadlineAt)}
             </div>

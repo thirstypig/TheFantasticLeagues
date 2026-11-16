@@ -115,13 +115,13 @@ describe("Players page", () => {
     expect(within(row).getByText(".500")).toBeInTheDocument();
   });
 
-  it("+ Wire List posts to the pending period and then shows On Wire List", async () => {
+  it("+ List posts to the pending period and then shows On List", async () => {
     renderPage();
     await screen.findByText("Free Outfielder");
     const row = screen.getByText("Free Outfielder").closest("tr")!;
-    fireEvent.click(await within(row).findByRole("button", { name: "+ Wire List" }));
+    fireEvent.click(await within(row).findByRole("button", { name: "+ List" }));
     await waitFor(() => expect(localApi.addToWireList).toHaveBeenCalledWith(3, 1, 1));
-    expect(await within(row).findByRole("button", { name: "On Wire List" })).toBeDisabled();
+    expect(await within(row).findByRole("button", { name: "On List" })).toBeDisabled();
   });
 
   const apiErr = async (status: number, code?: string) => {
@@ -132,37 +132,37 @@ describe("Players page", () => {
     renderPage();
     await screen.findByText("Free Outfielder");
     const row = screen.getByText("Free Outfielder").closest("tr")!;
-    fireEvent.click(await within(row).findByRole("button", { name: "+ Wire List" }));
+    fireEvent.click(await within(row).findByRole("button", { name: "+ List" }));
     return row;
   };
 
-  it("409 DUPLICATE_PLAYER is treated as On Wire List", async () => {
+  it("409 DUPLICATE_PLAYER is treated as On List", async () => {
     vi.mocked(localApi.addToWireList).mockRejectedValue(await apiErr(409, "DUPLICATE_PLAYER"));
     const row = await clickAdd();
-    expect(await within(row).findByRole("button", { name: "On Wire List" })).toBeDisabled();
+    expect(await within(row).findByRole("button", { name: "On List" })).toBeDisabled();
   });
 
   it("409 DUPLICATE_PRIORITY shows the error and leaves the button usable", async () => {
     vi.mocked(localApi.addToWireList).mockRejectedValue(await apiErr(409, "DUPLICATE_PRIORITY"));
     const row = await clickAdd();
     expect(await within(row).findByRole("alert")).toBeInTheDocument();
-    expect(within(row).getByRole("button", { name: "+ Wire List" })).toBeEnabled();
-    expect(within(row).queryByRole("button", { name: "On Wire List" })).toBeNull();
+    expect(within(row).getByRole("button", { name: "+ List" })).toBeEnabled();
+    expect(within(row).queryByRole("button", { name: "On List" })).toBeNull();
   });
 
   it("a 500 shows the error and leaves the button usable", async () => {
     vi.mocked(localApi.addToWireList).mockRejectedValue(await apiErr(500));
     const row = await clickAdd();
     expect(await within(row).findByRole("alert")).toBeInTheDocument();
-    expect(within(row).getByRole("button", { name: "+ Wire List" })).toBeEnabled();
+    expect(within(row).getByRole("button", { name: "+ List" })).toBeEnabled();
   });
 
-  it("seeds On Wire List from the owner's existing adds after a reload", async () => {
+  it("seeds On List from the owner's existing adds after a reload", async () => {
     vi.mocked(localApi.getWireListAddedPlayerIds).mockResolvedValue([1]);
     renderPage();
     await screen.findByText("Free Outfielder");
     const row = screen.getByText("Free Outfielder").closest("tr")!;
-    expect(await within(row).findByRole("button", { name: "On Wire List" })).toBeDisabled();
+    expect(await within(row).findByRole("button", { name: "On List" })).toBeDisabled();
     expect(localApi.getWireListAddedPlayerIds).toHaveBeenCalledWith(3, 1);
   });
 
@@ -191,10 +191,10 @@ describe("Players page", () => {
     expect(screen.getByText("Minor Leaguer")).toBeInTheDocument();
   });
 
-  it("no + Wire List when no pending period", async () => {
+  it("no + List when no pending period", async () => {
     vi.mocked(localApi.getPendingWirePeriodId).mockResolvedValue(null);
     renderPage();
     await screen.findByText("Free Outfielder");
-    expect(screen.queryByRole("button", { name: "+ Wire List" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "+ List" })).toBeNull();
   });
 });
