@@ -159,6 +159,23 @@ describe("OwnerMeetingPage", () => {
     expect(screen.queryByRole("button", { name: "Submit move" })).toBeNull();
   });
 
+  it("a running session is not shown as live, and no tone plays, until the period lookup settles", async () => {
+    const ctx = vi.fn(function () {});
+    (window as unknown as { AudioContext: unknown }).AudioContext = ctx;
+    let settle: (v: { name: string; status: string }) => void = () => {};
+    m.getMeetingPeriod.mockImplementation(() => new Promise((res) => { settle = res; }));
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 1, turnEndsAt: IN_ONE_MIN() }), { periodId: 8 }));
+    renderPage();
+    expect(await screen.findByText("No meeting right now.")).toBeTruthy();
+    await waitFor(() => expect(m.getMeetingPeriod).toHaveBeenCalledWith(7, 8));
+    expect(screen.queryByText("You're up")).toBeNull();
+    await act(async () => { settle({ name: "Period 8", status: "active" }); });
+    expect(screen.getByText("No meeting right now.")).toBeTruthy();
+    expect(screen.queryByText("You're up")).toBeNull();
+    expect(ctx).not.toHaveBeenCalled();
+    delete (window as unknown as { AudioContext?: unknown }).AudioContext;
+  });
+
   it("pass calls passTurn with the version", async () => {
     m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 1, turnEndsAt: IN_ONE_MIN() }), { version: 4 }));
     m.passTurn.mockResolvedValue(sessionResponse(state({ turnIndex: 2 }), { version: 5 }));

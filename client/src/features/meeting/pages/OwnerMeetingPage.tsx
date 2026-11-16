@@ -53,10 +53,14 @@ export function OwnerMeetingPage() {
   const s = session?.state;
   const period = useMeetingPeriod(leagueId, session?.periodId ?? null);
   // A session whose period is no longer pending was left open for an earlier period: not live.
-  const live = !!s && (s.status === "running" || s.status === "paused") && !period.stale;
+  // Wait for the period lookup (settled = found, not found, or failed) so a leftover
+  // session can't flash as live or fire the turn cue for one fetch.
+  const live = !!s && (s.status === "running" || s.status === "paused") && period.settled && !period.stale;
   const place = s && teamId != null ? placeInOrder(s, teamId) : null;
   const myTurn = live && !!place?.onClock && s?.status === "running";
-  useTurnCue(data != null && teamId != null, myTurn && s ? `${session?.id}.${s.round}.${s.turnIndex}` : null);
+  // Ready also waits for the period lookup: `live` is held false until it settles, so
+  // the first settled read must count as the baseline, not a flip into my turn.
+  useTurnCue(data != null && teamId != null && (session == null || period.settled), myTurn && s ? `${session?.id}.${s.round}.${s.turnIndex}` : null);
 
   const title = `${period.name ?? "Period"} meeting`;
 

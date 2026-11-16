@@ -117,4 +117,28 @@ describe("LeagueProvider", () => {
     fetchMock.mockReset();
     fetchMock.mockImplementation(async () => ({}) as never);
   });
+
+  it("a failed rules refresh keeps the rules it already has", async () => {
+    const fetchMock = vi.mocked(fetchJsonApi);
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith("/rules") ? ({ rules: [{ category: "meeting", key: "live", value: "true" }] } as never) : ({} as never),
+    );
+    function RulesProbe() {
+      const { leagueRules } = useLeague();
+      return <p data-testid="live">{leagueRules === null ? "loading" : leagueRules.meeting?.live ?? "none"}</p>;
+    }
+    auth.user = { id: 1, memberships: [member(9)] };
+    render(<LeagueProvider><RulesProbe /></LeagueProvider>);
+    await waitFor(() => expect(screen.getByTestId("live").textContent).toBe("true"));
+
+    const calls = fetchMock.mock.calls.length;
+    fetchMock.mockImplementation(async () => { throw new Error("offline"); });
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
+    await act(async () => { document.dispatchEvent(new Event("visibilitychange")); });
+    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(calls));
+    await act(async () => {});
+    expect(screen.getByTestId("live").textContent).toBe("true");
+    fetchMock.mockReset();
+    fetchMock.mockImplementation(async () => ({}) as never);
+  });
 });

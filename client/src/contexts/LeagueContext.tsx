@@ -210,8 +210,10 @@ export function LeagueProvider({ children }: { children: React.ReactNode }) {
         if (canceled) return;
         // Rules endpoint requires league membership; non-members will 403 here.
         // Fail-to-empty so consumers can still render — they'll treat missing
-        // toggles as "off" (their own fail-closed default).
-        setLeagueRules({});
+        // toggles as "off" (their own fail-closed default). A failed refresh of
+        // a map we already have (e.g. a phone back on the tab with no network)
+        // keeps it: wiping it would flip meeting.live and owner_self_serve off.
+        setLeagueRules((prev) => prev ?? {});
       });
     return () => { canceled = true; };
   }, [user, leagueId, rulesTick]);
