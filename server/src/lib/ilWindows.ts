@@ -12,10 +12,13 @@ export type IlWindow = { startDate: Date; endDate: Date | null };
 
 /**
  * Builds per-player IL windows from a pre-sorted (by effDate asc) event list.
- * Single-pass: tracks open stints in a side map; closes them on IL_ACTIVATE.
- * Events must arrive globally sorted by effDate — both call sites query with
- * `orderBy: { effDate: "asc" }`, which guarantees per-player ordering is
- * preserved in the globally sorted stream.
+ * Single-pass: tracks open stints in a side map; closes them on IL_ACTIVATE
+ * (and on IL_RELEASE / DROP, when the caller loads those types).
+ * Events must arrive globally sorted by effDate, with `id` breaking ties —
+ * callers query with `orderBy: [{ effDate: "asc" }, { id: "asc" }]`. The
+ * tie-break matters: a same-day IL_STASH + IL_ACTIVATE pair closes the stint
+ * only in that order; reversed, the ACTIVATE is an orphan and the stint stays
+ * open forever (todo #305). A global sort preserves each player's order.
  */
 export function buildIlWindows(
   events: { playerId: number | null; transactionType: string | null; effDate: Date | null }[],
