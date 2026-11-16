@@ -132,3 +132,25 @@ Audited against the code. **Option 1 shipped in full** — this todo's "Proposed
 
 **Do not close this as done on the strength of the implementation table above** — an untested
 concurrency guard is the kind that works until the day it matters.
+
+### 2026-11-15 — Conflict path tested, If-Match required, one real bug fixed
+
+- **Bug found while testing:** `Team.tsx` sent the batch-start `rosterVersion` on BOTH halves of a
+  swap. The first PATCH bumps the counter, so the second always 409'd (half-applied swap, then a
+  "changed by another tab" reload). Now each call sends the version returned by the previous PATCH;
+  a swap that follows a claim/IL change in the same batch sends `If-Match: *` (those routes bump
+  the counter without returning it).
+- **409 no longer silently succeeds:** `saveFn` used to `return` on 409, which `usePendingChanges`
+  treats as success and drops the queued changes. It now throws, so the queue is kept and the
+  error banner shows after the hub reloads.
+- **If-Match is REQUIRED** on `PATCH /api/teams/:teamId/roster/:rosterId` (the only endpoint that
+  calls `checkRosterVersion`): missing header returns 428, stale returns 409, `*` matches any.
+  Callers audited: Team.tsx and MobileTeam.tsx send the real version; TeamLegacy, DraftReportPage,
+  RosterGrid and TeamRosterManager have no hub version and send `*`. No caller in server/,
+  mcp-servers/ or scripts/.
+- **Tests:** server `rosterVersionGuard.test.ts`, `rosterPatchVersion.test.ts`; client
+  `Team.rosterConflict.test.tsx`, `rosterVersionApi.test.ts`, two cases in `MobileTeam.test.tsx`.
+  Server 409/428 paths mutation-checked (break, fail, restore).
+- **Still open:** the two-tab browser smoke (controller). Known gap: the version check runs before
+  the transaction, so two PATCHes landing within milliseconds can both pass; a conditional
+  `updateMany({ where: { id, rosterVersion } })` inside the tx would close it.

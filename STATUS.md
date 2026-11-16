@@ -40,7 +40,7 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 
 ## Open bugs / known issues
 - 2026 final vs OnRoto (Kent's workbook): P1–P3, P5, P6 exact; P4 and P7 each have one ±1 pair (DDG/RGS, RGS/The Show). Final order identical.
-- Todos #181 (stale roster across tabs), #304 (cache cleanup), #305 (first standings load after a stats sync takes ~1.3s)
+- Todos #304 (cache cleanup), #305 (first standings load after a stats sync takes ~1.3s)
 
 ## Next phases (in order)
 1. UX G: live meeting with a clock
