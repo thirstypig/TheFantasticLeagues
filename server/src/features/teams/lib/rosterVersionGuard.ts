@@ -15,23 +15,31 @@ type Tx = Omit<PrismaClient, ITXClientDenyList>;
 
 /**
  * Check the `If-Match` header against the team's current `rosterVersion`.
- * Returns `{ stale: true, current }` when the versions diverge, or
- * `{ stale: false }` otherwise.
  *
- * The header is **optional for now** — callers without it are allowed
- * through (maintains backwards compatibility during rollout).
+ * - `{ missing: true }`: no header was sent. The caller must answer 428; a
+ *   write with no version token would silently clobber another tab's changes.
+ * - `{ stale: true, current }`: the token is not the team's current version.
+ *   The caller must answer 409 and hand back `current` so the client can reload.
+ * - `{ stale: false }`: the write may proceed.
+ *
+ * `If-Match: *` is the standard HTTP "match any current version" token. It is
+ * for single-row edits made from screens that never loaded the roster hub (the
+ * classic team page, the draft report, the commissioner grid). Those callers
+ * have no version to send, and they were last-writer-wins before this guard.
  */
 export async function checkRosterVersion(
   teamId: number,
   ifMatch: string | undefined,
-): Promise<{ stale: true; current: number } | { stale: false }> {
-  if (!ifMatch) return { stale: false };
+): Promise<{ missing: true } | { stale: true; current: number } | { stale: false }> {
+  const token = ifMatch?.trim().replace(/^"(.*)"$/, "$1");
+  if (!token) return { missing: true };
+  if (token === "*") return { stale: false };
   const team = await prisma.team.findUnique({
     where: { id: teamId },
     select: { rosterVersion: true },
   });
   const current = team?.rosterVersion ?? 0;
-  if (String(current) !== ifMatch) return { stale: true, current };
+  if (String(current) !== token) return { stale: true, current };
   return { stale: false };
 }
 

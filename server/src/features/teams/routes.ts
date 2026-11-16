@@ -640,9 +640,14 @@ router.patch(
       });
     }
 
-    // Optimistic-concurrency guard (todo #181): reject stale writes.
-    // The If-Match header is optional during rollout — absent callers pass through.
+    // Optimistic-concurrency guard (todo #181). If-Match is required: a write
+    // with no version token would silently overwrite another tab's changes.
     const guard = await checkRosterVersion(teamId, req.headers["if-match"] as string | undefined);
+    if ("missing" in guard) {
+      return res.status(428).json({
+        error: "This change needs the roster version you last loaded. Reload the page and try again.",
+      });
+    }
     if (guard.stale) {
       return res.status(409).json({
         error: "Roster changed since you last loaded it",
