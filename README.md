@@ -179,7 +179,7 @@ Notable surfaces:
 
 **Phase:** In-Season 2026 - Engagement & Remote UX (April - September 2026)
 
-**Next 3 to-dos** (5 open):
+**Next 3 to-dos** (4 open):
 
 - `312` **P2** — standings il stint never closed by drop or release
 - `313` **P2** — standings il events not filtered by league
