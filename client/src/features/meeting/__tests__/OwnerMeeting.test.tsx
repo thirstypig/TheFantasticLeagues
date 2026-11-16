@@ -137,6 +137,64 @@ describe("OwnerMeetingPage", () => {
     delete (window as unknown as { AudioContext?: unknown }).AudioContext;
   });
 
+  it("pass calls passTurn with the version", async () => {
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 1, turnEndsAt: IN_ONE_MIN() }), { version: 4 }));
+    m.passTurn.mockResolvedValue(sessionResponse(state({ turnIndex: 2 }), { version: 5 }));
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Pass" }));
+    await waitFor(() => expect(m.passTurn).toHaveBeenCalledWith(55, { teamId: 1, version: 4 }));
+  });
+
+  it("shows a server error inline", async () => {
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 1, turnEndsAt: IN_ONE_MIN() })));
+    m.passTurn.mockRejectedValue(new Error("It isn't your turn"));
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Pass" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("It isn't your turn");
+  });
+
+  it("no tone when my team resolves after the first poll", async () => {
+    const ctx = vi.fn(function () {});
+    (window as unknown as { AudioContext: unknown }).AudioContext = ctx;
+    vi.useFakeTimers();
+    league.value = { leagueId: 7, myTeamId: null };
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 1, turnEndsAt: IN_ONE_MIN() })));
+    renderPage();
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    league.value = { leagueId: 7, myTeamId: 1 };
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 1, turnEndsAt: IN_ONE_MIN() }), { version: 2 }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(document.title).toBe("You're up · Meeting");
+    expect(ctx).not.toHaveBeenCalled();
+    delete (window as unknown as { AudioContext?: unknown }).AudioContext;
+  });
+
+  it("pause and resume on my turn does not replay the tone", async () => {
+    const start = vi.fn();
+    const ctx = vi.fn(function () {
+      return {
+        createOscillator: () => ({ connect: vi.fn(), start, stop: vi.fn(), frequency: { value: 0 }, type: "sine" }),
+        createGain: () => ({ connect: vi.fn(), gain: { value: 0 } }),
+        destination: {}, currentTime: 0, close: vi.fn(), resume: vi.fn(),
+      };
+    });
+    (window as unknown as { AudioContext: unknown }).AudioContext = ctx;
+    vi.useFakeTimers();
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 0, turnEndsAt: IN_ONE_MIN() })));
+    renderPage();
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 1, turnEndsAt: IN_ONE_MIN() }), { version: 2 }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(start).toHaveBeenCalledTimes(1);
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ status: "paused", turnIndex: 1, pausedRemainingMs: 30000 }), { version: 3 }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 1, turnEndsAt: IN_ONE_MIN() }), { version: 4 }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(document.title).toBe("You're up · Meeting");
+    delete (window as unknown as { AudioContext?: unknown }).AudioContext;
+  });
+
   it("restores the title on unmount", async () => {
     const original = document.title;
     m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 1, turnEndsAt: IN_ONE_MIN() })));
@@ -203,11 +261,35 @@ describe("MeetingLiveBanner", () => {
     expect(await screen.findByText("Period meeting is live: you're 2nd")).toBeTruthy();
   });
 
-  it("stops polling when there is no session", async () => {
+  function setVisibility(v: "visible" | "hidden") {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => v });
+  }
+
+  it("polls at 30s while visible, not at all while hidden, and appears once live", async () => {
     vi.useFakeTimers();
     m.getCurrentMeeting.mockResolvedValue(sessionResponse(null, { version: 0 }));
-    renderBanner();
-    await act(async () => { await vi.advanceTimersByTimeAsync(10_000); });
+    const { container } = renderBanner();
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
     expect(m.getCurrentMeeting).toHaveBeenCalledTimes(1);
+    await act(async () => { await vi.advanceTimersByTimeAsync(29_000); });
+    expect(m.getCurrentMeeting).toHaveBeenCalledTimes(1);
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnIndex: 0 }), { version: 1 }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+    expect(m.getCurrentMeeting).toHaveBeenCalledTimes(2);
+    expect(container.textContent).toContain("Period meeting is live: you're 2nd");
+
+    // Hidden: an idle chain does not poll.
+    vi.useRealTimers();
+    vi.useFakeTimers();
+    m.getCurrentMeeting.mockReset();
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(null, { version: 0 }));
+    setVisibility("hidden");
+    const hidden = renderBanner();
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(m.getCurrentMeeting).toHaveBeenCalledTimes(1);
+    await act(async () => { await vi.advanceTimersByTimeAsync(120_000); });
+    expect(m.getCurrentMeeting).toHaveBeenCalledTimes(1);
+    hidden.unmount();
+    setVisibility("visible");
   });
 });

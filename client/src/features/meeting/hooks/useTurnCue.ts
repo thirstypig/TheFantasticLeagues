@@ -18,31 +18,45 @@ function playTone(): void {
     gain.connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + 0.25);
-    osc.onended = () => void ctx.close?.();
+    void ctx.resume?.();
+    const close = () => {
+      try {
+        void ctx.close?.();
+      } catch {
+        /* already closed */
+      }
+    };
+    osc.onended = close;
+    setTimeout(close, 1000); // fallback so a context can't leak if onended never fires
   } catch {
     /* no sound is fine */
   }
 }
 
 /**
- * The "you're up" cue: the tab title while it is my turn, and one tone when a
- * poll flips to my turn. No tone on the first loaded state (a reload mid-turn).
+ * The "you're up" cue, keyed on the turn (`${round}.${turnIndex}` while it is my
+ * turn and running, else null). The tab title shows while the key is set; one
+ * tone plays when the key changes to a new turn after a ready state was seen.
+ * `ready` means both the meeting and my team are known, so a late-resolving
+ * league context can't read as a flip. Pause/resume keeps the key, no replay.
  */
-export function useTurnCue(ready: boolean, myTurn: boolean): void {
-  const prev = useRef<boolean | null>(null);
+export function useTurnCue(ready: boolean, turnKey: string | null): void {
+  const seen = useRef(false);
+  const last = useRef<string | null>(null);
 
   useEffect(() => {
     if (!ready) return;
-    if (prev.current === false && myTurn) playTone();
-    prev.current = myTurn;
-  }, [ready, myTurn]);
+    if (seen.current && turnKey !== null && turnKey !== last.current) playTone();
+    if (turnKey !== null) last.current = turnKey;
+    seen.current = true;
+  }, [ready, turnKey]);
 
   useEffect(() => {
-    if (!myTurn) return;
+    if (turnKey === null) return;
     const original = document.title;
     document.title = TITLE;
     return () => {
       document.title = original;
     };
-  }, [myTurn]);
+  }, [turnKey]);
 }

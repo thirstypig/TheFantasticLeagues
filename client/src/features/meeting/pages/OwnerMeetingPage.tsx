@@ -53,7 +53,7 @@ export function OwnerMeetingPage() {
   const live = !!s && (s.status === "running" || s.status === "paused");
   const place = s && teamId != null ? placeInOrder(s, teamId) : null;
   const myTurn = live && !!place?.onClock && s?.status === "running";
-  useTurnCue(data != null, myTurn);
+  useTurnCue(data != null && teamId != null, myTurn && s ? `${s.round}.${s.turnIndex}` : null);
 
   const nameOf = (id: number) => teams.find((t) => t.id === id)?.name ?? `Team ${id}`;
 
@@ -70,7 +70,6 @@ export function OwnerMeetingPage() {
     body = (
       <Live
         session={session}
-        data={data}
         skew={skew}
         teamId={teamId}
         leagueId={leagueId}
@@ -92,9 +91,8 @@ export function OwnerMeetingPage() {
 
 type Session = NonNullable<MeetingSessionResponse["session"]>;
 
-function Live({ session, data, skew, teamId, leagueId, nameOf, place, myTurn, act }: {
+function Live({ session, skew, teamId, leagueId, nameOf, place, myTurn, act }: {
   session: Session;
-  data: MeetingSessionResponse;
   skew: number;
   teamId: number;
   leagueId: number;
@@ -107,7 +105,6 @@ function Live({ session, data, skew, teamId, leagueId, nameOf, place, myTurn, ac
   const paused = s.status === "paused";
   const current = s.order[s.turnIndex];
   const mine = s.moves.filter((mv) => mv.teamId === teamId);
-  void data;
 
   const clock = <Countdown turnEndsAt={s.turnEndsAt} pausedRemainingMs={s.pausedRemainingMs} skew={skew} />;
 
