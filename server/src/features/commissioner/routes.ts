@@ -28,6 +28,7 @@ import {
   BulkIlStashRequestSchema,
   CleanupDroppedRequestSchema,
 } from "../../../../shared/api/commissioner.js";
+import { incrementRosterVersion } from "../../lib/rosterVersion.js";
 
 // --- Zod Schemas ---
 
@@ -861,9 +862,13 @@ router.patch(
       }
     }
 
-    const updated = await prisma.roster.update({
-      where: { id: rosterId },
-      data: updates,
+    const updated = await prisma.$transaction(async (tx) => {
+      const row = await tx.roster.update({
+        where: { id: rosterId },
+        data: updates,
+      });
+      await incrementRosterVersion(roster.teamId, tx); // todo #181
+      return row;
     });
 
     writeAuditLog({
@@ -1469,6 +1474,7 @@ router.post(
           transactionType: "DROP",
         },
       });
+      await incrementRosterVersion(teamId, tx); // todo #181
     }, { timeout: 30_000 });
 
     writeAuditLog({

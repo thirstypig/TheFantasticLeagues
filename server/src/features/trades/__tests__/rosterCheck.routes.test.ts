@@ -121,6 +121,7 @@ describe("POST /:id/process roster checks", () => {
     mockTx.roster.create.mockResolvedValue({});
     mockTx.player.findUnique.mockResolvedValue({ posPrimary: "OF" });
     mockTx.trade.update.mockResolvedValue({});
+    mockTx.team.update.mockResolvedValue({ rosterVersion: 1 }); // incrementRosterVersion (todo #181)
   }
 
   it("IL rows do not count toward the cap", async () => {
@@ -155,6 +156,24 @@ describe("POST /:id/process roster checks", () => {
     expect(res.status).toBe(200);
     expect(mockTx.roster.update).toHaveBeenCalled();
     expect(mockTx.trade.update).toHaveBeenCalled();
+  });
+
+  it("process bumps rosterVersion for BOTH teams of every player moved, inside the transaction (todo #181)", async () => {
+    mockPrisma.trade.findUnique.mockResolvedValue(trade(oneForOne)); // 100: 1->2, 200: 2->1
+    seedProcess();
+    seedDb(mockTx, [...rows(1, 100, 22), ...rows(2, 200, 23)]);
+    const res = await supertest(app).post("/9/process").send({});
+    expect(res.status).toBe(200);
+    const bumped = mockTx.team.update.mock.calls
+      .filter((c: any[]) => c[0]?.data?.rosterVersion)
+      .map((c: any[]) => c[0]);
+    expect(bumped).toHaveLength(4); // 2 players x (sender + recipient)
+    for (const arg of bumped) {
+      expect(arg.data).toEqual({ rosterVersion: { increment: 1 } });
+    }
+    expect(bumped.map((a: any) => a.where.id).sort()).toEqual([1, 1, 2, 2]);
+    // It ran on the tx client, not the global prisma.
+    expect((mockPrisma.team as any).update).toBeUndefined();
   });
 
   it("process rejects a trade whose player left the sender", async () => {

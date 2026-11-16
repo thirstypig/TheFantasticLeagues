@@ -1049,6 +1049,7 @@ describe("response envelope echoes mlbId + name (#194)", () => {
     mockPrisma.roster.findFirst.mockResolvedValue(null);
     mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
     mockPrisma.player.findUnique.mockResolvedValue({ mlbId: 545361, name: "Mike Trout" });
+    mockTx.team.update.mockResolvedValueOnce({ rosterVersion: 41 });
 
     const res = await supertest(app).post("/transactions/claim").send({
       leagueId: 1, teamId: 10, playerId: 100,
@@ -1057,6 +1058,11 @@ describe("response envelope echoes mlbId + name (#194)", () => {
     expect(res.status).toBe(200);
     expect(res.body.mlbId).toBe(545361);
     expect(res.body.name).toBe("Mike Trout");
+    // todo #181: the in-tx bumped version is returned so the client can chain If-Match.
+    expect(res.body.rosterVersion).toBe(41);
+    expect(mockTx.team.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 10 }, data: { rosterVersion: { increment: 1 } } }),
+    );
   });
 
   it("POST /transactions/il-stash echoes stashMlbId + stashName (stash-only mode)", async () => {
@@ -1070,12 +1076,14 @@ describe("response envelope echoes mlbId + name (#194)", () => {
     });
     mockPrisma.player.findUnique.mockResolvedValueOnce({ mlbId: 660271, name: "Shohei Ohtani" });
     mockPrisma.league.findUnique.mockResolvedValue({ season: 2026 });
+    mockTx.team.update.mockResolvedValueOnce({ rosterVersion: 52 });
 
     const res = await supertest(app).post("/transactions/il-stash").send({
       leagueId: 1, teamId: 10, stashPlayerId: 42,
     });
 
     expect(res.status).toBe(200);
+    expect(res.body.rosterVersion).toBe(52); // todo #181
     expect(res.body.stashMlbId).toBe(660271);
     expect(res.body.stashName).toBe("Shohei Ohtani");
     expect(res.body.addMlbId).toBeNull();
@@ -1094,6 +1102,7 @@ describe("response envelope echoes mlbId + name (#194)", () => {
     mockTx.roster.findFirst
       .mockResolvedValueOnce({ id: 200, assignedPosition: "IL" })
       .mockResolvedValueOnce({ id: 50, assignedPosition: "OF" });
+    mockTx.team.update.mockResolvedValueOnce({ rosterVersion: 63 });
 
     const res = await supertest(app).post("/transactions/il-activate").send({
       leagueId: 1, teamId: 10,
@@ -1101,6 +1110,7 @@ describe("response envelope echoes mlbId + name (#194)", () => {
     });
 
     expect(res.status).toBe(200);
+    expect(res.body.rosterVersion).toBe(63); // todo #181
     expect(res.body.activateMlbId).toBe(111111);
     expect(res.body.activateName).toBe("Returning Star");
     expect(res.body.dropMlbId).toBe(222222);

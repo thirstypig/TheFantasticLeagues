@@ -50,6 +50,7 @@ import type {
   BulkIlStashFailed,
   CleanupDroppedResponse,
 } from "../../../../../shared/api/commissioner.js";
+import { incrementRosterVersion } from "../../../lib/rosterVersion.js";
 
 /**
  * Detection: which players on this league's active rosters carry an MLB
@@ -251,6 +252,7 @@ async function stashOneIdempotent(args: {
           transactionType: "IL_STASH",
         },
       });
+      await incrementRosterVersion(teamId, tx); // todo #181
     }, { timeout: 30_000 });
 
     return { kind: "stashed" };

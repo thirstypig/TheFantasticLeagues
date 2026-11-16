@@ -23,6 +23,7 @@ const processSchema = z.object({
 }).optional();
 import { sendTradeProposedEmail, sendTradeProcessedEmail, sendTradeVetoedEmail, notifyTeamOwners } from "../../lib/emailService.js";
 import { sendPushToTeamOwners, sendPushToLeague } from "../../lib/pushService.js";
+import { incrementRosterVersion } from "../../lib/rosterVersion.js";
 
 /**
  * Auto-generate AI analysis after a trade is processed.
@@ -568,6 +569,9 @@ router.post("/:id/process", requireAuth, asyncHandler(async (req, res) => {
             assignedPosition: tradePos,
           },
         });
+        // todo #181: both teams' rosters changed; bump both version counters.
+        await incrementRosterVersion(item.senderId, tx);
+        await incrementRosterVersion(item.recipientId, tx);
       } else if (item.assetType === "BUDGET") {
         const budgetAmount = item.amount || 0;
         const senderTeam = await tx.team.findUnique({ where: { id: item.senderId }, select: { budget: true } });
@@ -864,6 +868,9 @@ router.post("/:id/reverse", requireAuth, asyncHandler(async (req, res) => {
           }),
         },
       });
+      // todo #181: both teams' rosters changed; bump both version counters.
+      await incrementRosterVersion(item.senderId, tx);
+      await incrementRosterVersion(item.recipientId, tx);
     }
 
     for (const item of trade.items) {

@@ -8,6 +8,7 @@ import { AuctionImportService } from "../../auction/services/auctionImport.js";
 import { DEFAULT_RULES } from "../../../lib/sportConfig.js";
 import { sendInviteEmail } from "../../../lib/emailService.js";
 import { invalidateLeagueRules } from "../../../lib/leagueRuleCache.js";
+import { incrementRosterVersion } from "../../../lib/rosterVersion.js";
 
 const auctionImportService = new AuctionImportService();
 
@@ -849,7 +850,7 @@ export class CommissionerService {
     return await prisma.$transaction(async (tx) => {
       const priorActive = await tx.roster.findMany({
         where: { playerId: player.id, releasedAt: null, team: { leagueId } },
-        select: { id: true },
+        select: { id: true, teamId: true },
       });
       const excludeIds: number[] = [];
       for (const row of priorActive) {
@@ -858,6 +859,10 @@ export class CommissionerService {
           data: { releasedAt: effective, source: "COMMISSIONER_REASSIGN" },
         });
         excludeIds.push(row.id);
+      }
+      // todo #181: every team that lost or gained the player changed.
+      for (const tid of new Set([teamId, ...priorActive.map((r) => r.teamId)])) {
+        await incrementRosterVersion(tid, tx);
       }
 
       await assertNoOwnershipConflict(tx, {
@@ -910,9 +915,13 @@ export class CommissionerService {
         );
       }
 
-      return await prisma.roster.update({
-        where: { id: rosterId },
-        data: { releasedAt: effective },
+      return await prisma.$transaction(async (tx) => {
+        const row = await tx.roster.update({
+          where: { id: rosterId },
+          data: { releasedAt: effective },
+        });
+        await incrementRosterVersion(r.teamId, tx); // todo #181
+        return row;
       });
     }
 
@@ -922,9 +931,12 @@ export class CommissionerService {
       if (!team || team.leagueId !== leagueId)
         throw new Error("Team not found");
 
-      await prisma.roster.updateMany({
-        where: { teamId, playerId, releasedAt: null },
-        data: { releasedAt: effective },
+      await prisma.$transaction(async (tx) => {
+        await tx.roster.updateMany({
+          where: { teamId, playerId, releasedAt: null },
+          data: { releasedAt: effective },
+        });
+        await incrementRosterVersion(teamId, tx); // todo #181
       });
       return { success: true };
     }
@@ -1262,6 +1274,9 @@ export class CommissionerService {
                 assignedPosition: tradePos,
               },
             });
+            // todo #181: both teams' rosters changed.
+            await incrementRosterVersion(item.senderId, tx);
+            await incrementRosterVersion(item.recipientId, tx);
           }
         } else if (item.assetType === "BUDGET") {
           const transferAmount = item.amount || 0;
