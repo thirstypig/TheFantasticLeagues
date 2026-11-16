@@ -387,21 +387,201 @@ export function rankPoints(
   return { pointsByTeam, rankByTeam };
 }
 
+// --- DB → team stats ---
+//
+// Loading and computing are split so the season view can load EVERY period's
+// rows in one query per table (todo #305) and the single-period view can keep
+// loading one period at a time — both then run the same pure compute below, so
+// the two can never drift apart.
+//
+// Every query that feeds an order-sensitive step carries a unique tie-breaker:
+//   - rosters: `acquiredAt desc, id desc` — the first-wins idiom in
+//     `endOfPeriodOwner`, and the order IP (a float of thirds) is summed in;
+//   - IL events: `effDate asc, id asc` — a same-day IL_STASH + IL_ACTIVATE
+//     pair opens and closes a stint only in that order;
+//   - daily stats: `gameDate asc` (unique per player).
+// Without them Postgres may return tied rows in any order, and a batched query
+// over several periods need not tie-break the same way as a one-period query.
+
+type PeriodBounds = { id: number; startDate: Date; endDate: Date };
+type TeamRef = { id: number; name: string; code: string | null };
+type StatLine = {
+  AB: number; H: number; R: number; HR: number; RBI: number; SB: number;
+  W: number; SV: number; K: number; IP: number; ER: number; BB_H: number;
+};
+type DailyStatLine = StatLine & { playerId: number; gameDate: Date };
+type PeriodStatLine = StatLine & { playerId: number };
+type RosterRow = {
+  teamId: number; playerId: number; acquiredAt: Date; releasedAt: Date | null;
+  assignedPosition: string | null;
+  player: { id: number; mlbId: number | null; posPrimary: string };
+};
+
+const STAT_SELECT = {
+  AB: true, H: true, R: true, HR: true, RBI: true, SB: true,
+  W: true, SV: true, K: true, IP: true, ER: true, BB_H: true,
+} as const;
+
+const ROSTER_SELECT = {
+  teamId: true,
+  playerId: true,
+  acquiredAt: true,
+  releasedAt: true,
+  assignedPosition: true,
+  player: { select: { id: true, mlbId: true, posPrimary: true } },
+} as const;
+
+// DESC by acquiredAt so the "first row wins" idiom in `endOfPeriodOwner`
+// picks the LATEST acquisition for a player — correct for the
+// drop-and-re-add-during-period case. Without this orderBy, Prisma
+// returns rows in undefined order, and an earlier roster row could
+// silently win the attribution over a later one (kieran-typescript
+// and code-simplicity reviews on PR #365 caught this). `id` breaks ties.
+const ROSTER_ORDER = [{ acquiredAt: "desc" as const }, { id: "desc" as const }];
+
+function loadOverlappingRosters(leagueId: number, from: Date, to: Date): Promise<RosterRow[]> {
+  // SQL equivalent of `overlapsPeriod(r, { startDate: from, endDate: to })` from
+  // lib/rosterWindow.ts — acquiredAt <= to AND (releasedAt IS NULL OR releasedAt >= from).
+  return prisma.roster.findMany({
+    where: {
+      team: { leagueId },
+      acquiredAt: { lte: to },
+      OR: [
+        { releasedAt: null },
+        { releasedAt: { gte: from } },
+      ],
+    },
+    select: ROSTER_SELECT,
+    orderBy: ROSTER_ORDER,
+  });
+}
+
+function loadIlEvents(playerIds: number[]) {
+  return prisma.transactionEvent.findMany({
+    where: {
+      playerId: { in: playerIds },
+      transactionType: { in: ["IL_STASH", "IL_ACTIVATE"] },
+      effDate: { not: null },
+    },
+    select: { playerId: true, transactionType: true, effDate: true },
+    orderBy: [{ effDate: "asc" }, { id: "asc" }],
+  });
+}
+
+function loadDailyStats(playerIds: number[], from: Date, to: Date): Promise<DailyStatLine[]> {
+  return prisma.playerStatsDaily.findMany({
+    where: {
+      playerId: { in: playerIds },
+      gameDate: { gte: from, lte: to },
+    },
+    select: { playerId: true, gameDate: true, ...STAT_SELECT },
+    orderBy: { gameDate: "asc" },
+  });
+}
+
+/**
+ * Which stats source each roster row is scored from in one period.
+ *
+ * Two paths with DIFFERENT attribution semantics for mid-period trades:
+ *
+ * Period-stats path (preferred): credits the whole period to the team that
+ *   holds the player on period.endDate (todo #242).
+ *
+ * Daily-stats fallback: attributes stats within each roster ownership window
+ *   (acquiredAt → releasedAt). Same traded player's pre-trade stats stay with
+ *   the original team.
+ *
+ * ⚠ Retroactive shift: a new period starts in daily-stats mode for ~13h (until
+ *   the 13:00 UTC cron populates PlayerStatsPeriod rows). A trade in that window
+ *   is attributed under daily-stats semantics. When the cron fires, the same query
+ *   retroactively re-attributes those stats under period-stats semantics. This is
+ *   known and accepted: the daily-stats path is a best-effort fallback; period-stats
+ *   is the authoritative view. The retroactive shift is bounded to trades that happen
+ *   in the first ~13h of a new period — a narrow window.
+ *
+ * Prefer PlayerStatsPeriod (via MLB byDateRange API) — accurate, handles
+ * doubleheaders. playerStatsDaily uses @@unique([playerId, gameDate]) which
+ * collapses doubleheaders, systematically undercounting RBI, K, W, IP.
+ * If a player was acquired or released strictly mid-period, PSP whole-period
+ * attribution is wrong for that player: it would over-credit an acquirer with
+ * pre-acquisition stats, and give a mid-period dropper nothing. Those players
+ * need daily ownership windows per ADR-013.
+ *
+ * Compare at UTC calendar-date granularity, not timestamps (todo #285): import
+ * scripts and admin tools stamp acquiredAt with a time-of-day, and stats have
+ * per-day granularity anyway — an acquisition any time on the period's start or
+ * end DATE is boundary-aligned. A noon-on-start-day timestamp once flipped all
+ * of P1 onto the gappy daily table (audit report Section 5.4).
+ *
+ * Hybrid routing (todo #286): only the affected PLAYERS go through the daily
+ * table; everyone boundary-aligned stays on PSP. Before this, one wire pickup
+ * degraded the whole period to the daily table (doubleheader collapse, gaps) —
+ * live P3 drifted off FanGraphs because of three mid-period adds.
+ */
+function routeStatsSource(
+  rosters: RosterRow[],
+  period: PeriodBounds,
+  periodStatCount: number,
+): { pspRosters: RosterRow[]; dailyRosters: RosterRow[] } {
+  const utcDay = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const periodStartDay = utcDay(period.startDate);
+  const periodEndDay = utcDay(period.endDate);
+  const strictlyInside = (d: Date) => utcDay(d) > periodStartDay && utcDay(d) < periodEndDay;
+  // Per PLAYER, not per row: a drop-and-re-add produces two rows for one player,
+  // and splitting one player's rows across the two paths would double-credit.
+  const midPeriodPlayerIds = new Set(
+    rosters
+      .filter(r => strictlyInside(r.acquiredAt) || (r.releasedAt !== null && strictlyInside(r.releasedAt)))
+      .map(r => r.playerId)
+  );
+
+  // No PlayerStatsPeriod data yet (new period) — daily is the only source.
+  if (periodStatCount === 0) return { pspRosters: [], dailyRosters: rosters };
+  if (midPeriodPlayerIds.size === 0) return { pspRosters: rosters, dailyRosters: [] };
+
+  const pspRosters = rosters.filter(r => !midPeriodPlayerIds.has(r.playerId));
+  // Degenerate case: every overlapping player moved mid-period — pure daily.
+  if (pspRosters.length === 0) return { pspRosters: [], dailyRosters: rosters };
+  return { pspRosters, dailyRosters: rosters.filter(r => midPeriodPlayerIds.has(r.playerId)) };
+}
+
+/** Score one period from already-loaded rows, using the routing above. */
+function scorePeriod(
+  teams: TeamRef[],
+  period: PeriodBounds,
+  route: { pspRosters: RosterRow[]; dailyRosters: RosterRow[] },
+  ilWindowsByPlayer: Map<number, IlWindow[]>,
+  periodStats: PeriodStatLine[],
+  dailyStats: DailyStatLine[],
+): TeamStatRow[] {
+  const { pspRosters, dailyRosters } = route;
+  if (dailyRosters.length === 0) {
+    return sumWithPeriodStats(teams, pspRosters, period, ilWindowsByPlayer, periodStats);
+  }
+  if (pspRosters.length === 0) {
+    return sumWithDailyStats(teams, dailyRosters, period, ilWindowsByPlayer, dailyStats);
+  }
+  return mergeTeamStatRows(
+    teams,
+    sumWithPeriodStats(teams, pspRosters, period, ilWindowsByPlayer, periodStats),
+    sumWithDailyStats(teams, dailyRosters, period, ilWindowsByPlayer, dailyStats),
+  );
+}
+
 /**
  * Compute team-level aggregated stats from PlayerStatsPeriod DB data.
  * Joins player stats with active rosters for the given league and period.
  * Returns TeamStatRow[] compatible with computeCategoryRows/computeStandingsFromStats.
  *
- * Attribution semantics depend on which path is active:
+ * Attribution semantics depend on which path is active (see `routeStatsSource`):
  *
  * Period-stats path (PlayerStatsPeriod rows exist for this period):
- *   ALL period stats are attributed to the player's CURRENT owner
- *   (releasedAt=null). A mid-period trade gives the full period's stats
- *   to the new team regardless of when the trade occurred.
+ *   the period's stats go to the team holding the player on period.endDate.
  *
- * Daily-stats fallback (no period stats yet — brand-new period):
- *   Stats are split at ownership boundaries. Pre-trade stats stay with
- *   the original team; post-trade stats go to the new team.
+ * Daily-stats fallback (no period stats yet — brand-new period), and players
+ * acquired/released strictly mid-period: stats are split at ownership
+ * boundaries. Pre-trade stats stay with the original team; post-trade stats go
+ * to the new team.
  *
  * IMPORTANT: A period starts in daily-stats mode for ~13 hours (until the
  * 13:00 UTC cron populates PlayerStatsPeriod rows). Any trade processed in
@@ -426,124 +606,30 @@ export async function computeTeamStatsFromDb(
 
   if (!period) return [];
 
-  // SQL equivalent of `overlapsPeriod(r, period)` from lib/rosterWindow.ts —
-  // acquiredAt <= endDate AND (releasedAt IS NULL OR releasedAt >= startDate).
-  const rosters = await prisma.roster.findMany({
-    where: {
-      team: { leagueId },
-      acquiredAt: { lte: period.endDate },
-      OR: [
-        { releasedAt: null },
-        { releasedAt: { gte: period.startDate } },
-      ],
-    },
-    select: {
-      teamId: true,
-      playerId: true,
-      acquiredAt: true,
-      releasedAt: true,
-      assignedPosition: true,
-      player: { select: { id: true, mlbId: true, posPrimary: true } },
-    },
-    // DESC by acquiredAt so the "first row wins" idiom in `endOfPeriodOwner`
-    // picks the LATEST acquisition for a player — correct for the
-    // drop-and-re-add-during-period case. Without this orderBy, Prisma
-    // returns rows in undefined order, and an earlier roster row could
-    // silently win the attribution over a later one (kieran-typescript
-    // and code-simplicity reviews on PR #365 caught this).
-    orderBy: [{ acquiredAt: "desc" }],
-  });
+  const rosters = await loadOverlappingRosters(leagueId, period.startDate, period.endDate);
 
   // Build date-aware IL windows from TransactionEvent history so that a player's
   // stats are excluded only for periods when they were actually in the IL slot —
   // not retroactively applied to periods when they were active.
   const rosterPlayerIds = [...new Set(rosters.map(r => r.playerId))];
   const [ilEvents, periodStatCount] = await Promise.all([
-    prisma.transactionEvent.findMany({
-      where: {
-        playerId: { in: rosterPlayerIds },
-        transactionType: { in: ["IL_STASH", "IL_ACTIVATE"] },
-        effDate: { not: null },
-      },
-      select: { playerId: true, transactionType: true, effDate: true },
-      orderBy: { effDate: "asc" },
-    }),
+    loadIlEvents(rosterPlayerIds),
     prisma.playerStatsPeriod.count({ where: { periodId } }),
   ]);
   const ilWindowsByPlayer = buildIlWindows(ilEvents);
 
-  // --- Stats source selection ---
-  //
-  // Two paths with DIFFERENT attribution semantics for mid-period trades:
-  //
-  // Period-stats path (preferred): attributes ALL period stats to the player's
-  //   CURRENT owner (releasedAt === null). A player traded on day 10 of 28 → the
-  //   new team gets the full period's stats.
-  //
-  // Daily-stats fallback: attributes stats within each roster ownership window
-  //   (acquiredAt → releasedAt). Same traded player's pre-trade stats stay with
-  //   the original team.
-  //
-  // ⚠ Retroactive shift: a new period starts in daily-stats mode for ~13h (until
-  //   the 13:00 UTC cron populates PlayerStatsPeriod rows). A trade in that window
-  //   is attributed under daily-stats semantics. When the cron fires, the same query
-  //   retroactively re-attributes those stats under period-stats semantics. This is
-  //   known and accepted: the daily-stats path is a best-effort fallback; period-stats
-  //   is the authoritative view. The retroactive shift is bounded to trades that happen
-  //   in the first ~13h of a new period — a narrow window.
-  //
-  // Prefer PlayerStatsPeriod (via MLB byDateRange API) — accurate, handles
-  // doubleheaders. playerStatsDaily uses @@unique([playerId, gameDate]) which
-  // collapses doubleheaders, systematically undercounting RBI, K, W, IP.
-  // If a player was acquired or released strictly mid-period, PSP whole-period
-  // attribution is wrong for that player: it would over-credit an acquirer with
-  // pre-acquisition stats, and give a mid-period dropper nothing. Those players
-  // need daily ownership windows per ADR-013.
-  //
-  // Compare at UTC calendar-date granularity, not timestamps (todo #285): import
-  // scripts and admin tools stamp acquiredAt with a time-of-day, and stats have
-  // per-day granularity anyway — an acquisition any time on the period's start or
-  // end DATE is boundary-aligned. A noon-on-start-day timestamp once flipped all
-  // of P1 onto the gappy daily table (audit report Section 5.4).
-  //
-  // Hybrid routing (todo #286): only the affected PLAYERS go through the daily
-  // table; everyone boundary-aligned stays on PSP. Before this, one wire pickup
-  // degraded the whole period to the daily table (doubleheader collapse, gaps) —
-  // live P3 drifted off FanGraphs because of three mid-period adds.
-  const utcDay = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-  const periodStartDay = utcDay(period.startDate);
-  const periodEndDay = utcDay(period.endDate);
-  const strictlyInside = (d: Date) => utcDay(d) > periodStartDay && utcDay(d) < periodEndDay;
-  // Per PLAYER, not per row: a drop-and-re-add produces two rows for one player,
-  // and splitting one player's rows across the two paths would double-credit.
-  const midPeriodPlayerIds = new Set(
-    rosters
-      .filter(r => strictlyInside(r.acquiredAt) || (r.releasedAt !== null && strictlyInside(r.releasedAt)))
-      .map(r => r.playerId)
-  );
-
-  if (periodStatCount > 0 && midPeriodPlayerIds.size === 0) {
-    return computeWithPeriodStats(teams, rosters, period, ilWindowsByPlayer);
-  }
-
-  // No PlayerStatsPeriod data yet (new period) — daily is the only source.
-  if (periodStatCount === 0) {
-    return computeWithDailyStats(teams, rosters, period, ilWindowsByPlayer);
-  }
-
-  const pspRosters = rosters.filter(r => !midPeriodPlayerIds.has(r.playerId));
-  const dailyRosters = rosters.filter(r => midPeriodPlayerIds.has(r.playerId));
-
-  // Degenerate case: every overlapping player moved mid-period — pure daily.
-  if (pspRosters.length === 0) {
-    return computeWithDailyStats(teams, rosters, period, ilWindowsByPlayer);
-  }
-
-  const [pspRows, dailyRows] = await Promise.all([
-    computeWithPeriodStats(teams, pspRosters, period, ilWindowsByPlayer),
-    computeWithDailyStats(teams, dailyRosters, period, ilWindowsByPlayer),
+  const route = routeStatsSource(rosters, period, periodStatCount);
+  const dailyPlayerIds = [...new Set(route.dailyRosters.map(r => r.playerId))];
+  const [periodStats, dailyStats] = await Promise.all([
+    route.pspRosters.length > 0
+      ? prisma.playerStatsPeriod.findMany({ where: { periodId }, select: { playerId: true, ...STAT_SELECT } })
+      : Promise.resolve([] as PeriodStatLine[]),
+    route.dailyRosters.length > 0
+      ? loadDailyStats(dailyPlayerIds, period.startDate, period.endDate)
+      : Promise.resolve([] as DailyStatLine[]),
   ]);
-  return mergeTeamStatRows(teams, pspRows, dailyRows);
+
+  return scorePeriod(teams, period, route, ilWindowsByPlayer, periodStats, dailyStats);
 }
 
 /**
@@ -552,7 +638,7 @@ export async function computeTeamStatsFromDb(
  * components so rates are weighted correctly (Issue #109).
  */
 function mergeTeamStatRows(
-  teams: { id: number; name: string; code: string | null }[],
+  teams: TeamRef[],
   a: TeamStatRow[],
   b: TeamStatRow[],
 ): TeamStatRow[] {
@@ -569,35 +655,21 @@ function mergeTeamStatRows(
   });
 }
 
-/** Precise path: sum daily stats within each roster entry's ownership window. */
-async function computeWithDailyStats(
-  teams: { id: number; name: string; code: string | null }[],
-  rosters: {
-    teamId: number; playerId: number; acquiredAt: Date; releasedAt: Date | null;
-    assignedPosition: string | null;
-    player: { id: number; mlbId: number | null; posPrimary: string };
-  }[],
+/**
+ * Precise path: sum daily stats within each roster entry's ownership window.
+ * `dailyStats` may hold rows for other players and dates (the season view loads
+ * every period's rows at once): only this period's roster players are looked
+ * up, and `clampToPeriod` keeps every counted day inside the period.
+ */
+function sumWithDailyStats(
+  teams: TeamRef[],
+  rosters: RosterRow[],
   period: { startDate: Date; endDate: Date },
   ilWindowsByPlayer: Map<number, IlWindow[]>,
-): Promise<TeamStatRow[]> {
-  // Collect all unique playerIds for a single bulk query
-  const playerIds = [...new Set(rosters.map(r => r.playerId))];
-
-  // Fetch all daily stats for these players within the period
-  const dailyStats = await prisma.playerStatsDaily.findMany({
-    where: {
-      playerId: { in: playerIds },
-      gameDate: { gte: period.startDate, lte: period.endDate },
-    },
-    select: {
-      playerId: true, gameDate: true,
-      AB: true, H: true, R: true, HR: true, RBI: true, SB: true,
-      W: true, SV: true, K: true, IP: true, ER: true, BB_H: true,
-    },
-  });
-
+  dailyStats: DailyStatLine[],
+): TeamStatRow[] {
   // Index: playerId → date → stats
-  const statsIndex = new Map<number, Map<number, typeof dailyStats[0]>>();
+  const statsIndex = new Map<number, Map<number, DailyStatLine>>();
   for (const ds of dailyStats) {
     if (!statsIndex.has(ds.playerId)) statsIndex.set(ds.playerId, new Map());
     statsIndex.get(ds.playerId)!.set(ds.gameDate.getTime(), ds);
@@ -657,27 +729,14 @@ async function computeWithDailyStats(
   }));
 }
 
-/** Fallback path: use cumulative PlayerStatsPeriod (pre-daily-data periods). */
-async function computeWithPeriodStats(
-  teams: { id: number; name: string; code: string | null }[],
-  rosters: {
-    teamId: number; playerId: number; acquiredAt: Date; releasedAt: Date | null;
-    assignedPosition: string | null;
-    player: { id: number; mlbId: number | null; posPrimary: string };
-  }[],
-  period: { id: number; startDate: Date; endDate: Date },
+/** Authoritative path: whole-period PlayerStatsPeriod rows for this period. */
+function sumWithPeriodStats(
+  teams: TeamRef[],
+  rosters: RosterRow[],
+  period: { startDate: Date; endDate: Date },
   ilWindowsByPlayer: Map<number, IlWindow[]>,
-): Promise<TeamStatRow[]> {
-  const periodId = period.id;
-  const periodStats = await prisma.playerStatsPeriod.findMany({
-    where: { periodId },
-    select: {
-      playerId: true,
-      AB: true, H: true, R: true, HR: true, RBI: true, SB: true,
-      W: true, SV: true, K: true, IP: true, ER: true, BB_H: true,
-    },
-  });
-
+  periodStats: PeriodStatLine[],
+): TeamStatRow[] {
   const statsMap = new Map(periodStats.map(s => [s.playerId, s]));
 
   // Group rosters by teamId
@@ -716,7 +775,7 @@ async function computeWithPeriodStats(
       if (countedPlayers.has(roster.playerId)) continue;
 
       // Skip players who were on IL at this period's start date.
-      // Uses TransactionEvent effDate history — same date-aware logic as computeWithDailyStats.
+      // Uses TransactionEvent effDate history — same date-aware logic as sumWithDailyStats.
       if (wasOnIlAtPeriodStart(roster.playerId, period.startDate, ilWindowsByPlayer)) continue;
 
       // Credit only the team that held this player on period.endDate.
