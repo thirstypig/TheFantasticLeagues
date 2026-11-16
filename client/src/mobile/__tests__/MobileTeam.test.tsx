@@ -5,6 +5,7 @@ import { MobileTeam } from "../pages/MobileTeam";
 import { getTeams, getTeamRosterHub, updateRosterPosition, getTeamPeriodRoster } from "../../features/teams/api";
 import { ilActivate, ilStash } from "../../features/transactions/api";
 import { getSeasonStandings } from "../../api";
+import { ApiError } from "../../api/base";
 
 vi.mock("../../contexts/LeagueContext", () => ({
   useLeague: () => ({ leagueId: 20, myTeamId: 101, outfieldMode: "OF" }),
@@ -38,6 +39,7 @@ vi.mock("../../lib/errorBus", () => ({
 const SAMPLE_HUB = {
   team: { id: 101, leagueId: 20, name: "Los Doyers", owner: "James", budget: 48 },
   period: null,
+  rosterVersion: 5,
   hitters: [
     // AB=200, H=61 → combined AVG = 61/200 = .305; HR=30+20=50; RBI=90+75=165; SB=12+1=13
     { rosterId: 1, playerId: 1, mlbId: 100, playerName: "Mookie Betts", posPrimary: "OF", posList: "OF,2B", position: "OF", assignedPosition: "OF", isPitcher: false, mlbTeam: "LAD", AB: 100, H: 30, AVG: 0.300, HR: 30, RBI: 90, SB: 12 },
@@ -166,10 +168,55 @@ describe("MobileTeam (read-only)", () => {
     const benchBtn = screen.getAllByTestId("mobile-team-move-slot").find((b) => b.getAttribute("data-slot") === "BN")!;
     fireEvent.click(benchBtn);
     await waitFor(() => {
-      expect(updateRosterPosition).toHaveBeenCalledWith(101, 1, "BN");
+      expect(updateRosterPosition).toHaveBeenCalledWith(101, 1, "BN", undefined, 5);
     });
     // Sheet should close after pick
     expect(screen.queryByTestId("mobile-team-move-sheet")).not.toBeInTheDocument();
+  });
+
+  it("on a 409 (roster changed elsewhere) shows the server message and reloads the hub for a fresh version", async () => {
+    vi.mocked(updateRosterPosition).mockRejectedValueOnce(
+      new ApiError({
+        message: "Roster changed since you last loaded it",
+        status: 409,
+        url: "/api/teams/101/roster/1",
+        requestId: null,
+        body: { rosterVersion: 9 },
+        serverMessage: "Roster changed since you last loaded it",
+      }),
+    );
+    renderTeam("LDY");
+    await screen.findByText("Mookie Betts");
+    const hubCallsBefore = vi.mocked(getTeamRosterHub).mock.calls.length;
+    vi.mocked(getTeamRosterHub).mockResolvedValue({ ...SAMPLE_HUB, rosterVersion: 9 } as any);
+    const mookieRow = screen.getAllByTestId("mobile-team-row")[0];
+    fireEvent.click(within(mookieRow).getByTestId("mobile-team-move-btn"));
+    await screen.findByTestId("mobile-team-move-sheet");
+    const benchBtn = screen.getAllByTestId("mobile-team-move-slot").find((b) => b.getAttribute("data-slot") === "BN")!;
+    fireEvent.click(benchBtn);
+    await waitFor(() => {
+      expect(screen.getByText(/Roster changed since you last loaded it/)).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(vi.mocked(getTeamRosterHub).mock.calls.length).toBeGreaterThan(hubCallsBefore);
+    });
+  });
+
+  it("sends the new version from the previous PATCH response on the next move", async () => {
+    vi.mocked(updateRosterPosition).mockResolvedValue({ roster: { id: 1 }, rosterVersion: 6 } as any);
+    renderTeam("LDY");
+    await screen.findByText("Mookie Betts");
+    for (const rowIdx of [0, 1]) {
+      const row = screen.getAllByTestId("mobile-team-row")[rowIdx];
+      fireEvent.click(within(row).getByTestId("mobile-team-move-btn"));
+      await screen.findByTestId("mobile-team-move-sheet");
+      const bench = screen.getAllByTestId("mobile-team-move-slot").find((b) => b.getAttribute("data-slot") === "BN")!;
+      fireEvent.click(bench);
+      await waitFor(() => expect(updateRosterPosition).toHaveBeenCalledTimes(rowIdx + 1));
+    }
+    const calls = vi.mocked(updateRosterPosition).mock.calls;
+    expect(calls[0][4]).toBe(5);
+    expect(calls[1][4]).toBe(6);
   });
 
   it("rolls back on API failure and surfaces an error toast", async () => {

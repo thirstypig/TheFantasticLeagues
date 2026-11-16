@@ -16,13 +16,14 @@
  * compact stat strip per the design canvas. PTS comes from the
  * standings query (same data the desktop hero card uses).
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthProvider";
 import { useLeague } from "../../contexts/LeagueContext";
 import { formatEligiblePositions, ilPeriodLabel } from "../../lib/rosterDisplay";
 import { getTeams, getTeamRosterHub, updateRosterPosition, getTeamPeriodRoster, getTeamPlayerSeasonStats, type PeriodRosterEntry, type PeriodRosterStats } from "../../features/teams/api";
 import { getSeasonStandings } from "../../api";
+import { ApiError } from "../../api/base";
 import { ilActivate, ilStash } from "../../features/transactions/api";
 import { reportError } from "../../lib/errorBus";
 import type { RosterHubResponse } from "@shared/api/teams";
@@ -118,6 +119,13 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
 
   const [teamId, setTeamId] = useState<number | null>(null);
   const [hub, setHub] = useState<RosterHubResponse | null>(null);
+  // Roster version token for the guarded PATCH (todo #181). Mirrors
+  // hub.rosterVersion; kept in a ref so applyMove can read the latest value
+  // without re-creating the callback on every optimistic hub update.
+  const rosterVersionRef = useRef<number | "*">("*");
+  useEffect(() => {
+    if (hub) rosterVersionRef.current = hub.rosterVersion ?? "*";
+  }, [hub]);
   const [points, setPoints] = useState<number | null>(null);
   const [rank, setRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -280,12 +288,26 @@ export function MobileTeam({ teamCode }: MobileTeamProps) {
           // from the bench. addPlayerId omitted.
           if (leagueId == null) throw new Error("leagueId not resolved");
           await ilStash({ leagueId, teamId, stashPlayerId: row.playerId });
+          // The stash transaction bumps the server's rosterVersion by one
+          // without returning it; track that so the next move isn't a false 409.
+          setHub((prev) => (prev && typeof prev.rosterVersion === "number" ? { ...prev, rosterVersion: prev.rosterVersion + 1 } : prev));
         } else {
-          await updateRosterPosition(teamId, row.rosterId, nextSlot);
+          const res = await updateRosterPosition(teamId, row.rosterId, nextSlot, undefined, rosterVersionRef.current);
+          // Each PATCH bumps the version and returns the new one; carry it forward.
+          const nextVersion = res?.rosterVersion;
+          if (typeof nextVersion === "number") {
+            rosterVersionRef.current = nextVersion;
+            setHub((prev) => (prev ? { ...prev, rosterVersion: nextVersion } : prev));
+          }
         }
       } catch (err: unknown) {
         reportError(err, { source: nextSlot === "IL" ? "mobile-team-il-stash" : "mobile-team-move" });
         setMoveError(err instanceof Error ? err.message : "Failed to move player");
+        if (err instanceof ApiError && err.status === 409) {
+          // Roster changed elsewhere (another tab or the commissioner). Reload
+          // the hub so the rows AND the version token are current.
+          getTeamRosterHub(teamId).then((refreshed) => setHub(refreshed)).catch(() => {});
+        }
         // Rollback by restoring the previous slot on the row.
         setHub((prev) => {
           if (!prev) return prev;

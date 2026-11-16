@@ -117,6 +117,7 @@ function TeamCard({ team, leagueAvgH, leagueAvgP, outfieldMode, onSelectPlayer }
       await fetchJsonApi(`${API_BASE}/teams/${teamId}/roster/${rosterId}`, {
         method: 'PATCH',
         body: JSON.stringify({ assignedPosition: newPos }),
+        headers: { "If-Match": "*" }, // todo #181: no roster hub loaded here, so no version to send
       });
       setPositionOverrides(prev => { const n = { ...prev }; delete n[rosterId]; return n; });
     } catch {

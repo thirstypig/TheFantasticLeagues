@@ -118,6 +118,9 @@ type HubPlayerCacheEntry = {
   player: RosterHubPlayer;
 };
 
+/** Shown in the save-error banner when the server rejects a stale roster PATCH (409). */
+const ROSTER_CONFLICT_MESSAGE =
+  "The roster changed in another tab or by the commissioner. We reloaded the latest roster. Check your changes and save again.";
 const POS_ORDER = ["C", "1B", "2B", "3B", "SS", "MI", "CM", "OF", "DH", "P", "SP", "RP", "IL"];
 const PITCHER_POS = new Set(["P", "SP", "RP"]);
 
@@ -562,10 +565,6 @@ export default function Team() {
 
   /* ── Pending changes (Hub scenario: swap only) ────────────────────── */
 
-  // Ref for queuing a toast from saveFn before showToast is defined in the
-  // component body. Drained after showToast is available (see below).
-  const pendingToastRef = useRef<string | null>(null);
-
   // Save fn: serialize pending swaps to PATCH /api/teams/:teamId/roster/:rosterId
   // calls. Atomicity per direction-lock #4: if any single mutation fails,
   // we fail the whole batch and keep the queue in place so the user can
@@ -585,8 +584,14 @@ export default function Team() {
     // swap mutation accepts the date as advisory only (no period
     // recompute) — claim/il-stash/il-activate use it for real.
     const effectiveDate = ctx.effectiveDate ?? undefined;
-    // Snapshot rosterVersion at batch-start so all swap calls send the same token.
-    const currentRosterVersion = rosterVersion;
+    // Version token for the guarded swap PATCH (todo #181). Starts from the
+    // version the hub was loaded at. Every successful swap PATCH bumps the
+    // server counter and returns the new value, so each call must send the
+    // PREVIOUS response's version, not the batch-start one (re-sending the
+    // batch-start token would 409 on the second half of every swap).
+    // "*" (match any) is used once another mutation type in this same batch
+    // has moved the counter by an amount this client was not told.
+    let versionToken: number | "*" = rosterVersion;
     // Atomic-on-failure (FA-#4 inherits from Hub-#4): each entry runs
     // sequentially; first failure throws and aborts the rest. Earlier
     // successful mutations are NOT rolled back — server matcher reads
@@ -594,20 +599,28 @@ export default function Team() {
     for (const change of changes) {
       if (change.kind === "swap") {
         try {
-          await updateRosterPosition(tid, change.from.rosterId, change.to.slot, effectiveDate, currentRosterVersion);
-          await updateRosterPosition(tid, change.to.rosterId, change.from.slot, effectiveDate, currentRosterVersion);
+          const first = await updateRosterPosition(tid, change.from.rosterId, change.to.slot, effectiveDate, versionToken);
+          if (first.rosterVersion != null) versionToken = first.rosterVersion;
+          const second = await updateRosterPosition(tid, change.to.rosterId, change.from.slot, effectiveDate, versionToken);
+          if (second.rosterVersion != null) versionToken = second.rosterVersion;
         } catch (err) {
-          // 409 Conflict — roster mutated in another tab or by commissioner.
+          // 409 Conflict: the roster changed in another tab or by the
+          // commissioner. Reload the hub (fresh rows + fresh version) and
+          // THROW so the queue is kept and the error banner shows. Returning
+          // normally here would make usePendingChanges treat the save as a
+          // success and drop the owner's queued changes.
           if (err instanceof ApiError && err.status === 409) {
-            pendingToastRef.current = "Roster changed by another tab — refreshed";
             setReloadKey(k => k + 1);
-            return;
+            throw new Error(ROSTER_CONFLICT_MESSAGE);
           }
           const msg = err instanceof Error ? err.message : "Save failed";
           throw new Error(`Save failed on ${change.from.slot} ↔ ${change.to.slot}: ${msg}`);
         }
         continue;
       }
+      // Claim / IL mutations are not version-guarded and bump the counter
+      // server-side without returning it.
+      versionToken = "*";
       if (change.kind === "fa_add") {
         // FA scenario save: dispatch to the existing /transactions/claim
         // endpoint. Server's bipartite matcher resolves slots; we only
@@ -785,13 +798,6 @@ export default function Team() {
   useEffect(() => () => {
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
   }, []);
-  // Drain any toast queued by saveFn (409 conflict path). saveFn is defined
-  // before showToast so it uses pendingToastRef to avoid a TDZ reference error.
-  if (pendingToastRef.current) {
-    const msg = pendingToastRef.current;
-    pendingToastRef.current = null;
-    showToast(msg);
-  }
 
   /* ── FA panel (FA scenario) ────────────────────────────────────── */
 
