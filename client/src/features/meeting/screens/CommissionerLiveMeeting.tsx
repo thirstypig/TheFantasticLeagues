@@ -23,6 +23,7 @@ import { Countdown } from "../components/Countdown";
 import { TurnEntry } from "../components/TurnEntry";
 import { ERROR, ICON, MUTED, PRIMARY, ROW, SECONDARY, disabled, lastName } from "../components/styles";
 import { useMeetingSession } from "../hooks/useMeetingSession";
+import { usePeriodName } from "../hooks/usePeriodName";
 
 type Team = { id: number; name: string };
 type Session = NonNullable<MeetingSessionResponse["session"]>;
@@ -156,7 +157,7 @@ function SetupOpened({ session, nameOf, act, title }: { session: Session; nameOf
     <>
       <header>
         <h1 style={H1}>{title}</h1>
-        <p style={{ margin: "4px 0 0", ...MUTED }}>The meeting is open. Owners can see the order. Start when everyone is ready.</p>
+        <p style={{ margin: "4px 0 0", ...MUTED }}>The meeting is open. Owners see it once you start. Start when everyone is ready.</p>
       </header>
       <OrderEditor
         order={session.state.order}
@@ -282,6 +283,7 @@ function Live({ session, data, skew, teams, nameOf, act, leagueId, title }: { se
               key={turnKey}
               leagueId={leagueId}
               sessionId={session.id}
+              pickedPlayerIds={s.moves.map((mv) => mv.add.playerId)}
               teamId={current}
               onSubmit={(addPlayerId, dropPlayerId) =>
                 act((version) => submitMove(session.id, { teamId: current, addPlayerId, dropPlayerId, version }))
@@ -436,6 +438,48 @@ function Ended({ session, teams, nameOf, onHandOff, busy, title }: { session: Se
   );
 }
 
+// ─── Another period's meeting still open ─────────────────────────────
+
+/** A session for another period that never ended blocks opening this one; let the commissioner end it here. */
+function OtherPeriodOpen({ session, leagueId, act, title }: { session: Session; leagueId: number; act: Act; title: string }) {
+  const otherName = usePeriodName(leagueId, session.periodId);
+  const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function end() {
+    setBusy(true);
+    setError(null);
+    try {
+      await act((v) => endMeeting(session.id, v));
+      setConfirm(false);
+    } catch (e) {
+      setError(message(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const which = otherName ? `The ${otherName} meeting` : "A meeting for another period";
+  return (
+    <>
+      <h1 style={H1}>{title}</h1>
+      <p style={{ margin: 0, fontSize: 17, color: "var(--am-text)" }}>{`${which} is still open. End it before opening this one.`}</p>
+      {error && <p role="alert" style={ERROR}>{error}</p>}
+      <button type="button" disabled={busy} style={disabled(SECONDARY, busy)} onClick={() => setConfirm(true)}>End that meeting</button>
+      <ConfirmSheet
+        open={confirm}
+        title={otherName ? `End the ${otherName} meeting?` : "End the meeting?"}
+        body={`Turns stop for everyone. You can't restart it for ${otherName ?? "that period"}.`}
+        confirmLabel="End meeting"
+        busy={busy}
+        onConfirm={end}
+        onCancel={() => setConfirm(false)}
+      />
+    </>
+  );
+}
+
 // ─── Screen ──────────────────────────────────────────────────────────
 
 export function CommissionerLiveMeeting({ leagueId, periodId, periodName, teams, onHandOff, handOffBusy = false }: CommissionerLiveMeetingProps) {
@@ -452,12 +496,7 @@ export function CommissionerLiveMeeting({ leagueId, periodId, periodName, teams,
     if (!session) {
       body = <NoSession leagueId={leagueId} periodId={periodId} teams={teams} nameOf={nameOf} act={act} title={title} />;
     } else if (session.periodId !== periodId) {
-      body = (
-        <>
-          <h1 style={H1}>{title}</h1>
-          <p style={{ margin: 0, fontSize: 17, color: "var(--am-text)" }}>A meeting for another period is still open. End it before opening this one.</p>
-        </>
-      );
+      body = <OtherPeriodOpen session={session} leagueId={leagueId} act={act} title={title} />;
     } else if (session.state.status === "setup") {
       body = <SetupOpened session={session} nameOf={nameOf} act={act} title={title} />;
     } else if (session.state.status === "ended") {

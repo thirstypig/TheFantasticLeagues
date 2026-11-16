@@ -35,6 +35,7 @@ const CommissionerTradesPage = React.lazy(() => import("./features/commissioner/
 const TeamRosterPage = React.lazy(() => import("./features/commissioner/pages/TeamRosterPage"));
 // Picks today's meeting page or the live meeting by the `meeting.live` rule.
 const MeetingRoute = React.lazy(() => import("./pages/MeetingRoute"));
+const OwnerMeetingPage = React.lazy(() => import("./features/meeting/pages/OwnerMeetingPage"));
 const MeetingReviewPage = React.lazy(() => import("./features/commissioner/pages/MeetingReviewPage"));
 const TradesHomePage = React.lazy(() => import("./features/trades/pages/TradesHomePage"));
 const NewTradePage = React.lazy(() => import("./features/trades/pages/NewTradePage"));
@@ -238,6 +239,7 @@ export default function App() {
                     <Route path="/board" element={<BoardPage />} />
                     <Route path="/chat" element={<Navigate to="/board" replace />} />
                     <Route path="/leagues/:id/keepers" element={<KeeperSelection />} />
+                    <Route path="/leagues/:leagueId/meeting" element={<ErrorBoundary name="owner-meeting"><OwnerMeetingPage /></ErrorBoundary>} />
                     <Route path="/auction" element={<ErrorBoundary name="auction"><Auction /></ErrorBoundary>} />
                     <Route path="/auction/board" element={<ErrorBoundary name="auction-board"><AuctionBoard /></ErrorBoundary>} />
                     <Route path="/auction/assign" element={<ErrorBoundary name="auction-assign"><AssignPlayer /></ErrorBoundary>} />

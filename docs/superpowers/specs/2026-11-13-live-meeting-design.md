@@ -7,7 +7,7 @@ status: active
 phase: null
 owner: james
 tags: [commissioner, meeting]
-links: [DOC-032]
+links: [DOC-032, docs/superpowers/plans/2026-11-15-live-meeting.md]
 updated: 2026-11-15
 ---
 
@@ -180,7 +180,8 @@ updated → 409 "The meeting just changed", the client refetches. No locks, no i
 - **Overtime**: at the end of any turn, `overMs = max(0, endedAt − turnEndsAt)`. If `overMs > 0` and `overtimeFee > 0`,
   append one `FinanceLedger` row: `type: "meeting_overtime"`, `amount: overtimeFee`, `periodId`, `reason:
   "Over time at the period N meeting"`. Logged in the same request as the turn end. Skips by the commissioner are
-  still charged if over. The commissioner can void it through the existing Money tools (append-only contra-entry).
+  still charged if over. A fee can't be undone in the app yet: there is no void tool in the commissioner's
+  Money screens today. A void tool (append-only contra-entry) is a follow-up, todo #315.
 - **Expiry is computed on read, never by a timer.** Nothing happens server-side when the clock hits zero. The UI
   shows red/negative time from `turnEndsAt` and the server's clock.
 

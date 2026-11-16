@@ -11,7 +11,16 @@ function errorMessage(e: unknown): string {
   return e instanceof Error ? e.message : "Could not load the meeting";
 }
 
-export function useMeetingSession(leagueId: number | null) {
+export interface MeetingSessionOptions {
+  /**
+   * Slow poll while idle (no session, or an ended one), only while the page is
+   * visible. Without it: no session polls at the normal rate and ended stops.
+   */
+  idlePollMs?: number;
+}
+
+export function useMeetingSession(leagueId: number | null, opts: MeetingSessionOptions = {}) {
+  const idlePollMs = opts.idlePollMs;
   const [data, setData] = useState<MeetingSessionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [skew, setSkew] = useState(0);
@@ -35,7 +44,7 @@ export function useMeetingSession(leagueId: number | null) {
     // Polling stops on an ended session. When a live one arrives later (e.g. an
     // act opened a new meeting) and nothing is armed, restart the single chain.
     // A load in flight reschedules through schedule(), which clears this timer first.
-    if (res.session?.state.status !== "ended" && timer.current == null) scheduleRef.current();
+    if (timer.current == null) scheduleRef.current();
   }, []);
 
   useEffect(() => {
@@ -47,8 +56,18 @@ export function useMeetingSession(leagueId: number | null) {
 
     const schedule = () => {
       if (cancelled) return;
-      if (dataRef.current?.session?.state.status === "ended") return;
-      const delay = document.visibilityState === "visible" ? VISIBLE_POLL_MS : HIDDEN_POLL_MS;
+      const visible = document.visibilityState === "visible";
+      const cur = dataRef.current;
+      const ended = cur?.session?.state.status === "ended";
+      const idle = cur != null && (cur.session == null || ended);
+      let delay: number;
+      if (idlePollMs != null && idle) {
+        if (!visible) return; // the visibilitychange load covers coming back
+        delay = idlePollMs;
+      } else {
+        if (ended) return;
+        delay = visible ? VISIBLE_POLL_MS : HIDDEN_POLL_MS;
+      }
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(load, delay);
     };
@@ -82,7 +101,7 @@ export function useMeetingSession(leagueId: number | null) {
       if (timer.current) clearTimeout(timer.current);
       timer.current = null;
     };
-  }, [leagueId, apply]);
+  }, [leagueId, apply, idlePollMs]);
 
   const refresh = useCallback(() => {
     void loadRef.current();

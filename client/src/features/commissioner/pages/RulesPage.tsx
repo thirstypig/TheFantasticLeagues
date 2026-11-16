@@ -50,7 +50,7 @@ function RulesPageBody() {
   const params = useParams();
   const leagueId = Number(params.leagueId);
   const base = `/commissioner/${leagueId}`;
-  const { leagueId: contextLeagueId, seasonStatus: contextStatus } = useLeague();
+  const { leagueId: contextLeagueId, seasonStatus: contextStatus, refreshLeagueRules } = useLeague();
   // Season status for the URL's league. When it isn't the selected league, fetch it;
   // until that lands (or if it fails) the league counts as locked.
   const [fetchedStatus, setFetchedStatus] = useState<string | null>(null);
@@ -93,6 +93,9 @@ function RulesPageBody() {
       await saveCommissionerRules(leagueId, [{ id: rule.id, value: next }]);
       setRules((rs) => rs && rs.map((r) => (r.id === rule.id ? { ...r, value: next } : r)));
       setStatus((s) => ({ ...s, [rule.id]: { kind: "saved" } }));
+      // The app-wide rules (meeting route, Today banner, Roster Moves) read the
+      // context copy; refresh it so a switch takes effect without a reload.
+      if (sameLeague) refreshLeagueRules();
     } catch (err) {
       // The control only ever shows the stored value, so not updating it is the revert.
       setStatus((s) => ({ ...s, [rule.id]: { kind: "error", message: errorMessage(err) } }));
@@ -162,7 +165,7 @@ function RulesPageBody() {
       ...(meetingOn ? [
         ...control(get("turn_seconds"), "Clock per turn", "segmented", { options: TURN_OPTIONS }),
         ...control(get("can_add_time"), "You can add time", "switch"),
-        ...control(get("overtime_fee"), "Penalty for going over", "segmented", { options: FEE_OPTIONS }),
+        ...control(get("overtime_fee"), "Penalty for going over", "segmented", { options: FEE_OPTIONS, subs: ["A fee can't be undone in the app yet."] }),
       ] : []),
     ],
     Auction: [

@@ -46,6 +46,16 @@ describe("TurnEntry", () => {
     expect(m.searchFreeAgents).toHaveBeenCalledWith(7, "cas");
   });
 
+  it("hides free agents already added earlier in this meeting", async () => {
+    m.searchFreeAgents.mockResolvedValue([CASAS, HAYS]);
+    render(
+      <TurnEntry leagueId={7} sessionId={55} teamId={3} pickedPlayerIds={[CASAS.playerId]} onSubmit={vi.fn()} onPass={vi.fn()} />,
+    );
+    fireEvent.change(await screen.findByLabelText("Search free agents"), { target: { value: "a" } });
+    expect(await screen.findByRole("button", { name: /Austin Hays/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Triston Casas/ })).toBeNull();
+  });
+
   it("shows a server error inline", async () => {
     renderEntry(vi.fn().mockRejectedValue(new Error("That player is already on a team")));
     fireEvent.click(await screen.findByRole("button", { name: /Jake Fraley/ }));

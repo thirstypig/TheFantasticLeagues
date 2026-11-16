@@ -17,6 +17,7 @@ vi.mock("../api", () => ({
   markHandedOff: vi.fn(),
   getChoices: vi.fn(),
   searchFreeAgents: vi.fn(),
+  getMeetingPeriod: vi.fn(),
 }));
 
 import * as api from "../api";
@@ -33,6 +34,7 @@ function renderScreen(onHandOff = vi.fn()) {
 beforeEach(() => {
   vi.clearAllMocks();
   m.getSeasonOrder.mockResolvedValue([3, 1, 2]);
+  m.getMeetingPeriod.mockResolvedValue({ name: "Period 8", status: "active" });
 });
 afterEach(() => {
   vi.useRealTimers();
@@ -175,6 +177,58 @@ describe("CommissionerLiveMeeting", () => {
     await waitFor(() => expect(m.endMeeting).toHaveBeenCalledWith(55, 6));
     await screen.findByText("Meeting over");
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("another period's open meeting can be ended from here, after a confirm", async () => {
+    const ends = new Date(Date.now() + 60_000).toISOString();
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ turnEndsAt: ends }), { version: 4, id: 44, periodId: 8 }));
+    m.endMeeting.mockResolvedValue(sessionResponse(state({ status: "ended" }), { version: 5, id: 44, periodId: 8 }));
+    renderScreen();
+    expect(await screen.findByText("The Period 8 meeting is still open. End it before opening this one.")).toBeTruthy();
+    expect(m.getMeetingPeriod).toHaveBeenCalledWith(7, 8);
+
+    fireEvent.click(screen.getByRole("button", { name: "End that meeting" }));
+    const sheet = screen.getByRole("dialog");
+    expect(within(sheet).getByText("End the Period 8 meeting?")).toBeTruthy();
+    expect(within(sheet).getByText("Turns stop for everyone. You can't restart it for Period 8.")).toBeTruthy();
+    fireEvent.click(within(sheet).getByRole("button", { name: "Cancel" }));
+    expect(m.endMeeting).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "End that meeting" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "End meeting" }));
+    await waitFor(() => expect(m.endMeeting).toHaveBeenCalledWith(44, 4));
+    // The ended session is history for another period, so this period can be opened now.
+    expect(await screen.findByRole("button", { name: "Open the meeting" })).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("another period's open meeting falls back to generic copy without a name", async () => {
+    m.getMeetingPeriod.mockRejectedValue(new Error("down"));
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ status: "setup" }), { periodId: 8 }));
+    renderScreen();
+    expect(await screen.findByText("A meeting for another period is still open. End it before opening this one.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "End that meeting" }));
+    expect(within(screen.getByRole("dialog")).getByText("Turns stop for everyone. You can't restart it for that period.")).toBeTruthy();
+  });
+
+  it("setup copy says owners see the meeting once it starts", async () => {
+    m.getCurrentMeeting.mockResolvedValue(sessionResponse(state({ status: "setup" })));
+    renderScreen();
+    expect(await screen.findByText(/Owners see it once you start\./)).toBeTruthy();
+  });
+
+  it("Enter for them hides players already added earlier in the meeting", async () => {
+    const ends = new Date(Date.now() + 60_000).toISOString();
+    m.getCurrentMeeting.mockResolvedValue(
+      sessionResponse(state({ turnEndsAt: ends, turnIndex: 1, moves: [{ id: "m1", teamId: 3, add: CASAS, drop: HAYS }] })),
+    );
+    m.getChoices.mockResolvedValue(choices({ list: [], roster: [ALONSO], activeCount: 23 }));
+    m.searchFreeAgents.mockResolvedValue([CASAS, FRALEY]);
+    renderScreen();
+    fireEvent.click(await screen.findByRole("button", { name: "Enter for them" }));
+    fireEvent.change(await screen.findByLabelText("Search free agents"), { target: { value: "a" } });
+    expect(await screen.findByRole("button", { name: /Jake Fraley/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Triston Casas/ })).toBeNull();
   });
 
   it("shows Connection lost while polls fail after the first load", async () => {
