@@ -27,8 +27,8 @@ updated: 2026-11-16
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 660 | 115,550 |
-| `.tsx` | 377 | 94,272 |
+| `.ts` | 660 | 115,575 |
+| `.tsx` | 377 | 94,299 |
 | `.md` | 562 | 70,912 |
 | `.json` | 36 | 40,129 |
 | `.css` | 15 | 2,475 |
@@ -38,7 +38,7 @@ updated: 2026-11-16
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,972** | **373,284** |
+| **All tracked** | **1,972** | **373,336** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
