@@ -54,6 +54,31 @@ function Probe() {
   );
 }
 
+/** Shows the league and its rules: "loading" while null, "none" when the key is absent. */
+function RulesProbe() {
+  const { leagueId, leagueRules } = useLeague();
+  return (
+    <>
+      <p data-testid="rules-league">{leagueId}</p>
+      <p data-testid="live">{leagueRules === null ? "loading" : leagueRules.meeting?.live ?? "none"}</p>
+    </>
+  );
+}
+
+/**
+ * The provider starts on league 1 and moves to the user's league once the
+ * league list loads, which clears and re-fetches the rules. Wait for that move
+ * and its fetch to land before changing the mock, or on a slow runner the move
+ * happens mid-test and the test sees a NEW league's fetch instead of a refresh
+ * (main CI failed this way 3 times on 2026-11-16).
+ */
+async function settledOnLeague(leagueId: number, live: string) {
+  await waitFor(() => {
+    expect(screen.getByTestId("rules-league").textContent).toBe(String(leagueId));
+    expect(screen.getByTestId("live").textContent).toBe(live);
+  });
+}
+
 describe("LeagueProvider", () => {
   beforeEach(() => localStorage.clear());
 
@@ -92,13 +117,9 @@ describe("LeagueProvider", () => {
     fetchMock.mockImplementation(async (url: string) =>
       url.endsWith("/rules") ? ({ rules: [{ category: "meeting", key: "live", value: live }] } as never) : ({} as never),
     );
-    function RulesProbe() {
-      const { leagueRules } = useLeague();
-      return <p data-testid="live">{leagueRules === null ? "loading" : leagueRules.meeting?.live ?? "none"}</p>;
-    }
     auth.user = { id: 1, memberships: [member(9)] };
     render(<LeagueProvider><RulesProbe /></LeagueProvider>);
-    await waitFor(() => expect(screen.getByTestId("live").textContent).toBe("false"));
+    await settledOnLeague(9, "false");
 
     live = "true";
     let resolveRules: () => void = () => {};
@@ -123,28 +144,9 @@ describe("LeagueProvider", () => {
     fetchMock.mockImplementation(async (url: string) =>
       url.endsWith("/rules") ? ({ rules: [{ category: "meeting", key: "live", value: "true" }] } as never) : ({} as never),
     );
-    function RulesProbe() {
-      const { leagueId, leagueRules } = useLeague();
-      return (
-        <>
-          <p data-testid="rules-league">{leagueId}</p>
-          <p data-testid="live">{leagueRules === null ? "loading" : leagueRules.meeting?.live ?? "none"}</p>
-        </>
-      );
-    }
     auth.user = { id: 1, memberships: [member(9)] };
     render(<LeagueProvider><RulesProbe /></LeagueProvider>);
-    // The provider starts on league 1 and then moves to the user's league (9),
-    // which clears and re-fetches the rules. Wait for that to settle first, or
-    // on a slow runner the move lands after the network goes "offline" below
-    // and the test sees a NEW league's failed fetch instead of a refresh.
-    await waitFor(() => {
-      expect(screen.getByTestId("rules-league").textContent).toBe("9");
-      expect(screen.getByTestId("live").textContent).toBe("true");
-    });
-    await waitFor(() =>
-      expect(vi.mocked(fetchJsonApi).mock.calls.some(([u]) => String(u).endsWith("/leagues/9/rules"))).toBe(true),
-    );
+    await settledOnLeague(9, "true");
 
     const calls = fetchMock.mock.calls.length;
     fetchMock.mockImplementation(async () => { throw new Error("offline"); });
