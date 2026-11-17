@@ -4,12 +4,12 @@ import { requireAuth, requireLeagueMember, requireCommissionerOrAdmin } from "..
 import { prisma } from "../../db/prisma.js";
 import { logger } from "../../lib/logger.js";
 import { getLeagueRules } from "../../lib/leagueRuleCache.js";
+import { getLeagueCategories } from "../../lib/leagueCategories.js";
 import {
   computeTeamStatsFromDb,
   computeStandingsFromStats,
   computeCategoryRows,
   getSeasonStandings,
-  CATEGORY_CONFIG,
   KEY_TO_DB_FIELD,
   type TeamStatRow,
 } from "./services/standingsService.js";
@@ -60,7 +60,8 @@ router.get("/period/current", requireAuth, requireLeagueMember("leagueId"), asyn
   }
 
   const teamStats = await computeTeamStatsFromDb(leagueId, period.id);
-  const standings = computeStandingsFromStats(teamStats);
+  const leagueCategories = await getLeagueCategories(leagueId);
+  const standings = computeStandingsFromStats(teamStats, leagueCategories);
 
   const data = standings.map((s) => ({
     teamId: s.teamId,
@@ -101,7 +102,8 @@ router.get("/waiver-priority", requireAuth, requireLeagueMember("leagueId"), asy
   }
 
   const teamStats = await computeTeamStatsFromDb(leagueId, period.id);
-  const standings = computeStandingsFromStats(teamStats);
+  const leagueCategories = await getLeagueCategories(leagueId);
+  const standings = computeStandingsFromStats(teamStats, leagueCategories);
 
   const data = standings.map((s) => ({
     teamId: s.teamId,
@@ -200,7 +202,8 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
     totals.WHIP = totals.IP > 0 ? totals.BB_H / totals.IP : 0;
   }
 
-  const currentStandings = computeStandingsFromStats(teamStats);
+  const leagueCategories = await getLeagueCategories(leagueId);
+  const currentStandings = computeStandingsFromStats(teamStats, leagueCategories);
 
   const snapshots = await prisma.teamStatsPeriod.findMany({
     where: { periodId: pid },
@@ -221,7 +224,7 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
     : null;
 
   if (prevTeamStats) {
-    const prevStandings = computeStandingsFromStats(prevTeamStats);
+    const prevStandings = computeStandingsFromStats(prevTeamStats, leagueCategories);
     prevStandingsMap = new Map(prevStandings.map(s => [s.teamId, s.points]));
   }
 
@@ -257,7 +260,7 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
   compareDate.setUTCDate(compareDate.getUTCDate() - compareDays);
   const dailySnapshotMap = await readLeagueSnapshotForDate(leagueId, compareDate);
 
-  const categories = CATEGORY_CONFIG.map((cfg) => {
+  const categories = leagueCategories.map((cfg) => {
     const rows = computeCategoryRows(teamStats, cfg.key, cfg.lowerIsBetter);
     if (prevTeamStats) {
       const prevRows = computeCategoryRows(prevTeamStats, cfg.key, cfg.lowerIsBetter);
@@ -267,7 +270,7 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
         (row as any).pointsDelta = row.points - prevPts;
       }
     }
-    const dbField = KEY_TO_DB_FIELD[cfg.key] || cfg.key;
+    const dbField = (KEY_TO_DB_FIELD as Record<string, string>)[cfg.key] || cfg.key;
     for (const row of rows) {
       const sTotals = seasonTotals.get(row.teamId);
       (row as any).seasonValue = (sTotals as Record<string, number> | undefined)?.[dbField] ?? 0;

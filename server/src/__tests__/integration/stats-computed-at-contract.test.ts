@@ -37,6 +37,10 @@ vi.mock("../../db/prisma.js", () => ({
     auctionLot: { findMany: vi.fn() },
   },
 }));
+vi.mock("../../lib/leagueCategories.js", async () => {
+  const a = await vi.importActual<any>("../../lib/leagueCategories.js");
+  return { ...a, getLeagueCategories: vi.fn().mockResolvedValue(a.SCORABLE_CATEGORIES) };
+});
 vi.mock("../../lib/logger.js", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }));

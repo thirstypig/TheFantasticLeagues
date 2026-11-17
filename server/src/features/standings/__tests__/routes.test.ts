@@ -59,6 +59,24 @@ vi.mock("../services/standingsService.js", () => ({
   } as Record<string, string>,
 }));
 
+const REAL_10 = [
+  { key: "R", label: "Runs", lowerIsBetter: false, group: "H" },
+  { key: "HR", label: "Home Runs", lowerIsBetter: false, group: "H" },
+  { key: "RBI", label: "RBI", lowerIsBetter: false, group: "H" },
+  { key: "SB", label: "Stolen Bases", lowerIsBetter: false, group: "H" },
+  { key: "AVG", label: "Batting Average", lowerIsBetter: false, group: "H" },
+  { key: "W", label: "Wins", lowerIsBetter: false, group: "P" },
+  { key: "SV", label: "Saves", lowerIsBetter: false, group: "P" },
+  { key: "ERA", label: "ERA", lowerIsBetter: true, group: "P" },
+  { key: "WHIP", label: "WHIP", lowerIsBetter: true, group: "P" },
+  { key: "K", label: "Strikeouts", lowerIsBetter: false, group: "P" },
+];
+const FOUR_CATS = REAL_10.filter((c) => ["R", "HR", "W", "SV"].includes(c.key));
+const mockGetLeagueCategories = vi.fn();
+vi.mock("../../../lib/leagueCategories.js", () => ({
+  getLeagueCategories: (...args: any[]) => mockGetLeagueCategories(...args),
+}));
+
 import { prisma } from "../../../db/prisma.js";
 import express from "express";
 import { standingsRouter, persistTeamStatsPeriodSnapshot } from "../routes.js";
@@ -80,6 +98,7 @@ app.use((err: any, _req: any, res: any, _next: NextFunction) => {
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetLeagueRules.mockResolvedValue({});
+  mockGetLeagueCategories.mockResolvedValue(REAL_10);
 });
 
 // ── Sample data ─────────────────────────────────────────────────
@@ -95,6 +114,21 @@ const sampleStandings = [
 ];
 
 // ── GET /period/current ──────────────────────────────────────────
+
+describe("GET /period/current — league categories", () => {
+  it("scores period standings over the league's categories only", async () => {
+    mockGetLeagueCategories.mockResolvedValue(FOUR_CATS);
+    mockPrisma.period.findFirst.mockResolvedValue({ id: 5, status: "active" });
+    mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);
+    mockComputeStandingsFromStats.mockReturnValue(sampleStandings);
+
+    const res = await supertest(app).get("/period/current?leagueId=7");
+
+    expect(res.status).toBe(200);
+    expect(mockGetLeagueCategories).toHaveBeenCalledWith(7);
+    expect(mockComputeStandingsFromStats).toHaveBeenCalledWith(sampleTeamStats, FOUR_CATS);
+  });
+});
 
 describe("GET /period/current", () => {
   it("returns 400 when leagueId is missing", async () => {
@@ -177,6 +211,25 @@ describe("GET /period-category-standings", () => {
     expect(res.body.teamCount).toBe(2);
     expect(res.body.categories[0].key).toBe("R");
     expect(res.body.categories[0].rows).toHaveLength(2);
+  });
+
+  it("period-category-standings returns only the league's categories", async () => {
+    mockGetLeagueCategories.mockResolvedValue(FOUR_CATS);
+    mockPrisma.period.findFirst.mockResolvedValue({ id: 5 });
+    mockGetSeasonStandings.mockResolvedValue({ periodIds: [5], periodData: [{ teamStats: sampleTeamStats, standings: sampleStandings }], seasonRows: [] });
+    mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);
+    mockComputeCategoryRows.mockReturnValue([
+      { teamId: 1, teamName: "Team A", teamCode: "TMA", value: 50, rank: 1, points: 2 },
+      { teamId: 2, teamName: "Team B", teamCode: "TMB", value: 45, rank: 2, points: 1 },
+    ]);
+
+    const res = await supertest(app).get("/period-category-standings?leagueId=7");
+
+    expect(res.status).toBe(200);
+    expect(res.body.categories.map((c: any) => c.key)).toEqual(["R", "HR", "W", "SV"]);
+    expect(mockGetLeagueCategories).toHaveBeenCalledWith(7);
+    // Current standings are scored over the league's categories, not the global 10.
+    expect(mockComputeStandingsFromStats).toHaveBeenCalledWith(sampleTeamStats, FOUR_CATS);
   });
 
   it("includes teamInnings and minInnings, reading rules for the requested league", async () => {

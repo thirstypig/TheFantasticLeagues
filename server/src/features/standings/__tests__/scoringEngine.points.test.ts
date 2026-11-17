@@ -5,14 +5,19 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // These tests pin the per-stat weighting against real TeamStatRow rows.
 
 const mockComputeTeamStatsFromDb = vi.fn();
+const mockComputeStandingsFromStats = vi.fn();
 
 vi.mock("../../../db/prisma.js", () => ({ prisma: {} }));
 vi.mock("../services/standingsService.js", () => ({
   computeTeamStatsFromDb: (...args: unknown[]) => mockComputeTeamStatsFromDb(...args),
-  computeStandingsFromStats: vi.fn(),
+  computeStandingsFromStats: (...args: unknown[]) => mockComputeStandingsFromStats(...args),
+}));
+const mockGetLeagueCategories = vi.fn();
+vi.mock("../../../lib/leagueCategories.js", () => ({
+  getLeagueCategories: (...args: unknown[]) => mockGetLeagueCategories(...args),
 }));
 
-import { PointsScoringEngine } from "../services/scoringEngine.js";
+import { PointsScoringEngine, RotoScoringEngine, H2HCategoryScoringEngine } from "../services/scoringEngine.js";
 
 const rows = [
   {
@@ -46,5 +51,27 @@ describe("PointsScoringEngine.computePeriodStandings", () => {
   it("treats a stat missing from the row as 0", async () => {
     const standings = await new PointsScoringEngine({ R: 1, TD: 6 }).computePeriodStandings(20, 41);
     expect(standings.map((s) => s.points)).toEqual([10, 1]);
+  });
+});
+
+describe("Roto and H2H engines score the league's categories", () => {
+  const four = [
+    { key: "R", label: "Runs", lowerIsBetter: false, group: "H" },
+    { key: "HR", label: "Home Runs", lowerIsBetter: false, group: "H" },
+    { key: "W", label: "Wins", lowerIsBetter: false, group: "P" },
+    { key: "SV", label: "Saves", lowerIsBetter: false, group: "P" },
+  ];
+  it.each([
+    ["RotoScoringEngine", () => new RotoScoringEngine()],
+    ["H2HCategoryScoringEngine", () => new H2HCategoryScoringEngine()],
+  ])("%s passes the league's categories to computeStandingsFromStats", async (_n, make) => {
+    mockGetLeagueCategories.mockResolvedValue(four);
+    mockComputeTeamStatsFromDb.mockResolvedValue(rows);
+    mockComputeStandingsFromStats.mockReturnValue([{ teamId: 1, teamName: "Alpha", points: 8, rank: 1, delta: 0 }]);
+
+    await make().computePeriodStandings(7, 3);
+
+    expect(mockGetLeagueCategories).toHaveBeenCalledWith(7);
+    expect(mockComputeStandingsFromStats).toHaveBeenCalledWith(rows, four);
   });
 });

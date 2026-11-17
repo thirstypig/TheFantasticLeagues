@@ -15,7 +15,7 @@
  */
 import { prisma } from "../../../db/prisma.js";
 import { logger } from "../../../lib/logger.js";
-import { CATEGORY_CONFIG } from "../../../lib/sportConfig.js";
+import { getLeagueCategories } from "../../../lib/leagueCategories.js";
 import { computeCategoryRows, computeTeamStatsFromDb } from "./standingsService.js";
 
 /**
@@ -63,7 +63,8 @@ export async function snapshotLeagueCategoryDaily(
     rankPoints: number;
   }> = [];
 
-  for (const cfg of CATEGORY_CONFIG) {
+  const categories = await getLeagueCategories(leagueId);
+  for (const cfg of categories) {
     const catRows = computeCategoryRows(teamStats, cfg.key, cfg.lowerIsBetter);
     for (const r of catRows) {
       // `r.value` is the exact number the rank was computed from —

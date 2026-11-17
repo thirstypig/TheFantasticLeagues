@@ -7,6 +7,11 @@ vi.mock("../../../db/prisma.js", () => ({
   prisma: { period: { findMany: (...args: unknown[]) => findMany(...args) } },
 }));
 
+vi.mock("../../../lib/leagueCategories.js", async () => {
+  const a = await vi.importActual<any>("../../../lib/leagueCategories.js");
+  return { ...a, getLeagueCategories: vi.fn().mockResolvedValue(a.SCORABLE_CATEGORIES) };
+});
+
 const { getSeasonStandings, clearStandingsCache } = await import("../services/standingsService.js");
 const { notifyStatsChanged } = await import("../../../lib/statsChanged.js");
 

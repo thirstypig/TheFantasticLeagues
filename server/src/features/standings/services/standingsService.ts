@@ -4,7 +4,7 @@ import { prisma } from "../../../db/prisma.js";
 import { TWO_WAY_PLAYERS, playerStatRoles } from "../../../lib/sportConfig.js";
 import { buildIlWindows, ilEventsQuery, wasOnIlAtPeriodStart, type IlWindow } from "../../../lib/ilWindows.js";
 import { clampToPeriod, overlapsPeriod, ownedOn } from "../../../lib/rosterWindow.js";
-import { getLeagueCategories, getCategoryValue } from "../lib/categoryEngine.js";
+import { getLeagueCategories } from "../../../lib/leagueCategories.js";
 import { onStatsChanged } from "../../../lib/statsChanged.js";
 
 import type { PeriodStatRow } from "../../../types/stats.js";
@@ -241,7 +241,7 @@ export function computeStandingsFromStats(
 /**
  * Aggregate player-level CSV rows into team-level stats for a given period.
  * Sport-agnostic: accumulates stats into generic Record<string, number>.
- * Rate stats (AVG, ERA, WHIP) computed via categoryEngine; call sites use getCategoryValue().
+ * Rate stats (AVG, ERA, WHIP) are computed from accumulated components below.
  */
 export function aggregatePeriodStatsFromCsv(
   periodStats: CsvPlayerRow[],
@@ -950,10 +950,11 @@ async function getSeasonStandingsUncached(leagueId: number) {
 
   const periodIds = periods.map((p) => p.id);
 
+  const categories = await getLeagueCategories(leagueId);
   const statsByPeriod = await computeTeamStatsForPeriods(leagueId, periods);
   const periodData = statsByPeriod.map((teamStats) => ({
     teamStats,
-    standings: computeStandingsFromStats(teamStats),
+    standings: computeStandingsFromStats(teamStats, categories),
   }));
 
   // Accumulate total points per team

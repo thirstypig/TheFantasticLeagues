@@ -115,6 +115,13 @@ const fake = vi.hoisted(() => {
 
 vi.mock("../../../db/prisma.js", () => ({ prisma: fake.prisma }));
 
+const mockGetLeagueCategories = vi.hoisted(() => vi.fn());
+vi.mock("../../../lib/leagueCategories.js", async () => {
+  const actual = await vi.importActual<any>("../../../lib/leagueCategories.js");
+  mockGetLeagueCategories.mockResolvedValue(actual.SCORABLE_CATEGORIES);
+  return { ...actual, getLeagueCategories: mockGetLeagueCategories };
+});
+
 const { computeTeamStatsFromDb, getSeasonStandings, clearStandingsCache, computeStandingsFromStats } =
   await import("../services/standingsService.js");
 
@@ -311,9 +318,36 @@ async function seasonPerPeriod() {
   return { periodIds, periodData };
 }
 
-beforeEach(() => clearStandingsCache());
+beforeEach(async () => {
+  clearStandingsCache();
+  const actual = await vi.importActual<any>("../../../lib/leagueCategories.js");
+  mockGetLeagueCategories.mockResolvedValue(actual.SCORABLE_CATEGORIES);
+});
 
 // ─── Tests ───────────────────────────────────────────────────────────────
+
+describe("season standings use the league's categories", () => {
+  it("scores each period over the league's 4 categories, not the global 10", async () => {
+    const actual = await vi.importActual<any>("../../../lib/leagueCategories.js");
+    const four = actual.SCORABLE_CATEGORIES.filter((c: any) => ["R", "HR", "W", "SV"].includes(c.key));
+    use(randomWorld(3, false));
+    mockGetLeagueCategories.mockResolvedValue(four);
+    clearStandingsCache();
+
+    const result = await season();
+
+    expect(mockGetLeagueCategories).toHaveBeenCalledWith(LEAGUE);
+    expect(result.periodData.length).toBeGreaterThan(0);
+    for (const { teamStats, standings } of result.periodData) {
+      expect(standings).toStrictEqual(computeStandingsFromStats(teamStats, four));
+      // 4 categories, 2 teams-or-more: max points per team is 4 * teamCount.
+      const max = 4 * teamStats.length;
+      for (const row of standings) expect(row.points).toBeLessThanOrEqual(max);
+    }
+    const tenCat = computeStandingsFromStats(result.periodData[0].teamStats);
+    expect(result.periodData[0].standings).not.toStrictEqual(tenCat);
+  });
+});
 
 describe("batched season standings == per-period computeTeamStatsFromDb (todo #305)", () => {
   const seeds = Array.from({ length: 40 }, (_, i) => i + 1);
