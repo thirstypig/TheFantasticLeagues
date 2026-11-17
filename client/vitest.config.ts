@@ -22,6 +22,10 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "jsdom",
+    // 15s, not the 5s default (todo #318): tests that take ~1s alone ran 6.5x slower
+    // under full-suite load and hit 5s. The timeout is there to catch hangs, which
+    // 15s still does.
+    testTimeout: 15_000,
     include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.mjs"],
     setupFiles: ["./src/test/setup.ts"],
     server: {

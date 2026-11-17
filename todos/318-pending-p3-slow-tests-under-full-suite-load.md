@@ -32,3 +32,13 @@ parallel load (the failing output was not captured).
 Capture a failing run's output first (run each file in a loop under `stress`/parallel load and save
 stderr on failure). Only then pick a fix: a slow await in the test, a real slow path, or a
 per-test timeout. Don't raise timeouts blind.
+
+## Work Log
+
+- 2026-11-17: Ran each of the 4 files 15 times in parallel with every CPU core pinned by `yes`:
+  60/60 passed, no failure captured. Alone, the flagged AddDropPanel test takes ~0.9s; its one
+  failure took 5.9s, so the 3 timeout failures are full-suite contention (~6.5x), not a code path.
+  Fix: `testTimeout: 15_000` in both vitest configs (catches hangs as well as 5s does).
+  **Still open:** the wire-list `reducer.test.ts` failure (94ms, not a timeout). Its mocks look
+  self-contained (`vi.clearAllMocks` in beforeEach; the failing test queues every mock its path
+  reaches), so no fix without output. Next time it fails, save the full output and attach it here.
