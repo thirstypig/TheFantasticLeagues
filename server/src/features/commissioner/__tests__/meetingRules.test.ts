@@ -42,6 +42,29 @@ describe("meeting rules validation", () => {
   });
 });
 
+describe("scoring category rules validation", () => {
+  const MSG = "Hitting categories can only include R, HR, RBI, SB, AVG, W, SV, ERA, WHIP, K";
+  it.each([
+    ['["R","HR"]', "ok"], ['["S","WHIP"]', "ok"], ["[]", "ok"],
+    ['["R","OPS"]', MSG],
+    ['"R"', "must be a list"], ["not json", "must be a list"], ["[1,2]", "must be a list"],
+  ])("hitting_stats %s -> %s", (value, expected) => {
+    if (expected === "ok") {
+      expect(() => assertValidRuleValue("scoring", "hitting_stats", value)).not.toThrow();
+    } else {
+      expect(() => assertValidRuleValue("scoring", "hitting_stats", value)).toThrow(InvalidRuleValueError);
+      expect(() => assertValidRuleValue("scoring", "hitting_stats", value)).toThrow(expected);
+    }
+  });
+  it("uses the Pitching label for pitching_stats", () => {
+    expect(() => assertValidRuleValue("scoring", "pitching_stats", '["W","OPS"]')).toThrow(/^Pitching categories can only include/);
+    expect(() => assertValidRuleValue("scoring", "pitching_stats", '["w"," sv "]')).not.toThrow();
+  });
+  it("ignores other scoring keys", () => {
+    expect(() => assertValidRuleValue("scoring", "something_else", "whatever")).not.toThrow();
+  });
+});
+
 describe("meeting rules seed and backfill", () => {
   it("backfills all four keys", () => {
     for (const key of ["live", "turn_seconds", "can_add_time", "overtime_fee"]) {

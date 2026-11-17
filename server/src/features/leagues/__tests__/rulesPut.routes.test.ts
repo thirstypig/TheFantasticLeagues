@@ -50,6 +50,14 @@ describe("PUT /api/leagues/:id/rules error mapping", () => {
     expect(m.leagueRule.update).not.toHaveBeenCalled();
   });
 
+  it("maps an unscorable scoring category to 400", async () => {
+    m.leagueRule.findMany.mockResolvedValue([{ id: 7, category: "scoring", key: "hitting_stats" }]);
+    const res = await supertest(app).put("/api/leagues/20/rules").send({ updates: [{ id: 7, value: '["R","OPS"]' }] });
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: "Hitting categories can only include R, HR, RBI, SB, AVG, W, SV, ERA, WHIP, K" });
+    expect(m.leagueRule.update).not.toHaveBeenCalled();
+  });
+
   it("sends other errors to the normal handler (500)", async () => {
     m.leagueRule.findMany.mockRejectedValue(new Error("db down"));
     expect((await send()).status).toBe(500);
