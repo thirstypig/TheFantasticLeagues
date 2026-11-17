@@ -174,4 +174,39 @@ describe("MobileStandings", () => {
     expect(screen.queryByRole("button", { name: /ERA/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /TOT/ })).toBeNull();
   });
+
+  it("does not show the unscored-half text while loading", () => {
+    vi.mocked(getSeasonStandings).mockReturnValue(new Promise(() => {}) as any);
+    renderStandings();
+    expect(screen.queryByText(/doesn't score/)).toBeNull();
+  });
+
+  it("shows 'No standings available yet.' for a league with no periods", async () => {
+    vi.mocked(getSeasonStandings).mockResolvedValue({ periodIds: [], rows: [] } as any);
+    renderStandings();
+    expect(await screen.findByText("No standings available yet.")).toBeInTheDocument();
+    expect(screen.queryByText(/doesn't score/)).toBeNull();
+  });
+
+  it("keeps standard column order for a standard-10 response", async () => {
+    const mk = (key: string, group: string) => ({
+      ...SAMPLE_RESPONSE.categories[1], key, label: key, group,
+    });
+    const std = {
+      ...SAMPLE_RESPONSE,
+      categories: [
+        ...["R", "HR", "RBI", "SB", "AVG"].map((k) => mk(k, "H")),
+        ...["W", "SV", "ERA", "WHIP", "K"].map((k) => mk(k, "P")),
+      ],
+    };
+    vi.mocked(getPeriodCategoryStandings).mockResolvedValue(std as any);
+    renderStandings();
+    await screen.findAllByText("Los Doyers");
+    const cols = (set: string[]) =>
+      screen.getAllByRole("button").map((b) => b.textContent?.trim() ?? "").filter((t) => set.includes(t));
+    expect(cols(["AVG", "HR", "R", "RBI", "SB"])).toEqual(["AVG", "HR", "R", "RBI", "SB"]);
+    fireEvent.click(screen.getByRole("tab", { name: "Pitching" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /WHIP/ })).toBeInTheDocument());
+    expect(cols(["W", "SV", "K", "ERA", "WHIP"])).toEqual(["W", "SV", "K", "ERA", "WHIP"]);
+  });
 });

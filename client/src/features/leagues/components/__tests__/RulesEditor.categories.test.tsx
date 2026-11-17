@@ -69,4 +69,29 @@ describe("RulesEditor category checklists", () => {
       expect(body.updates).toEqual([{ id: 2, value: '["W","SV","ERA"]' }]);
     });
   });
+
+  it("drops unscorable stored keys on toggle", async () => {
+    vi.mocked(fetchJsonApi).mockResolvedValue({
+      rules: [rule(1, "hitting_stats", '["R","OPS"]'), rule(2, "pitching_stats", '["W"]')],
+      grouped: {},
+    });
+    render(<RulesEditor leagueId={20} canEdit />);
+    fireEvent.click(await screen.findByRole("button", { name: /Edit Rules/ }));
+    fireEvent.click(screen.getByRole("button", { name: "HR" }));
+    fireEvent.click(screen.getByRole("button", { name: /Save Changes/ }));
+    await waitFor(() => {
+      const put = vi.mocked(fetchJsonApi).mock.calls.find(([, o]) => (o as any)?.method === "PUT");
+      expect(JSON.parse((put![1] as any).body).updates).toEqual([{ id: 1, value: '["R","HR"]' }]);
+    });
+  });
+
+  it("dedupes read-only chips after normalizing", async () => {
+    vi.mocked(fetchJsonApi).mockResolvedValue({
+      rules: [rule(1, "hitting_stats", '["R"]'), rule(2, "pitching_stats", '["S","SV"]')],
+      grouped: {},
+    });
+    render(<RulesEditor leagueId={20} canEdit />);
+    await screen.findByRole("button", { name: /Edit Rules/ });
+    expect(screen.getAllByText("SV")).toHaveLength(1);
+  });
 });

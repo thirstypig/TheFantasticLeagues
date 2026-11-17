@@ -439,7 +439,7 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
         const obj = JSON.parse(val);
         if (Array.isArray(obj)) return (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {(config.type === 'checkbox_list' ? obj.map((x: unknown) => normalizeCategoryKey(String(x))) : obj).map((item: string) => (
+            {(config.type === 'checkbox_list' ? Array.from(new Set(obj.map((x: unknown) => normalizeCategoryKey(String(x))))) : obj).map((item: string) => (
               <span
                 key={item}
                 style={{
@@ -555,7 +555,9 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
     current = Array.from(new Set(current.map((x) => normalizeCategoryKey(String(x)))));
 
     const toggle = (item: string) => {
-      const next = current.includes(item) ? current.filter(x => x !== item) : [...current, item];
+      const picked = current.includes(item) ? current.filter(x => x !== item) : [...current, item];
+      const allowed = config.listOptions ?? [];
+      const next = picked.filter(x => allowed.includes(x));
       onChange(JSON.stringify(next));
     };
 

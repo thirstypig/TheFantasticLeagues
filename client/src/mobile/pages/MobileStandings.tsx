@@ -164,8 +164,12 @@ export function MobileStandings() {
 
   const presentKeys = useMemo(() => new Set<string>(catTables.map((c) => c.key)), [catTables]);
   const visibleCats: PeriodCategoryKey[] = (view === "Hitting" ? HIT_CATS : PITCH_CATS).filter((c) =>
-    presentKeys.has(c),
+    catTables.length === 0 || presentKeys.has(c),
   );
+
+  const unscoredHalf =
+    view !== "Period" && !loading && !error && catTables.length > 0 && visibleCats.length === 0;
+  const isStandardTen = catTables.length === 0 || catTables.length === 10;
 
   const onSort = (k: SortKey) => {
     if (sortKey === k) setSortDir(sortDir === "desc" ? "asc" : "desc");
@@ -236,7 +240,7 @@ export function MobileStandings() {
     <div data-testid="mobile-standings">
       <MobileTopbar
         title="Standings"
-        subtitle="Roto · 5×5"
+        subtitle={isStandardTen ? "Roto · 5×5" : `Roto · ${catTables.length} categories`}
         leading={<Glyph kind="back" size={20} />}
         onLeadingClick={() => nav(-1)}
       />
@@ -368,7 +372,7 @@ export function MobileStandings() {
         </div>
       ) : (
         <div style={{ padding: "0 14px 12px", marginTop: 4 }}>
-          {visibleCats.length === 0 ? (
+          {unscoredHalf ? (
             <div style={{ padding: "16px 14px", color: "var(--am-text-muted)", fontSize: 13 }}>
               {`This league doesn't score ${view === "Hitting" ? "hitting" : "pitching"} categories.`}
             </div>
@@ -496,6 +500,7 @@ export function MobileStandings() {
         </div>
       )}
 
+      {!unscoredHalf && (
       <div style={{ padding: "0 14px 16px" }}>
         <div style={{ fontSize: 13, color: "var(--am-text-faint)", padding: "0 4px" }}>
           {view === "Period"
@@ -503,6 +508,7 @@ export function MobileStandings() {
             : "Each cell shows roto points (1–10). Tap any column header to sort. Green = top tier."}
         </div>
       </div>
+      )}
 
       {catTables.length > 0 && (
         <div style={{ padding: "0 14px 24px" }}>
