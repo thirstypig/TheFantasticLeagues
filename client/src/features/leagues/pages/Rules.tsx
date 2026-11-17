@@ -5,7 +5,7 @@ import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { RulesEditor } from "../components/RulesEditor";
 import type { LeagueListItem } from "../../../api";
 import { Glass, SectionLabel } from "../../../components/aurora/atoms";
-import { normalizeCategoryKey } from "../../../lib/sportConfig";
+import { resolveDisplayCategories } from "../../../lib/sportConfig";
 
 interface LeagueRule {
   id: number;
@@ -82,15 +82,7 @@ export default function Rules() {
   const dhThreshold = rv(rules, "dh_games_threshold") || "20";
   const posEligGp = rv(rules, "position_eligibility_gp") || "20";
 
-  let hittingCats: string[] = [];
-  let pitchingCats: string[] = [];
-  try { hittingCats = JSON.parse(rv(rules, "hitting_stats")); } catch { hittingCats = ["R", "HR", "RBI", "SB", "AVG"]; }
-  try { pitchingCats = JSON.parse(rv(rules, "pitching_stats")); } catch { pitchingCats = ["W", "SV", "ERA", "WHIP", "K"]; }
-  if (!Array.isArray(hittingCats)) hittingCats = ["R", "HR", "RBI", "SB", "AVG"];
-  if (!Array.isArray(pitchingCats)) pitchingCats = ["W", "SV", "ERA", "WHIP", "K"];
-
-  hittingCats = hittingCats.map((c) => normalizeCategoryKey(String(c)));
-  pitchingCats = pitchingCats.map((c) => normalizeCategoryKey(String(c)));
+  const { hitting: hittingCats, pitching: pitchingCats } = resolveDisplayCategories(rv(rules, "hitting_stats"), rv(rules, "pitching_stats"));
 
   let rosterPositions: Record<string, number> = {};
   try { rosterPositions = JSON.parse(rv(rules, "roster_positions")); } catch { /* ignore */ }

@@ -61,7 +61,7 @@ interface RuleConfig {
 }
 
 // --- Constants (from centralized sportConfig) ---
-import { SCORABLE_HITTING_CATS, SCORABLE_PITCHING_CATS, normalizeCategoryKey, POSITIONS } from "../../../lib/sportConfig";
+import { SCORABLE_HITTING_CATS, SCORABLE_PITCHING_CATS, normalizeCategoryKey, resolveDisplayHalf, POSITIONS } from "../../../lib/sportConfig";
 
 const RULE_CONFIGS: Record<string, RuleConfig> = {
   // team_count removed — authoritative value is League.maxTeams (edit in Commissioner → League tab).
@@ -439,7 +439,7 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
         const obj = JSON.parse(val);
         if (Array.isArray(obj)) return (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {(config.type === 'checkbox_list' ? Array.from(new Set(obj.map((x: unknown) => normalizeCategoryKey(String(x))))) : obj).map((item: string) => (
+            {(config.type === 'checkbox_list' ? resolveDisplayHalf(val, rule.key === 'pitching_stats' ? 'pitching' : 'hitting') : obj).map((item: string) => (
               <span
                 key={item}
                 style={{

@@ -3,6 +3,8 @@ import { describe, it, expect, vi } from "vitest";
 vi.mock("../../db/prisma.js", () => ({ prisma: {} }));
 
 import { resolveCategories, getLeagueCategories } from "../leagueCategories.js";
+import { logger } from "../logger.js";
+import { DEFAULT_RULES } from "../sports/baseball.js";
 import { invalidateLeagueRules } from "../leagueRuleCache.js";
 import { CATEGORY_CONFIG } from "../sports/baseball.js";
 
@@ -60,5 +62,29 @@ describe("getLeagueCategories", () => {
     ]) } };
     invalidateLeagueRules(998);
     expect((await getLeagueCategories(998, client as any)).map((c) => c.key)).toEqual(["HR"]);
+  });
+  it("warns at most once per league per process", async () => {
+    const warn = vi.spyOn(logger, "warn").mockImplementation(() => {});
+    const client = { leagueRule: { findMany: vi.fn().mockResolvedValue([
+      { category: "scoring", key: "hitting_stats", value: '["OPS","H"]' },
+      { category: "scoring", key: "pitching_stats", value: '["W","K"]' },
+    ]) } };
+    invalidateLeagueRules(997);
+    await getLeagueCategories(997, client as any);
+    invalidateLeagueRules(997);
+    await getLeagueCategories(997, client as any);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(expect.objectContaining({ leagueId: 997 }), expect.any(String));
+    warn.mockRestore();
+  });
+});
+
+describe("DEFAULT_RULES scoring seeds", () => {
+  it("seed only scorable categories, resolving with no drops or fallbacks", () => {
+    const v = (k: string) => DEFAULT_RULES.find((r) => r.category === "scoring" && r.key === k)!.value;
+    expect(JSON.parse(v("hitting_stats"))).toEqual(["R", "HR", "RBI", "SB", "AVG"]);
+    expect(JSON.parse(v("pitching_stats"))).toEqual(["W", "SV", "ERA", "WHIP", "K"]);
+    const r = resolveCategories(v("hitting_stats"), v("pitching_stats"));
+    expect(r.dropped).toEqual([]); expect(r.fellBack).toEqual([]); expect(r.categories).toHaveLength(10);
   });
 });

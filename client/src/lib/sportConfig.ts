@@ -16,6 +16,8 @@ export {
   SCORABLE_HITTING_CATS,
   SCORABLE_PITCHING_CATS,
   normalizeCategoryKey,
+  resolveDisplayHalf,
+  resolveDisplayCategories,
   NL_TEAMS,
   AL_TEAMS,
   OHTANI_MLB_ID,

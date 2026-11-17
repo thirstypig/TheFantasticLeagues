@@ -63,7 +63,7 @@ export const PITCHING_CATS: string[] = [
   "QS", "HLD", "IP", "CG", "SHO", "L", "BB", "HR",
 ];
 
-/** Categories the scoring engine can actually rank (matches the server). */
+/** Categories the scoring engine can actually rank. Keep in sync with SCORABLE_CATEGORIES in server/src/lib/leagueCategories.ts. */
 export const SCORABLE_HITTING_CATS: string[] = ["R", "HR", "RBI", "SB", "AVG"];
 export const SCORABLE_PITCHING_CATS: string[] = ["W", "SV", "ERA", "WHIP", "K"];
 
@@ -71,6 +71,36 @@ export const SCORABLE_PITCHING_CATS: string[] = ["W", "SV", "ERA", "WHIP", "K"];
 export function normalizeCategoryKey(k: string): string {
   const u = k.trim().toUpperCase();
   return u === "S" ? "SV" : u;
+}
+
+/**
+ * One half of the server's resolveCategories: normalize + dedupe, keep only that
+ * half's scorable keys. Missing / unparseable / non-empty-but-nothing-scorable
+ * => the standard 5; a stored [] => none.
+ */
+export function resolveDisplayHalf(json: string | null | undefined, half: "hitting" | "pitching"): string[] {
+  const standard = half === "hitting" ? SCORABLE_HITTING_CATS : SCORABLE_PITCHING_CATS;
+  if (json == null) return [...standard];
+  let list: unknown;
+  try { list = JSON.parse(json); } catch { return [...standard]; }
+  if (!Array.isArray(list) || !list.every((x) => typeof x === "string")) return [...standard];
+  const wanted = new Set((list as string[]).map(normalizeCategoryKey));
+  const usable = standard.filter((k) => wanted.has(k));
+  if (list.length > 0 && usable.length === 0) return [...standard];
+  return usable;
+}
+
+/** What a league actually scores, mirroring the server (both halves [] => all 10). */
+export function resolveDisplayCategories(
+  hittingJson: string | null | undefined,
+  pitchingJson: string | null | undefined,
+): { hitting: string[]; pitching: string[] } {
+  const hitting = resolveDisplayHalf(hittingJson, "hitting");
+  const pitching = resolveDisplayHalf(pitchingJson, "pitching");
+  if (hitting.length === 0 && pitching.length === 0) {
+    return { hitting: [...SCORABLE_HITTING_CATS], pitching: [...SCORABLE_PITCHING_CATS] };
+  }
+  return { hitting, pitching };
 }
 
 // ─── MLB League Team Sets ───

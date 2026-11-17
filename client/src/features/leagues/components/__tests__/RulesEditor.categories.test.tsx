@@ -94,4 +94,22 @@ describe("RulesEditor category checklists", () => {
     await screen.findByRole("button", { name: /Edit Rules/ });
     expect(screen.getAllByText("SV")).toHaveLength(1);
   });
+
+  it("read-only chips show what is scored, not the stored old-default lists", async () => {
+    vi.mocked(fetchJsonApi).mockResolvedValue({
+      rules: [
+        rule(1, "hitting_stats", '["R","HR","RBI","SB","AVG","OPS","H","2B","3B","BB"]'),
+        rule(2, "pitching_stats", '["QS","HLD"]'),
+      ],
+      grouped: {},
+    });
+    render(<RulesEditor leagueId={20} canEdit />);
+    await screen.findByRole("button", { name: /Edit Rules/ });
+    for (const n of ["R", "HR", "RBI", "SB", "AVG", "W", "SV", "ERA", "WHIP", "K"]) {
+      expect(screen.getAllByText(n)).toHaveLength(1);
+    }
+    for (const n of ["OPS", "H", "2B", "3B", "BB", "QS", "HLD"]) {
+      expect(screen.queryByText(n)).toBeNull();
+    }
+  });
 });

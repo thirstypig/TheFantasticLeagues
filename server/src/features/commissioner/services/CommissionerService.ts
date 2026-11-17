@@ -8,7 +8,7 @@ import { AuctionImportService } from "../../auction/services/auctionImport.js";
 import { DEFAULT_RULES } from "../../../lib/sportConfig.js";
 import { sendInviteEmail } from "../../../lib/emailService.js";
 import { invalidateLeagueRules } from "../../../lib/leagueRuleCache.js";
-import { SCORABLE_KEYS, normalizeCategoryKey } from "../../../lib/leagueCategories.js";
+import { SCORABLE_CATEGORIES, normalizeCategoryKey } from "../../../lib/leagueCategories.js";
 import { incrementRosterVersion, incrementRosterVersions } from "../../../lib/rosterVersion.js";
 
 const auctionImportService = new AuctionImportService();
@@ -49,10 +49,9 @@ export function assertValidRuleValue(category: string, key: string, value: strin
     if (!Array.isArray(parsed) || !parsed.every((k) => typeof k === "string")) {
       throw new InvalidRuleValueError(`${label} must be a list of categories`);
     }
-    if (parsed.some((k) => !SCORABLE_KEYS.has(normalizeCategoryKey(k)))) {
-      throw new InvalidRuleValueError(
-        `${label} categories can only include ${[...SCORABLE_KEYS].join(", ")}`,
-      );
+    const allowed = SCORABLE_CATEGORIES.filter((c) => c.group === (key === "hitting_stats" ? "H" : "P")).map((c) => c.key);
+    if (parsed.some((k) => !allowed.includes(normalizeCategoryKey(k)))) {
+      throw new InvalidRuleValueError(`${label} categories can only include ${allowed.join(", ")}`);
     }
   }
   if (category === "meeting") {

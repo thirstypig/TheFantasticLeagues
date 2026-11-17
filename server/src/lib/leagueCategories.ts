@@ -18,6 +18,7 @@ export type CategoryDef = {
   group: "H" | "P";
 };
 
+// Keep in sync with SCORABLE_HITTING_CATS / SCORABLE_PITCHING_CATS in client/src/lib/sports/baseball.ts.
 export const SCORABLE_CATEGORIES: readonly CategoryDef[] = CATEGORY_CONFIG.map((c) => ({
   key: c.key,
   label: c.label,
@@ -94,6 +95,9 @@ export function resolveCategories(
   };
 }
 
+/** Leagues already warned about this process, so a misconfigured league logs once, not per request. */
+const warnedLeagues = new Set<number>();
+
 export async function getLeagueCategories(
   leagueId: number,
   client: Parameters<typeof getLeagueRules>[0] = prisma,
@@ -103,7 +107,8 @@ export async function getLeagueCategories(
     rules.scoring?.hitting_stats,
     rules.scoring?.pitching_stats,
   );
-  if (dropped.length > 0 || fellBack.length > 0) {
+  if ((dropped.length > 0 || fellBack.length > 0) && !warnedLeagues.has(leagueId)) {
+    warnedLeagues.add(leagueId);
     logger.warn({ leagueId, dropped, fellBack }, "League scoring categories needed correction");
   }
   return categories;

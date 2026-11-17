@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fmt3Avg, fmtRate, fmt2 } from "../sports/baseball";
+import { fmt3Avg, fmtRate, fmt2, resolveDisplayCategories } from "../sports/baseball";
 
 describe("fmt3Avg (canonical — sports/baseball.ts)", () => {
   it("formats batting average (strips leading zero)", () => {
@@ -53,5 +53,32 @@ describe("fmt2 (canonical — sports/baseball.ts)", () => {
   it("returns empty string for non-finite", () => {
     expect(fmt2(NaN)).toBe("");
     expect(fmt2(Infinity)).toBe("");
+  });
+});
+
+describe("resolveDisplayCategories", () => {
+  const H5 = ["R", "HR", "RBI", "SB", "AVG"];
+  const P5 = ["W", "SV", "ERA", "WHIP", "K"];
+  const OLD_H = '["R","HR","RBI","SB","AVG","OPS","H","2B","3B","BB"]';
+  const OLD_P = '["W","SV","K","ERA","WHIP","QS","HLD","IP","CG","SHO"]';
+  it("old 10+10 default lists show exactly the scorable 5+5", () => {
+    expect(resolveDisplayCategories(OLD_H, OLD_P)).toEqual({ hitting: H5, pitching: P5 });
+  });
+  it("OGBA's stored lists (S alias) show the standard 10", () => {
+    expect(resolveDisplayCategories('["R","HR","RBI","SB","AVG"]', '["W","S","ERA","WHIP","K"]')).toEqual({ hitting: H5, pitching: P5 });
+  });
+  it("a half with nothing scorable shows its standard 5", () => {
+    expect(resolveDisplayCategories('["R","HR"]', '["QS","HLD"]')).toEqual({ hitting: ["R", "HR"], pitching: P5 });
+  });
+  it("stored [] shows none; missing or unparseable shows the standard 5", () => {
+    expect(resolveDisplayCategories('["R","AVG"]', "[]")).toEqual({ hitting: ["R", "AVG"], pitching: [] });
+    expect(resolveDisplayCategories(null, "garbage")).toEqual({ hitting: H5, pitching: P5 });
+    expect(resolveDisplayCategories("", '["K"]')).toEqual({ hitting: H5, pitching: ["K"] });
+  });
+  it("dedupes, normalizes and drops other-half keys", () => {
+    expect(resolveDisplayCategories('[" hr ","r","R","W"]', '["sv","S"]')).toEqual({ hitting: ["R", "HR"], pitching: ["SV"] });
+  });
+  it("both halves [] fall back to all 10, as on the server", () => {
+    expect(resolveDisplayCategories("[]", "[]")).toEqual({ hitting: H5, pitching: P5 });
   });
 });
