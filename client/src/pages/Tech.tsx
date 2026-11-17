@@ -351,7 +351,6 @@ const erdDiagrams: { label: string; chart: string }[] = [
     Period ||--o{ TeamStatsPeriod : "has many"
     Period ||--o{ PlayerStatsPeriod : "has many"
     Team ||--o{ TeamStatsPeriod : "has many"
-    Team ||--|| TeamStatsSeason : "has one"
     Player ||--o{ PlayerStatsPeriod : "has many"
 
     Period {
@@ -376,15 +375,6 @@ const erdDiagrams: { label: string; chart: string }[] = [
         float ERA
         float WHIP
         int K
-    }
-    TeamStatsSeason {
-        int id PK
-        int teamId FK
-        int R
-        int HR
-        int RBI
-        int SB
-        float AVG
     }
     PlayerStatsPeriod {
         int id PK

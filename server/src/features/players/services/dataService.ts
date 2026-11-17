@@ -7,7 +7,6 @@ import { logger } from '../../../lib/logger.js';
 import { chunk } from '../../../lib/utils.js';
 import { normCode } from "../../../lib/utils.js";
 import { SeasonStatRow, PeriodStatRow } from '../../../types/stats.js';
-import { warmMlbTeamCache } from '../../../lib/mlbApi.js';
 import { TWO_WAY_PLAYERS } from '../../../lib/sportConfig.js';
 
 /** A parsed CSV row used for auction values, keyed by column header. */
@@ -18,7 +17,7 @@ type AuctionValueRow = Record<string, string> & {
   ogba_team_code?: string;
 };
 
-/** Shape returned by getNormalizedSeasonStats after normalization. */
+/** A player row with normalized season stats (see getLeaguePlayersFromDb). */
 export interface NormalizedSeasonStat {
   mlb_id: string;
   player_name: string;
@@ -80,7 +79,6 @@ export class DataService {
   private periodStats: PeriodStatRow[] = [];
 
   // Cache normalized stats to avoid re-calculation
-  private normalizedSeasonStats: NormalizedSeasonStat[] | null = null;
   private normalizedPeriodStats: NormalizedPeriodStat[] | null = null;
 
   // Cache standings computations (static between data reloads)
@@ -202,54 +200,12 @@ export class DataService {
       }
       
       // Clear cache on reload
-      this.normalizedSeasonStats = null;
       this.normalizedPeriodStats = null;
       this.standingsCache.clear();
 
     } catch (err) {
       logger.error({ error: String(err) }, 'Failed to load initial data');
     }
-  }
-
-  public async getNormalizedSeasonStats() {
-    if (this.normalizedSeasonStats) return this.normalizedSeasonStats;
-
-    const seasonStatsRaw = this.seasonStats;
-    const mlbIds = seasonStatsRaw.map((r) => String(r.mlb_id ?? r.mlbId ?? "").trim()).filter(Boolean);
-    const teamCache = await warmMlbTeamCache(mlbIds);
-
-    this.normalizedSeasonStats = seasonStatsRaw.map((r) => {
-      const mlb_id = String(r.mlb_id ?? r.mlbId ?? "").trim();
-      const tm = String(r.mlb_team ?? r.mlbTeam ?? teamCache[mlb_id] ?? "").trim();
-
-      return {
-        ...r,
-        mlb_id,
-        player_name: r.player_name ?? r.name ?? r.playerName ?? "",
-        mlb_full_name: r.mlb_full_name ?? "",
-        ogba_team_code: r.ogba_team_code ?? r.team ?? "",
-        positions: r.positions ?? r.pos ?? "",
-        is_pitcher: toBool(r.is_pitcher ?? r.isPitcher),
-        AB: toNum(r.AB),
-        H: toNum(r.H),
-        R: toNum(r.R),
-        HR: toNum(r.HR),
-        RBI: toNum(r.RBI),
-        SB: toNum(r.SB),
-        AVG: toNum(r.AVG),
-        GS: toNum(r.GS),
-        W: toNum(r.W),
-        SV: toNum(r.SV),
-        K: toNum(r.K),
-        ERA: toNum(r.ERA),
-        WHIP: toNum(r.WHIP),
-        SO: toNum(r.SO ?? r.shutouts),
-        mlb_team: tm,
-        mlbTeam: tm,
-      };
-    });
-
-    return this.normalizedSeasonStats;
   }
 
   public getNormalizedPeriodStats() {

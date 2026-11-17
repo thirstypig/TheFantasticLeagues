@@ -4,6 +4,10 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
+    // 15s, not the 5s default (todo #318): tests that take ~1s alone ran 6.5x slower
+    // under full-suite load and hit 5s. The timeout is there to catch hangs, which
+    // 15s still does.
+    testTimeout: 15_000,
     // Pick up server tests AND shared-contract tests (todo #118). The
     // shared schemas in `../shared/api/` are imported by both client and
     // server; running their contract tests under the server vitest gives

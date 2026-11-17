@@ -41,11 +41,16 @@ Option 1 is the robust fix.
 
 ## Acceptance Criteria
 
-- [ ] The guard flags `Open your Wire List (period)` as a multi-line JSX text node (self-test with an
+- [x] The guard flags `Open your Wire List (period)` as a multi-line JSX text node (self-test with an
       in-memory fixture, not a real source file).
-- [ ] It still ignores code identifiers (`WireList`, `wireListApi`) and comments.
-- [ ] `ListHelp.tsx` stays exempt; the current tree still passes.
+- [x] It still ignores code identifiers (`WireList`, `wireListApi`) and comments.
+- [x] `ListHelp.tsx` stays exempt; the current tree still passes.
 
 ## Work Log
 
 - 2026-11-15: Found in the live meeting final review.
+- 2026-11-17: Fixed with option 1. The guard now parses each file with the TypeScript compiler API
+  and checks every JsxText node and string/template literal; comments are never seen. Three in-memory
+  fixture self-tests (multi-line JSX with punctuation, literals of every kind, identifiers/imports/
+  comments ignored). Mutation-tested: planting the todo's exact example in a real source file fails the
+  guard; removing it passes.

@@ -161,7 +161,6 @@ router.delete("/admin/league/:leagueId", requireAuth, requireAdmin, asyncHandler
     prisma.waiverClaim.deleteMany({ where: { teamId: { in: teamIds } } }),
     prisma.transactionEvent.deleteMany({ where: { leagueId } }),
     prisma.teamStatsPeriod.deleteMany({ where: { teamId: { in: teamIds } } }),
-    prisma.teamStatsSeason.deleteMany({ where: { teamId: { in: teamIds } } }), // deprecated but table still in DB
     prisma.team.deleteMany({ where: { leagueId } }),
     prisma.leagueMembership.deleteMany({ where: { leagueId } }),
     prisma.leagueRule.deleteMany({ where: { leagueId } }),

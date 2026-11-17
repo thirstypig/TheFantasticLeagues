@@ -179,10 +179,8 @@ Notable surfaces:
 
 **Phase:** In-Season 2026 - Engagement & Remote UX (April - September 2026)
 
-**Next 3 to-dos** (3 open):
+**Next 3 to-dos** (1 open):
 
-- `304` **P3** — cache refresh and vestigial cleanup
-- `316` **P3** — no wire list guard misses multiline jsx
 - `318` **P3** — slow tests under full suite load
 
 Roadmap: [`docs/product/roadmap.md`](docs/product/roadmap.md) · Docs map: [`docs/README-DOCS.md`](docs/README-DOCS.md)
