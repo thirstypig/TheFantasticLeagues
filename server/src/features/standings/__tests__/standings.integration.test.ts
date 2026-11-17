@@ -6,11 +6,11 @@ vi.mock("../../../db/prisma.js", () => ({
 
 import {
   buildTeamNameMap,
-  CATEGORY_CONFIG,
   computeCategoryRows,
   computeStandingsFromStats,
   rankPoints,
 } from "../services/standingsService.js";
+import { CATEGORY_CONFIG } from "../../../lib/sportConfig.js";
 
 /**
  * Integration test: exercises the full standings computation pipeline
@@ -74,7 +74,7 @@ describe("standings computation pipeline", () => {
   });
 
   it("computes final standings with correct aggregate points", () => {
-    const standings = computeStandingsFromStats(teamStats);
+    const standings = computeStandingsFromStats(teamStats, CATEGORY_CONFIG);
 
     expect(standings).toHaveLength(4);
 
@@ -93,8 +93,8 @@ describe("standings computation pipeline", () => {
   });
 
   it("produces consistent results across multiple calls", () => {
-    const first = computeStandingsFromStats(teamStats);
-    const second = computeStandingsFromStats(teamStats);
+    const first = computeStandingsFromStats(teamStats, CATEGORY_CONFIG);
+    const second = computeStandingsFromStats(teamStats, CATEGORY_CONFIG);
     expect(first).toEqual(second);
   });
 

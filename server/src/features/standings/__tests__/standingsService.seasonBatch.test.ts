@@ -15,6 +15,7 @@
  * second league sharing the same players.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { CATEGORY_CONFIG } from "../../../lib/sportConfig.js";
 
 type Row = Record<string, any>;
 interface World {
@@ -313,7 +314,7 @@ async function seasonPerPeriod() {
   const periodData = [];
   for (const pid of periodIds) {
     const teamStats = await computeTeamStatsFromDb(LEAGUE, pid);
-    periodData.push({ teamStats, standings: computeStandingsFromStats(teamStats) });
+    periodData.push({ teamStats, standings: computeStandingsFromStats(teamStats, CATEGORY_CONFIG) });
   }
   return { periodIds, periodData };
 }
@@ -344,7 +345,7 @@ describe("season standings use the league's categories", () => {
       const max = 4 * teamStats.length;
       for (const row of standings) expect(row.points).toBeLessThanOrEqual(max);
     }
-    const tenCat = computeStandingsFromStats(result.periodData[0].teamStats);
+    const tenCat = computeStandingsFromStats(result.periodData[0].teamStats, CATEGORY_CONFIG);
     expect(result.periodData[0].standings).not.toStrictEqual(tenCat);
   });
 });

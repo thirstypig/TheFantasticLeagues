@@ -7,7 +7,8 @@
 
 import { prisma } from "../db/prisma.js";
 import { logger } from "../lib/logger.js";
-import { CATEGORY_CONFIG, KEY_TO_DB_FIELD } from "../lib/sportConfig.js";
+import { KEY_TO_DB_FIELD } from "../lib/sportConfig.js";
+import { getLeagueCategories, type CategoryDef } from "../lib/leagueCategories.js";
 import { computeTeamStatsFromDb, computeCategoryRows, type TeamStatRow } from "../features/standings/services/standingsService.js";
 
 // ─── Types ───
@@ -46,16 +47,17 @@ export interface PeriodAwards {
 
 // ─── Helpers ───
 
-/** Compute total roto points for each team across all 10 categories. */
+/** Compute total roto points for each team across the league's scoring categories. */
 function computeTotalRotoPoints(
   teamStats: TeamStatRow[],
+  categories: ReadonlyArray<CategoryDef>,
 ): Map<number, number> {
   const totals = new Map<number, number>();
   for (const t of teamStats) {
     totals.set(t.team.id, 0);
   }
 
-  for (const cfg of CATEGORY_CONFIG) {
+  for (const cfg of categories) {
     const rows = computeCategoryRows(teamStats, cfg.key, cfg.lowerIsBetter);
     for (const r of rows) {
       const prev = totals.get(r.teamId) ?? 0;
@@ -118,11 +120,12 @@ export async function computePeriodAwards(
 
   // Compute team-level aggregated stats
   const teamStats = await computeTeamStatsFromDb(leagueId, periodId);
+  const categories = await getLeagueCategories(leagueId);
 
   // 1. Manager of Period — highest total roto points
   let managerOfPeriod: ManagerAward | null = null;
   if (teamStats.length > 0) {
-    const totals = computeTotalRotoPoints(teamStats);
+    const totals = computeTotalRotoPoints(teamStats, categories);
     let bestTeamId = -1;
     let bestPoints = -1;
     for (const [teamId, pts] of totals) {
@@ -207,7 +210,7 @@ export async function computePeriodAwards(
   // 3. Category Kings — best (rank 1) team in each category
   const categoryKings: CategoryKing[] = [];
   if (teamStats.length > 0) {
-    for (const cfg of CATEGORY_CONFIG) {
+    for (const cfg of categories) {
       const rows = computeCategoryRows(teamStats, cfg.key, cfg.lowerIsBetter);
       const best = rows.find((r) => r.rank === 1);
       if (best) {

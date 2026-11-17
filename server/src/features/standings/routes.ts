@@ -5,12 +5,12 @@ import { prisma } from "../../db/prisma.js";
 import { logger } from "../../lib/logger.js";
 import { getLeagueRules } from "../../lib/leagueRuleCache.js";
 import { getLeagueCategories } from "../../lib/leagueCategories.js";
+import { KEY_TO_DB_FIELD, type CategoryKey } from "../../lib/sportConfig.js";
 import {
   computeTeamStatsFromDb,
   computeStandingsFromStats,
   computeCategoryRows,
   getSeasonStandings,
-  KEY_TO_DB_FIELD,
   type TeamStatRow,
 } from "./services/standingsService.js";
 import { createScoringEngine } from "./services/scoringEngine.js";
@@ -270,7 +270,7 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
         (row as any).pointsDelta = row.points - prevPts;
       }
     }
-    const dbField = (KEY_TO_DB_FIELD as Record<string, string>)[cfg.key] || cfg.key;
+    const dbField = KEY_TO_DB_FIELD[cfg.key as CategoryKey] || cfg.key;
     for (const row of rows) {
       const sTotals = seasonTotals.get(row.teamId);
       (row as any).seasonValue = (sTotals as Record<string, number> | undefined)?.[dbField] ?? 0;

@@ -9,6 +9,7 @@ import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { logger } from "../../lib/logger.js";
 import { computeStandingsFromStats, type TeamStatRow } from "../standings/services/standingsService.js";
+import { getLeagueCategories } from "../../lib/leagueCategories.js";
 import { buildIlWindows, ilEventsQuery, wasOnIlAtPeriodStart } from "../../lib/ilWindows.js";
 import { periodOverlapFilter } from "../../lib/rosterWindow.js";
 import { isEligibleForSlot } from "../../lib/positionInherit.js";
@@ -206,7 +207,7 @@ router.get("/ai-insights", requireAuth, requireLeagueMember("leagueId"), asyncHa
     }));
 
     // Compute real roto standings with proper tie-handling
-    const standingsRows = computeStandingsFromStats(teamStatRows);
+    const standingsRows = computeStandingsFromStats(teamStatRows, await getLeagueCategories(leagueId));
     standings = standingsRows.map(s => ({
       teamName: s.teamName, totalScore: s.points, rank: s.rank,
     }));

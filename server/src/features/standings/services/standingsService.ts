@@ -126,10 +126,8 @@ export function buildTeamNameMap(
   return map;
 }
 
-// Re-export from centralized sportConfig
-export { CATEGORY_CONFIG, KEY_TO_DB_FIELD } from "../../../lib/sportConfig.js";
 export type { CategoryKey } from "../../../lib/sportConfig.js";
-import { CATEGORY_CONFIG, KEY_TO_DB_FIELD, type CategoryKey } from "../../../lib/sportConfig.js";
+import { KEY_TO_DB_FIELD, type CategoryKey } from "../../../lib/sportConfig.js";
 
 /**
  * Compute category rankings for teams.
@@ -186,18 +184,16 @@ export function computeCategoryRows(
 
 /**
  * Compute overall standings by ranking teams across all scoring categories.
- * Accepts optional `categories` to support sport-agnostic scoring.
- * Defaults to baseball's CATEGORY_CONFIG for backward compatibility.
+ * `categories` is required: the caller supplies the league's scoring categories
+ * (see lib/leagueCategories.getLeagueCategories). There is deliberately no default.
  */
 export function computeStandingsFromStats(
   stats: TeamStatRow[],
-  categories?: ReadonlyArray<{ key: string; lowerIsBetter: boolean }>,
+  categories: ReadonlyArray<{ key: string; lowerIsBetter: boolean }>,
 ): StandingsRow[] {
   if (stats.length === 0) {
     return [];
   }
-
-  const cats = categories ?? CATEGORY_CONFIG;
 
   const teamMap = new Map<
     number,
@@ -217,7 +213,7 @@ export function computeStandingsFromStats(
   }
 
   // For each category, rank and add points
-  for (const cfg of cats) {
+  for (const cfg of categories) {
     const rows = computeCategoryRows(stats, cfg.key, cfg.lowerIsBetter);
     for (const r of rows) {
       const team = teamMap.get(r.teamId);

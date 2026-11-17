@@ -30,7 +30,7 @@
 import { fileURLToPath } from "node:url";
 import { prisma } from "../db/prisma.js";
 import { computeCategoryRows, computeStandingsFromStats } from "../features/standings/services/standingsService.js";
-import { TWO_WAY_PLAYERS, playerStatRoles } from "../lib/sportConfig.js";
+import { CATEGORY_CONFIG, TWO_WAY_PLAYERS, playerStatRoles } from "../lib/sportConfig.js";
 import { buildIlWindows, wasOnIlAtPeriodStart, type IlWindow, ilEventsQuery } from "../lib/ilWindows.js";
 
 export type Accum = {
@@ -196,7 +196,7 @@ async function main() {
     };
   });
 
-  const standings = computeStandingsFromStats(teamStats);
+  const standings = computeStandingsFromStats(teamStats, CATEGORY_CONFIG);
   standings.sort((a, b) => b.points - a.points);
 
   // Print FanGraphs OnRoto-style table
