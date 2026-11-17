@@ -8,6 +8,8 @@ export default defineConfig({
     // under full-suite load and hit 5s. The timeout is there to catch hangs, which
     // 15s still does.
     testTimeout: 15_000,
+    // supertest connects to [::1], not 127.0.0.1 (todo #318; see the file).
+    setupFiles: ["./src/test/ipv6Loopback.ts"],
     // Pick up server tests AND shared-contract tests (todo #118). The
     // shared schemas in `../shared/api/` are imported by both client and
     // server; running their contract tests under the server vitest gives
