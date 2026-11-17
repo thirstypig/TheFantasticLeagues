@@ -52,7 +52,8 @@ beforeEach(async () => {
   server = http.createServer();
   // Same order as index.ts: auction first, then draft.
   servers = [attachAuctionWs(server), attachDraftWs(server)];
-  await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+  // No host, and clients connect to [::1]: see src/test/ipv6Loopback.ts (todo #318).
+  await new Promise<void>((r) => server.listen(0, r));
   port = (server.address() as any).port;
 });
 
@@ -63,7 +64,7 @@ afterEach(async () => {
 });
 
 function connect(path: string): WebSocket {
-  const ws = new WebSocket(`ws://127.0.0.1:${port}${path}`);
+  const ws = new WebSocket(`ws://[::1]:${port}${path}`);
   sockets.push(ws);
   return ws;
 }

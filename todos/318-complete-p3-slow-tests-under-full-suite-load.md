@@ -42,3 +42,18 @@ per-test timeout. Don't raise timeouts blind.
   **Still open:** the wire-list `reducer.test.ts` failure (94ms, not a timeout). Its mocks look
   self-contained (`vi.clearAllMocks` in beforeEach; the failing test queues every mock its path
   reaches), so no fix without output. Next time it fails, save the full output and attach it here.
+- 2026-11-17 (later): Root cause of the non-timeout failures FOUND. Paired full server-suite runs
+  captured `archive/routes.test.ts` "returns 400 for non-numeric period" getting **404** from a route that
+  can only return 400 (and, in another run, engineRoutes + myList both getting 404: they swapped servers).
+  Mechanism, reproduced in standalone scripts on this Mac (Node 22): supertest listens with
+  `app.listen(0)` (`::`, every interface) and connects to 127.0.0.1:<port>. macOS lets ANY process hold
+  127.0.0.1:<port> or 0.0.0.0:<port> at the same time, and the IPv4-specific socket takes the connection.
+  Linux refuses those double binds, which is why CI never failed. First fix (unpin the one test that bound
+  127.0.0.1) did not change the rate, because the intruder can be any process. Pinning test servers to
+  127.0.0.1 breaks supertest (a named host binds async; supertest reads the port synchronously).
+  **Fix:** setup file `src/test/ipv6Loopback.ts` makes supertest connect to [::1]; the two hand-written
+  WebSocket tests connect to [::1]; an IPv6 connection always reaches the `::` listener. Guard test
+  `src/test/__tests__/noLoopbackListen.test.ts` checks supertest arrives over ::1 and that no server test
+  listens on a loopback-only host or connects to 127.0.0.1 (mutation-tested: removing the setup file fails it).
+- 2026-11-17: Confirmed: 18/18 full server-suite runs passed three at a time with the fix (before: 1 failure
+  per 12 runs two at a time, reproduced twice). Closing.

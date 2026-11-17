@@ -308,7 +308,7 @@ describe("nominationLists never leaves the server in state payloads", () => {
     const wss = real.attachAuctionWs(server);
     await new Promise<void>((r) => server.listen(0, r));
     const port = (server.address() as any).port;
-    const ws = new WebSocket(`ws://127.0.0.1:${port}/ws/auction?token=t&leagueId=${LEAGUE}`);
+    const ws = new WebSocket(`ws://[::1]:${port}/ws/auction?token=t&leagueId=${LEAGUE}`);
     try {
       await new Promise((r, j) => { ws.once("open", r); ws.once("error", j); });
       // Room join happens after async auth lookups on the server side
