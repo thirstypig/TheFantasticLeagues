@@ -27,7 +27,8 @@ vi.mock("../../../middleware/auth.js", () => ({
   requireCommissionerOrAdmin: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
 }));
 vi.mock("../../../middleware/asyncHandler.js", () => ({
-  asyncHandler: (fn: Function) => fn,
+  asyncHandler: (fn: Function) => (req: unknown, res: unknown, next: (e?: unknown) => void) =>
+    Promise.resolve(fn(req, res, next)).catch(next),
 }));
 
 // Mock the standings service functions
@@ -59,19 +60,8 @@ vi.mock("../services/standingsService.js", () => ({
   } as Record<string, string>,
 }));
 
-const REAL_10 = [
-  { key: "R", label: "Runs", lowerIsBetter: false, group: "H" },
-  { key: "HR", label: "Home Runs", lowerIsBetter: false, group: "H" },
-  { key: "RBI", label: "RBI", lowerIsBetter: false, group: "H" },
-  { key: "SB", label: "Stolen Bases", lowerIsBetter: false, group: "H" },
-  { key: "AVG", label: "Batting Average", lowerIsBetter: false, group: "H" },
-  { key: "W", label: "Wins", lowerIsBetter: false, group: "P" },
-  { key: "SV", label: "Saves", lowerIsBetter: false, group: "P" },
-  { key: "ERA", label: "ERA", lowerIsBetter: true, group: "P" },
-  { key: "WHIP", label: "WHIP", lowerIsBetter: true, group: "P" },
-  { key: "K", label: "Strikeouts", lowerIsBetter: false, group: "P" },
-];
-const FOUR_CATS = REAL_10.filter((c) => ["R", "HR", "W", "SV"].includes(c.key));
+const { SCORABLE_CATEGORIES: REAL_10 } = await vi.importActual<any>("../../../lib/leagueCategories.js");
+const FOUR_CATS = REAL_10.filter((c: any) => ["R", "HR", "W", "SV"].includes(c.key));
 const mockGetLeagueCategories = vi.fn();
 vi.mock("../../../lib/leagueCategories.js", () => ({
   getLeagueCategories: (...args: any[]) => mockGetLeagueCategories(...args),
@@ -269,7 +259,20 @@ describe("GET /period-category-standings", () => {
     },
   );
 
-  it("still returns 200 with minInnings null when the rules lookup rejects", async () => {
+  it("returns 500 and no standings when the category lookup rejects", async () => {
+    mockPrisma.period.findFirst.mockResolvedValue({ id: 5 });
+    mockGetSeasonStandings.mockResolvedValue({ periodIds: [5], periodData: [{ teamStats: [], standings: [] }], seasonRows: [] });
+    mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);
+    mockComputeCategoryRows.mockReturnValue([]);
+    mockGetLeagueCategories.mockRejectedValue(new Error("db down"));
+
+    const res = await supertest(app).get("/period-category-standings?leagueId=1");
+
+    expect(res.status).toBe(500);
+    expect(res.body.categories).toBeUndefined();
+  });
+
+  it("still returns 200 with minInnings null when the minInnings rules lookup rejects (categories resolve)", async () => {
     mockPrisma.period.findFirst.mockResolvedValue({ id: 5 });
     mockGetSeasonStandings.mockResolvedValue({ periodIds: [5], periodData: [{ teamStats: [], standings: [] }], seasonRows: [] });
     mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);

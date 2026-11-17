@@ -300,7 +300,9 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
 
   // Innings check data for the commissioner's close checklist. Informational
   // only: the client flags teams under the minimum; nothing here blocks anything.
-  // A failed rules lookup must not take down the whole standings response.
+  // A failed minInnings lookup is tolerated (minInnings stays null). The category
+  // lookup above is NOT: if it fails the request fails (500), because scoring
+  // against guessed categories is worse than an error on a real-money page.
   let minInnings: number | null = null;
   try {
     const rules = await getLeagueRules(prisma, leagueId);
