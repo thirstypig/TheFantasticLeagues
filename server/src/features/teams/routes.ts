@@ -9,10 +9,16 @@ import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { logger } from "../../lib/logger.js";
 import { computeStandingsFromStats, type TeamStatRow } from "../standings/services/standingsService.js";
-import { buildIlWindows, wasOnIlAtPeriodStart } from "../../lib/ilWindows.js";
+import { buildIlWindows, ilEventsQuery, wasOnIlAtPeriodStart } from "../../lib/ilWindows.js";
 import { periodOverlapFilter } from "../../lib/rosterWindow.js";
 import { isEligibleForSlot } from "../../lib/positionInherit.js";
-import { checkRosterVersion, incrementRosterVersion } from "./lib/rosterVersionGuard.js";
+import {
+  parseIfMatch,
+  readRosterVersion,
+  bumpRosterVersionIfCurrent,
+  incrementRosterVersion,
+  StaleRosterError,
+} from "../../lib/rosterVersion.js";
 
 // Swap-only mutation. `effectiveDate` is advisory metadata for the
 // commissioner-mode backdate flow — the swap itself doesn't write a
@@ -466,16 +472,7 @@ router.get("/:id/period-roster", requireAuth, asyncHandler(async (req, res) => {
     prisma.playerStatsPeriod.findMany({
       where: { periodId, playerId: { in: playerIds } },
     }),
-    prisma.transactionEvent.findMany({
-      where: {
-        playerId: { in: playerIds },
-        leagueId: period.leagueId,
-        transactionType: { in: ["IL_STASH", "IL_ACTIVATE"] },
-        effDate: { not: null },
-      },
-      select: { playerId: true, transactionType: true, effDate: true },
-      orderBy: { effDate: "asc" },
-    }),
+    prisma.transactionEvent.findMany(ilEventsQuery(period.leagueId, playerIds)),
   ]);
   const statsMap = new Map(periodStats.map(s => [s.playerId, s]));
   const ilWindowsByPlayer = buildIlWindows(ilEvents);
@@ -640,15 +637,22 @@ router.patch(
       });
     }
 
-    // Optimistic-concurrency guard (todo #181): reject stale writes.
-    // The If-Match header is optional during rollout — absent callers pass through.
-    const guard = await checkRosterVersion(teamId, req.headers["if-match"] as string | undefined);
-    if (guard.stale) {
-      return res.status(409).json({
-        error: "Roster changed since you last loaded it",
-        rosterVersion: guard.current,
+    // Optimistic-concurrency guard (todo #181). If-Match is required: a write
+    // with no version token would silently overwrite another tab's changes.
+    // The compare happens INSIDE the transaction (see below), so two writers
+    // holding the same token cannot both win.
+    const expectation = parseIfMatch(req.headers["if-match"] as string | undefined);
+    if (expectation.kind === "missing") {
+      return res.status(428).json({
+        error: "This change needs the roster version you last loaded. Reload the page and try again.",
       });
     }
+    const staleResponse = async () =>
+      res.status(409).json({
+        error: "Roster changed since you last loaded it",
+        rosterVersion: await readRosterVersion(teamId),
+      });
+    if (expectation.kind === "malformed") return staleResponse();
 
     // effectiveDate is advisory metadata for the commissioner-mode
     // backdate flow. Today the swap doesn't update Roster.acquiredAt
@@ -673,14 +677,24 @@ router.patch(
     }
 
     let newRosterVersion = 0;
-    const updated = await prisma.$transaction(async (tx) => {
-      const row = await tx.roster.update({
-        where: { id: rosterId },
-        data: { assignedPosition },
+    let updated;
+    try {
+      updated = await prisma.$transaction(async (tx) => {
+        // Bump first: for a numeric token this is the compare-and-set that
+        // throws StaleRosterError (rolling back everything) if we lost a race.
+        newRosterVersion =
+          expectation.kind === "exact"
+            ? await bumpRosterVersionIfCurrent(teamId, expectation.version, tx)
+            : await incrementRosterVersion(teamId, tx);
+        return tx.roster.update({
+          where: { id: rosterId },
+          data: { assignedPosition },
+        });
       });
-      newRosterVersion = await incrementRosterVersion(teamId, tx);
-      return row;
-    });
+    } catch (err) {
+      if (err instanceof StaleRosterError) return staleResponse();
+      throw err;
+    }
 
     res.json({ roster: updated, rosterVersion: newRosterVersion });
   }),

@@ -50,6 +50,7 @@ import type {
   BulkIlStashFailed,
   CleanupDroppedResponse,
 } from "../../../../../shared/api/commissioner.js";
+import { incrementRosterVersion } from "../../../lib/rosterVersion.js";
 
 /**
  * Detection: which players on this league's active rosters carry an MLB
@@ -195,6 +196,9 @@ async function stashOneIdempotent(args: {
 
       await assertIlSlotAvailable(tx, teamId, leagueId);
       await assertNoGhostIl(tx, teamId);
+
+      // todo #181: Team lock before the first Roster write (matches the PATCH).
+      await incrementRosterVersion(teamId, tx);
 
       // Move the player onto IL.
       await tx.roster.update({

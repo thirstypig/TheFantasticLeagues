@@ -207,6 +207,10 @@ function setupTeamAndRoster(
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // clearAllMocks keeps queued mockResolvedValueOnce values, so a test that
+  // fails before consuming its responses would hand them to the next test and
+  // one failure would cascade into several (todo #317). Empty the queue here.
+  mockMlbGetJson.mockReset();
   // Default: cache miss (forces real fetch).
   mockCacheGet.mockReturnValue(null);
 });

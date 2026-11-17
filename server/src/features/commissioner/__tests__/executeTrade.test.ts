@@ -22,7 +22,7 @@ const { mockPrisma, mockTx } = vi.hoisted(() => {
   const mockTx = {
     trade: { create: vi.fn() },
     roster: { findFirst: vi.fn(), update: vi.fn(), create: vi.fn() },
-    team: { findUnique: vi.fn(), update: vi.fn() },
+    team: { findUnique: vi.fn(), update: vi.fn(async () => ({ rosterVersion: 1 })) },
     draftPick: { updateMany: vi.fn() },
   };
   return {
@@ -163,5 +163,21 @@ describe("CommissionerService.executeTrade — effective dating", () => {
     const acquired = mockTx.roster.create.mock.calls[0][0].data;
     expect(released.releasedAt).toEqual(EFFECTIVE);
     expect(acquired.acquiredAt).toEqual(EFFECTIVE);
+  });
+});
+
+describe("CommissionerService.executeTrade — rosterVersion (todo #181)", () => {
+  it("bumps both the sender and the recipient inside the transaction", async () => {
+    arrangeTrade({ id: 4001, assignedPosition: "OF" });
+    await service.executeTrade(LEAGUE, ITEMS);
+    const bumped = mockTx.team.update.mock.calls
+      .map((c: any[]) => c[0])
+      .filter((a: any) => a.data?.rosterVersion);
+    expect(bumped.map((a: any) => a.where.id)).toEqual([SENDER, RECIPIENT].sort((a, b) => a - b));
+    // Lock order: bumps precede the first Roster write.
+    expect(Math.max(...mockTx.team.update.mock.invocationCallOrder)).toBeLessThan(
+      Math.min(...mockTx.roster.update.mock.invocationCallOrder, ...mockTx.roster.create.mock.invocationCallOrder),
+    );
+    for (const a of bumped) expect(a.data).toEqual({ rosterVersion: { increment: 1 } });
   });
 });

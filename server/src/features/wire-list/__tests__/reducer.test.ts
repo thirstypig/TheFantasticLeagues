@@ -19,6 +19,7 @@ import type { NextFunction } from "express";
 
 vi.mock("../../../db/prisma.js", () => {
   const tx = {
+    team: { update: vi.fn(async () => ({ rosterVersion: 1 })) }, // incrementRosterVersion (todo #181)
     waiverPeriod: {
       updateMany: vi.fn(),
       update: vi.fn(),

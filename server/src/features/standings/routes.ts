@@ -312,7 +312,7 @@ router.get("/period-category-standings", requireAuth, requireLeagueMember("leagu
   res.json({ periodId: pid, categories, teamCount: teamStats.length, totalDelta: Object.fromEntries(totalDeltaMap), teamInnings, minInnings, computedAt: new Date().toISOString() });
 }));
 
-// --- Season (cumulative) standings: /api/standings/season ---
+// --- Season (cumulative) standings: GET /api/season (router mounted at /api) ---
 
 router.get("/season", requireAuth, requireLeagueMember("leagueId"), asyncHandler(async (req, res) => {
   const leagueId = req.query.leagueId ? Number(req.query.leagueId) : null;

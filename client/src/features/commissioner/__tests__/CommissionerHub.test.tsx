@@ -187,7 +187,7 @@ describe("CommissionerHub tiles and rows", () => {
     expect(await screen.findByRole("link", { name: /History/ })).toBeTruthy();
     expect(href(/History/)).toBe("/commissioner/20/recent");
     expect(href(/Scoring categories/)).toBe("/commissioner/20/scoring");
-    expect(href(/Wire List settings/)).toBe("/commissioner/20/wire-list");
+    expect(href(/List settings/)).toBe("/commissioner/20/wire-list");
   });
 
   it("failed status calls leave tiles without a status line and nothing crashes", async () => {

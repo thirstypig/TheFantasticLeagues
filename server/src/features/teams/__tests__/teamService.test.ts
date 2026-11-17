@@ -439,7 +439,7 @@ describe("TeamService.getTeamRosterHub — ilSince", () => {
         effDate: { not: null },
       },
       select: { playerId: true, transactionType: true, effDate: true },
-      orderBy: { effDate: "asc" },
+      orderBy: [{ effDate: "asc" }, { id: "asc" }],
     });
   });
 

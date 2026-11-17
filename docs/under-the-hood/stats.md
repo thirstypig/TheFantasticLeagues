@@ -21,24 +21,24 @@ updated: 2026-11-16
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-16 from 1,971 git-tracked files.*
+*Generated 2026-11-16 from 2,025 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 656 | 114,897 |
-| `.tsx` | 376 | 93,654 |
-| `.md` | 562 | 70,862 |
-| `.json` | 36 | 40,130 |
+| `.ts` | 685 | 119,587 |
+| `.tsx` | 392 | 97,128 |
+| `.md` | 570 | 72,010 |
+| `.json` | 36 | 40,129 |
 | `.css` | 15 | 2,475 |
-| `.sql` | 40 | 2,153 |
-| `.prisma` | 1 | 1,768 |
+| `.sql` | 41 | 2,172 |
+| `.prisma` | 1 | 1,782 |
 | `.mjs` | 9 | 1,745 |
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **1,967** | **371,965** |
+| **All tracked** | **2,021** | **381,309** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -46,21 +46,21 @@ updated: 2026-11-16
 
 | Measure | Count |
 |---|---:|
-| API routes | 293 |
-| Prisma models | 66 |
-| Prisma migrations | 38 |
-| Server feature modules | 33 |
-| Client feature modules | 28 |
-| Cross-feature imports (ADR-015 baseline) | 84 |
+| API routes | 301 |
+| Prisma models | 67 |
+| Prisma migrations | 39 |
+| Server feature modules | 34 |
+| Client feature modules | 29 |
+| Cross-feature imports (ADR-015 baseline) | 83 |
 
 ## Docs
 
-**217** board-scope markdown files (`docs/` plus the four root docs), of which **150** carry frontmatter.
+**219** board-scope markdown files (`docs/` plus the four root docs), of which **151** carry frontmatter.
 
-*566 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
+*574 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
 unrelated frontmatter vocabularies and are deliberately excluded from the tables below.*
 
-> **67 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
+> **68 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
 > or cross-linked. Retrofitting them is the largest single piece of remaining docs work.
 
 | Type | Docs | In vocabulary? |
@@ -73,6 +73,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `tech-spec` | 3 | ✅ |
 | `solution` | 2 | ✅ |
 | `deployment-failure` | 2 | ❌ off-vocabulary |
+| `spec` | 2 | ❌ off-vocabulary |
 | `inbox` | 1 | ✅ |
 | `doc` | 1 | ✅ |
 | `brainstorm` | 1 | ❌ off-vocabulary |
@@ -90,7 +91,6 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `roadmap` | 1 | ✅ |
 | `todos` | 1 | ✅ |
 | `build-config-issue` | 1 | ❌ off-vocabulary |
-| `spec` | 1 | ❌ off-vocabulary |
 | `changelog` | 1 | ✅ |
 | `costs` | 1 | ✅ |
 | `experiment` | 1 | ✅ |
@@ -100,11 +100,11 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `stats` | 1 | ✅ |
 | `status` | 1 | ✅ |
 
-**36 docs use a `type` outside the controlled vocabulary** (see `docs/README-DOCS.md` §4) — mostly older `docs/solutions/` and `docs/archive/` entries written before the schema existed.
+**37 docs use a `type` outside the controlled vocabulary** (see `docs/README-DOCS.md` §4) — mostly older `docs/solutions/` and `docs/archive/` entries written before the schema existed.
 
 | Status | Docs | In vocabulary? |
 |---|---:|---|
-| `active` | 61 | ✅ |
+| `active` | 62 | ✅ |
 | `draft` | 6 | ✅ |
 | `completed` | 4 | ❌ off-vocabulary |
 | `resolved` | 4 | ❌ off-vocabulary |
@@ -119,7 +119,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 ## Open work
 
-**3 open** of 308 total to-dos.
+**3 open** of 314 total to-dos.
 
 | Priority | Open |
 |---|---:|

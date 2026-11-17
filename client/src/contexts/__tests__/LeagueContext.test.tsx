@@ -18,6 +18,7 @@ vi.mock("../../api", () => ({
 vi.mock("../../features/seasons/api", () => ({ getCurrentSeason: vi.fn(async () => null) }));
 vi.mock("../../api/base", () => ({ API_BASE: "/api", fetchJsonApi: vi.fn(async () => ({})) }));
 
+import { fetchJsonApi } from "../../api/base";
 import { LeagueProvider, resolveLeagueId, useLeague } from "../LeagueContext";
 
 const member = (leagueId: number, role = "OWNER") => ({ leagueId, role });
@@ -53,6 +54,31 @@ function Probe() {
   );
 }
 
+/** Shows the league and its rules: "loading" while null, "none" when the key is absent. */
+function RulesProbe() {
+  const { leagueId, leagueRules } = useLeague();
+  return (
+    <>
+      <p data-testid="rules-league">{leagueId}</p>
+      <p data-testid="live">{leagueRules === null ? "loading" : leagueRules.meeting?.live ?? "none"}</p>
+    </>
+  );
+}
+
+/**
+ * The provider starts on league 1 and moves to the user's league once the
+ * league list loads, which clears and re-fetches the rules. Wait for that move
+ * and its fetch to land before changing the mock, or on a slow runner the move
+ * happens mid-test and the test sees a NEW league's fetch instead of a refresh
+ * (main CI failed this way 3 times on 2026-11-16).
+ */
+async function settledOnLeague(leagueId: number, live: string) {
+  await waitFor(() => {
+    expect(screen.getByTestId("rules-league").textContent).toBe(String(leagueId));
+    expect(screen.getByTestId("live").textContent).toBe(live);
+  });
+}
+
 describe("LeagueProvider", () => {
   beforeEach(() => localStorage.clear());
 
@@ -83,5 +109,53 @@ describe("LeagueProvider", () => {
     render(<LeagueProvider><Probe /></LeagueProvider>);
     await waitFor(() => expect(screen.getByTestId("league").textContent).toBe("9"));
     expect(localStorage.getItem("fbst-league-id")).toBe("9");
+  });
+
+  it("re-reads the league rules when the tab becomes visible, keeping the old map meanwhile", async () => {
+    const fetchMock = vi.mocked(fetchJsonApi);
+    let live = "false";
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith("/rules") ? ({ rules: [{ category: "meeting", key: "live", value: live }] } as never) : ({} as never),
+    );
+    auth.user = { id: 1, memberships: [member(9)] };
+    render(<LeagueProvider><RulesProbe /></LeagueProvider>);
+    await settledOnLeague(9, "false");
+
+    live = "true";
+    let resolveRules: () => void = () => {};
+    fetchMock.mockImplementationOnce(
+      (url: string) =>
+        new Promise((res) => {
+          resolveRules = () => res((url.endsWith("/rules") ? { rules: [{ category: "meeting", key: "live", value: live }] } : {}) as never);
+        }),
+    );
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); });
+    // Still showing the old map, never back to "loading", while the refresh is in flight.
+    expect(screen.getByTestId("live").textContent).toBe("false");
+    await act(async () => { resolveRules(); });
+    await waitFor(() => expect(screen.getByTestId("live").textContent).toBe("true"));
+    fetchMock.mockReset();
+    fetchMock.mockImplementation(async () => ({}) as never);
+  });
+
+  it("a failed rules refresh keeps the rules it already has", async () => {
+    const fetchMock = vi.mocked(fetchJsonApi);
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith("/rules") ? ({ rules: [{ category: "meeting", key: "live", value: "true" }] } as never) : ({} as never),
+    );
+    auth.user = { id: 1, memberships: [member(9)] };
+    render(<LeagueProvider><RulesProbe /></LeagueProvider>);
+    await settledOnLeague(9, "true");
+
+    const calls = fetchMock.mock.calls.length;
+    fetchMock.mockImplementation(async () => { throw new Error("offline"); });
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
+    await act(async () => { document.dispatchEvent(new Event("visibilitychange")); });
+    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(calls));
+    await act(async () => {});
+    expect(screen.getByTestId("live").textContent).toBe("true");
+    fetchMock.mockReset();
+    fetchMock.mockImplementation(async () => ({}) as never);
   });
 });

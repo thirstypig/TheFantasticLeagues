@@ -27,6 +27,7 @@ import { isEligibleForSlot } from "../../../lib/positionInherit.js";
 import { getLeagueStatsSource, getTeamsForSource } from "../../../lib/mlbTeams.js";
 import type { WaiverPeriodStatus } from "../../../../../shared/api/wireList.js";
 import { SlotChangeSchema, type SlotChange } from "../../../../../shared/api/rosterMoves.js";
+import { incrementRosterVersions } from "../../../lib/rosterVersion.js";
 
 // ─── Error type ──────────────────────────────────────────────────────
 
@@ -261,6 +262,12 @@ export async function finalizePeriod(period: {
       const processedDropIds: number[] = [];
 
       let dropsConsumed = 0;
+      // todo #181: bump every team that will change BEFORE the first roster
+      // write, ascending team-id order (lock order matches the roster PATCH).
+      await incrementRosterVersions(
+        succeededAdds.filter((a) => a.consumedDrop).map((a) => a.teamId),
+        tx,
+      );
       const now = new Date();
       for (const add of succeededAdds) {
         if (!add.consumedDrop) continue;

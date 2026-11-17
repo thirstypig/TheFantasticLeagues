@@ -19,9 +19,12 @@ vi.mock("../../standings/services/standingsService.js", () => ({
 vi.mock("../../../lib/positionInherit.js", () => ({
   isEligibleForSlot: vi.fn().mockReturnValue(true),
 }));
-vi.mock("../lib/rosterVersionGuard.js", () => ({
-  checkRosterVersion: vi.fn(),
+vi.mock("../../../lib/rosterVersion.js", () => ({
+  parseIfMatch: vi.fn(),
+  readRosterVersion: vi.fn(),
+  bumpRosterVersionIfCurrent: vi.fn(),
   incrementRosterVersion: vi.fn(),
+  StaleRosterError: class StaleRosterError extends Error {},
 }));
 vi.mock("../../../lib/logger.js", () => ({
   logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },

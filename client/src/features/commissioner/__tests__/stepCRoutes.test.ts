@@ -17,7 +17,7 @@ describe("step C routes in App.tsx", () => {
   const catchAll = () => idx('path="/commissioner/:leagueId/:section"');
   const routes: [string, string][] = [
     ['path="/commissioner/:leagueId/meeting/:periodId/review"', "<MeetingReviewPage />"],
-    ['path="/commissioner/:leagueId/meeting/:periodId"', "<MeetingPage />"],
+    ['path="/commissioner/:leagueId/meeting/:periodId"', "<MeetingRoute />"],
     ['path="/commissioner/:leagueId/rosters/:teamId"', "<TeamRosterPage />"],
     ['path="/commissioner/:leagueId/rosters"', "<RostersPage />"],
     ['path="/commissioner/:leagueId/trades"', "<CommissionerTradesPage />"],

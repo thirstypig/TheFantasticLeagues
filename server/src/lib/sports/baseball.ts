@@ -137,6 +137,11 @@ export const DEFAULT_RULES = [
   { category: "transactions", key: "owner_self_serve", value: "false", label: "Owner self-serve roster moves" },
   // "anytime" | "meeting_day". meeting_day refuses propose/accept while a period is active.
   { category: "transactions", key: "trade_window", value: "anytime", label: "When trades are allowed" },
+  // Live meeting switches. Off by default: with live "false" nothing changes.
+  { category: "meeting", key: "live", value: "false", label: "Owners enter own moves at the meeting" },
+  { category: "meeting", key: "turn_seconds", value: "120", label: "Clock per turn" },
+  { category: "meeting", key: "can_add_time", value: "true", label: "You can add time" },
+  { category: "meeting", key: "overtime_fee", value: "0", label: "Penalty for going over" },
   // Bonuses
   { category: "bonuses", key: "grand_slam", value: "5", label: "Grand Slam Bonus ($)" },
   { category: "bonuses", key: "shutout", value: "5", label: "Shutout Bonus ($)" },

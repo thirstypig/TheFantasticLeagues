@@ -61,18 +61,18 @@ describe("PlayersTable", () => {
     expect(screen.getByText("0.98")).toBeInTheDocument();
   });
 
-  it("free agent gets + Wire List only when a pending period exists", () => {
+  it("free agent gets + List only when a pending period exists", () => {
     const { unmount } = renderTable([hitter()], { pendingPeriodId: null });
-    expect(screen.queryByRole("button", { name: "+ Wire List" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "+ List" })).toBeNull();
     unmount();
     renderTable([hitter()], { pendingPeriodId: 5 });
-    expect(screen.getByRole("button", { name: "+ Wire List" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "+ List" })).toBeInTheDocument();
   });
 
-  it("+ Wire List calls the handler, then shows On Wire List (disabled) once listed", async () => {
+  it("+ List calls the handler, then shows On List (disabled) once listed", async () => {
     const onAdd = vi.fn().mockResolvedValue(undefined);
     const { rerender } = renderTable([hitter()], { pendingPeriodId: 5, onWireListAdd: onAdd });
-    fireEvent.click(screen.getByRole("button", { name: "+ Wire List" }));
+    fireEvent.click(screen.getByRole("button", { name: "+ List" }));
     await waitFor(() => expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ id: 11 })));
     rerender(
       <MemoryRouter>
@@ -80,14 +80,14 @@ describe("PlayersTable", () => {
           pendingPeriodId={5} listedIds={new Set([11])} onWireListAdd={onAdd} />
       </MemoryRouter>,
     );
-    expect(screen.getByRole("button", { name: "On Wire List" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "On List" })).toBeDisabled();
   });
 
-  it("disables + Wire List while the add is in flight (no double POST)", async () => {
+  it("disables + List while the add is in flight (no double POST)", async () => {
     let resolve!: () => void;
     const onAdd = vi.fn().mockImplementation(() => new Promise<void>((r) => { resolve = r; }));
     renderTable([hitter()], { pendingPeriodId: 5, onWireListAdd: onAdd });
-    const btn = screen.getByRole("button", { name: "+ Wire List" });
+    const btn = screen.getByRole("button", { name: "+ List" });
     fireEvent.click(btn);
     await waitFor(() => expect(btn).toBeDisabled());
     fireEvent.click(btn);
@@ -101,25 +101,25 @@ describe("PlayersTable", () => {
     expect(screen.queryByRole("link", { name: "Trade" })).toBeNull();
   });
 
-  it("shows an inline error when the wire list add fails", async () => {
+  it("shows an inline error when the List add fails", async () => {
     const onAdd = vi.fn().mockRejectedValue(new Error("Period is LOCKED"));
     renderTable([hitter()], { pendingPeriodId: 5, onWireListAdd: onAdd });
-    fireEvent.click(screen.getByRole("button", { name: "+ Wire List" }));
+    fireEvent.click(screen.getByRole("button", { name: "+ List" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Period is LOCKED");
-    expect(screen.getByRole("button", { name: "+ Wire List" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "+ List" })).toBeEnabled();
   });
 
   it("other team's player gets Trade linking to /trades/new?team=..&get=..", () => {
     renderTable([hitter({ ogba_team_code: "BOM", ogba_team_id: 2 })]);
     const link = screen.getByRole("link", { name: "Trade" });
     expect(link).toHaveAttribute("href", "/trades/new?team=2&get=11");
-    expect(screen.queryByRole("button", { name: "+ Wire List" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "+ List" })).toBeNull();
   });
 
   it("own player has no action", () => {
     renderTable([hitter({ ogba_team_code: "LOS", ogba_team_id: 1 })], { pendingPeriodId: 5 });
     expect(screen.queryByRole("link", { name: "Trade" })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Wire List/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /\+ List|On List/ })).toBeNull();
   });
 
   it("shows no actions when the viewer has no team", () => {
@@ -127,7 +127,7 @@ describe("PlayersTable", () => {
       myTeamId: null, myTeamCode: null, pendingPeriodId: 5,
     });
     expect(screen.queryByRole("link", { name: "Trade" })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Wire List/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /\+ List|On List/ })).toBeNull();
   });
 
   it("M3: names carry the tab's stat group so a two-way player opens on the right side", () => {

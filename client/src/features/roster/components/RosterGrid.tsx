@@ -163,6 +163,7 @@ export default function RosterGrid({ leagueId, teams: initialTeams, rosters: ini
       await fetchJsonApi(`${API_BASE}/teams/${teamId}/roster/${rosterId}`, {
         method: "PATCH",
         body: JSON.stringify({ assignedPosition: newPos }),
+        headers: { "If-Match": "*" }, // todo #181: no roster hub loaded here, so no version to send
       });
       setRosters(prev => prev.map(r => r.id === rosterId ? { ...r, assignedPosition: newPos } : r));
       toast(`Updated ${playerName} position to ${newPos}`, "success");

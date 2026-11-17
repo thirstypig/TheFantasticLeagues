@@ -228,10 +228,12 @@ describe("NewTradePage", () => {
     saveTradeDraft({ leagueId: 20, partnerId: 2, give: [101, 999], get: [202], giveDollars: 3, getDollars: 0 });
     renderPage();
     await screen.findByText("Bryce Harper");
+    // The restore filter runs in an effect after the partner's roster renders:
+    // wait for its result, not the render (todo #317).
+    await waitFor(() => expect(loadTradeDraft(20)?.give).toEqual([101]));
     expect(screen.getByRole("checkbox", { name: /Fernando Tatis Jr\./ })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: /Pete Alonso/ })).toBeChecked();
     expect(screen.getByLabelText("You give $")).toHaveValue(3);
-    expect(loadTradeDraft(20)?.give).toEqual([101]);
   });
 
   it("ignores a draft whose partner no longer exists", async () => {
@@ -257,8 +259,11 @@ describe("NewTradePage", () => {
     saveTradeDraft({ leagueId: 20, partnerId: 2, give: [], get: [], giveDollars: 30, getDollars: 30 });
     renderPage();
     await screen.findByText("Bryce Harper");
+    // The clamp runs in an effect after the partner's roster renders, so one
+    // commit shows "Bryce Harper" with the restored 30. CI caught that commit
+    // (run 43785462207: expected 12, received 30). Wait for the clamp itself.
+    await waitFor(() => expect(screen.getByLabelText("You get $")).toHaveValue(12)); // over their 12
     expect(screen.getByLabelText("You give $")).toHaveValue(30); // under my 40
-    expect(screen.getByLabelText("You get $")).toHaveValue(12); // over their 12
     expect(loadTradeDraft(20)).toMatchObject({ giveDollars: 30, getDollars: 12 });
   });
 
@@ -266,7 +271,7 @@ describe("NewTradePage", () => {
     localStorage.setItem("fbst.tradeDraft.v1.20", JSON.stringify({ leagueId: 20, partnerId: 2, give: [], get: [], giveDollars: -5, getDollars: 2.7 }));
     renderPage();
     await screen.findByText("Bryce Harper");
-    expect(loadTradeDraft(20)).toMatchObject({ giveDollars: 0, getDollars: 2 });
+    await waitFor(() => expect(loadTradeDraft(20)).toMatchObject({ giveDollars: 0, getDollars: 2 }));
   });
 
   it("drops a restored partner that is not in the league without fetching its roster", async () => {

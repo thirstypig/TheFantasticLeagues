@@ -235,7 +235,7 @@ describe("TodayPage", () => {
       } as never),
     });
     renderPage();
-    const link = screen.getByRole("link", { name: /Adds & drops:.*Wire List locks/ });
+    const link = screen.getByRole("link", { name: /Adds & drops:.*List locks/ });
     expect(link).toHaveAttribute("href", "/teams/LD/wire-list");
   });
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { buildIlWindows, wasOnIlAtPeriodStart } from "../ilWindows.js";
+import { buildIlWindows, ilEventsQuery, wasOnIlAtPeriodStart } from "../ilWindows.js";
 
 // Silence logger.warn in tests so orphaned-activate assertions don't pollute output.
 vi.mock("../logger.js", () => ({
@@ -216,5 +216,28 @@ describe("buildIlWindows — DROP / IL_RELEASE close a stint", () => {
       { playerId: 2, transactionType: "IL_RELEASE", effDate: d("2026-05-09") },
     ]).get(2)!;
     expect(w).toEqual([{ startDate: d("2026-05-01"), endDate: d("2026-05-09") }]);
+  });
+});
+
+describe("ilEventsQuery", () => {
+  it("scopes to one league, loads every stint-closing type, and tie-breaks by id", () => {
+    expect(ilEventsQuery(20, [5, 6])).toEqual({
+      where: {
+        leagueId: 20, // todo #313: another league's stash must not exclude stats here
+        playerId: { in: [5, 6] },
+        transactionType: { in: ["IL_STASH", "IL_ACTIVATE", "IL_RELEASE", "DROP"] }, // todo #312
+        effDate: { not: null },
+      },
+      select: { playerId: true, transactionType: true, effDate: true },
+      orderBy: [{ effDate: "asc" }, { id: "asc" }], // todo #305
+    });
+  });
+
+  it("a stash closed by DROP leaves no open stint at a later period start", () => {
+    const w = buildIlWindows([
+      ev(5, "IL_STASH", D("2026-04-05T00:00:00Z")),
+      ev(5, "DROP", D("2026-04-12T00:00:00Z")),
+    ]);
+    expect(wasOnIlAtPeriodStart(5, new Date("2026-04-29T00:00:00Z"), w)).toBe(false);
   });
 });
