@@ -3,7 +3,7 @@ id: DOC-043
 title: "Phase 3.5: standings score each league's own categories — design"
 description: "Every standings path scores the categories a league picked on its Rules page (any subset of the 10 scorable ones) instead of a hardcoded list; OGBA must come out identical."
 type: tech-spec
-status: draft
+status: active
 phase: "Phase 3.5"
 owner: james
 tags: [scoring, league-admin]

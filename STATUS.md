@@ -42,13 +42,13 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - 2026 audit vs FanGraphs/OnRoto (#470, #471); waivers retired, cache fix, CVEs (#465–#467)
 
 ## In progress
-- Nothing in review
+- Phase 3.5 in review: standings score each league's own categories (any subset of the 10). Merge waits on the census and the before/after prod standings dump (must be identical)
 
 ## Open bugs / known issues
 - 2026 final vs OnRoto: P1–P3, P5, P6 exact; P4 and P7 each have one ±1 pair (DDG/RGS, RGS/The Show). Final order identical.
 
 ## Next phases (in order)
-1. Phase 3.5: standings categories from the league's scoring settings
+1. Phase 3.5: finish the prod gate and merge
 2. Public auction-keeper leagues (not scheduled)
 
 ## Decisions changed recently
