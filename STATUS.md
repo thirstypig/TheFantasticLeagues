@@ -1,6 +1,6 @@
 # STATUS
 
-**Last updated:** 2026-11-15
+**Last updated:** 2026-11-17
 
 ## One-line description
 The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with auctions, keepers and a commissioner. It replaces spreadsheets and OnRoto for the OGBA league.
@@ -34,16 +34,17 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - Stale tabs can't overwrite a newer roster (#503)
 - Season standings load in 6 queries, not ~45 (#501); IL stints close on a drop, IL events per league (#505)
 - Commissioner can void a meeting fee on the Money page (#506)
-- Auction reliability: timers restart after a server restart (#496); the league's commissioner can start its auction, pre-season only (#497)
-- League picked in Switch League survives reloads (#494) and shows its season (#495)
+- Cache cleanup: MLB teams refresh hourly; one trade-block store (#500)
+- Auction: timers survive restarts (#496); commissioner can start it pre-season (#497)
+- Switch League pick survives reloads, shows its season (#494, #495)
 - 2026 audit vs FanGraphs/OnRoto (#470, #471); waivers retired, cache fix, CVEs (#465–#467)
 
 ## In progress
-- In review: #500 (cache cleanup)
+- Nothing in review
 
 ## Open bugs / known issues
 - 2026 final vs OnRoto: P1–P3, P5, P6 exact; P4 and P7 each have one ±1 pair (DDG/RGS, RGS/The Show). Final order identical.
-- Todo #304 (cache cleanup)
+- Todo #304: dropping two unused tables awaits James
 
 ## Next phases (in order)
 1. Phase 3.5: standings categories from the league's scoring settings

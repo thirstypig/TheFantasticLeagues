@@ -8,8 +8,16 @@ const MLB_BASE = "https://statsapi.mlb.com/api/v1";
 /** Default cache TTL in seconds (10 minutes, same as previous in-memory TTL) */
 const DEFAULT_TTL = 600;
 
-/** Longer TTL for team/player mappings (24 hours — rarely changes) */
+/** Longer TTL for the MLB team id -> abbreviation map (24 hours — rarely changes) */
 const TEAM_MAP_TTL = 86400;
+
+/**
+ * TTL for per-player currentTeam lookups. Players change teams (trades), so
+ * this is deliberately short: a traded player's team is at most 1 hour stale
+ * here. (Player.mlbTeam in the DB is refreshed by the daily roster sync —
+ * see syncAllPlayers — and is bounded by that cron, ~24h.)
+ */
+export const PLAYER_TEAM_TTL = 3600;
 
 // Circuit breaker state
 let consecutiveFailures = 0;
@@ -106,7 +114,7 @@ export async function warmMlbTeamCache(mlbIds: string[]): Promise<Record<string,
   for (let i = 0; i < batches.length; i++) {
     const batch = batches[i];
     const url = `${MLB_BASE}/people?personIds=${batch.join(",")}`;
-    const data = await mlbGetJson(url, TEAM_MAP_TTL);
+    const data = await mlbGetJson(url, PLAYER_TEAM_TTL);
 
     for (const p of data.people || []) {
       const id = String(p.id);

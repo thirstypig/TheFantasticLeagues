@@ -722,19 +722,17 @@ router.get("/trade-block/league", requireAuth, asyncHandler(async (req, res) => 
     if (!m) return res.status(403).json({ error: "Not a member of this league" });
   }
 
-  const teams = await prisma.team.findMany({
-    where: { leagueId },
-    select: { id: true, tradeBlockPlayerIds: true },
+  // Single source of truth: the TradingBlock table (Team.tradeBlockPlayerIds is
+  // deprecated and no longer read or written — todo #304).
+  const entries = await prisma.tradingBlock.findMany({
+    where: { team: { leagueId } },
+    select: { teamId: true, playerId: true },
+    orderBy: { createdAt: "asc" },
   });
 
   const tradeBlocks: Record<number, number[]> = {};
-  for (const team of teams) {
-    const ids = Array.isArray(team.tradeBlockPlayerIds)
-      ? (team.tradeBlockPlayerIds as number[])
-      : [];
-    if (ids.length > 0) {
-      tradeBlocks[team.id] = ids;
-    }
+  for (const e of entries) {
+    (tradeBlocks[e.teamId] ??= []).push(e.playerId);
   }
 
   res.json({ tradeBlocks });
@@ -749,7 +747,7 @@ router.get("/:teamId/trade-block", requireAuth, asyncHandler(async (req, res) =>
 
   const team = await prisma.team.findUnique({
     where: { id: teamId },
-    select: { tradeBlockPlayerIds: true, leagueId: true },
+    select: { leagueId: true },
   });
   if (!team) return res.status(404).json({ error: "Team not found" });
 
@@ -761,11 +759,13 @@ router.get("/:teamId/trade-block", requireAuth, asyncHandler(async (req, res) =>
     if (!m) return res.status(403).json({ error: "Not a member of this league" });
   }
 
-  const playerIds = Array.isArray(team.tradeBlockPlayerIds)
-    ? (team.tradeBlockPlayerIds as number[])
-    : [];
+  const entries = await prisma.tradingBlock.findMany({
+    where: { teamId },
+    select: { playerId: true },
+    orderBy: { createdAt: "asc" },
+  });
 
-  res.json({ playerIds });
+  res.json({ playerIds: entries.map((e) => e.playerId) });
 }));
 
 // POST /api/teams/:teamId/trade-block — save trade block selections (team owner only)
@@ -785,10 +785,21 @@ router.post("/:teamId/trade-block", requireAuth, validateBody(tradeBlockSchema),
   const rosterPlayerIds = new Set(activeRoster.map(r => r.playerId));
   const validPlayerIds = playerIds.filter(id => rosterPlayerIds.has(id));
 
-  await prisma.team.update({
-    where: { id: teamId },
-    data: { tradeBlockPlayerIds: validPlayerIds },
-  });
+  // Replace the team's TradingBlock rows with the submitted set. Rows already
+  // present keep their askingFor note; Team.tradeBlockPlayerIds is no longer
+  // written (todo #304).
+  await prisma.$transaction([
+    prisma.tradingBlock.deleteMany({
+      where: { teamId, playerId: { notIn: validPlayerIds } },
+    }),
+    ...validPlayerIds.map((playerId) =>
+      prisma.tradingBlock.upsert({
+        where: { teamId_playerId: { teamId, playerId } },
+        update: {},
+        create: { teamId, playerId },
+      }),
+    ),
+  ]);
 
   logger.info({ teamId, count: validPlayerIds.length }, "Trade block updated");
   res.json({ playerIds: validPlayerIds });
