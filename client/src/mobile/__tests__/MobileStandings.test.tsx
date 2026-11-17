@@ -151,4 +151,27 @@ describe("MobileStandings", () => {
     expect(screen.getAllByText("9").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("10").length).toBeGreaterThanOrEqual(1);
   });
+
+  it("shows only the leagues categories and an empty state for a tab with none", async () => {
+    const two = {
+      ...SAMPLE_RESPONSE,
+      categories: [
+        { ...SAMPLE_RESPONSE.categories[1], key: "R", label: "R" },
+        SAMPLE_RESPONSE.categories[1],
+      ],
+    };
+    vi.mocked(getPeriodCategoryStandings).mockResolvedValue(two as any);
+    renderStandings();
+    await screen.findAllByText("Los Doyers");
+    const headers = screen
+      .getAllByRole("button")
+      .map((b) => b.textContent?.trim() ?? "")
+      .filter((t) => ["AVG", "HR", "R", "RBI", "SB"].includes(t));
+    expect(headers).toEqual(["HR", "R"]);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Pitching" }));
+    expect(await screen.findByText("This league doesn't score pitching categories.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /ERA/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /TOT/ })).toBeNull();
+  });
 });

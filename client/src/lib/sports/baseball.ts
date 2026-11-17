@@ -63,6 +63,16 @@ export const PITCHING_CATS: string[] = [
   "QS", "HLD", "IP", "CG", "SHO", "L", "BB", "HR",
 ];
 
+/** Categories the scoring engine can actually rank (matches the server). */
+export const SCORABLE_HITTING_CATS: string[] = ["R", "HR", "RBI", "SB", "AVG"];
+export const SCORABLE_PITCHING_CATS: string[] = ["W", "SV", "ERA", "WHIP", "K"];
+
+/** Leagues store saves as "S"; the UI shows and writes "SV". */
+export function normalizeCategoryKey(k: string): string {
+  const u = k.trim().toUpperCase();
+  return u === "S" ? "SV" : u;
+}
+
 // ─── MLB League Team Sets ───
 
 export const NL_TEAMS = new Set(["ARI","AZ","ATL","CHC","CIN","COL","LAD","MIA","MIL","NYM","PHI","PIT","SD","SF","STL","WSH"]);

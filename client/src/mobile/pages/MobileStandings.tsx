@@ -162,7 +162,10 @@ export function MobileStandings() {
     setSortDir("desc");
   }, [view]);
 
-  const visibleCats: PeriodCategoryKey[] = view === "Hitting" ? HIT_CATS : PITCH_CATS;
+  const presentKeys = useMemo(() => new Set<string>(catTables.map((c) => c.key)), [catTables]);
+  const visibleCats: PeriodCategoryKey[] = (view === "Hitting" ? HIT_CATS : PITCH_CATS).filter((c) =>
+    presentKeys.has(c),
+  );
 
   const onSort = (k: SortKey) => {
     if (sortKey === k) setSortDir(sortDir === "desc" ? "asc" : "desc");
@@ -365,6 +368,11 @@ export function MobileStandings() {
         </div>
       ) : (
         <div style={{ padding: "0 14px 12px", marginTop: 4 }}>
+          {visibleCats.length === 0 ? (
+            <div style={{ padding: "16px 14px", color: "var(--am-text-muted)", fontSize: 13 }}>
+              {`This league doesn't score ${view === "Hitting" ? "hitting" : "pitching"} categories.`}
+            </div>
+          ) : (
           <MCard padded={false}>
             <div
               role="row"
@@ -484,6 +492,7 @@ export function MobileStandings() {
               </div>
             )}
           </MCard>
+          )}
         </div>
       )}
 
