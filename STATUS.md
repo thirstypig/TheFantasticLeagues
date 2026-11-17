@@ -40,11 +40,11 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - 2026 audit vs FanGraphs/OnRoto (#470, #471); waivers retired, cache fix, CVEs (#465–#467)
 
 ## In progress
-- Nothing in review
+- Todos #304/#316/#318 in review. Its migration copies old team-page trade-block entries into the TradingBlock table, then drops `TeamStatsSeason` and `Team.tradeBlockPlayerIds`; merge needs James's OK
 
 ## Open bugs / known issues
 - 2026 final vs OnRoto: P1–P3, P5, P6 exact; P4 and P7 each have one ±1 pair (DDG/RGS, RGS/The Show). Final order identical.
-- Todo #304: dropping two unused tables awaits James
+- Trade block: since #500, entries saved from the team page before #500 are hidden until the #304 migration copies them back
 
 ## Next phases (in order)
 1. Phase 3.5: standings categories from the league's scoring settings
