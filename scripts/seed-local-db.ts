@@ -165,7 +165,6 @@ async function seed() {
     prisma.auditLog.deleteMany(),
     prisma.playerStatsDaily.deleteMany(),
     prisma.playerStatsPeriod.deleteMany(),
-    prisma.teamStatsSeason.deleteMany(),
     prisma.teamStatsPeriod.deleteMany(),
     prisma.waiverClaim.deleteMany(),
     prisma.tradeItem.deleteMany(),

@@ -18,7 +18,6 @@ vi.mock("../../../db/prisma.js", () => ({
     waiverClaim: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
     transactionEvent: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
     teamStatsPeriod: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
-    teamStatsSeason: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
     leagueMembership: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
     leagueRule: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }), findFirst: vi.fn() },
     period: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }), findFirst: vi.fn() },

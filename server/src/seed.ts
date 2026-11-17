@@ -118,7 +118,6 @@ async function main() {
   console.log("✅ Period stats upserted for all teams.");
 
   // --- 5. Season stats — deprecated (stats computed from TeamStatsPeriod on-demand) ---
-  console.log("⏭️  TeamStatsSeason seeding skipped (deprecated — stats from periods).");
 
   // --- 6. Sample players + roster for one team (Dodger Dawgs) ---
   const playersData = [

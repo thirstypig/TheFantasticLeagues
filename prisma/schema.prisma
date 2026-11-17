@@ -434,7 +434,6 @@ model Team {
   league           League                   @relation(fields: [leagueId], references: [id])
   rosters          Roster[]
   stats            TeamStatsPeriod[]
-  season           TeamStatsSeason?
   financeEvents    FinanceLedger[]
   rosterSlotEvents RosterSlotEvent[]
   categoryDaily    TeamStatsCategoryDaily[]
@@ -449,10 +448,6 @@ model Team {
 
   // Waiver priority override (commissioner-set; overrides computed standings-based rank)
   waiverPriorityOverride Int?
-
-  // Trade Block: JSON array of playerIds the owner has flagged as available for trade
-  /// @deprecated Not read or written by any code (todo #304). The TradingBlock table is the single source of truth. Column to be dropped in a follow-up migration.
-  tradeBlockPlayerIds Json @default("[]")
 
   // Trade Relations
   proposedTrades     Trade[]     @relation("TradeProposer")
@@ -702,33 +697,6 @@ model TeamStatsCategoryDaily {
   @@unique([teamId, leagueId, date, category])
   @@index([leagueId, date])
   @@index([teamId, category, date])
-}
-
-/// @deprecated Use TeamStatsPeriod aggregation instead. Table left in DB for backward compat; no code reads this.
-model TeamStatsSeason {
-  id     Int @id @default(autoincrement())
-  teamId Int @unique
-
-  // Batting
-  R   Int   @default(0)
-  HR  Int   @default(0)
-  RBI Int   @default(0)
-  SB  Int   @default(0)
-  AVG Float @default(0)
-
-  // Pitching
-  W    Int   @default(0)
-  S    Int   @default(0)
-  ERA  Float @default(0)
-  WHIP Float @default(0)
-  K    Int   @default(0)
-
-  gamesPlayed Int @default(0)
-
-  // See PlayerStatsPeriod.syncedAt — nullable for the same reason.
-  syncedAt DateTime? @updatedAt
-
-  team Team @relation(fields: [teamId], references: [id])
 }
 
 model PlayerStatsPeriod {

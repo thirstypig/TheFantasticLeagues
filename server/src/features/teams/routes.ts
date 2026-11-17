@@ -722,8 +722,8 @@ router.get("/trade-block/league", requireAuth, asyncHandler(async (req, res) => 
     if (!m) return res.status(403).json({ error: "Not a member of this league" });
   }
 
-  // Single source of truth: the TradingBlock table (Team.tradeBlockPlayerIds is
-  // deprecated and no longer read or written — todo #304).
+  // Single source of truth: the TradingBlock table (the old
+  // Team.tradeBlockPlayerIds column was copied in and dropped — todo #304).
   const entries = await prisma.tradingBlock.findMany({
     where: { team: { leagueId } },
     select: { teamId: true, playerId: true },
@@ -786,8 +786,7 @@ router.post("/:teamId/trade-block", requireAuth, validateBody(tradeBlockSchema),
   const validPlayerIds = playerIds.filter(id => rosterPlayerIds.has(id));
 
   // Replace the team's TradingBlock rows with the submitted set. Rows already
-  // present keep their askingFor note; Team.tradeBlockPlayerIds is no longer
-  // written (todo #304).
+  // present keep their askingFor note (todo #304).
   await prisma.$transaction([
     prisma.tradingBlock.deleteMany({
       where: { teamId, playerId: { notIn: validPlayerIds } },
