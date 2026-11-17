@@ -7,6 +7,9 @@ import { fileURLToPath } from "node:url";
  * Guard: production code must score a league's categories (getLeagueCategories),
  * never the hardcoded baseball CATEGORY_CONFIG. Only the sport config itself,
  * the resolver, and offline scripts may name it.
+ *
+ * Limitation: this only catches the `CATEGORY_CONFIG` identifier. It does NOT catch
+ * literal category lists (e.g. ["R", "HR", ...]) written inline in production code.
  */
 const PATTERN = /\bCATEGORY_CONFIG\b/;
 

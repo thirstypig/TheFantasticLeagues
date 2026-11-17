@@ -42,22 +42,6 @@ vi.mock("../services/standingsService.js", () => ({
   computeStandingsFromStats: (...args: any[]) => mockComputeStandingsFromStats(...args),
   computeCategoryRows: (...args: any[]) => mockComputeCategoryRows(...args),
   getSeasonStandings: (...args: any[]) => mockGetSeasonStandings(...args),
-  CATEGORY_CONFIG: [
-    { key: "R", label: "Runs", lowerIsBetter: false },
-    { key: "HR", label: "Home Runs", lowerIsBetter: false },
-    { key: "RBI", label: "RBI", lowerIsBetter: false },
-    { key: "SB", label: "Stolen Bases", lowerIsBetter: false },
-    { key: "AVG", label: "Batting Average", lowerIsBetter: false },
-    { key: "W", label: "Wins", lowerIsBetter: false },
-    { key: "SV", label: "Saves", lowerIsBetter: false },
-    { key: "ERA", label: "ERA", lowerIsBetter: true },
-    { key: "WHIP", label: "WHIP", lowerIsBetter: true },
-    { key: "K", label: "Strikeouts", lowerIsBetter: false },
-  ],
-  KEY_TO_DB_FIELD: {
-    R: "R", HR: "HR", RBI: "RBI", SB: "SB", AVG: "AVG",
-    W: "W", SV: "S", ERA: "ERA", WHIP: "WHIP", K: "K",
-  } as Record<string, string>,
 }));
 
 const { SCORABLE_CATEGORIES: REAL_10 } = await vi.importActual<any>("../../../lib/leagueCategories.js");
