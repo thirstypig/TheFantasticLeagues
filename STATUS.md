@@ -37,19 +37,19 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - Cache cleanup: MLB teams refresh hourly; one trade-block store (#500)
 - Dropped `TeamStatsSeason` and `Team.tradeBlockPlayerIds` (trade-block entries copied first); parse-based Wire List guard; 15s test timeout (#510)
 - Local test flakes fixed: supertest connects over IPv6 loopback, so another process can't steal its port on macOS (todo #318)
+- Phase 3.5: standings score each league's own Rules-page categories, any subset of the 10 (#513, live d1ad7c5b). Prod check: no standings number moved in either league
 - Auction: timers survive restarts (#496); commissioner can start it pre-season (#497)
 - Switch League pick survives reloads, shows its season (#494, #495)
 - 2026 audit vs FanGraphs/OnRoto (#470, #471); waivers retired, cache fix, CVEs (#465–#467)
 
 ## In progress
-- Phase 3.5 in review: standings score each league's own categories (any subset of the 10). Merge waits on the census and the before/after prod standings dump (must be identical)
+- Nothing in flight
 
 ## Open bugs / known issues
 - 2026 final vs OnRoto: P1–P3, P5, P6 exact; P4 and P7 each have one ±1 pair (DDG/RGS, RGS/The Show). Final order identical.
 
 ## Next phases (in order)
-1. Phase 3.5: finish the prod gate and merge
-2. Public auction-keeper leagues (not scheduled)
+1. Public auction-keeper leagues (not scheduled)
 
 ## Decisions changed recently
 - 2026-11-11: AL games don't count in NL-only leagues (OnRoto's rule)

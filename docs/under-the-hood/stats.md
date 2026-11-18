@@ -8,7 +8,7 @@ phase: null
 owner: james
 tags: [docs-system]
 links: [DOC-001]
-updated: 2026-11-17
+updated: 2026-11-18
 ---
 
 # Repo statistics
@@ -21,7 +21,7 @@ updated: 2026-11-17
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-17 from 2,038 git-tracked files.*
+*Generated 2026-11-18 from 2,038 git-tracked files.*
 
 ## Code
 
@@ -29,7 +29,7 @@ updated: 2026-11-17
 |---|---:|---:|
 | `.ts` | 691 | 119,907 |
 | `.tsx` | 394 | 97,351 |
-| `.md` | 574 | 72,594 |
+| `.md` | 574 | 72,596 |
 | `.json` | 36 | 40,129 |
 | `.css` | 15 | 2,475 |
 | `.sql` | 42 | 2,236 |
@@ -38,7 +38,7 @@ updated: 2026-11-17
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **2,034** | **382,469** |
+| **All tracked** | **2,034** | **382,471** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -104,7 +104,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 | Status | Docs | In vocabulary? |
 |---|---:|---|
-| `active` | 63 | ✅ |
+| `active` | 62 | ✅ |
 | `draft` | 6 | ✅ |
 | `completed` | 4 | ❌ off-vocabulary |
 | `resolved` | 4 | ❌ off-vocabulary |
@@ -114,6 +114,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `locked` | 1 | ✅ |
 | `deprecated` | 1 | ✅ |
 | `fixed` | 1 | ❌ off-vocabulary |
+| `done` | 1 | ✅ |
 
 **12 docs use a `status` outside `draft|active|locked|done|deprecated`.** The board's "done" filter cannot see them.
 
@@ -127,7 +128,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 Planning status: 27/82 planning tasks done, 2 in progress.
 
-`server/data/planning.json` last updated **2026-05-19** (182 days ago).
+`server/data/planning.json` last updated **2026-05-19** (183 days ago).
 
-> ⚠️ The canonical roadmap source is **182 days stale**. Numbers above are honest; the *plan* they describe may not be.
+> ⚠️ The canonical roadmap source is **183 days stale**. Numbers above are honest; the *plan* they describe may not be.
 
