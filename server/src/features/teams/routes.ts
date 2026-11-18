@@ -151,13 +151,13 @@ router.get("/ai-insights", requireAuth, requireLeagueMember("leagueId"), asyncHa
   // Load projected auction values (cached singleton)
   const { lookupAuctionValue } = await import("../../lib/auctionValues.js");
 
-  // Get the active period's team stats (more reliable than TeamStatsSeason which may be stale)
+  // Get the active period's team stats
   const insightPeriod = await prisma.period.findFirst({
     where: { leagueId, status: "active" },
     orderBy: { id: "desc" },
   });
 
-  // Try TeamStatsPeriod first (has real data), fall back to TeamStatsSeason
+  // Try the active period's TeamStatsPeriod first; fall back below if it has no stats yet
   let allTeamStats: { teamId: number; team: { id: number; name: string }; R: number; HR: number; RBI: number; SB: number; AVG: number; W: number; S: number; K: number; ERA: number; WHIP: number }[] = [];
   let hasActualStats = false;
 
