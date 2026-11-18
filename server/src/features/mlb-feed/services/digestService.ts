@@ -313,20 +313,20 @@ export async function buildDigestContext(leagueId: number, weekKey: string): Pro
 
     let statsLine = "";
     let categoryRankLine = "";
-    if (catRanks) {
-      const hitting = ["R", "HR", "RBI", "SB", "AVG"].map(k => {
-        const c = catRanks[k];
-        if (!c) return null;
-        const val = k === "AVG" ? `.${Math.round(c.value * 1000)}` : String(Math.round(c.value));
-        return `${k}:${val}(${c.rank}${ordinal(c.rank)})`;
-      }).filter(Boolean).join(" ");
-      const pitching = ["W", "S", "K", "ERA", "WHIP"].map(k => {
-        const c = catRanks[k];
-        if (!c) return null;
-        const val = (k === "ERA" || k === "WHIP") ? c.value.toFixed(2) : String(Math.round(c.value));
-        return `${k}:${val}(${c.rank}${ordinal(c.rank)})`;
-      }).filter(Boolean).join(" ");
-      statsLine = `${hitting} | ${pitching}`;
+    if (catRanks && standingsCtx) {
+      // Built from the league's own categories, read by category key (saves are
+      // "SV"; the old hardcoded list asked for "S" and never found it — todo #319).
+      const half = (group: "H" | "P") => standingsCtx!.categories
+        .filter(cfg => cfg.group === group)
+        .map(cfg => {
+          const c = catRanks[cfg.key];
+          if (!c) return null;
+          const val = cfg.key === "AVG" ? `.${Math.round(c.value * 1000)}`
+            : (cfg.key === "ERA" || cfg.key === "WHIP") ? c.value.toFixed(2)
+            : String(Math.round(c.value));
+          return `${cfg.key}:${val}(${c.rank}${ordinal(c.rank)})`;
+        }).filter(Boolean).join(" ");
+      statsLine = [half("H"), half("P")].filter(Boolean).join(" | ");
       categoryRankLine = Object.entries(catRanks).map(([k, v]) => `${k}:${v.rank}`).join(" ");
     }
 

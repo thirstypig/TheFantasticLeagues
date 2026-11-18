@@ -40,8 +40,8 @@ import { buildDigestContext } from "../../features/mlb-feed/services/digestServi
 const p = prisma as any;
 const RH = SCORABLE_CATEGORIES.filter((c) => ["R", "HR"].includes(c.key));
 
-const stat = (R: number, HR: number) => ({
-  R, HR, RBI: 0, SB: 0, AVG: 0.25, W: 0, S: 0, K: 0, ERA: 4, WHIP: 1.3,
+const stat = (R: number, HR: number, S = 0) => ({
+  R, HR, RBI: 0, SB: 0, AVG: 0.25, W: 0, S, K: 0, ERA: 4, WHIP: 1.3,
 });
 
 beforeEach(() => {
@@ -77,5 +77,27 @@ describe("buildDigestContext — league categories", () => {
     const ctx = await buildDigestContext(7, "2026-W20");
     const keys = ctx!.teams[0].categoryRankLine.split(" ").map((s) => s.split(":")[0]);
     expect(keys).toEqual(["R", "HR", "RBI", "SB", "AVG", "W", "SV", "ERA", "WHIP", "K"]);
+  });
+
+  // todo #319: the stats line used to look up "S" while ranks are keyed "SV",
+  // so saves never appeared.
+  it("stats line includes saves (SV) for a league that scores them", async () => {
+    (getLeagueCategories as any).mockResolvedValue(SCORABLE_CATEGORIES);
+    (computeTeamStatsFromDb as any).mockResolvedValue([
+      { team: { id: 1, name: "A", code: "AAA" }, stats: stat(50, 10, 12) },
+      { team: { id: 2, name: "B", code: "BBB" }, stats: stat(40, 5, 3) },
+    ]);
+    const ctx = await buildDigestContext(7, "2026-W20");
+    expect(ctx!.teams[0].statsLine).toContain("SV:12(1st)");
+    expect(ctx!.teams[1].statsLine).toContain("SV:3(2nd)");
+    expect(ctx!.teams[0].statsLine).toBe(
+      "R:50(1st) HR:10(1st) RBI:0(1st) SB:0(1st) AVG:.250(1st) | W:0(1st) SV:12(1st) ERA:4.00(1st) WHIP:1.30(1st) K:0(1st)",
+    );
+  });
+
+  it("subset league's stats line shows only its categories", async () => {
+    (getLeagueCategories as any).mockResolvedValue(RH);
+    const ctx = await buildDigestContext(7, "2026-W20");
+    expect(ctx!.teams[0].statsLine).toBe("R:50(1st) HR:10(1st)");
   });
 });
