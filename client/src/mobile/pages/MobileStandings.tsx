@@ -6,7 +6,7 @@
  *   2. getPeriodCategoryStandings(periodId, leagueId) → 10-cat tables
  *
  * Renders a sortable 5-cat table with Hitting / Pitching / Period views.
- * Cells show roto points (1–10), color-graded per the Aurora Mobile
+ * Cells show roto points (1–N for N teams), color-graded per the Aurora Mobile
  * design canvas (≥ 8 positive, ≥ 5 text, < 5 muted).
  */
 import React, { useEffect, useMemo, useState } from "react";
@@ -82,9 +82,14 @@ function sumForView(row: MatrixRow, view: ViewKey): number {
   return cats.reduce((s, k) => s + (row.pointsByCat[k] ?? 0), 0);
 }
 
-function pointColor(p: number): string {
-  if (p >= 8) return "var(--am-positive)";
-  if (p >= 5) return "var(--am-text)";
+/**
+ * Cell color, relative to the league (not a fixed 8-team scale):
+ * green = led the category (ties included), normal = top half, muted = bottom half.
+ * A tie that includes everyone (e.g. no stats yet) sits at the average, so it isn't green.
+ */
+export function pointColor(p: number, leaderPts: number, teamCount: number): string {
+  if (p === leaderPts && p > (teamCount + 1) / 2) return "var(--am-positive)";
+  if (p > teamCount / 2) return "var(--am-text)";
   return "var(--am-text-muted)";
 }
 
@@ -169,6 +174,12 @@ export function MobileStandings() {
 
   const unscoredHalf =
     view !== "Period" && !loading && !error && catTables.length > 0 && visibleCats.length === 0;
+  // Highest points in each category column (ties share it) — drives the green cells.
+  const leaderByCat = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const row of matrix) for (const [k, v] of Object.entries(row.pointsByCat)) m[k] = Math.max(m[k] ?? 0, v ?? 0);
+    return m;
+  }, [matrix]);
   const isStandardTen = catTables.length === 0 || catTables.length === 10;
 
   const onSort = (k: SortKey) => {
@@ -474,7 +485,7 @@ export function MobileStandings() {
                           fontSize: 13,
                           fontWeight: 700,
                           fontVariantNumeric: "tabular-nums",
-                          color: pointColor(p),
+                          color: pointColor(p, leaderByCat[c] ?? 0, matrix.length),
                         }}
                       >
                         {p}
@@ -505,7 +516,9 @@ export function MobileStandings() {
         <div style={{ fontSize: 13, color: "var(--am-text-faint)", padding: "0 4px" }}>
           {view === "Period"
             ? "Each cell shows total roto points earned per scoring period. Tap a row to view team."
-            : "Each cell shows roto points (1–10). Tap any column header to sort. Green = top tier."}
+            : matrix.length > 0
+              ? `Each cell shows roto points (1–${matrix.length} for ${matrix.length} teams). Tap any column header to sort. Green = 1st in the category.`
+              : null}
         </div>
       </div>
       )}
