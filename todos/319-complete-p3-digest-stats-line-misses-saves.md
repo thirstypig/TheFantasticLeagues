@@ -19,6 +19,6 @@ Build the stats line from the league's categories (`getLeagueCategories`), readi
 (`SV`), and drop the local list.
 
 ## Acceptance Criteria
-- [ ] A digest for a league that scores saves includes SV in the stats line (test with real `computeCategoryRows`).
-- [ ] A subset league's stats line shows only its categories.
-- [ ] `git mv` this todo from pending → complete.
+- [x] A digest for a league that scores saves includes SV in the stats line (test with real `computeCategoryRows`).
+- [x] A subset league's stats line shows only its categories.
+- [x] `git mv` this todo from pending → complete.
