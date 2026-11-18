@@ -14,3 +14,17 @@ describe("RulesEditor read-only values", () => {
     expect(formatRuleValue("50")).toBe("50");
   });
 });
+
+import { bothCategoryHalvesEmpty } from "../components/RulesEditor";
+
+describe("RulesEditor both-halves-empty note", () => {
+  it("is true only when both lists are stored as []", () => {
+    expect(bothCategoryHalvesEmpty("[]", "[]")).toBe(true);
+    expect(bothCategoryHalvesEmpty("[]", '["W"]')).toBe(false);
+    expect(bothCategoryHalvesEmpty('["R"]', "[]")).toBe(false);
+  });
+  it("treats a missing or unparseable rule as not empty", () => {
+    expect(bothCategoryHalvesEmpty(undefined, "[]")).toBe(false);
+    expect(bothCategoryHalvesEmpty("oops", "[]")).toBe(false);
+  });
+});

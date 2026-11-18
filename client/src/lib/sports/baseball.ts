@@ -53,16 +53,6 @@ export function positionToSlots(pos: string): readonly SlotCode[] {
 
 // ─── Category Configuration ───
 
-export const HITTING_CATS: string[] = [
-  "R", "HR", "RBI", "SB", "AVG", "OPS", "OPS+", "WAR",
-  "H", "2B", "3B", "BB", "K", "TB", "OBP", "SLG",
-];
-
-export const PITCHING_CATS: string[] = [
-  "W", "SV", "K", "ERA", "ERA+", "WHIP", "WAR",
-  "QS", "HLD", "IP", "CG", "SHO", "L", "BB", "HR",
-];
-
 /** Categories the scoring engine can actually rank. Keep in sync with SCORABLE_CATEGORIES in server/src/lib/leagueCategories.ts. */
 export const SCORABLE_HITTING_CATS: string[] = ["R", "HR", "RBI", "SB", "AVG"];
 export const SCORABLE_PITCHING_CATS: string[] = ["W", "SV", "ERA", "WHIP", "K"];

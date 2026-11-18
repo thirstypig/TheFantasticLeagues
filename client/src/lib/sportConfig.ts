@@ -11,8 +11,6 @@ export {
   PITCHER_CODES,
   positionToSlots,
   SLOT_CODES,
-  HITTING_CATS,
-  PITCHING_CATS,
   SCORABLE_HITTING_CATS,
   SCORABLE_PITCHING_CATS,
   normalizeCategoryKey,

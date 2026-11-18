@@ -62,6 +62,19 @@ interface RuleConfig {
   note?: string;
 }
 
+/** Both category lists stored as []: the server then scores all 10 (Phase 3.5 rule). */
+export function bothCategoryHalvesEmpty(hittingJson: string | undefined, pitchingJson: string | undefined): boolean {
+  const empty = (json: string | undefined) => {
+    try {
+      const v = JSON.parse(json ?? "null");
+      return Array.isArray(v) && v.length === 0;
+    } catch {
+      return false;
+    }
+  };
+  return empty(hittingJson) && empty(pitchingJson);
+}
+
 /** Read-only value text: dollars lead ("$1"), other units trail ("30s", "50%"). */
 export function formatRuleValue(val: string, suffix?: string): string {
   if (!suffix) return val;
@@ -439,6 +452,11 @@ export function RulesEditor({ leagueId, canEdit: canEditProp, onSaved }: { leagu
                 );
               })}
             </div>
+            {cat === "scoring" && bothCategoryHalvesEmpty(ruleMap.hitting_stats, ruleMap.pitching_stats) && (
+              <div data-testid="rules-all-categories-note" style={{ padding: "0 22px 18px", fontSize: 13, color: "var(--am-text-muted)" }}>
+                No categories picked, so standings score all 10.
+              </div>
+            )}
           </Glass>
         );
       })}
