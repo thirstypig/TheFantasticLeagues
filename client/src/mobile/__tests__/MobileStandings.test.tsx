@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MobileStandings, pointColor } from "../pages/MobileStandings";
+import { MobileStandings, pointColor, CAT_COL_W } from "../pages/MobileStandings";
 import { getSeasonStandings } from "../../api";
 import { getPeriodCategoryStandings } from "../../api";
 
@@ -230,5 +230,14 @@ describe("MobileStandings point scale follows the team count", () => {
     expect(pointColor(8, 12, 12)).toBe("var(--am-text)"); // was green on the fixed 8-team scale
     expect(pointColor(0, 0, 8)).toBe("var(--am-text-muted)");
     expect(pointColor(4.5, 4.5, 8)).not.toBe("var(--am-positive)"); // all 8 tied: nobody leads
+  });
+});
+
+// "ERA" and "WHIP" ran together as "ERAWHIP" in flat 26px columns (seen on prod
+// 2026-11-18). Measured label widths + 8px header padding must fit each column.
+describe("MobileStandings column widths fit their labels", () => {
+  const measured: Record<string, number> = { R: 9, HR: 18, RBI: 21, SB: 17, AVG: 26, W: 12, SV: 17, ERA: 25, WHIP: 34, K: 9 };
+  it.each(Object.entries(measured))("%s fits", (k, textW) => {
+    expect(CAT_COL_W[k] ?? 26).toBeGreaterThanOrEqual(textW + 8);
   });
 });

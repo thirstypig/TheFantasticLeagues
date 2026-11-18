@@ -37,7 +37,7 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - Cache cleanup: MLB teams refresh hourly; one trade-block store (#500)
 - Dropped `TeamStatsSeason` and `Team.tradeBlockPlayerIds` (trade-block entries copied first); parse-based Wire List guard; 15s test timeout (#510)
 - Local test flakes fixed: supertest connects over IPv6 loopback, so another process can't steal its port on macOS (todo #318)
-- Mobile standings columns use the Rules page order (R HR RBI SB AVG / W SV ERA WHIP K)
+- Mobile standings columns use the Rules page order (R HR RBI SB AVG / W SV ERA WHIP K), sized to their labels (no more "ERAWHIP")
 - Mobile standings: point range and green "category leader" follow the team count; empty ad slot hidden on Season
 - No horizontal scrolling on desktop (≥1280px): Watchlist and Trading Block cards are compact, roster tables fit, the shared table's 600px floor is phone-only
 - Weekly digest stats line now includes saves and lists only the league's categories (todo #319)
