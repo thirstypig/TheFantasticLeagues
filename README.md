@@ -185,6 +185,6 @@ Notable surfaces:
 
 Roadmap: [`docs/product/roadmap.md`](docs/product/roadmap.md) · Docs map: [`docs/README-DOCS.md`](docs/README-DOCS.md)
 
-<sub>Generated 2026-11-17 by `npm run docs:refresh` — do not edit between the markers.</sub>
+<sub>Generated 2026-11-18 by `npm run docs:refresh` — do not edit between the markers.</sub>
 
 <!-- DOCS:STATUS:END -->
