@@ -26,3 +26,15 @@ describe("Rules overview chips", () => {
     expect(rosterChips({ C: 2, P: 9 }, 9).filter(([pos]) => pos === "P")).toHaveLength(1);
   });
 });
+
+import { statsSourceLabel } from "../pages/Rules";
+
+describe("Rules overview stats source", () => {
+  it("says NL players only for an NL-only league", () => {
+    expect(statsSourceLabel("NL")).toBe("NL players only");
+  });
+  it("says all MLB for ALL/MLB", () => {
+    expect(statsSourceLabel("ALL")).toBe("All MLB players");
+    expect(statsSourceLabel("MLB")).toBe("All MLB players");
+  });
+});

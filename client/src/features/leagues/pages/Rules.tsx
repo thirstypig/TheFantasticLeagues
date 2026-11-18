@@ -47,6 +47,13 @@ function CategoryChip({ id }: { id: string }) {
   );
 }
 
+/** Plain-English stats source for the overview tile. */
+export function statsSourceLabel(source: string): string {
+  if (source === "NL") return "NL players only";
+  if (source === "AL") return "AL players only";
+  return "All MLB players";
+}
+
 function rv(rules: LeagueRule[], key: string): string {
   return rules.find((r) => r.key === key)?.value ?? "";
 }
@@ -187,7 +194,7 @@ export default function Rules() {
               {[
                 { label: "Format", value: `Roto (${hittingCats.length}x${pitchingCats.length})` },
                 { label: "Teams", value: `${teamCount} Teams` },
-                { label: "Stats Source", value: statsSource },
+                { label: "Stats Source", value: statsSourceLabel(statsSource) },
                 { label: "Draft", value: `Live ${draftMode}` },
                 { label: "Budget", value: `$${budget}` },
                 { label: "Keepers", value: `${keeperCount} per team` },
@@ -218,8 +225,8 @@ export default function Rules() {
             </section>
           )}
 
-          {/* Scoring Categories */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+          {/* Scoring Categories — first on phones (order-first), in place on desktop */}
+          <div data-testid="rules-scoring-categories" className="order-first md:order-none grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
             <section className="lg-card p-4 md:p-8">
               <h2 className="text-lg font-semibold text-[var(--lg-text-heading)] mb-4 flex items-center gap-3 uppercase tracking-tight">
                 <span className="flex items-center justify-center w-7 h-7 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-bold border border-blue-500/20">H</span>
@@ -246,7 +253,7 @@ export default function Rules() {
           </div>
 
           {/* Scoring System */}
-          <section className="lg-card p-4 md:p-8">
+          <section data-testid="rules-scoring-system" className="order-first md:order-none lg-card p-4 md:p-8">
             <h2 className="text-xl font-semibold tracking-tight text-[var(--lg-text-heading)] mb-4 uppercase">Scoring</h2>
             <p className="text-sm text-[var(--lg-text-muted)] leading-relaxed">
               Each stat category is ranked across all {teamCount} teams. 1st place gets {teamCount} points, 2nd gets {teamCount - 1}, down to {teamCount}th getting 1 point. Points are averaged for ties.
