@@ -18,6 +18,7 @@ import type {
   PeriodCategoryStandingTable,
   PeriodCategoryKey,
 } from "../../api/types";
+import { SCORABLE_HITTING_CATS, SCORABLE_PITCHING_CATS } from "../../lib/sportConfig";
 import { MobileTopbar } from "../MobileTopbar";
 import { MCard, MIridText } from "../atoms/MCard";
 import { MSegmented } from "../atoms/MSegmented";
@@ -27,8 +28,10 @@ import { Glyph } from "../atoms/Glyph";
 type ViewKey = "Hitting" | "Pitching" | "Period";
 type SortKey = "rank" | "team" | "total" | PeriodCategoryKey | `pi-${number}`;
 
-const HIT_CATS: PeriodCategoryKey[] = ["AVG", "HR", "R", "RBI", "SB"];
-const PITCH_CATS: PeriodCategoryKey[] = ["W", "SV", "K", "ERA", "WHIP"];
+// Canonical order, shared with the Rules page and the Rules editor
+// (R HR RBI SB AVG / W SV ERA WHIP K) so a league's columns line up with its chips.
+const HIT_CATS = SCORABLE_HITTING_CATS as PeriodCategoryKey[];
+const PITCH_CATS = SCORABLE_PITCHING_CATS as PeriodCategoryKey[];
 
 interface MatrixRow {
   teamId: number;

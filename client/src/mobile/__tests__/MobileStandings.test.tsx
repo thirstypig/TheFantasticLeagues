@@ -167,7 +167,7 @@ describe("MobileStandings", () => {
       .getAllByRole("button")
       .map((b) => b.textContent?.trim() ?? "")
       .filter((t) => ["AVG", "HR", "R", "RBI", "SB"].includes(t));
-    expect(headers).toEqual(["HR", "R"]);
+    expect(headers).toEqual(["R", "HR"]); // canonical order, not response order
 
     fireEvent.click(screen.getByRole("tab", { name: "Pitching" }));
     expect(await screen.findByText("This league doesn't score pitching categories.")).toBeInTheDocument();
@@ -188,7 +188,7 @@ describe("MobileStandings", () => {
     expect(screen.queryByText(/doesn't score/)).toBeNull();
   });
 
-  it("keeps standard column order for a standard-10 response", async () => {
+  it("uses the canonical column order (same as the Rules page) for a standard-10 response", async () => {
     const mk = (key: string, group: string) => ({
       ...SAMPLE_RESPONSE.categories[1], key, label: key, group,
     });
@@ -204,10 +204,10 @@ describe("MobileStandings", () => {
     await screen.findAllByText("Los Doyers");
     const cols = (set: string[]) =>
       screen.getAllByRole("button").map((b) => b.textContent?.trim() ?? "").filter((t) => set.includes(t));
-    expect(cols(["AVG", "HR", "R", "RBI", "SB"])).toEqual(["AVG", "HR", "R", "RBI", "SB"]);
+    expect(cols(["AVG", "HR", "R", "RBI", "SB"])).toEqual(["R", "HR", "RBI", "SB", "AVG"]);
     fireEvent.click(screen.getByRole("tab", { name: "Pitching" }));
     await waitFor(() => expect(screen.getByRole("button", { name: /WHIP/ })).toBeInTheDocument());
-    expect(cols(["W", "SV", "K", "ERA", "WHIP"])).toEqual(["W", "SV", "K", "ERA", "WHIP"]);
+    expect(cols(["W", "SV", "K", "ERA", "WHIP"])).toEqual(["W", "SV", "ERA", "WHIP", "K"]);
   });
 });
 
