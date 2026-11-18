@@ -179,11 +179,11 @@ Notable surfaces:
 
 **Phase:** In-Season 2026 - Engagement & Remote UX (April - September 2026)
 
-**Next 3 to-dos** (12 open):
+**Next 3 to-dos** (11 open):
 
 - `320` **P2** — season legend and vs last label
-- `327` **P2** — wire feature isolation check into ci
 - `328` **P2** — reconcile planning json and status
+- `321` **P3** — rules page chips and roster chip
 
 Roadmap: [`docs/product/roadmap.md`](docs/product/roadmap.md) · Docs map: [`docs/README-DOCS.md`](docs/README-DOCS.md)
 

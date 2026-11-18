@@ -30,11 +30,16 @@
       "path": "docs/engineering/adrs/ADR-015-feature-module-boundaries.md",
       "anchor": "Consequences / Neutral",
       "kind": "change_request",
-      "status": "open",
+      "status": "resolved",
       "author": "claude",
       "created": "2026-07-23T15:05:00Z",
       "body": "scripts/check-feature-isolation.mjs is not wired to CI. Until it runs in .github/workflows/ci.yml the ratchet is voluntary, and a voluntary convention is exactly what produced 85 violations from 6 documented ones. Single highest-leverage follow-up in this whole session.",
-      "resolution": null
+      "resolution": {
+        "note": "CI test job now runs scripts/check-feature-isolation.mjs as its first step; mutation-tested (planted import → exit 1).",
+        "link": "#522",
+        "resolvedAt": "2026-11-18T23:50:00Z",
+        "resolvedBy": "claude"
+      }
     },
     {
       "id": "C-003",
