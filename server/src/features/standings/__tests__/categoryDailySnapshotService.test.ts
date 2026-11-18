@@ -22,13 +22,14 @@ vi.mock("../services/standingsService.js", () => ({
   computeCategoryRows: (...args: unknown[]) => mockComputeCategoryRows(...args),
 }));
 
-vi.mock("../../../lib/sportConfig.js", () => ({
-  CATEGORY_CONFIG: [
-    { key: "R", label: "Runs", lowerIsBetter: false },
-    { key: "HR", label: "Home Runs", lowerIsBetter: false },
-    { key: "ERA", label: "ERA", lowerIsBetter: true },
-  ],
-  KEY_TO_DB_FIELD: { R: "R", HR: "HR", ERA: "ERA" } as Record<string, string>,
+const THREE_CATS = [
+  { key: "R", label: "Runs", lowerIsBetter: false, group: "H" },
+  { key: "HR", label: "Home Runs", lowerIsBetter: false, group: "H" },
+  { key: "ERA", label: "ERA", lowerIsBetter: true, group: "P" },
+];
+const mockGetLeagueCategories = vi.fn();
+vi.mock("../../../lib/leagueCategories.js", () => ({
+  getLeagueCategories: (...args: unknown[]) => mockGetLeagueCategories(...args),
 }));
 
 import { prisma } from "../../../db/prisma.js";
@@ -50,6 +51,7 @@ const mockPrisma = prisma as unknown as {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockGetLeagueCategories.mockResolvedValue(THREE_CATS);
   mockPrisma.$transaction.mockImplementation((ops: Promise<unknown>[]) => Promise.all(ops));
   mockPrisma.teamStatsCategoryDaily.upsert.mockResolvedValue({});
   mockPrisma.teamStatsCategoryDaily.findMany.mockResolvedValue([]);
@@ -114,8 +116,34 @@ describe("snapshotLeagueCategoryDaily — empty data short-circuit", () => {
   });
 });
 
+describe("snapshotLeagueCategoryDaily — league categories", () => {
+  it("writes rows only for the league's categories, keyed by category key", async () => {
+    mockGetLeagueCategories.mockResolvedValue([
+      { key: "R", label: "Runs", lowerIsBetter: false, group: "H" },
+      { key: "HR", label: "Home Runs", lowerIsBetter: false, group: "H" },
+      { key: "W", label: "Wins", lowerIsBetter: false, group: "P" },
+      { key: "SV", label: "Saves", lowerIsBetter: false, group: "P" },
+    ]);
+    mockPrisma.period.findFirst.mockResolvedValueOnce({ id: 5, status: "active" });
+    mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);
+    mockComputeCategoryRows.mockImplementation(() => [
+      { teamId: 1, value: 50, rank: 1, points: 2 },
+      { teamId: 2, value: 45, rank: 2, points: 1 },
+    ]);
+
+    const result = await snapshotLeagueCategoryDaily(99, new Date("2026-04-29"));
+
+    expect(mockGetLeagueCategories).toHaveBeenCalledWith(99);
+    expect(result.rowsWritten).toBe(8);
+    const written = mockPrisma.teamStatsCategoryDaily.upsert.mock.calls.map(
+      (c) => c[0].create.category as string
+    );
+    expect([...new Set(written)]).toEqual(["R", "HR", "W", "SV"]);
+  });
+});
+
 describe("snapshotLeagueCategoryDaily — row generation", () => {
-  it("writes teams × categories rows and uses CATEGORY_CONFIG keys (not DB field names) as category", async () => {
+  it("writes teams × categories rows and uses category keys (not DB field names) as category", async () => {
     mockPrisma.period.findFirst.mockResolvedValueOnce({ id: 5, status: "active" });
     mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);
     mockComputeCategoryRows.mockImplementation((_stats: unknown, _key: string) => [
@@ -125,7 +153,7 @@ describe("snapshotLeagueCategoryDaily — row generation", () => {
 
     const result = await snapshotLeagueCategoryDaily(99, new Date("2026-04-29"));
 
-    // 2 teams × 3 categories (R, HR, ERA per the mocked CATEGORY_CONFIG)
+    // 2 teams × 3 categories (R, HR, ERA per the mocked league categories)
     expect(result.rowsWritten).toBe(6);
     expect(mockPrisma.teamStatsCategoryDaily.upsert).toHaveBeenCalledTimes(6);
 
@@ -231,7 +259,7 @@ describe("snapshotAllActiveLeaguesCategoryDaily", () => {
 
     expect(result.leaguesProcessed).toBe(3);
     expect(result.errors).toBe(1);
-    // L1 + L3 each wrote 3 rows (1 team × 3 categories from mocked CATEGORY_CONFIG)
+    // L1 + L3 each wrote 3 rows (1 team × 3 categories from mocked league categories)
     expect(result.totalRowsWritten).toBe(6);
   });
 });

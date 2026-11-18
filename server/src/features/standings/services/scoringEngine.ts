@@ -9,6 +9,7 @@
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db/prisma.js";
+import { getLeagueCategories } from "../../../lib/leagueCategories.js";
 import {
   computeTeamStatsFromDb,
   computeStandingsFromStats,
@@ -51,7 +52,8 @@ export const DEFAULT_POINTS_CONFIG: Record<string, number> = {
 export class RotoScoringEngine implements ScoringEngine {
   async computePeriodStandings(leagueId: number, periodId: number): Promise<StandingRow[]> {
     const teamStats = await computeTeamStatsFromDb(leagueId, periodId);
-    const standings = computeStandingsFromStats(teamStats);
+    const categories = await getLeagueCategories(leagueId);
+    const standings = computeStandingsFromStats(teamStats, categories);
     return standings.map((s) => ({
       teamId: s.teamId,
       teamName: s.teamName,
@@ -102,7 +104,8 @@ export class H2HCategoryScoringEngine implements ScoringEngine {
   async computePeriodStandings(leagueId: number, periodId: number): Promise<StandingRow[]> {
     // For a single period, show roto-style category breakdown (useful for period detail)
     const teamStats = await computeTeamStatsFromDb(leagueId, periodId);
-    const standings = computeStandingsFromStats(teamStats);
+    const categories = await getLeagueCategories(leagueId);
+    const standings = computeStandingsFromStats(teamStats, categories);
     return standings.map((s) => ({
       teamId: s.teamId,
       teamName: s.teamName,

@@ -21,15 +21,15 @@ updated: 2026-11-17
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-17 from 2,025 git-tracked files.*
+*Generated 2026-11-17 from 2,038 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 683 | 119,161 |
-| `.tsx` | 392 | 97,120 |
-| `.md` | 571 | 72,107 |
+| `.ts` | 691 | 119,907 |
+| `.tsx` | 394 | 97,351 |
+| `.md` | 574 | 72,594 |
 | `.json` | 36 | 40,129 |
 | `.css` | 15 | 2,475 |
 | `.sql` | 42 | 2,236 |
@@ -38,7 +38,7 @@ updated: 2026-11-17
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **2,021** | **381,005** |
+| **All tracked** | **2,034** | **382,469** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -55,12 +55,12 @@ updated: 2026-11-17
 
 ## Docs
 
-**220** board-scope markdown files (`docs/` plus the four root docs), of which **152** carry frontmatter.
+**222** board-scope markdown files (`docs/` plus the four root docs), of which **153** carry frontmatter.
 
-*575 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
+*578 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
 unrelated frontmatter vocabularies and are deliberately excluded from the tables below.*
 
-> **68 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
+> **69 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
 > or cross-linked. Retrofitting them is the largest single piece of remaining docs work.
 
 | Type | Docs | In vocabulary? |
@@ -68,9 +68,9 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `feat` | 20 | ❌ off-vocabulary |
 | `plan` | 13 | ✅ |
 | `fix` | 6 | ❌ off-vocabulary |
+| `tech-spec` | 4 | ✅ |
 | `report` | 4 | ✅ |
 | `refactor` | 3 | ❌ off-vocabulary |
-| `tech-spec` | 3 | ✅ |
 | `solution` | 2 | ✅ |
 | `deployment-failure` | 2 | ❌ off-vocabulary |
 | `spec` | 2 | ❌ off-vocabulary |
@@ -104,7 +104,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 | Status | Docs | In vocabulary? |
 |---|---:|---|
-| `active` | 62 | ✅ |
+| `active` | 63 | ✅ |
 | `draft` | 6 | ✅ |
 | `completed` | 4 | ❌ off-vocabulary |
 | `resolved` | 4 | ❌ off-vocabulary |
@@ -119,7 +119,11 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 ## Open work
 
-**0 open** of 314 total to-dos.
+**1 open** of 315 total to-dos.
+
+| Priority | Open |
+|---|---:|
+| `p3` | 1 |
 
 Planning status: 27/82 planning tasks done, 2 in progress.
 

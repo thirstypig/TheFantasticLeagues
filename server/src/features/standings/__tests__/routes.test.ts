@@ -27,7 +27,8 @@ vi.mock("../../../middleware/auth.js", () => ({
   requireCommissionerOrAdmin: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
 }));
 vi.mock("../../../middleware/asyncHandler.js", () => ({
-  asyncHandler: (fn: Function) => fn,
+  asyncHandler: (fn: Function) => (req: unknown, res: unknown, next: (e?: unknown) => void) =>
+    Promise.resolve(fn(req, res, next)).catch(next),
 }));
 
 // Mock the standings service functions
@@ -41,22 +42,13 @@ vi.mock("../services/standingsService.js", () => ({
   computeStandingsFromStats: (...args: any[]) => mockComputeStandingsFromStats(...args),
   computeCategoryRows: (...args: any[]) => mockComputeCategoryRows(...args),
   getSeasonStandings: (...args: any[]) => mockGetSeasonStandings(...args),
-  CATEGORY_CONFIG: [
-    { key: "R", label: "Runs", lowerIsBetter: false },
-    { key: "HR", label: "Home Runs", lowerIsBetter: false },
-    { key: "RBI", label: "RBI", lowerIsBetter: false },
-    { key: "SB", label: "Stolen Bases", lowerIsBetter: false },
-    { key: "AVG", label: "Batting Average", lowerIsBetter: false },
-    { key: "W", label: "Wins", lowerIsBetter: false },
-    { key: "SV", label: "Saves", lowerIsBetter: false },
-    { key: "ERA", label: "ERA", lowerIsBetter: true },
-    { key: "WHIP", label: "WHIP", lowerIsBetter: true },
-    { key: "K", label: "Strikeouts", lowerIsBetter: false },
-  ],
-  KEY_TO_DB_FIELD: {
-    R: "R", HR: "HR", RBI: "RBI", SB: "SB", AVG: "AVG",
-    W: "W", SV: "S", ERA: "ERA", WHIP: "WHIP", K: "K",
-  } as Record<string, string>,
+}));
+
+const { SCORABLE_CATEGORIES: REAL_10 } = await vi.importActual<any>("../../../lib/leagueCategories.js");
+const FOUR_CATS = REAL_10.filter((c: any) => ["R", "HR", "W", "SV"].includes(c.key));
+const mockGetLeagueCategories = vi.fn();
+vi.mock("../../../lib/leagueCategories.js", () => ({
+  getLeagueCategories: (...args: any[]) => mockGetLeagueCategories(...args),
 }));
 
 import { prisma } from "../../../db/prisma.js";
@@ -80,6 +72,7 @@ app.use((err: any, _req: any, res: any, _next: NextFunction) => {
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetLeagueRules.mockResolvedValue({});
+  mockGetLeagueCategories.mockResolvedValue(REAL_10);
 });
 
 // ── Sample data ─────────────────────────────────────────────────
@@ -95,6 +88,21 @@ const sampleStandings = [
 ];
 
 // ── GET /period/current ──────────────────────────────────────────
+
+describe("GET /period/current — league categories", () => {
+  it("scores period standings over the league's categories only", async () => {
+    mockGetLeagueCategories.mockResolvedValue(FOUR_CATS);
+    mockPrisma.period.findFirst.mockResolvedValue({ id: 5, status: "active" });
+    mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);
+    mockComputeStandingsFromStats.mockReturnValue(sampleStandings);
+
+    const res = await supertest(app).get("/period/current?leagueId=7");
+
+    expect(res.status).toBe(200);
+    expect(mockGetLeagueCategories).toHaveBeenCalledWith(7);
+    expect(mockComputeStandingsFromStats).toHaveBeenCalledWith(sampleTeamStats, FOUR_CATS);
+  });
+});
 
 describe("GET /period/current", () => {
   it("returns 400 when leagueId is missing", async () => {
@@ -179,6 +187,25 @@ describe("GET /period-category-standings", () => {
     expect(res.body.categories[0].rows).toHaveLength(2);
   });
 
+  it("period-category-standings returns only the league's categories", async () => {
+    mockGetLeagueCategories.mockResolvedValue(FOUR_CATS);
+    mockPrisma.period.findFirst.mockResolvedValue({ id: 5 });
+    mockGetSeasonStandings.mockResolvedValue({ periodIds: [5], periodData: [{ teamStats: sampleTeamStats, standings: sampleStandings }], seasonRows: [] });
+    mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);
+    mockComputeCategoryRows.mockReturnValue([
+      { teamId: 1, teamName: "Team A", teamCode: "TMA", value: 50, rank: 1, points: 2 },
+      { teamId: 2, teamName: "Team B", teamCode: "TMB", value: 45, rank: 2, points: 1 },
+    ]);
+
+    const res = await supertest(app).get("/period-category-standings?leagueId=7");
+
+    expect(res.status).toBe(200);
+    expect(res.body.categories.map((c: any) => c.key)).toEqual(["R", "HR", "W", "SV"]);
+    expect(mockGetLeagueCategories).toHaveBeenCalledWith(7);
+    // Current standings are scored over the league's categories, not the global 10.
+    expect(mockComputeStandingsFromStats).toHaveBeenCalledWith(sampleTeamStats, FOUR_CATS);
+  });
+
   it("includes teamInnings and minInnings, reading rules for the requested league", async () => {
     mockPrisma.period.findFirst.mockResolvedValue({ id: 5 });
     mockGetSeasonStandings.mockResolvedValue({ periodIds: [5], periodData: [{ teamStats: [], standings: [] }], seasonRows: [] });
@@ -216,7 +243,20 @@ describe("GET /period-category-standings", () => {
     },
   );
 
-  it("still returns 200 with minInnings null when the rules lookup rejects", async () => {
+  it("returns 500 and no standings when the category lookup rejects", async () => {
+    mockPrisma.period.findFirst.mockResolvedValue({ id: 5 });
+    mockGetSeasonStandings.mockResolvedValue({ periodIds: [5], periodData: [{ teamStats: [], standings: [] }], seasonRows: [] });
+    mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);
+    mockComputeCategoryRows.mockReturnValue([]);
+    mockGetLeagueCategories.mockRejectedValue(new Error("db down"));
+
+    const res = await supertest(app).get("/period-category-standings?leagueId=1");
+
+    expect(res.status).toBe(500);
+    expect(res.body.categories).toBeUndefined();
+  });
+
+  it("still returns 200 with minInnings null when the minInnings rules lookup rejects (categories resolve)", async () => {
     mockPrisma.period.findFirst.mockResolvedValue({ id: 5 });
     mockGetSeasonStandings.mockResolvedValue({ periodIds: [5], periodData: [{ teamStats: [], standings: [] }], seasonRows: [] });
     mockComputeTeamStatsFromDb.mockResolvedValue(sampleTeamStats);

@@ -107,8 +107,8 @@ export const DEFAULT_RULES = [
   { category: "roster", key: "position_eligibility_gp", value: "3", label: "Position Eligibility (GP)" },
   { category: "roster", key: "pitcher_split", value: "P_ONLY", label: "Pitcher Positions" },
   // Scoring
-  { category: "scoring", key: "hitting_stats", value: JSON.stringify(["R", "HR", "RBI", "SB", "AVG", "OPS", "H", "2B", "3B", "BB"]), label: "Hitting Categories" },
-  { category: "scoring", key: "pitching_stats", value: JSON.stringify(["W", "SV", "K", "ERA", "WHIP", "QS", "HLD", "IP", "CG", "SHO"]), label: "Pitching Categories" },
+  { category: "scoring", key: "hitting_stats", value: JSON.stringify(["R", "HR", "RBI", "SB", "AVG"]), label: "Hitting Categories" },
+  { category: "scoring", key: "pitching_stats", value: JSON.stringify(["W", "SV", "ERA", "WHIP", "K"]), label: "Pitching Categories" },
   { category: "scoring", key: "min_innings", value: "50", label: "Minimum Innings per Period" },
   // Draft
   { category: "draft", key: "draft_mode", value: "AUCTION", label: "Draft Mode" },

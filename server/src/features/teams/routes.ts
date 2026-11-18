@@ -9,6 +9,8 @@ import { validateBody } from "../../middleware/validate.js";
 import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { logger } from "../../lib/logger.js";
 import { computeStandingsFromStats, type TeamStatRow } from "../standings/services/standingsService.js";
+import { getLeagueCategories } from "../../lib/leagueCategories.js";
+import { KEY_TO_DB_FIELD, type CategoryKey } from "../../lib/sportConfig.js";
 import { buildIlWindows, ilEventsQuery, wasOnIlAtPeriodStart } from "../../lib/ilWindows.js";
 import { periodOverlapFilter } from "../../lib/rosterWindow.js";
 import { isEligibleForSlot } from "../../lib/positionInherit.js";
@@ -206,25 +208,22 @@ router.get("/ai-insights", requireAuth, requireLeagueMember("leagueId"), asyncHa
     }));
 
     // Compute real roto standings with proper tie-handling
-    const standingsRows = computeStandingsFromStats(teamStatRows);
+    const leagueCategories = await getLeagueCategories(leagueId);
+    const standingsRows = computeStandingsFromStats(teamStatRows, leagueCategories);
     standings = standingsRows.map(s => ({
       teamName: s.teamName, totalScore: s.points, rank: s.rank,
     }));
 
     // Category rankings (derive from standings rows)
     if (allTeamStats.length > 0) {
-      const cats = [
-        { key: "R", field: "R", asc: false },
-        { key: "HR", field: "HR", asc: false },
-        { key: "RBI", field: "RBI", asc: false },
-        { key: "SB", field: "SB", asc: false },
-        { key: "AVG", field: "AVG", asc: false },
-        { key: "W", field: "W", asc: false },
-        { key: "SV", field: "S", asc: false },
-        { key: "K", field: "K", asc: false },
-        { key: "ERA", field: "ERA", asc: true },
-        { key: "WHIP", field: "WHIP", asc: true },
-      ];
+      // Keep the prompt's historical order (K before ERA/WHIP); unlisted keys go last.
+      const promptOrder = ["R", "HR", "RBI", "SB", "AVG", "W", "SV", "K", "ERA", "WHIP"];
+      const orderOf = (k: string) => { const i = promptOrder.indexOf(k); return i === -1 ? promptOrder.length : i; };
+      const cats = [...leagueCategories].sort((a, b) => orderOf(a.key) - orderOf(b.key)).map(c => ({
+        key: c.key,
+        field: KEY_TO_DB_FIELD[c.key as CategoryKey] || c.key,
+        asc: c.lowerIsBetter,
+      }));
       categoryRankings = cats.map(cat => {
         const sorted = [...allTeamStats].sort((a, b) => {
           const aVal = (a as any)[cat.field] ?? 0;

@@ -6,13 +6,13 @@ vi.mock("../../../db/prisma.js", () => ({
 
 import {
   buildTeamNameMap,
-  CATEGORY_CONFIG,
   computeCategoryRows,
   computeStandingsFromStats,
   rankPoints,
   aggregatePeriodStatsFromCsv,
   getTeamStatValue,
 } from "../services/standingsService.js";
+import { CATEGORY_CONFIG } from "../../../lib/sportConfig.js";
 
 describe("buildTeamNameMap", () => {
   it("builds map from seasonStandings rows", () => {
@@ -151,7 +151,7 @@ describe("computeCategoryRows", () => {
 
 describe("computeStandingsFromStats", () => {
   it("returns empty array for empty stats", () => {
-    expect(computeStandingsFromStats([])).toEqual([]);
+    expect(computeStandingsFromStats([], CATEGORY_CONFIG)).toEqual([]);
   });
 
   it("computes aggregate standings across all categories", () => {
@@ -170,7 +170,7 @@ describe("computeStandingsFromStats", () => {
       },
     ]);
 
-    const standings = computeStandingsFromStats(stats);
+    const standings = computeStandingsFromStats(stats, CATEGORY_CONFIG);
     expect(standings).toHaveLength(2);
 
     // Team A wins 8 categories (higher in R, HR, RBI, SB, AVG, W, S, K)
@@ -194,7 +194,7 @@ describe("computeStandingsFromStats", () => {
         W: 10, S: 10, ERA: 3.0, WHIP: 1.2, K: 100,
       },
     ]);
-    const standings = computeStandingsFromStats(stats);
+    const standings = computeStandingsFromStats(stats, CATEGORY_CONFIG);
     expect(standings[0].delta).toBe(0);
   });
 });

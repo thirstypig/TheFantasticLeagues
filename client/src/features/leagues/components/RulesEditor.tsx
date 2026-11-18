@@ -61,7 +61,7 @@ interface RuleConfig {
 }
 
 // --- Constants (from centralized sportConfig) ---
-import { HITTING_CATS, PITCHING_CATS, POSITIONS } from "../../../lib/sportConfig";
+import { SCORABLE_HITTING_CATS, SCORABLE_PITCHING_CATS, normalizeCategoryKey, resolveDisplayHalf, POSITIONS } from "../../../lib/sportConfig";
 
 const RULE_CONFIGS: Record<string, RuleConfig> = {
   // team_count removed — authoritative value is League.maxTeams (edit in Commissioner → League tab).
@@ -73,8 +73,8 @@ const RULE_CONFIGS: Record<string, RuleConfig> = {
   dh_games_threshold: { type: 'slider', min: 1, max: 50, step: 1 },
   position_eligibility_gp: { type: 'slider', min: 1, max: 50, step: 1 },
   pitcher_split: { type: 'select', options: ["P_ONLY", "SP_RP"] },
-  hitting_stats: { type: 'checkbox_list', listOptions: HITTING_CATS },
-  pitching_stats: { type: 'checkbox_list', listOptions: PITCHING_CATS },
+  hitting_stats: { type: 'checkbox_list', listOptions: SCORABLE_HITTING_CATS },
+  pitching_stats: { type: 'checkbox_list', listOptions: SCORABLE_PITCHING_CATS },
   min_innings: { type: 'select', options: ["10", "20", "30", "40", "50", "60", "70"] },
   draft_mode: { type: 'select', options: ["AUCTION", "DRAFT"] },
   draft_type: { type: 'select', options: ["SNAKE", "LINEAR"], dependsOn: { key: 'draft_mode', value: 'DRAFT' } },
@@ -439,7 +439,7 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
         const obj = JSON.parse(val);
         if (Array.isArray(obj)) return (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {obj.map(item => (
+            {(config.type === 'checkbox_list' ? resolveDisplayHalf(val, rule.key === 'pitching_stats' ? 'pitching' : 'hitting') : obj).map((item: string) => (
               <span
                 key={item}
                 style={{
@@ -552,9 +552,12 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
     let current: string[] = [];
     try { current = JSON.parse(val); } catch { /* ignore */ }
     if (!Array.isArray(current)) current = [];
+    current = Array.from(new Set(current.map((x) => normalizeCategoryKey(String(x)))));
 
     const toggle = (item: string) => {
-      const next = current.includes(item) ? current.filter(x => x !== item) : [...current, item];
+      const picked = current.includes(item) ? current.filter(x => x !== item) : [...current, item];
+      const allowed = config.listOptions ?? [];
+      const next = picked.filter(x => allowed.includes(x));
       onChange(JSON.stringify(next));
     };
 

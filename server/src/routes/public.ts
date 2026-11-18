@@ -7,6 +7,7 @@ import {
   computeStandingsFromStats,
   computeTeamStatsFromDb,
 } from "../features/standings/services/standingsService.js";
+import { getLeagueCategories } from "../lib/leagueCategories.js";
 
 export const publicRouter = Router();
 
@@ -89,7 +90,7 @@ publicRouter.get(
     let standings: Awaited<ReturnType<typeof computeStandingsFromStats>> = [];
     if (period) {
       const teamStats = await computeTeamStatsFromDb(league.id, period.id);
-      standings = computeStandingsFromStats(teamStats);
+      standings = computeStandingsFromStats(teamStats, await getLeagueCategories(league.id));
     }
 
     res.set("Cache-Control", "public, max-age=120");

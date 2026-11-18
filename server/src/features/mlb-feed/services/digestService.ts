@@ -231,24 +231,27 @@ export async function buildDigestContext(leagueId: number, weekKey: string): Pro
   if (!league) return null;
 
   // Compute real standings if active period exists
-  const { computeTeamStatsFromDb, computeStandingsFromStats, computeCategoryRows, CATEGORY_CONFIG } =
+  const { computeTeamStatsFromDb, computeStandingsFromStats, computeCategoryRows } =
     await import("../../standings/services/standingsService.js");
+  const { getLeagueCategories } = await import("../../../lib/leagueCategories.js");
 
   let standingsCtx: {
     standings: Awaited<ReturnType<typeof computeStandingsFromStats>>;
     categoryRanks: Record<number, Record<string, { value: number; rank: number }>>;
     teamStats: Awaited<ReturnType<typeof computeTeamStatsFromDb>>;
+    categories: Awaited<ReturnType<typeof getLeagueCategories>>;
   } | null = null;
 
   if (activePeriod) {
     try {
       const teamStats = await computeTeamStatsFromDb(leagueId, activePeriod.id);
-      const standings = computeStandingsFromStats(teamStats);
+      const categories = await getLeagueCategories(leagueId);
+      const standings = computeStandingsFromStats(teamStats, categories);
       const categoryRanks: Record<number, Record<string, { value: number; rank: number }>> = {};
       for (const t of teamStats) {
         categoryRanks[t.team.id] = {};
       }
-      for (const cfg of CATEGORY_CONFIG) {
+      for (const cfg of categories) {
         const rows = computeCategoryRows(teamStats, cfg.key, cfg.lowerIsBetter);
         for (const r of rows) {
           if (categoryRanks[r.teamId]) {
@@ -256,7 +259,7 @@ export async function buildDigestContext(leagueId: number, weekKey: string): Pro
           }
         }
       }
-      standingsCtx = { standings, categoryRanks, teamStats };
+      standingsCtx = { standings, categoryRanks, teamStats, categories };
     } catch (err) {
       logger.warn({ error: String(err) }, "Could not compute standings for digest — proceeding without");
     }
@@ -356,7 +359,7 @@ export async function buildDigestContext(leagueId: number, weekKey: string): Pro
   // Pre-compute narrative hints for the AI
   const narrativeHints: string[] = [];
   if (standingsCtx) {
-    for (const cfg of CATEGORY_CONFIG) {
+    for (const cfg of standingsCtx.categories) {
       const rows = computeCategoryRows(standingsCtx.teamStats, cfg.key, cfg.lowerIsBetter);
       if (rows.length >= 7) {
         const third = rows.find(r => r.rank === 3);

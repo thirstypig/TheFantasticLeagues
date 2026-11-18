@@ -8,6 +8,7 @@ import { AuctionImportService } from "../../auction/services/auctionImport.js";
 import { DEFAULT_RULES } from "../../../lib/sportConfig.js";
 import { sendInviteEmail } from "../../../lib/emailService.js";
 import { invalidateLeagueRules } from "../../../lib/leagueRuleCache.js";
+import { SCORABLE_CATEGORIES, normalizeCategoryKey } from "../../../lib/leagueCategories.js";
 import { incrementRosterVersion, incrementRosterVersions } from "../../../lib/rosterVersion.js";
 
 const auctionImportService = new AuctionImportService();
@@ -32,10 +33,26 @@ export class InvalidRuleValueError extends Error {
   }
 }
 
-/** Throws if the value is not allowed for transactions.trade_window or a meeting rule; no-op for other rules. */
+/** Throws if the value is not allowed for transactions.trade_window, a meeting rule, or scoring category lists; no-op for other rules. */
 export function assertValidRuleValue(category: string, key: string, value: string): void {
   if (category === "transactions" && key === "trade_window" && !TRADE_WINDOW_VALUES.has(value)) {
     throw new InvalidRuleValueError("When trades are allowed must be anytime or meeting_day");
+  }
+  if (category === "scoring" && (key === "hitting_stats" || key === "pitching_stats")) {
+    const label = key === "hitting_stats" ? "Hitting" : "Pitching";
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      parsed = null;
+    }
+    if (!Array.isArray(parsed) || !parsed.every((k) => typeof k === "string")) {
+      throw new InvalidRuleValueError(`${label} must be a list of categories`);
+    }
+    const allowed = SCORABLE_CATEGORIES.filter((c) => c.group === (key === "hitting_stats" ? "H" : "P")).map((c) => c.key);
+    if (parsed.some((k) => !allowed.includes(normalizeCategoryKey(k)))) {
+      throw new InvalidRuleValueError(`${label} categories can only include ${allowed.join(", ")}`);
+    }
   }
   if (category === "meeting") {
     const rule = MEETING_RULE_VALUES[key];
