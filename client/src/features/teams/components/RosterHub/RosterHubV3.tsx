@@ -164,9 +164,9 @@ function useIsMobile(forceMobile?: boolean): boolean {
 //     destructive Prisma migration. The combined column is labeled
 //     `BB+H` so the relationship to WHIP = (BB+H)/IP is explicit.
 const HITTER_COLS = [
-  { key: "pos", label: "Slot", align: "left" as const, width: 72 },
-  { key: "name", label: "Player", align: "left" as const, width: 180 },
-  { key: "elig", label: "Pos", align: "left" as const, width: 96 },
+  { key: "pos", label: "Slot", align: "left" as const, width: 56 },
+  { key: "name", label: "Player", align: "left" as const, width: 168 },
+  { key: "elig", label: "Pos", align: "left" as const, width: 88 },
   { key: "mlb", label: "MLB", align: "left" as const, width: 56 },
   { key: "AB", label: "AB", align: "right" as const, width: 56 },
   { key: "H", label: "H", align: "right" as const, width: 48 },
@@ -175,13 +175,13 @@ const HITTER_COLS = [
   { key: "RBI", label: "RBI", align: "right" as const, width: 64 },
   { key: "SB", label: "SB", align: "right" as const, width: 56 },
   { key: "AVG", label: "AVG", align: "right" as const, width: 64 },
-  { key: "act", label: "Actions", align: "right" as const, width: 64 },
+  { key: "act", label: "Actions", align: "right" as const, width: 72 },
 ];
 
 const PITCHER_COLS = [
-  { key: "pos", label: "Slot", align: "left" as const, width: 72 },
-  { key: "name", label: "Player", align: "left" as const, width: 180 },
-  { key: "elig", label: "Pos", align: "left" as const, width: 96 },
+  { key: "pos", label: "Slot", align: "left" as const, width: 56 },
+  { key: "name", label: "Player", align: "left" as const, width: 168 },
+  { key: "elig", label: "Pos", align: "left" as const, width: 88 },
   { key: "mlb", label: "MLB", align: "left" as const, width: 56 },
   { key: "IP", label: "IP", align: "right" as const, width: 56 },
   { key: "BB_H", label: "BB+H", align: "right" as const, width: 64 },
@@ -191,8 +191,15 @@ const PITCHER_COLS = [
   { key: "ER", label: "ER", align: "right" as const, width: 48 },
   { key: "ERA", label: "ERA", align: "right" as const, width: 64 },
   { key: "WHIP", label: "WHIP", align: "right" as const, width: 64 },
-  { key: "act", label: "Actions", align: "right" as const, width: 64 },
+  { key: "act", label: "Actions", align: "right" as const, width: 72 },
 ];
+
+// Table floors = sum of the column widths, so the colgroup and the floor can't
+// drift. Desktop rule (CLAUDE.md): no horizontal scroll at >=1280px; the pitcher
+// table (the wider one) must fit the ~930px main column there.
+const sumWidths = (cols: { width: number }[]) => cols.reduce((n, c) => n + c.width, 0);
+const HITTER_MIN_WIDTH = sumWidths(HITTER_COLS);
+const PITCHER_MIN_WIDTH = sumWidths(PITCHER_COLS);
 
 function n(v: number | string | undefined): number {
   if (v == null || v === "") return 0;
@@ -527,7 +534,7 @@ export function RosterHubV3({
                     borderCollapse: "separate",
                     borderSpacing: 0,
                     tableLayout: "fixed",
-                    minWidth: 860,
+                    minWidth: HITTER_MIN_WIDTH,
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >
@@ -577,7 +584,7 @@ export function RosterHubV3({
                     borderCollapse: "separate",
                     borderSpacing: 0,
                     tableLayout: "fixed",
-                    minWidth: 920,
+                    minWidth: PITCHER_MIN_WIDTH,
                     fontVariantNumeric: "tabular-nums",
                   }}
                 >

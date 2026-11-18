@@ -38,6 +38,9 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
 
   // Edit note inline
   const [editingId, setEditingId] = useState<number | null>(null);
+  // Row whose tag toggles are open. Closed rows show only the tags they have,
+  // so a row stays two lines tall in the narrow team-page card.
+  const [taggingId, setTaggingId] = useState<number | null>(null);
   const [editNote, setEditNote] = useState("");
 
   const load = useCallback(async () => {
@@ -241,92 +244,96 @@ export default function WatchlistPanel({ teamId }: WatchlistPanelProps) {
           No players on your watchlist yet. Add players you want to track.
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <ThemedTable bare density="compact" zebra aria-label="Watchlist">
-            <ThemedThead>
-              <ThemedTr>
-                <ThemedTh frozen>Player</ThemedTh>
-                <ThemedTh>POS</ThemedTh>
-                <ThemedTh>MLB</ThemedTh>
-                <ThemedTh>Tags</ThemedTh>
-                <ThemedTh>Note</ThemedTh>
-                <ThemedTh align="center">Remove</ThemedTh>
-              </ThemedTr>
-            </ThemedThead>
-            <tbody className="divide-y divide-[var(--lg-divide)]">
-              {items.map((item) => (
-                <ThemedTr key={item.id} className="hover:bg-[var(--lg-tint)] transition-colors">
-                  <ThemedTd frozen>
-                    <PlayerLink
-                      mlbId={item.player?.mlbId}
-                      name={item.player?.name ?? "Unknown"}
-                      className="font-semibold text-xs text-[var(--lg-text-primary)] hover:text-[var(--lg-accent)] transition-colors text-left"
-                    />
-                  </ThemedTd>
-                  <ThemedTd>
-                    <span className="px-1 py-px rounded text-xs font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                      {displayPos(item.player?.posPrimary)}
-                    </span>
-                  </ThemedTd>
-                  <ThemedTd>
-                    <span className="text-xs font-bold uppercase text-[var(--lg-text-muted)]">
-                      {item.player?.mlbTeam || "FA"}
-                    </span>
-                  </ThemedTd>
-                  <ThemedTd>
-                    <div className="flex gap-1 flex-wrap">
-                      {TAG_OPTIONS.map((tag) => (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => toggleTag(item, tag)}
-                          className={`px-1.5 py-px text-xs font-bold uppercase rounded-full border transition-colors ${item.tags.includes(tag) ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)] border-[var(--lg-accent)]" : "text-[var(--lg-text-muted)] border-[var(--lg-border-subtle)] opacity-40 hover:opacity-100"}`}
-                        >
-                          {tag}
-                        </button>
-                      ))}
-                    </div>
-                  </ThemedTd>
-                  <ThemedTd>
+        // Compact card layout: the panel lives in a one-third-width card on the
+        // team page, so tags + note sit on a second line under the player name
+        // instead of in their own columns (desktop rule: no horizontal scroll).
+        <ThemedTable bare density="compact" zebra minWidth={0} aria-label="Watchlist">
+          <ThemedThead>
+            <ThemedTr>
+              <ThemedTh>Player</ThemedTh>
+              <ThemedTh className="w-12">POS</ThemedTh>
+              <ThemedTh className="w-12">MLB</ThemedTh>
+              <ThemedTh align="center" className="w-9"><span className="sr-only">Remove</span></ThemedTh>
+            </ThemedTr>
+          </ThemedThead>
+          <tbody className="divide-y divide-[var(--lg-divide)]">
+            {items.map((item) => (
+              <ThemedTr key={item.id} className="hover:bg-[var(--lg-tint)] transition-colors">
+                <ThemedTd>
+                  <PlayerLink
+                    mlbId={item.player?.mlbId}
+                    name={item.player?.name ?? "Unknown"}
+                    className="block max-w-full truncate font-semibold text-xs text-[var(--lg-text-primary)] hover:text-[var(--lg-accent)] transition-colors text-left"
+                  />
+                  <div className="mt-1 flex flex-wrap items-center gap-1">
+                    {(taggingId === item.id ? TAG_OPTIONS : TAG_OPTIONS.filter((t) => item.tags.includes(t))).map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => toggleTag(item, tag)}
+                        aria-pressed={item.tags.includes(tag)}
+                        className={`px-1.5 py-px text-xs font-bold uppercase rounded-full border transition-colors ${item.tags.includes(tag) ? "bg-[var(--lg-accent)] text-[var(--lg-on-accent)] border-[var(--lg-accent)]" : "text-[var(--lg-text-muted)] border-[var(--lg-border-subtle)] opacity-60 hover:opacity-100"}`}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setTaggingId(taggingId === item.id ? null : item.id)}
+                      aria-expanded={taggingId === item.id}
+                      className="text-xs text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-colors"
+                    >
+                      {taggingId === item.id ? "done" : "+ tag"}
+                    </button>
                     {editingId === item.id ? (
-                      <div className="flex gap-1">
-                        <input
-                          type="text"
-                          value={editNote}
-                          onChange={(e) => setEditNote(e.target.value)}
-                          onKeyDown={(e) => e.key === "Enter" && handleSaveNote(item)}
-                          onBlur={() => handleSaveNote(item)}
-                          className="lg-input text-xs py-0.5 px-1 w-32"
-                          maxLength={200}
-                          autoFocus
-                        />
-                      </div>
+                      <input
+                        type="text"
+                        value={editNote}
+                        onChange={(e) => setEditNote(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleSaveNote(item)}
+                        onBlur={() => handleSaveNote(item)}
+                        className="lg-input text-xs py-0.5 px-1 w-full"
+                        maxLength={200}
+                        aria-label="Note"
+                        autoFocus
+                      />
                     ) : (
                       <button
                         type="button"
                         onClick={() => { setEditingId(item.id); setEditNote(item.note || ""); }}
-                        className="text-xs text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-colors max-w-[120px] truncate"
+                        className="max-w-full truncate text-xs text-[var(--lg-text-muted)] hover:text-[var(--lg-text-primary)] transition-colors"
                         title={item.note || "Add note"}
                       >
                         {item.note || <span className="opacity-40 italic">+ note</span>}
                       </button>
                     )}
-                  </ThemedTd>
-                  <ThemedTd align="center">
-                    <button
-                      type="button"
-                      onClick={() => handleRemove(item.playerId)}
-                      className="text-[var(--lg-text-muted)] hover:text-[var(--lg-error)] transition-colors"
-                      title="Remove from watchlist"
-                    >
-                      <X size={14} />
-                    </button>
-                  </ThemedTd>
-                </ThemedTr>
-              ))}
-            </tbody>
-          </ThemedTable>
-        </div>
+                  </div>
+                </ThemedTd>
+                <ThemedTd>
+                  <span className="px-1 py-px rounded text-xs font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                    {displayPos(item.player?.posPrimary)}
+                  </span>
+                </ThemedTd>
+                <ThemedTd>
+                  <span className="text-xs font-bold uppercase text-[var(--lg-text-muted)]">
+                    {item.player?.mlbTeam || "FA"}
+                  </span>
+                </ThemedTd>
+                <ThemedTd align="center">
+                  <button
+                    type="button"
+                    onClick={() => handleRemove(item.playerId)}
+                    className="p-1 text-[var(--lg-text-muted)] hover:text-[var(--lg-error)] transition-colors"
+                    title="Remove from watchlist"
+                    aria-label={`Remove ${item.player?.name ?? "player"} from watchlist`}
+                  >
+                    <X size={14} />
+                  </button>
+                </ThemedTd>
+              </ThemedTr>
+            ))}
+          </tbody>
+        </ThemedTable>
       )}
     </div>
   );

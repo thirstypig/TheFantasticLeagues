@@ -397,6 +397,7 @@ period-close and audit logging.
   `docs/aurora-design-system.md`. Yahoo Fantasy is the reference UX for
   roster/lineup flows — never modals when stats need to stay visible
   (sub-routes or inline expansion instead).
+- **NO DESKTOP HORIZONTAL SCROLL (2026-11-18, Style Bible "Boxes and room").** At a 1280px window and wider, neither a page nor any box on it scrolls sideways; wide tables fit by dropping/shortening/stacking columns. Exception: tables wide by nature (stats archive), scrolling inside their own box with the name column pinned. Phones may scroll stat tables sideways (name pinned). `ThemedTable`'s default 600px floor is phone-only (<768px); pass an explicit `minWidth` only for a wide-by-nature table. Inner vertical scroll boxes only for live feeds (chat, bid history).
 - **VERIFICATION.** Browser verification is mandatory on any UI change
   (precedent: `workflow_preferences.md`). Type-checks and test suites
   verify code correctness, not feature correctness. If a feature can't be

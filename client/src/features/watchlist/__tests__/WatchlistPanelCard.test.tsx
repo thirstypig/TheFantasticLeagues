@@ -38,3 +38,24 @@ describe("WatchlistPanel player card", () => {
     expect(screen.getByTestId("player-card")).toHaveAttribute("data-mlbid", "605141");
   });
 });
+
+// Compact card layout (no desktop horizontal scroll, 2026-11-18): a closed row
+// shows only the tags it has; "+ tag" opens all three toggles for that row.
+describe("WatchlistPanel tags in the compact card", () => {
+  it("hides unselected tags until '+ tag' is tapped", async () => {
+    render(
+      <MemoryRouter>
+        <PlayerCardProvider>
+          <WatchlistPanel teamId={3} />
+        </PlayerCardProvider>
+      </MemoryRouter>,
+    );
+    await screen.findByText("Minor Leaguer");
+    expect(screen.queryByRole("button", { name: "trade-target" })).toBeNull();
+    fireEvent.click(screen.getAllByRole("button", { name: "+ tag" })[0]);
+    expect(screen.getAllByRole("button", { name: "trade-target" })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "done" })).toHaveAttribute("aria-expanded", "true");
+    // No horizontal-scroll wrapper or 600px floor left on the watchlist table.
+    expect(screen.getByRole("table", { name: "Watchlist" }).className).not.toContain("min-w-");
+  });
+});
