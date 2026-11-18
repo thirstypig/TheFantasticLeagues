@@ -70,22 +70,3 @@ describe("mlbApi fetchWithRetry", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });
-
-describe("warmMlbTeamCache staleness window (todo #304)", () => {
-  it("caches per-player team lookups for at most 1 hour, not the 24h team-map TTL", async () => {
-    const { cacheSet } = await import("../mlbCache.js");
-    const { warmMlbTeamCache, PLAYER_TEAM_TTL } = await import("../mlbApi.js");
-    fetchMock.mockImplementation(async (url: string) =>
-      url.includes("/teams")
-        ? respond(200, { teams: [{ id: 119, abbreviation: "LAD" }] })
-        : respond(200, { people: [{ id: 660271, currentTeam: { id: 119 } }] }),
-    );
-    const r = await warmMlbTeamCache(["660271"]);
-    expect(r).toEqual({ "660271": "LAD" });
-    expect(PLAYER_TEAM_TTL).toBeLessThanOrEqual(3600);
-    const peopleCall = (cacheSet as any).mock.calls.find((c: unknown[]) => String(c[0]).includes("/people"));
-    expect(peopleCall[2]).toBe(PLAYER_TEAM_TTL);
-    const teamsCall = (cacheSet as any).mock.calls.find((c: unknown[]) => String(c[0]).includes("/teams"));
-    expect(teamsCall[2]).toBe(86400);
-  });
-});

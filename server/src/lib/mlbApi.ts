@@ -1,6 +1,5 @@
 
 import { logger } from './logger.js';
-import { chunk } from './utils.js';
 import { cacheGet, cacheSet } from './mlbCache.js';
 
 const MLB_BASE = "https://statsapi.mlb.com/api/v1";
@@ -10,14 +9,6 @@ const DEFAULT_TTL = 600;
 
 /** Longer TTL for the MLB team id -> abbreviation map (24 hours — rarely changes) */
 const TEAM_MAP_TTL = 86400;
-
-/**
- * TTL for per-player currentTeam lookups. Players change teams (trades), so
- * this is deliberately short: a traded player's team is at most 1 hour stale
- * here. (Player.mlbTeam in the DB is refreshed by the daily roster sync —
- * see syncAllPlayers — and is bounded by that cron, ~24h.)
- */
-export const PLAYER_TEAM_TTL = 3600;
 
 // Circuit breaker state
 let consecutiveFailures = 0;
@@ -98,38 +89,6 @@ export async function fetchMlbTeamsMap(): Promise<Record<number, string>> {
     map[t.id] = t.abbreviation || t.teamCode || t.name;
   }
   return map;
-}
-
-/**
- * Resolve MLB player IDs to their current team abbreviations.
- * Uses the shared SQLite cache (via mlbGetJson) — no separate JSON file needed.
- */
-export async function warmMlbTeamCache(mlbIds: string[]): Promise<Record<string, string>> {
-  if (mlbIds.length === 0) return {};
-
-  const teamsMap = await fetchMlbTeamsMap();
-  const result: Record<string, string> = {};
-  const batches = chunk(mlbIds, 50);
-
-  for (let i = 0; i < batches.length; i++) {
-    const batch = batches[i];
-    const url = `${MLB_BASE}/people?personIds=${batch.join(",")}`;
-    const data = await mlbGetJson(url, PLAYER_TEAM_TTL);
-
-    for (const p of data.people || []) {
-      const id = String(p.id);
-      const teamId = p.currentTeam?.id;
-      if (teamId && teamsMap[teamId]) {
-        result[id] = teamsMap[teamId];
-      }
-    }
-
-    if (batches.length > 1) {
-      logger.info({ batch: i + 1, total: batches.length }, "Team cache progress");
-    }
-  }
-
-  return result;
 }
 
 /** MLB roster-status cache TTL — 6 hours, matches mlb-feed/routes.ts pattern. */
