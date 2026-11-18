@@ -16,6 +16,10 @@ jobs:
           node-version: 20
           cache: npm
 
+      # ADR-015 ratchet: no new cross-feature imports. Dependency-free, so it runs first.
+      - name: Feature isolation (ADR-015)
+        run: node scripts/check-feature-isolation.mjs
+
       # Install all dependencies
       - run: npm ci
       - run: cd server && npm ci
