@@ -21,15 +21,15 @@ updated: 2026-11-18
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-18 from 2,038 git-tracked files.*
+*Generated 2026-11-18 from 2,039 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
 | `.ts` | 691 | 119,869 |
-| `.tsx` | 394 | 97,351 |
-| `.md` | 574 | 72,595 |
+| `.tsx` | 395 | 97,426 |
+| `.md` | 574 | 72,598 |
 | `.json` | 36 | 40,129 |
 | `.css` | 15 | 2,475 |
 | `.sql` | 42 | 2,236 |
@@ -38,7 +38,7 @@ updated: 2026-11-18
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 183 |
-| **All tracked** | **2,034** | **382,432** |
+| **All tracked** | **2,035** | **382,512** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 

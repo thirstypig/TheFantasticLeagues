@@ -233,32 +233,24 @@ export default function TradingBlockPanel({ teamId, leagueWide = false, rosterPl
             No players on the trading block. {isMyTeam ? "Add players you're willing to trade." : ""}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <ThemedTable bare density="compact" zebra aria-label="Trading block">
-              <ThemedThead>
-                <ThemedTr>
-                  <ThemedTh frozen>Player</ThemedTh>
-                  <ThemedTh>POS</ThemedTh>
-                  <ThemedTh>MLB</ThemedTh>
-                  <ThemedTh>Looking For</ThemedTh>
-                  {isMyTeam && <ThemedTh align="center">Actions</ThemedTh>}
-                </ThemedTr>
-              </ThemedThead>
-              <tbody className="divide-y divide-[var(--lg-divide)]">
-                {items.map((item) => (
-                  <ThemedTr key={item.id} className="hover:bg-[var(--lg-tint)] transition-colors">
-                    <ThemedTd frozen>
-                      <PlayerLink mlbId={item.player?.mlbId} name={item.player?.name ?? "Unknown"} className="font-semibold text-xs hover:text-[var(--lg-accent)] transition-colors text-left" />
-                    </ThemedTd>
-                    <ThemedTd>
-                      <span className="px-1 py-px rounded text-xs font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                        {displayPos(item.player?.posPrimary)}
-                      </span>
-                    </ThemedTd>
-                    <ThemedTd>
-                      <span className="text-xs font-bold uppercase text-[var(--lg-text-muted)]">{item.player?.mlbTeam || "FA"}</span>
-                    </ThemedTd>
-                    <ThemedTd>
+          // Compact layout: also rendered in a one-third-width card on the team
+          // page, so "looking for" sits on a second line under the player
+          // instead of its own column (desktop rule: no horizontal scroll).
+          <ThemedTable bare density="compact" zebra minWidth={0} aria-label="Trading block">
+            <ThemedThead>
+              <ThemedTr>
+                <ThemedTh>Player</ThemedTh>
+                <ThemedTh className="w-12">POS</ThemedTh>
+                <ThemedTh className="w-12">MLB</ThemedTh>
+                {isMyTeam && <ThemedTh align="center" className="w-9"><span className="sr-only">Remove</span></ThemedTh>}
+              </ThemedTr>
+            </ThemedThead>
+            <tbody className="divide-y divide-[var(--lg-divide)]">
+              {items.map((item) => (
+                <ThemedTr key={item.id} className="hover:bg-[var(--lg-tint)] transition-colors">
+                  <ThemedTd>
+                    <PlayerLink mlbId={item.player?.mlbId} name={item.player?.name ?? "Unknown"} className="block max-w-full truncate font-semibold text-xs hover:text-[var(--lg-accent)] transition-colors text-left" />
+                    <div className="mt-1">
                       {isMyTeam && editingId === item.id ? (
                         <div className="flex gap-1">
                           <input
@@ -266,8 +258,9 @@ export default function TradingBlockPanel({ teamId, leagueWide = false, rosterPl
                             value={editAskingFor}
                             onChange={(e) => setEditAskingFor(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && handleSaveAskingFor(item)}
-                            className="lg-input text-xs py-0.5 px-1 w-32"
+                            className="lg-input text-xs py-0.5 px-1 min-w-0 flex-1"
                             maxLength={200}
+                            aria-label="Looking for"
                             autoFocus
                           />
                           <button type="button" onClick={() => handleSaveAskingFor(item)} className="text-[var(--lg-accent)] text-xs">Save</button>
@@ -276,30 +269,39 @@ export default function TradingBlockPanel({ teamId, leagueWide = false, rosterPl
                         <button
                           type="button"
                           onClick={() => { if (isMyTeam) { setEditingId(item.id); setEditAskingFor(item.askingFor || ""); } }}
-                          className={`text-xs text-[var(--lg-text-secondary)] italic max-w-[140px] truncate ${isMyTeam ? "hover:text-[var(--lg-accent)] cursor-pointer" : "cursor-default"}`}
+                          className={`block max-w-full truncate text-left text-xs text-[var(--lg-text-secondary)] italic ${isMyTeam ? "hover:text-[var(--lg-accent)] cursor-pointer" : "cursor-default"}`}
                           title={item.askingFor || (isMyTeam ? "Set what you're looking for" : "")}
                         >
                           {item.askingFor || (isMyTeam ? <span className="opacity-40">+ asking for</span> : "—")}
                         </button>
                       )}
+                    </div>
+                  </ThemedTd>
+                  <ThemedTd>
+                    <span className="px-1 py-px rounded text-xs font-bold uppercase bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      {displayPos(item.player?.posPrimary)}
+                    </span>
+                  </ThemedTd>
+                  <ThemedTd>
+                    <span className="text-xs font-bold uppercase text-[var(--lg-text-muted)]">{item.player?.mlbTeam || "FA"}</span>
+                  </ThemedTd>
+                  {isMyTeam && (
+                    <ThemedTd align="center">
+                      <button
+                        type="button"
+                        onClick={() => handleRemove(item.player?.id ?? item.id)}
+                        className="p-1 text-[var(--lg-text-muted)] hover:text-[var(--lg-error)] transition-colors"
+                        title="Remove from trading block"
+                        aria-label={`Remove ${item.player?.name ?? "player"} from trading block`}
+                      >
+                        <X size={14} />
+                      </button>
                     </ThemedTd>
-                    {isMyTeam && (
-                      <ThemedTd align="center">
-                        <button
-                          type="button"
-                          onClick={() => handleRemove(item.player?.id ?? item.id)}
-                          className="text-[var(--lg-text-muted)] hover:text-[var(--lg-error)] transition-colors"
-                          title="Remove from trading block"
-                        >
-                          <X size={14} />
-                        </button>
-                      </ThemedTd>
-                    )}
-                  </ThemedTr>
-                ))}
-              </tbody>
-            </ThemedTable>
-          </div>
+                  )}
+                </ThemedTr>
+              ))}
+            </tbody>
+          </ThemedTable>
         )
       )}
     </div>

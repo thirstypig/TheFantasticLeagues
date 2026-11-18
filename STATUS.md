@@ -37,6 +37,7 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - Cache cleanup: MLB teams refresh hourly; one trade-block store (#500)
 - Dropped `TeamStatsSeason` and `Team.tradeBlockPlayerIds` (trade-block entries copied first); parse-based Wire List guard; 15s test timeout (#510)
 - Local test flakes fixed: supertest connects over IPv6 loopback, so another process can't steal its port on macOS (todo #318)
+- No horizontal scrolling on desktop (≥1280px): Watchlist and Trading Block cards are compact, roster tables fit, the shared table's 600px floor is phone-only
 - Weekly digest stats line now includes saves and lists only the league's categories (todo #319)
 - Phase 3.5: standings score each league's own Rules-page categories, any subset of the 10 (#513, live d1ad7c5b). Prod check: no standings number moved in either league
 - Auction: timers survive restarts (#496); commissioner can start it pre-season (#497)
@@ -53,6 +54,7 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 1. Public auction-keeper leagues (not scheduled)
 
 ## Decisions changed recently
+- 2026-11-18: No sideways scrolling on a computer (1280px and wider); phones may scroll stat tables with the name pinned (Style Bible)
 - 2026-11-11: AL games don't count in NL-only leagues (OnRoto's rule)
 - 2026-11-11: 2026 roster dates follow OnRoto and the OGBA workbook
 - 2026-11-10: trade window setting (anytime / meeting day only)
