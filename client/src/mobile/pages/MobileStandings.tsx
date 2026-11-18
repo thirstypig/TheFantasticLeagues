@@ -588,7 +588,7 @@ export function MobileStandings() {
                           background: isMe ? "var(--am-chip)" : "transparent",
                         }}
                       >
-                        <span style={{ fontSize: 13, color: "var(--am-text)", fontWeight: isMe ? 700 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        <span data-testid="leader-team-name" style={{ fontSize: 13, lineHeight: 1.25, color: "var(--am-text)", fontWeight: isMe ? 700 : 400, overflowWrap: "anywhere", minWidth: 0 }}>
                           {row.teamName}
                         </span>
                         <span style={{ fontSize: 13, fontWeight: 700, color: i === 0 ? "var(--am-positive)" : "var(--am-text-muted)", fontVariantNumeric: "tabular-nums" }}>

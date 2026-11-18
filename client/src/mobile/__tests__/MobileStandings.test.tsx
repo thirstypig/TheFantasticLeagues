@@ -267,3 +267,23 @@ describe("standingsViews", () => {
     expect(standingsViews(new Set(["R", "W"]))).toEqual(["Hitting", "Pitching", "Period"]);
   });
 });
+
+describe("mobile standings touch + names", () => {
+  it("sort headers are at least 44px tall", async () => {
+    renderStandings();
+    await screen.findAllByText("Los Doyers");
+    const header = screen.getByRole("button", { name: /PTS/ });
+    expect(header.style.minHeight).toBe("44px");
+  });
+
+  it("category-leader team names wrap instead of truncating", async () => {
+    renderStandings();
+    await screen.findAllByText("Los Doyers");
+    const names = await screen.findAllByTestId("leader-team-name");
+    expect(names.length).toBeGreaterThan(0);
+    for (const n of names) {
+      expect(n.style.textOverflow).toBe("");
+      expect(n.style.whiteSpace).toBe("");
+    }
+  });
+});
