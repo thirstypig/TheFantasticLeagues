@@ -85,6 +85,9 @@ function sumForView(row: MatrixRow, view: ViewKey): number {
   return cats.reduce((s, k) => s + (row.pointsByCat[k] ?? 0), 0);
 }
 
+/** Stat column widths (px) where the label isn't a fit for the 26px default. */
+export const CAT_COL_W: Partial<Record<string, number>> = { R: 22, W: 22, K: 22, RBI: 30, AVG: 34, ERA: 34, WHIP: 42 };
+
 /**
  * Cell color, relative to the league (not a fixed 8-team scale):
  * green = led the category (ties included), normal = top half, muted = bottom half.
@@ -245,8 +248,12 @@ export function MobileStandings() {
   // chars) at 390px viewport width. The prototype used 28px stat columns
   // against shorter mock names; trimming to 26px (and the total column to
   // 30px) buys ~14px for the team column without compressing the numbers.
-  const colW = 26;
-  const cols = `16px minmax(0,1fr) ${visibleCats.map(() => `${colW}px`).join(" ")} 30px`;
+  // Wider labels get wider columns: a flat 26px let "ERA" and "WHIP" run
+  // together as "ERAWHIP". Widths = label text (Sofia Sans 700 13px, measured
+  // on prod 2026-11-18: AVG 26, ERA 25, WHIP 34, RBI 21px) + the header's 8px
+  // padding; single letters (R, W, K) take 22px to give the team name the
+  // room back. Checked on prod at 390px: "Demolition Lumber Co." needs 124px.
+  const cols = `16px minmax(0,1fr) ${visibleCats.map((c) => `${CAT_COL_W[c] ?? 26}px`).join(" ")} 30px`;
 
   const periodCols = `minmax(0,1fr) ${periodMeta.ids.map(() => "32px").join(" ")} 34px`;
 
