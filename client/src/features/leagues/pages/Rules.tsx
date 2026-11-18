@@ -5,7 +5,7 @@ import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { RulesEditor } from "../components/RulesEditor";
 import type { LeagueListItem } from "../../../api";
 import { Glass, SectionLabel } from "../../../components/aurora/atoms";
-import { resolveDisplayCategories } from "../../../lib/sportConfig";
+import { resolveDisplayCategories, baseballConfig } from "../../../lib/sportConfig";
 
 interface LeagueRule {
   id: number;
@@ -15,6 +15,36 @@ interface LeagueRule {
   value: string;
   label: string;
   isLocked: boolean;
+}
+
+const CATEGORY_BY_ID = new Map(baseballConfig.categories.map((c) => [c.id, c]));
+
+/** Chip text for a scoring category: full name, abbreviation, lower-is-better note. */
+export function categoryChip(id: string): { name: string; abbr: string | null; lowerIsBetter: boolean } {
+  const cfg = CATEGORY_BY_ID.get(id);
+  if (!cfg) return { name: id, abbr: null, lowerIsBetter: false };
+  return { name: cfg.name, abbr: cfg.name === id ? null : id, lowerIsBetter: !!cfg.isLowerBetter };
+}
+
+/** Roster slots as chips; pitchers are stored as a count, not a slot, so add them. */
+export function rosterChips(positions: Record<string, number>, pitcherCount: number): Array<[string, number]> {
+  const entries = Object.entries(positions);
+  if (!("P" in positions) && pitcherCount > 0) entries.push(["P", pitcherCount]);
+  return entries;
+}
+
+function CategoryChip({ id }: { id: string }) {
+  const { name, abbr, lowerIsBetter } = categoryChip(id);
+  return (
+    <span
+      data-testid={`category-chip-${id}`}
+      className="px-3 py-1.5 bg-[var(--lg-tint)] text-[var(--lg-text-primary)] text-sm font-semibold rounded-lg border border-[var(--lg-border-subtle)]"
+    >
+      {name}
+      {abbr && <span className="ml-1.5 text-[var(--lg-text-muted)] font-normal">{abbr}</span>}
+      {lowerIsBetter && <span className="ml-1.5 text-[var(--lg-text-muted)] font-normal">· lower is better</span>}
+    </span>
+  );
 }
 
 function rv(rules: LeagueRule[], key: string): string {
@@ -178,7 +208,7 @@ export default function Rules() {
             <section className="lg-card p-4 md:p-8">
               <h2 className="text-xl font-semibold tracking-tight text-[var(--lg-text-heading)] mb-6 uppercase">Roster Positions</h2>
               <div className="flex flex-wrap gap-2">
-                {Object.entries(rosterPositions).map(([pos, count]) => (
+                {rosterChips(rosterPositions, pitcherCount).map(([pos, count]) => (
                   <div key={pos} className="flex items-center gap-2 px-4 py-2 bg-[var(--lg-tint)] rounded-xl border border-[var(--lg-border-subtle)]">
                     <span className="text-xs font-bold text-[var(--lg-text-primary)] uppercase">{pos}</span>
                     <span className="text-xs font-bold text-[var(--lg-text-primary)]">{count}</span>
@@ -197,9 +227,7 @@ export default function Rules() {
               </h2>
               <div className="flex flex-wrap gap-2">
                 {hittingCats.map((cat) => (
-                  <span key={cat} className="px-3 py-1.5 bg-[var(--lg-tint)] text-[var(--lg-text-primary)] text-xs font-bold rounded-lg border border-[var(--lg-border-subtle)] uppercase tracking-tight">
-                    {cat}
-                  </span>
+                  <CategoryChip key={cat} id={cat} />
                 ))}
               </div>
             </section>
@@ -211,9 +239,7 @@ export default function Rules() {
               </h2>
               <div className="flex flex-wrap gap-2">
                 {pitchingCats.map((cat) => (
-                  <span key={cat} className="px-3 py-1.5 bg-[var(--lg-tint)] text-[var(--lg-text-primary)] text-xs font-bold rounded-lg border border-[var(--lg-border-subtle)] uppercase tracking-tight">
-                    {cat}
-                  </span>
+                  <CategoryChip key={cat} id={cat} />
                 ))}
               </div>
             </section>
