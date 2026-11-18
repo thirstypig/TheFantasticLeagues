@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MobileStandings } from "../pages/MobileStandings";
+import { MobileStandings, pointColor } from "../pages/MobileStandings";
 import { getSeasonStandings } from "../../api";
 import { getPeriodCategoryStandings } from "../../api";
 
@@ -208,5 +208,27 @@ describe("MobileStandings", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Pitching" }));
     await waitFor(() => expect(screen.getByRole("button", { name: /WHIP/ })).toBeInTheDocument());
     expect(cols(["W", "SV", "K", "ERA", "WHIP"])).toEqual(["W", "SV", "K", "ERA", "WHIP"]);
+  });
+});
+
+// Design review 2026-11-18: the footnote said "1–10" and green meant ">= 8 points"
+// regardless of league size. Both now follow the team count.
+describe("MobileStandings point scale follows the team count", () => {
+  it("footnote states the real point range", async () => {
+    renderStandings();
+    expect(await screen.findByText(/roto points \(1–3 for 3 teams\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/1–10/)).toBeNull();
+    expect(screen.getByText(/Green = 1st in the category/)).toBeInTheDocument();
+  });
+
+  it("pointColor: leader green (ties too), top half normal, bottom half muted", () => {
+    expect(pointColor(8, 8, 8)).toBe("var(--am-positive)");
+    expect(pointColor(7.5, 7.5, 8)).toBe("var(--am-positive)"); // tied for 1st
+    expect(pointColor(7, 8, 8)).toBe("var(--am-text)");
+    expect(pointColor(4, 8, 8)).toBe("var(--am-text-muted)");
+    expect(pointColor(12, 12, 12)).toBe("var(--am-positive)");
+    expect(pointColor(8, 12, 12)).toBe("var(--am-text)"); // was green on the fixed 8-team scale
+    expect(pointColor(0, 0, 8)).toBe("var(--am-text-muted)");
+    expect(pointColor(4.5, 4.5, 8)).not.toBe("var(--am-positive)"); // all 8 tied: nobody leads
   });
 });

@@ -788,3 +788,10 @@ a:hover {
   main { margin: 0 !important; padding: 0 !important; }
   * { color-adjust: exact; -webkit-print-color-adjust: exact; }
 }
+
+/* AdSense marks a slot it couldn't fill with data-ad-status="unfilled" but still
+   draws an empty frame (a grey box with a broken-image icon under the Season
+   standings while domain approval is pending). Hide it; Google's documented fix. */
+ins.adsbygoogle[data-ad-status="unfilled"] {
+  display: none !important;
+}
