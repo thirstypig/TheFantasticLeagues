@@ -6,7 +6,7 @@
  * so this component skips the wrapper and uses Aurora atoms directly:
  *
  *   - <Glass padded={false}> for the outer card
- *   - <SectionLabel> eyebrows per category section
+ *   - one title per category section (no repeated eyebrow)
  *   - <Chip> + <Dot> for the lock-state indicator
  *   - --am-* CSS vars for typography, borders, surface-faint inputs
  *   - --am-irid as the Save button background pill
@@ -22,7 +22,7 @@ import { Lock, Pencil } from "lucide-react";
 import { useAuth } from "../../../auth/AuthProvider";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { useToast } from "../../../contexts/ToastContext";
-import { Glass, SectionLabel, Chip, Dot } from "../../../components/aurora/atoms";
+import { Glass, Chip, Dot } from "../../../components/aurora/atoms";
 
 import overviewIcon from '../../../assets/icons/overview.svg';
 import rosterIcon from '../../../assets/icons/roster.svg';
@@ -58,6 +58,14 @@ interface RuleConfig {
   listOptions?: string[];
   suffix?: string;
   dependsOn?: { key: string; value: string };
+  /** One-line caveat shown under the value (read and edit mode). */
+  note?: string;
+}
+
+/** Read-only value text: dollars lead ("$1"), other units trail ("30s", "50%"). */
+export function formatRuleValue(val: string, suffix?: string): string {
+  if (!suffix) return val;
+  return suffix === "$" ? `$${val}` : `${val}${suffix}`;
 }
 
 // --- Constants (from centralized sportConfig) ---
@@ -75,7 +83,11 @@ const RULE_CONFIGS: Record<string, RuleConfig> = {
   pitcher_split: { type: 'select', options: ["P_ONLY", "SP_RP"] },
   hitting_stats: { type: 'checkbox_list', listOptions: SCORABLE_HITTING_CATS },
   pitching_stats: { type: 'checkbox_list', listOptions: SCORABLE_PITCHING_CATS },
-  min_innings: { type: 'select', options: ["10", "20", "30", "40", "50", "60", "70"] },
+  min_innings: {
+    type: 'select',
+    options: ["10", "20", "30", "40", "50", "60", "70"],
+    note: "Not auto-enforced — the commissioner checks it.",
+  },
   draft_mode: { type: 'select', options: ["AUCTION", "DRAFT"] },
   draft_type: { type: 'select', options: ["SNAKE", "LINEAR"], dependsOn: { key: 'draft_mode', value: 'DRAFT' } },
   auction_budget: { type: 'number', dependsOn: { key: 'draft_mode', value: 'AUCTION' }, suffix: '$' },
@@ -246,7 +258,6 @@ export function RulesEditor({ leagueId, canEdit: canEditProp, onSaved }: { leagu
       <Glass>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
-            <SectionLabel style={{ marginBottom: 0 }}>✦ League Rules</SectionLabel>
             <h2 style={{
               fontFamily: "var(--am-display)",
               fontSize: 24,
@@ -360,7 +371,6 @@ export function RulesEditor({ leagueId, canEdit: canEditProp, onSaved }: { leagu
                 <span style={{ fontSize: 17 }}>📄</span>
               )}
               <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                <SectionLabel style={{ marginBottom: 0 }}>✦ {cat.replace('_', ' ')}</SectionLabel>
                 <span style={{
                   fontFamily: "var(--am-display)",
                   fontSize: 17,
@@ -420,6 +430,11 @@ export function RulesEditor({ leagueId, canEdit: canEditProp, onSaved }: { leagu
                     <div>
                       {RenderInput(rule, val, config, isEditing, (v) => handleChange(rule.id, v))}
                     </div>
+                    {config.note && (
+                      <div data-testid={`rule-note-${rule.key}`} style={{ fontSize: 13, color: "var(--am-text-muted)" }}>
+                        {config.note}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -488,11 +503,8 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
     return (
       <div style={{ display: "inline-flex", alignItems: "baseline", gap: 4 }}>
         <span style={{ fontFamily: "var(--am-display)", fontSize: 24, fontWeight: 400, color: "var(--am-text)", letterSpacing: -0.3, fontVariantNumeric: "tabular-nums" }}>
-          {val}
+          {formatRuleValue(val, config.suffix)}
         </span>
-        {config.suffix && (
-          <span style={{ fontSize: 13, color: "var(--am-accent)", fontWeight: 500 }}>{config.suffix}</span>
-        )}
       </div>
     );
   }
