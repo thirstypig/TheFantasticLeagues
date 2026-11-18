@@ -14,11 +14,12 @@ The Rules page (`client/src/features/commissioner/pages/RulesPage.tsx`) shows ca
 Spell out chips (Runs, Home Runs…) with the abbreviation kept; add a "lower is better" mark on ERA and WHIP; render the pitcher slot chip from the league's roster config.
 
 ## Acceptance Criteria
-- [ ] Chips show full names.
-- [ ] ERA/WHIP marked lower-is-better.
-- [ ] Roster chips include every configured slot, including P 9.
-- [ ] Browser-verified.
-- [ ] `git mv` this todo from pending → complete.
+- [x] Chips show full names.
+- [x] ERA/WHIP marked lower-is-better.
+- [x] Roster chips include every configured slot, including P 9.
+- [x] Browser-verified.
+- [x] `git mv` this todo from pending → complete.
 
 ## Work Log
+- 2026-11-18: done — chips spelled out with abbreviation, ERA/WHIP 'lower is better', P chip from pitcher_count; browser-verified locally.
 - 2026-11-18: filed from the todo/design-review/open-items sweep.
