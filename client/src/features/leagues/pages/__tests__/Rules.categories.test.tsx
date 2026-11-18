@@ -34,9 +34,10 @@ describe("Rules page categories", () => {
     for (const n of ["OPS", "QS", "HLD", "2B"]) expect(screen.queryByText(n)).toBeNull();
   });
 
-  it("a stored [] pitching half shows none and a 5x0 label", async () => {
+  it("a stored [] pitching half hides the pitching card and names the hitting half", async () => {
     mockRules('["R","HR","RBI","SB","AVG"]', "[]");
     render(<Rules />);
-    expect(await screen.findByText("Roto (5x0)")).toBeTruthy();
+    expect(await screen.findByText("Roto (5 hitting categories)")).toBeTruthy();
+    expect(screen.queryByText("Pitching")).toBeNull();
   });
 });

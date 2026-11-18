@@ -47,6 +47,13 @@ function CategoryChip({ id }: { id: string }) {
   );
 }
 
+/** "Roto (5x5)", or the one half a single-half league scores. */
+export function formatLabel(hitting: number, pitching: number): string {
+  if (hitting > 0 && pitching > 0) return `Roto (${hitting}x${pitching})`;
+  if (hitting > 0) return `Roto (${hitting} hitting categories)`;
+  return `Roto (${pitching} pitching categories)`;
+}
+
 /** Plain-English stats source for the overview tile. */
 export function statsSourceLabel(source: string): string {
   if (source === "NL") return "NL players only";
@@ -192,7 +199,7 @@ export default function Rules() {
             <h2 className="text-xl font-semibold tracking-tight text-[var(--lg-text-heading)] mb-6 uppercase">League Overview</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
               {[
-                { label: "Format", value: `Roto (${hittingCats.length}x${pitchingCats.length})` },
+                { label: "Format", value: formatLabel(hittingCats.length, pitchingCats.length) },
                 { label: "Teams", value: `${teamCount} Teams` },
                 { label: "Stats Source", value: statsSourceLabel(statsSource) },
                 { label: "Draft", value: `Live ${draftMode}` },
@@ -227,6 +234,7 @@ export default function Rules() {
 
           {/* Scoring Categories — first on phones (order-first), in place on desktop */}
           <div data-testid="rules-scoring-categories" className="order-first md:order-none grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+            {hittingCats.length > 0 && (
             <section className="lg-card p-4 md:p-8">
               <h2 className="text-lg font-semibold text-[var(--lg-text-heading)] mb-4 flex items-center gap-3 uppercase tracking-tight">
                 <span className="flex items-center justify-center w-7 h-7 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-bold border border-blue-500/20">H</span>
@@ -238,7 +246,9 @@ export default function Rules() {
                 ))}
               </div>
             </section>
+            )}
 
+            {pitchingCats.length > 0 && (
             <section className="lg-card p-4 md:p-8">
               <h2 className="text-lg font-semibold text-[var(--lg-text-heading)] mb-4 flex items-center gap-3 uppercase tracking-tight">
                 <span className="flex items-center justify-center w-7 h-7 bg-emerald-500/20 text-emerald-400 rounded-lg text-xs font-bold border border-emerald-500/20">P</span>
@@ -250,6 +260,7 @@ export default function Rules() {
                 ))}
               </div>
             </section>
+            )}
           </div>
 
           {/* Scoring System */}

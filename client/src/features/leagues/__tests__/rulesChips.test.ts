@@ -38,3 +38,13 @@ describe("Rules overview stats source", () => {
     expect(statsSourceLabel("MLB")).toBe("All MLB players");
   });
 });
+
+import { formatLabel } from "../pages/Rules";
+
+describe("Rules overview format tile", () => {
+  it("reads 5x5 for a standard league and names the half for a single-half league", () => {
+    expect(formatLabel(5, 5)).toBe("Roto (5x5)");
+    expect(formatLabel(0, 5)).toBe("Roto (5 pitching categories)");
+    expect(formatLabel(3, 0)).toBe("Roto (3 hitting categories)");
+  });
+});
