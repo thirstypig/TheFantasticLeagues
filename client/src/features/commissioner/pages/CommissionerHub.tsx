@@ -288,7 +288,9 @@ function CommissionerHubBody() {
   const links = (
     <div style={{ display: "flex", flexWrap: "wrap", columnGap: 16 }}>
       <LinkRow to={`${base}/recent`}>History ›</LinkRow>
-      <LinkRow to={`${base}/scoring`}>Scoring categories ›</LinkRow>
+      {/* Baseball categories are edited on the league Rules page (/rules, RulesEditor);
+          /commissioner/:id/rules has no category section and /scoring is NFL/NBA only. */}
+      <LinkRow to="/rules">Scoring categories ›</LinkRow>
       <LinkRow to={`${base}/wire-list`}>List settings ›</LinkRow>
     </div>
   );
