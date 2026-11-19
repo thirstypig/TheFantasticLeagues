@@ -23,9 +23,9 @@ function serve(sport: string) {
   });
 }
 
-function renderPage() {
+function renderPage(path = "/commissioner/20/scoring") {
   return render(
-    <MemoryRouter initialEntries={["/commissioner/20/scoring"]}>
+    <MemoryRouter initialEntries={[path]}>
       <Routes><Route path="/commissioner/:leagueId/scoring" element={<ScoringSettings />} /></Routes>
     </MemoryRouter>,
   );
@@ -59,6 +59,13 @@ describe("ScoringSettings", () => {
     expect(url).toBe(`${API_BASE}/leagues/20/roster-config`);
     expect(init.method).toBe("PATCH");
     expect(JSON.parse(init.body)).toEqual({ slots: { QB: 2, BN: 6 } });
+  });
+
+  it("refuses a non-numeric league id instead of building a traversal URL", async () => {
+    serve("NFL");
+    renderPage("/commissioner/..%2F..%2Fadmin/scoring");
+    await new Promise((r) => setTimeout(r, 20));
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it("sends a baseball league to Rules instead of the NFL/NBA editor", async () => {

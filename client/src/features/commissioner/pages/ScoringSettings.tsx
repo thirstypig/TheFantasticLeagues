@@ -39,7 +39,11 @@ interface SaveRosterConfigRequest {
 }
 
 function ScoringSettingsBody() {
-  const { leagueId } = useParams<{ leagueId: string }>();
+  const { leagueId: rawLeagueId } = useParams<{ leagueId: string }>();
+  // Route params are URL-decoded, so "..%2F..%2Fadmin" arrives as "../../admin".
+  // Interpolated into fetch URLs that would send authed requests (incl. PATCH)
+  // to another API path. Accept digits only; otherwise fetch nothing.
+  const leagueId = rawLeagueId && /^\d+$/.test(rawLeagueId) ? rawLeagueId : undefined;
   const [activeTab, setActiveTab] = useState<"rules" | "roster">("rules");
   // Server sends the league's sport; only NFL/NBA use this page (baseball → Rules).
   const [sport, setSport] = useState<string>("NFL");
@@ -62,7 +66,10 @@ function ScoringSettingsBody() {
   // Fetch data on mount
   useEffect(() => {
     const fetchData = async () => {
-      if (!leagueId) return;
+      if (!leagueId) {
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);
