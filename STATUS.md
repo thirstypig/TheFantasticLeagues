@@ -33,13 +33,14 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - Fixed: the commissioner "Scoring categories" page crashed for every league (found in PostHog error events, 2026-11-19); a wrong API URL now fails loudly instead of returning empty data
 - CI reports test coverage on every run and fails if it drops below a floor (server 45% lines, client 51%)
 - Standings tested against a real Postgres in CI: hand-worked expected points, 9 deliberate breakages each caught
+- Keeper save: an owner can no longer mark a released (dropped or traded) player as a keeper; endpoint now tested, 11 tests, each guard mutation-checked
 - Settings shows the stats source in plain words and always shows the saved value (a stored "ALL" used to display as "NL")
 
 ## In progress
 - Nothing in flight
 
 ## Open bugs / known issues
-- None open. 2026 standings match OnRoto exactly in P1, P2, P3, P5, P6. The P4 and P7 ±1 pairs are OnRoto errors, verified 2026-11-19: FBST matches MLB and Baseball-Reference in both (todo #331).
+- None open. 2026 standings match OnRoto exactly in P1, P2, P3, P5, P6. The P4 and P7 ±1 pairs are OnRoto errors, verified 2026-11-19: FBST matches MLB and Baseball-Reference in both (todo #331). A full player-by-player sweep against MLB game logs (all 7 periods, 2026-11-19) found every stat that feeds standings correct.
 
 ## Next phases (in order)
 1. Public auction-keeper leagues (not scheduled)
