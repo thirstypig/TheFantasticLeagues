@@ -14,9 +14,10 @@ dependencies: []
 Answer each in its doc, resolve in `docs/_comments.json` with a link, regenerate the inbox. C-004 is a read-only Railway variable check.
 
 ## Acceptance Criteria
-- [ ] Every listed item resolved or explicitly deferred with a reason.
-- [ ] `node scripts/sync-inbox.mjs` shows the new count.
-- [ ] `git mv` this todo from pending → complete.
+- [x] Every listed item resolved or explicitly deferred with a reason (C-011 deferred).
+- [x] `node scripts/sync-inbox.mjs` shows the new count.
+- [x] `git mv` this todo from pending → complete.
 
 ## Work Log
+- 2026-11-18: done — answered in their docs: C-003 glossary (wire list vs retired waivers; franchise vs team), C-004 PostHog on in prod (key set in Railway and compiled into the live bundle), C-005 moot (P1 todos closed), C-006 launch spec is now historical, C-007 no ADR back-fill, C-008 chat retired → todo #332, C-009 filename wins (#460), C-010 already guarded by docsIndex.test.ts (#426). C-011 (fill the component props/states tables, ~an afternoon) DEFERRED: no feature work is waiting on it.
 - 2026-11-18: filed from the todo/design-review/open-items sweep.
