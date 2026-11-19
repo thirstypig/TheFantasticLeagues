@@ -28,3 +28,14 @@ describe("RulesEditor both-halves-empty note", () => {
     expect(bothCategoryHalvesEmpty("oops", "[]")).toBe(false);
   });
 });
+
+import { categoryIconStyle } from "../components/RulesEditor";
+
+describe("RulesEditor section icons", () => {
+  it("fill with the theme's muted text colour via a mask, not a fixed white filter", () => {
+    const s = categoryIconStyle("/x.svg");
+    expect(s.background).toBe("var(--am-text-muted)");
+    expect(String(s.mask)).toContain('url("/x.svg")');
+    expect(s.filter).toBeUndefined();
+  });
+});

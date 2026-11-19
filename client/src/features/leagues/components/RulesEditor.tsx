@@ -62,6 +62,23 @@ interface RuleConfig {
   note?: string;
 }
 
+/**
+ * Section icon drawn as a mask filled with the theme's muted text colour, so it
+ * shows on both the light and dark themes (a fixed white filter vanished on light).
+ */
+export function categoryIconStyle(src: string): React.CSSProperties {
+  const mask = `url("${src}") center / contain no-repeat`;
+  return {
+    display: "inline-block",
+    width: 22,
+    height: 22,
+    flexShrink: 0,
+    background: "var(--am-text-muted)",
+    WebkitMask: mask,
+    mask,
+  };
+}
+
 /** Both category lists stored as []: the server then scores all 10 (Phase 3.5 rule). */
 export function bothCategoryHalvesEmpty(hittingJson: string | undefined, pitchingJson: string | undefined): boolean {
   const empty = (json: string | undefined) => {
@@ -375,10 +392,10 @@ export function RulesEditor({ leagueId, canEdit: canEditProp, onSaved }: { leagu
           <Glass key={cat} padded={false}>
             <div style={{ padding: "18px 22px 8px", borderBottom: "1px solid var(--am-border)", display: "flex", alignItems: "center", gap: 12 }}>
               {CATEGORY_ICONS[cat] ? (
-                <img
-                  src={CATEGORY_ICONS[cat]}
-                  alt={cat}
-                  style={{ width: 22, height: 22, opacity: 0.75, filter: 'brightness(0) invert(1) opacity(0.75)' }}
+                <span
+                  aria-hidden="true"
+                  data-testid={`rules-icon-${cat}`}
+                  style={categoryIconStyle(CATEGORY_ICONS[cat])}
                 />
               ) : (
                 <span style={{ fontSize: 17 }}>📄</span>
