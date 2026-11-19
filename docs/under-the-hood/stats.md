@@ -21,7 +21,7 @@ updated: 2026-11-19
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-19 from 2,055 git-tracked files.*
+*Generated 2026-11-19 from 2,056 git-tracked files.*
 
 ## Code
 
@@ -29,7 +29,7 @@ updated: 2026-11-19
 |---|---:|---:|
 | `.ts` | 693 | 119,937 |
 | `.tsx` | 396 | 97,705 |
-| `.md` | 587 | 72,918 |
+| `.md` | 588 | 73,100 |
 | `.json` | 36 | 40,248 |
 | `.css` | 15 | 2,482 |
 | `.sql` | 42 | 2,236 |
@@ -38,7 +38,7 @@ updated: 2026-11-19
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 187 |
-| **All tracked** | **2,051** | **383,309** |
+| **All tracked** | **2,052** | **383,491** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -55,9 +55,9 @@ updated: 2026-11-19
 
 ## Docs
 
-**222** board-scope markdown files (`docs/` plus the four root docs), of which **153** carry frontmatter.
+**223** board-scope markdown files (`docs/` plus the four root docs), of which **154** carry frontmatter.
 
-*591 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
+*592 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
 unrelated frontmatter vocabularies and are deliberately excluded from the tables below.*
 
 > **69 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
@@ -68,7 +68,7 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `feat` | 20 | ❌ off-vocabulary |
 | `plan` | 13 | ✅ |
 | `fix` | 6 | ❌ off-vocabulary |
-| `tech-spec` | 4 | ✅ |
+| `tech-spec` | 5 | ✅ |
 | `report` | 4 | ✅ |
 | `refactor` | 3 | ❌ off-vocabulary |
 | `solution` | 2 | ✅ |
@@ -108,11 +108,11 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 | `draft` | 6 | ✅ |
 | `completed` | 4 | ❌ off-vocabulary |
 | `resolved` | 4 | ❌ off-vocabulary |
+| `deprecated` | 2 | ✅ |
 | `in_progress` | 1 | ❌ off-vocabulary |
 | `phases-1-3-complete` | 1 | ❌ off-vocabulary |
 | `implemented` | 1 | ❌ off-vocabulary |
 | `locked` | 1 | ✅ |
-| `deprecated` | 1 | ✅ |
 | `fixed` | 1 | ❌ off-vocabulary |
 | `done` | 1 | ✅ |
 
@@ -120,11 +120,11 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 ## Open work
 
-**3 open** of 328 total to-dos.
+**2 open** of 328 total to-dos.
 
 | Priority | Open |
 |---|---:|
-| `p3` | 3 |
+| `p3` | 2 |
 
 Planning status: 34/82 planning tasks done, 0 in progress.
 

@@ -8,9 +8,13 @@ feature_status: planned
 phase: null
 owner: james
 tags: [players, transactions]
-links: [DOC-002, DOC-003]
-updated: 2026-07-23
+links: [DOC-002, DOC-003, DOC-044]
+updated: 2026-11-18
 ---
+
+> **Parked 2026-11-18 (todo #329):** not being built during the off-season hardening phase.
+> The design spec is DOC-044. `feature_status` stays `planned`; revisit when public leagues
+> are scheduled.
 
 # Player Comparison (`/compare`)
 

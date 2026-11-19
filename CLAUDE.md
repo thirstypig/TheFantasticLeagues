@@ -445,9 +445,8 @@ not summarize the diff. PRs land before session end whenever possible
 
 **Phase:** Off-season 2026–27 - Hardening & Style Bible Redesign (October 2026 - March 2027)
 
-**Next 3 to-dos** (3 open):
+**Next 3 to-dos** (2 open):
 
-- `329` **P3** — player comparison decide or delete
 - `331` **P3** — p4 p7 onroto one point pairs
 - `332` **P3** — delete dead chat feature
 
