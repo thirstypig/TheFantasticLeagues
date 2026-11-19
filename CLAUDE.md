@@ -255,7 +255,7 @@ a KPI, metric, or intent to make a document look complete. Unverified numbers in
 `costs.md` stay flagged `VERIFY`.
 
 ## Coding Guidelines
-- **Feature module boundaries (ADR-015)**: feature modules must not import from other feature modules — promote shared code to `client/src/components/shared`, `client/src/hooks`, `client/src/lib`, `server/src/lib`, or `shared/api`. The existing violations (86 as of 2026-11-11) are grandfathered in `scripts/feature-isolation-baseline.json`; **new ones must not be added**. Check with `node scripts/check-feature-isolation.mjs` (`--report` for the full graph). Duplicating a small helper is preferable to a bad coupling.
+- **Feature module boundaries (ADR-015)**: feature modules must not import from other feature modules — promote shared code to `client/src/components/shared`, `client/src/hooks`, `client/src/lib`, `server/src/lib`, or `shared/api`. The existing violations (86 as of 2026-11-11) are grandfathered in `scripts/feature-isolation-baseline.json`; **new ones must not be added** (CI enforces this since #522). Check with `node scripts/check-feature-isolation.mjs` (`--report` for the full graph). Duplicating a small helper is preferable to a bad coupling.
 - **SOLID Principles**: Single Responsibility, Open-Closed, Liskov Substitution, Interface Segregation, Dependency Inversion
 - **DRY**: Extract common logic into reusable functions/modules
 - **KISS**: Strive for simplicity — avoid over-engineering
@@ -445,11 +445,11 @@ not summarize the diff. PRs land before session end whenever possible
 
 **Phase:** In-Season 2026 - Engagement & Remote UX (April - September 2026)
 
-**Next 3 to-dos** (12 open):
+**Next 3 to-dos** (11 open):
 
 - `320` **P2** — season legend and vs last label
-- `327` **P2** — wire feature isolation check into ci
 - `328` **P2** — reconcile planning json and status
+- `321` **P3** — rules page chips and roster chip
 
 Roadmap: [`docs/product/roadmap.md`](docs/product/roadmap.md) · Docs map: [`docs/README-DOCS.md`](docs/README-DOCS.md)
 
