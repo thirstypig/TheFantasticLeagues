@@ -179,9 +179,8 @@ Notable surfaces:
 
 **Phase:** Off-season 2026–27 - Hardening & Style Bible Redesign (October 2026 - March 2027)
 
-**Next 3 to-dos** (1 open):
+**Next 3 to-dos** (0 open):
 
-- `332` **P3** — delete dead chat feature
 
 Roadmap: [`docs/product/roadmap.md`](docs/product/roadmap.md) · Docs map: [`docs/README-DOCS.md`](docs/README-DOCS.md)
 

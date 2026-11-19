@@ -11,7 +11,7 @@ STATUS.md is read by Jimmy's claude.ai assistant as the source of truth. Wheneve
 ## Quick Links
 
 **Reference guides** (detailed runbooks, moved out to keep this file compact):
-- **[Feature Modules](docs/guides/feature-modules.md)** — 32 modules, cross-feature imports, adding new features
+- **[Feature Modules](docs/guides/feature-modules.md)** — 33 modules, cross-feature imports, adding new features
 - **[Testing Strategy](docs/guides/testing-strategy.md)** — Unit/integration tests, configuration, 2633 tests across 36 modules
 - **[Code Conventions](docs/guides/conventions.md)** — TypeScript, API auth, error handling, routing, time-aware logic
 - **[Database Operations](docs/guides/database-operations.md)** — Migrations, cron jobs, critical columns, best practices
@@ -44,7 +44,7 @@ Fantasy baseball league management tool. Client/server monorepo organized by **f
 ### Shared
 - TypeScript across both client and server
 - Vitest (unit + integration tests)
-- 32 feature modules under `server/src/features/`; 27 with a corresponding client surface (the new `subscribers` module's UI lives in the separate `www` marketing repo)
+- 33 feature modules under `server/src/features/` (2026-11-18, after the dead `chat` module was deleted); 26 with a same-named client module (the new `subscribers` module's UI lives in the separate `www` marketing repo)
 
 ### Infrastructure
 - PostgreSQL (Supabase)
@@ -85,7 +85,7 @@ fbst/
 
 ## Feature Modules
 
-32 modules organized by domain, each with routes, services, pages, and components. See **[Feature Modules guide](docs/guides/feature-modules.md)** for the full catalog, patterns, and cross-feature dependencies.
+33 modules organized by domain, each with routes, services, pages, and components. See **[Feature Modules guide](docs/guides/feature-modules.md)** for the full catalog, patterns, and cross-feature dependencies.
 
 ## Shared Infrastructure (do NOT move into features)
 - `shared/api/` — **cross-side Zod schemas** (pilot: `playerSeasonStats.ts`). Both client and server import from here; the inferred type is the single source of truth for the wire format. See `docs/CONTRACT_TESTING.md` for how to add a new schema. Server imports via relative `.js` path (NodeNext), client via `@shared/*` path alias.
@@ -445,9 +445,8 @@ not summarize the diff. PRs land before session end whenever possible
 
 **Phase:** Off-season 2026–27 - Hardening & Style Bible Redesign (October 2026 - March 2027)
 
-**Next 3 to-dos** (1 open):
+**Next 3 to-dos** (0 open):
 
-- `332` **P3** — delete dead chat feature
 
 Roadmap: [`docs/product/roadmap.md`](docs/product/roadmap.md) · Docs map: [`docs/README-DOCS.md`](docs/README-DOCS.md)
 
