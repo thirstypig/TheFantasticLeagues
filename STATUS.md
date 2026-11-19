@@ -22,31 +22,14 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - **Staging:** none hosted. Railway has only `production`. "Staging" is a separate Supabase project used from a local server.
 
 ## Shipped (last 60 days)
-- 2026 re-score applied (2026-11-12): NL games only, OnRoto roster dates; Period 7 closed (no IL fees due)
-- NL-only scoring: AL games don't count; 2026 roster dates follow OnRoto (#485)
-- UX redesign:
-  - commissioner hub, theme, four-tab shell, Today page (#473–#476)
-  - steps A–E: style, rules, commissioner, rosters, trades, players and player card (#477–#482)
-  - team page (#483)
-  - step F: auction screens 8–11 and engine fixes (#487–#493)
-- UX G live meeting with a clock (DOC-042; #499, #502, #504), off until turned on in Rules
-- "Wire List" renamed "List", with an ⓘ help note (#498)
-- Stale tabs can't overwrite a newer roster (#503)
-- Season standings load in 6 queries, not ~45 (#501); IL stints close on a drop, IL events per league (#505)
-- Commissioner can void a meeting fee on the Money page (#506)
-- Cache cleanup: MLB teams refresh hourly; one trade-block store (#500)
-- Dropped `TeamStatsSeason` and `Team.tradeBlockPlayerIds` (trade-block entries copied first); parse-based Wire List guard; 15s test timeout (#510)
-- Local test flakes fixed: supertest connects over IPv6 loopback, so another process can't steal its port on macOS (todo #318)
-- Mobile standings columns use the Rules page order (R HR RBI SB AVG / W SV ERA WHIP K), sized to their labels (no more "ERAWHIP")
-- Mobile standings: point range and green "category leader" follow the team count; empty ad slot hidden on Season
-- Design-review polish (todos #320–#326): Season legend + "vs P7" column; Rules chips spelled out (ERA/WHIP lower is better, P 9 chip); phone Rules shows scoring first and "NL players only"; single-half leagues hide the empty tab/card; Settings cards de-duplicated with "$1" amounts and the 50-IP minimum marked manual; 44px mobile sort headers; leader names wrap
-- CI now blocks new cross-feature imports (ADR-015 check, #522)
-- No horizontal scrolling on desktop (≥1280px): Watchlist and Trading Block cards are compact, roster tables fit, the shared table's 600px floor is phone-only
-- Weekly digest stats line now includes saves and lists only the league's categories (todo #319)
-- Phase 3.5: standings score each league's own Rules-page categories, any subset of the 10 (#513, live d1ad7c5b). Prod check: no standings number moved in either league
-- Auction: timers survive restarts (#496); commissioner can start it pre-season (#497)
-- Switch League pick survives reloads, shows its season (#494, #495)
-- 2026 audit vs FanGraphs/OnRoto (#470, #471); waivers retired, cache fix, CVEs (#465–#467)
+- 2026 season closed: FanGraphs/OnRoto audit (#470, #471); NL-only scoring and OnRoto roster dates (#485); re-score applied, Period 7 closed with no IL fees (2026-11-12)
+- Style Bible UX redesign: shell, Today, commissioner, rules, rosters, trades, players, player card, team page, auction screens (#473–#497)
+- Live meeting with a clock, off until turned on in Rules (#499, #502, #504)
+- Standings score each league's own categories (#513); digest includes saves (#515)
+- Hardening: roster version guard (#503), season standings in 6 queries (#501), IL fixes (#505), meeting-fee void (#506), cache and dead-table cleanup (#500, #510, #516), test flakes (#507, #508, #512)
+- No sideways scrolling on desktop (#517); mobile standings scale, order and widths (#518–#520)
+- Design-review polish: Season legend, Rules chips, phone Rules order, single-half leagues, Settings cards, 44px tap targets (#523)
+- CI blocks new cross-feature imports (#522)
 
 ## In progress
 - Nothing in flight
@@ -63,5 +46,3 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - 2026-11-11: 2026 roster dates follow OnRoto and the OGBA workbook
 - 2026-11-10: trade window setting (anytime / meeting day only)
 - 2026-11-10: Sofia Sans replaces Inter
-
-**Known doc drift:** the generated "Current status" phase block in CLAUDE.md/README still says "In-Season 2026" — its source `server/data/planning.json` is stale.
