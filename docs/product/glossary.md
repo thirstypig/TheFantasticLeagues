@@ -34,20 +34,16 @@ something *different* here than they do on Yahoo.
 | **Period** | A scoring window. OGBA scores **each period as a standalone roto contest** (10 categories × 8 teams, 1–8 points per category), and period points accumulate across the season. | ⚠️ **Differs from industry norm.** This is NOT year-to-date roto. OnRoto's season points are on a different scale and will not match ours. See ADR-013. |
 | **Ownership-window attribution** | Stats count only for the days a player was actually on your roster. Pre-acquisition stats don't count for the acquirer; post-drop stats don't count for the dropper. | ⚠️ **Differs from OnRoto**, which displays current-roster full-season YTD. Ours is the scoring authority; theirs is a display convenience. See ADR-013. |
 | | | |
-| <!-- TODO(james) --> | | |
-| <!-- TODO(james) --> | | |
+| **Wire list** (UI: "List") | Each owner's two independent ranked lists for a waiver period: an **Add list** (players to claim, in priority order) and a **Drop list** (players to release or IL-stash, top = drop first). When the period runs, each successful add consumes the next pending drop. Tables `WaiverPeriod`, `WaiverAddEntry`, `WaiverDropEntry`. | **Not "waivers".** The older auto-claim system (`WaiverClaim`, `/api/waivers`) was retired on 2026-10-19 (#466) after it had zero prod rows ever. Only the wire list is live; the `WaiverClaim` table remains in the schema. Renamed "List" in the UI (#498). |
+| **Franchise** vs **team** | A **franchise** is the league organization that persists across seasons: its name, invite code, public slug, trade-review policy and commissioner memberships (`Franchise`, `FranchiseMembership`). Each season's `League` row points at its franchise. A **team** is one owner's entry inside one season's league (`Team.leagueId`): its roster, budget and code. | Owners and commissioners belong to the franchise; rosters and points belong to the team. A new season means a new `League` and new `Team` rows under the same franchise. |
 
 **Candidates that should be defined here** — I know these terms appear throughout the
 codebase and docs, but defining them from code alone risks getting the *intent* wrong:
 
-`keeper` · `FAAB` · `wire list` (vs. `waivers` — this project has **both**, and they are
-different systems) · `IL stash` · `two-way player` · `franchise` (vs. `team` — these are
-distinct entities in the schema) · `slot` (vs. `position`) · `snapshot` · `period rollover`
-· `contested IL fee`
+`keeper` · `FAAB` · `IL stash` · `two-way player` · `slot` (vs. `position`) · `snapshot` ·
+`period rollover` · `contested IL fee`
 
-<!-- TODO(james): work down that list. The wire-list-vs-waivers and franchise-vs-team pairs
-     are the two most worth doing first — both are real distinctions in the code that a
-     newcomer would get wrong. -->
+(Wire list vs. waivers and franchise vs. team are now defined in the table above.)
 
 ---
 

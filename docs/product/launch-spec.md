@@ -35,10 +35,10 @@ So this is **not** a pre-launch scope document. It is a **stability boundary for
 in-season period**: what the live league depends on, and therefore what must not be
 casually changed while the season runs.
 
-<!-- TODO(james): confirm this framing. The alternative reading is that this doc should
-     describe the *next* launch (public / multi-league availability) rather than the
-     current in-season freeze. Those imply very different IN/OUT lists. I've written the
-     in-season-freeze version because that's what the repo state supports today. -->
+> **Update 2026-11-18:** the 2026 season is over, so this in-season freeze is now a
+> historical record of what was locked during the season. The next launch (public
+> auction-keeper leagues) is not scheduled; when it is, it gets its own launch spec rather
+> than an edit to this one. See the roadmap's off-season phase in `server/data/planning.json`.
 
 ---
 

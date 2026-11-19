@@ -8,7 +8,7 @@
         {
           "id": "apply-session-tracking-migration",
           "title": "Apply session-tracking DB migration (UserSession, UserMetrics, UserDeletionLog)",
-          "status": "in_progress",
+          "status": "done",
           "priority": "p1",
           "owner": "jimmy",
           "milestone": "mvp",
@@ -51,7 +51,7 @@
         {
           "id": "deploy-marketing-site",
           "title": "Deploy marketing site to GitHub Pages",
-          "status": "in_progress",
+          "status": "done",
           "priority": "p1",
           "owner": "jimmy",
           "milestone": "mvp",
@@ -204,7 +204,7 @@
         {
           "id": "email-subscribe-backend",
           "title": "Email subscribe backend (POST /api/auth/subscribe)",
-          "status": "not_started",
+          "status": "done",
           "priority": "p2",
           "owner": "dev",
           "milestone": "mvp",
@@ -460,7 +460,7 @@
         {
           "id": "seo-sitemap",
           "title": "Install @astrojs/sitemap integration",
-          "status": "not_started",
+          "status": "done",
           "priority": "p2",
           "owner": "dev",
           "milestone": "seo-technical",
@@ -475,7 +475,7 @@
         {
           "id": "seo-robots",
           "title": "Create robots.txt for marketing site + app",
-          "status": "not_started",
+          "status": "done",
           "priority": "p2",
           "owner": "dev",
           "milestone": "seo-technical",
@@ -488,7 +488,7 @@
         {
           "id": "seo-og-tags",
           "title": "Install astro-seo — OG tags, Twitter cards, canonical URLs",
-          "status": "not_started",
+          "status": "done",
           "priority": "p2",
           "owner": "dev",
           "milestone": "seo-technical",
@@ -550,7 +550,7 @@
         {
           "id": "seo-ga4",
           "title": "Add GA4 to marketing site + set up conversion events",
-          "status": "not_started",
+          "status": "done",
           "priority": "p2",
           "owner": "jimmy",
           "milestone": "seo-technical",
@@ -1313,9 +1313,78 @@
   ],
   "roadmap": [
     {
+      "id": "offseason-hardening",
+      "label": "Off-season 2026–27 - Hardening & Style Bible Redesign",
+      "timeframe": "October 2026 - March 2027",
+      "color": "cyan",
+      "icon": "Target",
+      "items": [
+        {
+          "title": "Style Bible UX redesign (steps A–G)",
+          "description": "Commissioner hub, four-tab shell, rules, rosters, trades, players and player card, team page, auction screens, and the live meeting clock rebuilt to the Score Sheet Style Bible (#473–#504).",
+          "effort": "Large",
+          "status": "done",
+          "tags": [
+            "ux"
+          ],
+          "icon": "Sparkles"
+        },
+        {
+          "title": "2026 season-end audit and NL-only re-score",
+          "description": "Every FanGraphs/OnRoto residual attributed; AL games stop counting in NL-only leagues; OnRoto roster dates applied; Period 7 closed (#470, #471, #485).",
+          "effort": "Large",
+          "status": "done",
+          "tags": [
+            "scoring"
+          ],
+          "icon": "Trophy"
+        },
+        {
+          "title": "League categories (Phase 3.5)",
+          "description": "Every standings path scores the league's own Rules-page categories, any subset of the 10 (#513, #515, #519).",
+          "effort": "Medium",
+          "status": "done",
+          "tags": [
+            "scoring"
+          ],
+          "icon": "BarChart3"
+        },
+        {
+          "title": "Hardening: tests, cache cleanup, CI guards",
+          "description": "Roster version guard, 6-query season standings, IL fixes, test-flake fixes, dead tables dropped, feature-isolation check in CI (#500–#512, #522).",
+          "effort": "Medium",
+          "status": "done",
+          "tags": [
+            "quality"
+          ],
+          "icon": "Activity"
+        },
+        {
+          "title": "Design-review polish",
+          "description": "No desktop sideways scroll, mobile standings fixes, Season legend, Rules chips, single-half leagues, 44px tap targets (#517–#520, #523).",
+          "effort": "Small",
+          "status": "done",
+          "tags": [
+            "ux"
+          ],
+          "icon": "Layers"
+        },
+        {
+          "title": "Public auction-keeper leagues",
+          "description": "Open the app beyond OGBA to small private auction-keeper leagues. Not scheduled.",
+          "effort": "Large",
+          "status": "planned",
+          "tags": [
+            "growth"
+          ],
+          "icon": "Globe"
+        }
+      ]
+    },
+    {
       "id": "engagement",
       "label": "In-Season 2026 - Engagement & Remote UX",
-      "timeframe": "April - September 2026",
+      "timeframe": "April - September 2026 (done)",
       "color": "emerald",
       "icon": "Rocket",
       "items": [
@@ -1494,7 +1563,7 @@
           "title": "Yahoo-Style Roster Hub",
           "description": "Table-first roster management for add/drop, IL stash, IL activate, roster-slot legality, selected-player comparison, and commissioner acting-as flows.",
           "effort": "Large",
-          "status": "in-progress",
+          "status": "done",
           "tags": [
             "roster",
             "ux",
@@ -1633,5 +1702,5 @@
       ]
     }
   ],
-  "updatedAt": "2026-05-19T00:00:00.000Z"
+  "updatedAt": "2026-11-18T12:00:00.000Z"
 }

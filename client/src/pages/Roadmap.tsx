@@ -729,7 +729,7 @@ function ProductRoadmapSection({ roadmap, categories }: { roadmap: RoadmapPhase[
         </h2>
       </div>
       <p className="text-sm text-[var(--lg-text-secondary)]">
-        Where we're headed — from this week's live auction through the 2026 season and beyond.
+        Where we're headed: newest phase first, finished phases below.
       </p>
 
       <div className="space-y-3">

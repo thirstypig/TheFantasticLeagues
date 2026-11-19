@@ -65,17 +65,18 @@ the 10 open ones. That's correct: they're the project's memory of what was actua
 
 ### A fragility worth knowing about
 
-**Status is recorded in two places** — in the filename (`298-pending-p1-…`) and in the
-frontmatter (`status: pending`). Nothing enforces that they agree.
+> **Resolved (#460, todo #309):** the **filename wins**. The frontmatter `status:` key was
+> deleted from every todo, and `scripts/__tests__/refresh-docs.test.mjs` fails CI if one
+> comes back. The history below explains why.
+
+**Status used to be recorded in two places** — in the filename (`298-pending-p1-…`) and in the
+frontmatter (`status: pending`). Nothing enforced that they agree.
 
 They can and do drift: an item gets marked complete in its frontmatter but the file never
 gets renamed. This has needed cleanup sweeps more than once, and `todo 151` was itself
 about exactly this problem.
 
-<!-- TODO(james): worth deciding which one wins. The frontmatter is the more natural source
-     (it's structured, and it's what a docs board would read); the filename is what's
-     visible in `ls` and what people actually scan. Picking one and having docs:refresh
-     flag disagreements would close this permanently. -->
+
 
 ---
 

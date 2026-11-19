@@ -443,13 +443,11 @@ not summarize the diff. PRs land before session end whenever possible
 
 ### Current status
 
-**Phase:** In-Season 2026 - Engagement & Remote UX (April - September 2026)
+**Phase:** Off-season 2026–27 - Hardening & Style Bible Redesign (October 2026 - March 2027)
 
-**Next 3 to-dos** (4 open):
+**Next 3 to-dos** (1 open):
 
-- `328` **P2** — reconcile planning json and status
-- `329` **P3** — player comparison decide or delete
-- `330` **P3** — docs inbox triage
+- `332` **P3** — delete dead chat feature
 
 Roadmap: [`docs/product/roadmap.md`](docs/product/roadmap.md) · Docs map: [`docs/README-DOCS.md`](docs/README-DOCS.md)
 

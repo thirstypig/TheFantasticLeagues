@@ -14,10 +14,11 @@ dependencies: []
 James decides: sign off and build, or delete the branch.
 
 ## Acceptance Criteria
-- [ ] Decision recorded.
-- [ ] Branch built into a PR or deleted locally and on origin.
-- [ ] C-005 resolved.
-- [ ] `git mv` this todo from pending → complete.
+- [x] Decision recorded.
+- [x] Branch built into a PR or deleted locally and on origin.
+- [x] C-005 resolved.
+- [x] `git mv` this todo from pending → complete.
 
 ## Work Log
+- 2026-11-18: James chose to park it. Spec (rev 2, 9e1bdfd3 — the local-only reviewed version) copied to main as DOC-044 (status deprecated, parked note); PRD-001 notes it is parked; branch deleted locally and on origin. C-005 was already resolved (moot).
 - 2026-11-18: filed from the todo/design-review/open-items sweep.
