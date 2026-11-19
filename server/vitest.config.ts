@@ -22,6 +22,13 @@ export default defineConfig({
       provider: "v8",
       include: ["src/**/*.ts"],
       exclude: ["src/**/*.test.ts", "src/index.ts", "src/seed.ts"],
+      // text-summary prints to the CI log; json-summary feeds the PR run summary.
+      reporter: ["text-summary", "json-summary"],
+      // A floor, not a target: set just under the 2026-11-19 baseline
+      // (45.66% lines). Fails CI if tests are deleted or a large untested
+      // file lands. Raise these when coverage goes up; never lower them to
+      // make a PR pass.
+      thresholds: { lines: 45, statements: 44, branches: 36, functions: 50 },
     },
   },
 });

@@ -34,10 +34,14 @@ jobs:
         run: cd server && npx tsc --noEmit
 
       # Tests
-      - name: Server tests
-        run: npm run test:server
-      - name: Client tests
-        run: npm run test:client
+      # --coverage also enforces the thresholds in each vitest.config.ts.
+      - name: Server tests (with coverage)
+        run: cd server && npx vitest run --coverage
+      - name: Client tests (with coverage)
+        run: cd client && npx vitest run --coverage
+      - name: Coverage summary
+        if: always()
+        run: node scripts/coverage-summary.mjs server/coverage/coverage-summary.json client/coverage/coverage-summary.json >> "$GITHUB_STEP_SUMMARY"
       - name: MCP fbst-app tests
         run: cd mcp-servers/fbst-app && npm test
       - name: MCP mlb-data tests
