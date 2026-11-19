@@ -2,7 +2,7 @@
 
 The codebase is organized by **domain feature modules**. Each feature encapsulates its own routes, services, pages, components, and API client in a self-contained directory.
 
-## Current Feature Modules (32)
+## Current Feature Modules (33)
 
 | Module | Server | Client | Description |
 |--------|--------|--------|-------------|
@@ -31,7 +31,6 @@ The codebase is organized by **domain feature modules**. Each feature encapsulat
 | `trading-block` | routes | 1 page, 1 component, api | Public league-wide trading block ("asking for" field) |
 | `board` | routes | 1 page, 3 components, api | League Board: Commissioner/Trade Block/Banter cards with threads |
 | `community` | routes | 1 page, api | Product Board placeholder: Announcements, Marketplace, General |
-| `chat` | routes, WebSocket | 1 component, api | In-app league chat: ChatPanel, unread badges, system messages on trade/waiver events |
 | `notifications` | routes | 1 component, api | Push notifications: web-push VAPID, PushSubscription, NotificationPreference, per-type settings |
 | `draft` | routes, WebSocket | 1 page, 3 components, api | Snake draft: DraftBoard grid, auto-pick, pause/resume, On the Clock indicator |
 | `matchups` | routes | — | H2H matchup generation: round-robin scheduling, ScoringEngine (Roto/H2H/Points) |
@@ -89,7 +88,6 @@ Some features import from other features' services or components.
 - `mlb-feed/services/digestService` imports `awards/services/awardsService` (static, for Fantasy MVP / Cy Young rankings embedded in the digest payload)
 - `ai/services/draftReportCardService` imports `auction/lib/auctionDaySnapshot` (single source for "what each team had on auction day" — also consumed by `/api/auction/results`)
 - `mlb-feed/digestRoutes.ts` imports `services/aiAnalysisService` (dynamic, for digest generation)
-- `chat/routes.ts` imports `trades/routes.ts` and `waivers/routes.ts` (system messages on trade/waiver processing)
 - `notifications/routes.ts` imports `trades/routes.ts` and `waivers/routes.ts` (push notifications on trade/waiver events)
 - `wire-list/processor.ts` imports `transactions/lib/positionInherit` (`isEligibleForSlot` for position-eligibility re-check at succeed time, mirroring legacy waivers processor)
 - `wire-list/routes.ts` imports `transactions/lib/freeAgent` (`assertPlayerIsFreeAgent` — single source of truth for FA detection per todo #175; legacy `waivers/routes.ts` uses a different policy and is intentionally not migrated)

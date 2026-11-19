@@ -47,9 +47,6 @@ import { watchlistRouter } from "./features/watchlist/index.js";
 import { tradingBlockRouter } from "./features/trading-block/index.js";
 import { boardRouter } from "./features/board/index.js";
 import { notificationsRouter } from "./features/notifications/index.js";
-// Chat feature removed — Board replaces it
-// import { chatRouter } from "./features/chat/index.js";
-// import { attachChatWs } from "./features/chat/services/chatWsService.js";
 import { profilesRouter } from "./features/profiles/index.js";
 import { sessionsRouter } from "./features/sessions/index.js";
 import { reportsRouter } from "./features/reports/index.js";
@@ -271,8 +268,6 @@ async function main() {
   app.use("/api/trading-block", tradingBlockRouter);
   app.use("/api/board", boardRouter);
   app.use("/api/notifications", notificationsRouter);
-  // Chat removed — Board replaces it
-  // app.use("/api/chat", chatRouter);
   app.use("/api", profilesRouter);
   app.use("/api/sessions", sessionsRouter);
 
@@ -783,8 +778,6 @@ async function main() {
 
     // Attach Snake Draft WebSocket server to the HTTP server
     attachDraftWs(server);
-
-    // Chat WebSocket removed — Board replaces it
 
     // Start the OutboxEvent drainer for IL fee reconciliation + any future
     // post-commit durable side effects (Phase 3 of roster-rules plan).

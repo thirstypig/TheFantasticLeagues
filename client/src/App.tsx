@@ -98,7 +98,6 @@ const StagingDocsPreview = React.lazy(() => import("./pages/design/StagingDocsPr
 const SportLeagueSelectorPreview = React.lazy(() => import("./pages/design/SportLeagueSelectorPreview"));
 const NBADashboard = React.lazy(() => import("./features/nba/pages/NBADashboard"));
 const NFLDashboard = React.lazy(() => import("./features/nfl/pages/NFLDashboard"));
-// Chat removed — Board replaces it
 
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useAuth } from "./auth/AuthProvider";
