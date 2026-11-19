@@ -39,3 +39,26 @@ describe("RulesEditor section icons", () => {
     expect(s.filter).toBeUndefined();
   });
 });
+
+import { selectOptions } from "../components/RulesEditor";
+import { statsSourceLabel } from "../lib/statsSource";
+
+describe("selectOptions", () => {
+  it("keeps the list when the saved value is in it", () => {
+    expect(selectOptions(["NL", "AL", "MLB"], "NL")).toEqual(["NL", "AL", "MLB"]);
+  });
+  it("adds a saved value the list doesn't have, so the select shows it", () => {
+    expect(selectOptions(["NL", "AL", "MLB"], "ALL")).toEqual(["NL", "AL", "MLB", "ALL"]);
+  });
+  it("adds nothing for an empty value", () => {
+    expect(selectOptions(["NL"], "")).toEqual(["NL"]);
+  });
+});
+
+describe("stats source option labels", () => {
+  it("reads the same as the Overview tile", () => {
+    expect(["NL", "AL", "MLB", "ALL"].map(statsSourceLabel)).toEqual([
+      "NL players only", "AL players only", "All MLB players", "All MLB players",
+    ]);
+  });
+});

@@ -16,7 +16,7 @@ One migration that drops both tables and removes the models and relation fields.
 ## Acceptance Criteria
 - [x] Prod row counts re-checked at 0 before merge.
 - [x] Migration drops both tables; schema models and relations removed; tsc + tests green.
-- [ ] (after merge) Railway deploy SUCCESS and `/api/health` reports the merge SHA.
+- [x] (after merge) Railway deploy SUCCESS and `/api/health` reports the merge SHA (b0354d28; prod: both tables gone, migration finished, 0 unfinished).
 - [x] `git mv` this todo from pending → complete.
 
 ## Work Log

@@ -30,6 +30,7 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - No sideways scrolling on desktop (#517); mobile standings scale, order and widths (#518–#520)
 - Design-review polish: Season legend, Rules chips, phone Rules order, single-half leagues, Settings cards, 44px tap targets (#523)
 - CI blocks new cross-feature imports (#522)
+- Settings shows the stats source in plain words and always shows the saved value (a stored "ALL" used to display as "NL")
 
 ## In progress
 - Nothing in flight
