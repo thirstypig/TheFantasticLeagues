@@ -57,6 +57,8 @@ interface RuleConfig {
   options?: string[];
   listOptions?: string[];
   suffix?: string;
+  /** Plain-English text for a stored option value; the stored value is unchanged. */
+  optionLabel?: (value: string) => string;
   dependsOn?: { key: string; value: string };
   /** One-line caveat shown under the value (read and edit mode). */
   note?: string;
@@ -98,12 +100,23 @@ export function formatRuleValue(val: string, suffix?: string): string {
   return suffix === "$" ? `$${val}` : `${val}${suffix}`;
 }
 
+/**
+ * A select must show the value that is actually saved. A stored value outside the
+ * list (prod has stats_source "ALL") would otherwise display as the first option,
+ * and saving the form would silently overwrite it.
+ */
+export function selectOptions(options: string[], current: string): string[] {
+  return current && !options.includes(current) ? [...options, current] : options;
+}
+
+import { statsSourceLabel } from "../lib/statsSource";
+
 // --- Constants (from centralized sportConfig) ---
 import { SCORABLE_HITTING_CATS, SCORABLE_PITCHING_CATS, normalizeCategoryKey, resolveDisplayHalf, POSITIONS } from "../../../lib/sportConfig";
 
 const RULE_CONFIGS: Record<string, RuleConfig> = {
   // team_count removed — authoritative value is League.maxTeams (edit in Commissioner → League tab).
-  stats_source: { type: 'select', options: ["NL", "AL", "MLB", "Other"] },
+  stats_source: { type: 'select', options: ["NL", "AL", "MLB"], optionLabel: statsSourceLabel },
   pitcher_count: { type: 'slider', min: 1, max: 20 },
   batter_count: { type: 'slider', min: 1, max: 25 },
   roster_positions: { type: 'json_object_counts', listOptions: POSITIONS },
@@ -538,7 +551,7 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
     return (
       <div style={{ display: "inline-flex", alignItems: "baseline", gap: 4 }}>
         <span style={{ fontFamily: "var(--am-display)", fontSize: 24, fontWeight: 400, color: "var(--am-text)", letterSpacing: -0.3, fontVariantNumeric: "tabular-nums" }}>
-          {formatRuleValue(val, config.suffix)}
+          {config.optionLabel ? config.optionLabel(val) : formatRuleValue(val, config.suffix)}
         </span>
       </div>
     );
@@ -551,7 +564,7 @@ function RenderInput(rule: LeagueRule, val: string, config: RuleConfig, editing:
         onChange={e => onChange(e.target.value)}
         style={AURORA_INPUT}
       >
-        {config.options?.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+        {selectOptions(config.options ?? [], val).map(opt => <option key={opt} value={opt}>{config.optionLabel ? config.optionLabel(opt) : opt}</option>)}
       </select>
     );
   }

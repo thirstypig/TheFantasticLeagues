@@ -3,6 +3,9 @@ import { useAuth } from "../../../auth/AuthProvider";
 import { useLeague } from "../../../contexts/LeagueContext";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { RulesEditor } from "../components/RulesEditor";
+import { statsSourceLabel } from "../lib/statsSource";
+
+export { statsSourceLabel };
 import type { LeagueListItem } from "../../../api";
 import { Glass, SectionLabel } from "../../../components/aurora/atoms";
 import { resolveDisplayCategories, baseballConfig } from "../../../lib/sportConfig";
@@ -54,12 +57,6 @@ export function formatLabel(hitting: number, pitching: number): string {
   return `Roto (${pitching} pitching categories)`;
 }
 
-/** Plain-English stats source for the overview tile. */
-export function statsSourceLabel(source: string): string {
-  if (source === "NL") return "NL players only";
-  if (source === "AL") return "AL players only";
-  return "All MLB players";
-}
 
 function rv(rules: LeagueRule[], key: string): string {
   return rules.find((r) => r.key === key)?.value ?? "";
