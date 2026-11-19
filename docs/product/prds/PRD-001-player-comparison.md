@@ -118,6 +118,10 @@ requires stating this on the page. [intended]
 | Deep-link opens vs. in-app search | **No** | Requires a `track()` call distinguishing hydration source. Not built. |
 | Repeat-rate by owner | **Derivable** from pageviews + identity, once there's data |
 
+**Is PostHog actually on in prod?** Yes (checked 2026-11-18): `VITE_POSTHOG_KEY` is set in
+Railway production and the key is compiled into the live client bundle, so pageview capture
+is running. Whether events arrive in the PostHog project was not checked.
+
 **Two honest caveats:**
 - `autocapture: false` — nothing is captured that isn't explicitly coded. There is no
   safety net of ambient event data. [intended — deliberate config in `client/src/lib/posthog.ts`.]
@@ -219,5 +223,6 @@ Explicitly **out of scope** for MVP:
    live roster path. **[awaiting James]**
 2. **Defer two-way display?** Recommended yes — affects zero players today. **[awaiting James]**
 3. **Should this be built before the four open P1 bugs** (`todos/298`, `299`, `300`, `306`)?
-   Not previously asked. Those are money-adjacent and live-scoring. **[unknown — product call]**
+   Not previously asked. Those are money-adjacent and live-scoring. **[moot as of 2026-11-18:
+   all four are complete — every todo through #319 is closed]**
 4. Are the §5(a) target numbers the right bet? They are my proposal, unreviewed. **[awaiting James]**

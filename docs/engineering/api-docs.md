@@ -66,11 +66,7 @@ catch-all is last.
 | `/api/notifications` | notifications | 5 | |
 | `/api` | profiles | 3 | |
 | `/api/sessions` | sessions | 3 | |
-| `/api/chat` | chat | 4 | **Commented out** in `index.ts` — chat runs over WebSocket |
-
-<!-- TODO(james): the chat router being commented out while the chat feature is live is
-     worth a one-line note in decision-log.md — is the REST surface dead code, or a
-     deliberate WebSocket-only choice? -->
+| `/api/chat` | chat | 4 | **Removed.** Chat (REST and WebSocket) was retired in favour of the League Board (32500218, "chat removal"); `index.ts` keeps only commented-out lines. `server/src/features/chat/` and `client/src/features/chat/` are unreferenced dead code — deletion tracked in todo #332. |
 
 ---
 

@@ -102,6 +102,11 @@ One number block per document family. Numbers are assigned in order and never re
 >
 > <!-- TODO(james): decide whether to back-fill ADR-001..014 as real files, or leave them
 >      as CLAUDE.md references and start the folder at ADR-015. -->
+>
+> **Decided 2026-11-18:** ADR-001 to ADR-014 stay as references and are not back-filled.
+> ADR-013 and ADR-014 are already documented in `CLAUDE.md` and the
+> `docs/solutions/logic-errors/` write-ups. Rewriting them as ADR files now would only
+> reconstruct history. New decisions get files from ADR-015 up.
 
 ---
 
