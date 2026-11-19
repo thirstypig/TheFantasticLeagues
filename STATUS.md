@@ -1,6 +1,6 @@
 # STATUS
 
-**Last updated:** 2026-11-18
+**Last updated:** 2026-11-19
 
 ## One-line description
 The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with auctions, keepers and a commissioner. It replaces spreadsheets and OnRoto for the OGBA league.
@@ -30,6 +30,7 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - No sideways scrolling on desktop (#517); mobile standings scale, order and widths (#518–#520)
 - Design-review polish: Season legend, Rules chips, phone Rules order, single-half leagues, Settings cards, 44px tap targets (#523)
 - CI blocks new cross-feature imports (#522)
+- Standings tested against a real Postgres in CI: hand-worked expected points, 9 deliberate breakages each caught
 - Settings shows the stats source in plain words and always shows the saved value (a stored "ALL" used to display as "NL")
 
 ## In progress

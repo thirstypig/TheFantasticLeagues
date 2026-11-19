@@ -96,7 +96,10 @@ jobs:
         #
         # Observed 2026-08-04: red on one run, green on re-run of the identical commit.
         # Running the files sequentially removes the interleaving entirely.
-        run: cd server && npx vitest run --no-file-parallelism src/features/draft/__tests__/draftIntegration.test.ts src/features/transactions/services/__tests__/ilFeeService.integration.test.ts
+        #
+        # standingsRealDb is scoped (creates and deletes only its own rows), so it
+        # doesn't depend on the ordering above, but sequential keeps it simple.
+        run: cd server && npx vitest run --no-file-parallelism src/features/draft/__tests__/draftIntegration.test.ts src/features/transactions/services/__tests__/ilFeeService.integration.test.ts src/features/standings/__tests__/standingsRealDb.integration.test.ts
 
   audit:
     runs-on: ubuntu-latest
