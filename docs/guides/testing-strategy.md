@@ -3,7 +3,7 @@
 ## Overview
 
 - **Framework**: Vitest (fast, native TypeScript, Vite-compatible)
-- **Coverage**: 1664 server main suite + 7 integration [4 draft + 3 IL-fee] (separate `db-integration` CI job) + 962 client across 34 feature modules; plus 133 MCP tests (83 fbst-app + 50 mlb-data) run separately
+- **Coverage**: 1664 server main suite + 10 integration [4 draft + 3 IL-fee + 3 standings] (separate `db-integration` CI job) + 962 client across 34 feature modules; plus 133 MCP tests (83 fbst-app + 50 mlb-data) run separately
 - **Approach**: Unit tests per feature + integration tests for cross-feature interactions
 
 Run all: `npm run test` | Server only: `npm run test:server` | Client only: `npm run test:client`
@@ -78,9 +78,19 @@ npx vitest --watch
 
 ## Current Coverage Snapshot (2026-08-04)
 
-**Server**: 1519 tests across 109 files (main `test` job) + 7 integration [4 draft + 3 IL-fee]
-tests (`draft/__tests__/draftIntegration.test.ts`) run in the separate
-`db-integration` CI job against a postgres:16 service. That suite is gated by
+**Server**: 1519 tests across 109 files (main `test` job) + 10 integration [4 draft + 3 IL-fee + 3 standings]
+tests (`draftIntegration.test.ts`, `ilFeeService.integration.test.ts`,
+`standingsRealDb.integration.test.ts`) run in the separate
+`db-integration` CI job against a postgres:16 service.
+**`standingsRealDb`** (2026-11-19) is the only standings test that runs real
+queries — every other standings test mocks Prisma, and a mock returns its rows
+whatever the WHERE clause says. It seeds one league (3 teams, 2 scored periods,
+a pending period, a decoy league that owns one of the same players) with
+expected values worked by hand from the attribution rules, and was
+mutation-checked: 9 deliberate breakages (league filters on rosters and IL
+events, release-day boundary, mid-period routing, end-of-period owner, IL at
+period start, position-player pitching on both paths, pending periods) each
+fail it. Add a fixture there, not a mock, when a standings query changes. These suites are gated by
 `test-support/dbSafety.ts:isLocalThrowawayDbUrl` + `ALLOW_DESTRUCTIVE_DB_TESTS=1`
 (fail-closed), so it runs only against a local/CI throwaway Postgres, never prod.
 The server `test` include also covers the **docs-system script tests** at
