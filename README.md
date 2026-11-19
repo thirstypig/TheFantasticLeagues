@@ -179,14 +179,14 @@ Notable surfaces:
 
 **Phase:** In-Season 2026 - Engagement & Remote UX (April - September 2026)
 
-**Next 3 to-dos** (11 open):
+**Next 3 to-dos** (4 open):
 
-- `320` **P2** — season legend and vs last label
 - `328` **P2** — reconcile planning json and status
-- `321` **P3** — rules page chips and roster chip
+- `329` **P3** — player comparison decide or delete
+- `330` **P3** — docs inbox triage
 
 Roadmap: [`docs/product/roadmap.md`](docs/product/roadmap.md) · Docs map: [`docs/README-DOCS.md`](docs/README-DOCS.md)
 
-<sub>Generated 2026-11-18 by `npm run docs:refresh` — do not edit between the markers.</sub>
+<sub>Generated 2026-11-19 by `npm run docs:refresh` — do not edit between the markers.</sub>
 
 <!-- DOCS:STATUS:END -->

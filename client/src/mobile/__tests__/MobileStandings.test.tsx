@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MobileStandings, pointColor, CAT_COL_W } from "../pages/MobileStandings";
+import { MobileStandings, pointColor, CAT_COL_W, standingsViews } from "../pages/MobileStandings";
 import { getSeasonStandings } from "../../api";
 import { getPeriodCategoryStandings } from "../../api";
 
@@ -109,7 +109,7 @@ describe("MobileStandings", () => {
   it("toggles sort direction when the same column header is clicked twice", async () => {
     renderStandings();
     await screen.findAllByText("Los Doyers"); // wait for data
-    const totalHeader = screen.getByRole("button", { name: /TOT/ });
+    const totalHeader = screen.getByRole("button", { name: /PTS/ });
     // Default sort is total/desc — click once to flip to ascending.
     fireEvent.click(totalHeader);
     expect(totalHeader.getAttribute("aria-sort")).toBe("ascending");
@@ -169,10 +169,23 @@ describe("MobileStandings", () => {
       .filter((t) => ["AVG", "HR", "R", "RBI", "SB"].includes(t));
     expect(headers).toEqual(["R", "HR"]); // canonical order, not response order
 
-    fireEvent.click(screen.getByRole("tab", { name: "Pitching" }));
-    expect(await screen.findByText("This league doesn't score pitching categories.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /ERA/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: /TOT/ })).toBeNull();
+    // A hitting-only league gets no Pitching tab at all.
+    expect(screen.queryByRole("tab", { name: "Pitching" })).toBeNull();
+    expect(screen.getByRole("tab", { name: "Hitting" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Period" })).toBeInTheDocument();
+  });
+
+  it("opens a pitching-only league on the Pitching tab, with no Hitting tab", async () => {
+    const pitchOnly = {
+      ...SAMPLE_RESPONSE,
+      categories: SAMPLE_RESPONSE.categories.filter((c: any) => ["W", "SV", "ERA", "WHIP", "K"].includes(c.key)),
+    };
+    expect(pitchOnly.categories.length).toBeGreaterThan(0);
+    vi.mocked(getPeriodCategoryStandings).mockResolvedValue(pitchOnly as any);
+    renderStandings();
+    await screen.findAllByText("Los Doyers");
+    await waitFor(() => expect(screen.queryByRole("tab", { name: "Hitting" })).toBeNull());
+    expect(screen.getByRole("tab", { name: "Pitching", selected: true })).toBeInTheDocument();
   });
 
   it("does not show the unscored-half text while loading", () => {
@@ -239,5 +252,38 @@ describe("MobileStandings column widths fit their labels", () => {
   const measured: Record<string, number> = { R: 9, HR: 18, RBI: 21, SB: 17, AVG: 26, W: 12, SV: 17, ERA: 25, WHIP: 34, K: 9 };
   it.each(Object.entries(measured))("%s fits", (k, textW) => {
     expect(CAT_COL_W[k] ?? 26).toBeGreaterThanOrEqual(textW + 8);
+  });
+});
+
+describe("standingsViews", () => {
+  it("offers all three tabs before categories load", () => {
+    expect(standingsViews(new Set())).toEqual(["Hitting", "Pitching", "Period"]);
+  });
+  it("drops the half a league doesn't score", () => {
+    expect(standingsViews(new Set(["R", "HR"]))).toEqual(["Hitting", "Period"]);
+    expect(standingsViews(new Set(["ERA"]))).toEqual(["Pitching", "Period"]);
+  });
+  it("keeps both halves for a standard league", () => {
+    expect(standingsViews(new Set(["R", "W"]))).toEqual(["Hitting", "Pitching", "Period"]);
+  });
+});
+
+describe("mobile standings touch + names", () => {
+  it("sort headers are at least 44px tall", async () => {
+    renderStandings();
+    await screen.findAllByText("Los Doyers");
+    const header = screen.getByRole("button", { name: /PTS/ });
+    expect(header.style.minHeight).toBe("44px");
+  });
+
+  it("category-leader team names wrap instead of truncating", async () => {
+    renderStandings();
+    await screen.findAllByText("Los Doyers");
+    const names = await screen.findAllByTestId("leader-team-name");
+    expect(names.length).toBeGreaterThan(0);
+    for (const n of names) {
+      expect(n.style.textOverflow).toBe("");
+      expect(n.style.whiteSpace).toBe("");
+    }
   });
 });

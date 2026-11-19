@@ -230,7 +230,12 @@ export default function Season() {
                           </th>
                         ))}
                         <th style={{ padding: "12px 14px", textAlign: "right" }}>TOTAL</th>
-                        <th style={{ padding: "12px 14px", textAlign: "right" }}>Δ LAST</th>
+                        <th
+                          style={{ padding: "12px 14px", textAlign: "right", whiteSpace: "nowrap" }}
+                          title="Points in the latest period minus points in the period before it"
+                        >
+                          {deltaHeader(periodNames)}
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -330,6 +335,7 @@ export default function Season() {
                       })}
                     </tbody>
                   </table>
+                  <SeasonLegend />
                 </div>
               )}
             </Glass>
@@ -348,6 +354,52 @@ export default function Season() {
 }
 
 // ─── helpers ───
+
+/** "Period 6" → "P6"; anything else falls back to the matrix-header abbreviation. */
+export function periodShortLabel(name: string): string {
+  const m = name.match(/^Period\s+(\d+)$/i);
+  return m ? `P${m[1]}` : abbreviatePeriod(name);
+}
+
+/** Header for the change column: names the period the latest one is compared with. */
+export function deltaHeader(periodNames: string[]): string {
+  if (periodNames.length < 2) return "Change";
+  return `vs ${periodShortLabel(periodNames[periodNames.length - 2])}`;
+}
+
+function LegendSwatch({ background }: { background: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{ display: "inline-block", width: 14, height: 14, borderRadius: 4, background, border: "1px solid var(--am-border)" }}
+    />
+  );
+}
+
+export function SeasonLegend() {
+  return (
+    <div
+      data-testid="season-legend"
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: "6px 18px",
+        padding: "10px 14px 12px",
+        borderTop: "1px solid var(--am-border)",
+        fontSize: 13,
+        color: "var(--am-text-muted)",
+      }}
+    >
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <LegendSwatch background="var(--am-irid)" /> Best score that period
+      </span>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <LegendSwatch background="var(--am-chip-strong)" /> Within 80% of the best
+      </span>
+      <span>Last column: change from the period before</span>
+    </div>
+  );
+}
 
 // Period names from the API are sometimes long (e.g., "Mar 23 – Mar 29");
 // shorten for matrix headers so the table doesn't sprawl horizontally.

@@ -14,10 +14,11 @@ Mobile standings column headers are 22–42px wide (#520), under the 44px tap-ta
 Make the sortable header hit area taller/wider than its visual width (padding or pseudo-element), without widening columns. Let leader cards wrap to two lines.
 
 ## Acceptance Criteria
-- [ ] Header hit area ≥44px in at least one dimension, no layout overflow at 390px.
-- [ ] Longest team name ("Demolition Lumber Co.") readable in leader cards.
-- [ ] Browser-verified at 390px.
-- [ ] `git mv` this todo from pending → complete.
+- [x] Header hit area ≥44px in at least one dimension, no layout overflow at 390px.
+- [x] Longest team name ("Demolition Lumber Co.") readable in leader cards.
+- [x] Browser-verified at 390px.
+- [x] `git mv` this todo from pending → complete.
 
 ## Work Log
+- 2026-11-18: done — MSortHeader minHeight 44; leader names wrap; verified at 390px (all headers 44px tall, no overflow, names complete).
 - 2026-11-18: filed from the todo/design-review/open-items sweep.

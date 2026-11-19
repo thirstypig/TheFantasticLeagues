@@ -79,6 +79,19 @@ function buildMatrix(resp: PeriodCategoryStandingsResponse): MatrixRow[] {
   return Array.from(teamMap.values());
 }
 
+/**
+ * Tabs to offer. Once the league's categories are known, a half the league
+ * doesn't score gets no tab. Before they load, show all three.
+ */
+export function standingsViews(presentKeys: ReadonlySet<string>): ViewKey[] {
+  if (presentKeys.size === 0) return ["Hitting", "Pitching", "Period"];
+  const views: ViewKey[] = [];
+  if (HIT_CATS.some((c) => presentKeys.has(c))) views.push("Hitting");
+  if (PITCH_CATS.some((c) => presentKeys.has(c))) views.push("Pitching");
+  views.push("Period");
+  return views;
+}
+
 function sumForView(row: MatrixRow, view: ViewKey): number {
   if (view === "Period") return row.total;
   const cats = view === "Hitting" ? HIT_CATS : PITCH_CATS;
@@ -178,6 +191,12 @@ export function MobileStandings() {
     catTables.length === 0 || presentKeys.has(c),
   );
 
+  const views = useMemo(() => standingsViews(presentKeys), [presentKeys]);
+  // A pitching-only league must not open on an empty Hitting tab.
+  useEffect(() => {
+    if (!views.includes(view)) setView(views[0]);
+  }, [views, view]);
+
   const unscoredHalf =
     view !== "Period" && !loading && !error && catTables.length > 0 && visibleCats.length === 0;
   // Highest points in each category column (ties share it) — drives the green cells.
@@ -268,7 +287,7 @@ export function MobileStandings() {
 
       <div style={{ padding: "0 14px 10px" }}>
         <MSegmented<ViewKey>
-          options={["Hitting", "Pitching", "Period"]}
+          options={views}
           active={view}
           onChange={setView}
           ariaLabel="Standings view"
@@ -423,7 +442,7 @@ export function MobileStandings() {
                   align="center"
                 />
               ))}
-              <MSortHeader<SortKey> k="total" label="TOT" active={sortKey} dir={sortDir} onSort={onSort} align="right" />
+              <MSortHeader<SortKey> k="total" label="PTS" active={sortKey} dir={sortDir} onSort={onSort} align="right" />
             </div>
 
             {sortedRows.map((t, i) => {
@@ -527,7 +546,7 @@ export function MobileStandings() {
           {view === "Period"
             ? "Each cell shows total roto points earned per scoring period. Tap a row to view team."
             : matrix.length > 0
-              ? `Each cell shows roto points (1–${matrix.length} for ${matrix.length} teams). Tap any column header to sort. Green = 1st in the category.`
+              ? `Each cell shows roto points (1–${matrix.length} for ${matrix.length} teams). PTS = ${view.toLowerCase()} points. Tap any column header to sort. Green = 1st in the category.`
               : null}
         </div>
       </div>
@@ -569,7 +588,7 @@ export function MobileStandings() {
                           background: isMe ? "var(--am-chip)" : "transparent",
                         }}
                       >
-                        <span style={{ fontSize: 13, color: "var(--am-text)", fontWeight: isMe ? 700 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        <span data-testid="leader-team-name" style={{ fontSize: 13, lineHeight: 1.25, color: "var(--am-text)", fontWeight: isMe ? 700 : 400, overflowWrap: "anywhere", minWidth: 0 }}>
                           {row.teamName}
                         </span>
                         <span style={{ fontSize: 13, fontWeight: 700, color: i === 0 ? "var(--am-positive)" : "var(--am-text-muted)", fontVariantNumeric: "tabular-nums" }}>

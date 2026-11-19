@@ -26,8 +26,6 @@ export const SCORABLE_CATEGORIES: readonly CategoryDef[] = CATEGORY_CONFIG.map((
   group: c.group,
 }));
 
-export const SCORABLE_KEYS: ReadonlySet<string> = new Set(SCORABLE_CATEGORIES.map((c) => c.key));
-
 export function normalizeCategoryKey(raw: string): string {
   const k = raw.trim().toUpperCase();
   return k === "S" ? "SV" : k;

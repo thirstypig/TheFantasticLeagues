@@ -30,6 +30,9 @@ export function MSortHeader<K extends string>({
       aria-sort={on ? (dir === "desc" ? "descending" : "ascending") : "none"}
       style={{
         width,
+        // 44px tall tap target; columns are narrow (22–42px) but sit edge to edge,
+        // so the whole header cell is the target.
+        minHeight: 44,
         padding: "8px 4px",
         textAlign: align,
         fontSize: 13,

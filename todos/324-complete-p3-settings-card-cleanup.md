@@ -14,11 +14,12 @@ The league Settings card repeats its card headers, writes the minimum bid awkwar
 Drop the duplicate headers, write the minimum bid as "$1", and add "not auto-enforced — commissioner checks" next to the 50-IP minimum.
 
 ## Acceptance Criteria
-- [ ] One header per card.
-- [ ] Minimum bid reads "$1".
-- [ ] 50-IP note present.
-- [ ] Browser-verified.
-- [ ] `git mv` this todo from pending → complete.
+- [x] One header per card.
+- [x] Minimum bid reads "$1".
+- [x] 50-IP note present.
+- [x] Browser-verified.
+- [x] `git mv` this todo from pending → complete.
 
 ## Work Log
+- 2026-11-18: done — one title per card, '$1'/'$400', 50-IP note; also removed the editor's repeated '✦ League Rules' eyebrow; browser-verified locally.
 - 2026-11-18: filed from the todo/design-review/open-items sweep.
