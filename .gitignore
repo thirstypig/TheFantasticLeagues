@@ -77,3 +77,6 @@ server/version.txt
 # Cross-project port registry: kept on disk, never published (names private projects).
 # Synced from ~/Projects/MASTER-PORTS.md by ~/Projects/sync-master-ports.sh.
 MASTER-PORTS.md
+
+# vitest --coverage output (server/coverage, client/coverage)
+coverage/

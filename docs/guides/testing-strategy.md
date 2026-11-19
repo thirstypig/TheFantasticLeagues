@@ -56,6 +56,12 @@ server/src/__tests__/integration/
 - **Client mocking**: React Testing Library for components; `vi.mock()` for API mocking
 - **DB tests**: Use a test database with Prisma migrations for integration tests (future)
 - **CI**: Run `npm run test` in CI pipeline before deploy
+- **Coverage** (2026-11-19): the CI `test` job runs server and client with `--coverage`
+  and posts a lines/statements/branches/functions table to the run summary
+  (`scripts/coverage-summary.mjs`). `thresholds` in each `vitest.config.ts` are a
+  floor just under that day's baseline (server 45.66% lines, client 51.78%); CI
+  fails if coverage drops below it. Raise the floor when coverage rises; never
+  lower it to make a PR pass. Local: `npm run test:coverage` in `server/` or `client/`.
 
 ## Running Tests
 
@@ -94,8 +100,8 @@ fail it. Add a fixture there, not a mock, when a standings query changes. These 
 `test-support/dbSafety.ts:isLocalThrowawayDbUrl` + `ALLOW_DESTRUCTIVE_DB_TESTS=1`
 (fail-closed), so it runs only against a local/CI throwaway Postgres, never prod.
 The server `test` include also covers the **docs-system script tests** at
-`scripts/__tests__/*.test.mjs` (41 tests — `refresh-docs`, `sync-inbox`,
-`feature-isolation-baseline`), same pattern as the `../shared/**` contract tests.
+`scripts/__tests__/*.test.mjs` (47 tests — `refresh-docs`, `sync-inbox`,
+`feature-isolation-baseline`, `coverage-summary`), same pattern as the `../shared/**` contract tests.
 The **standings-audit module** (`src/lib/audit/`, 71 tests across 9 files) is
 fixture-driven with no network or DB: external-source parsers are tested against
 saved HTML, and the pure accumulator/classifier against hand-built roster stints.

@@ -46,6 +46,11 @@ export default defineConfig({
         "src/main.tsx",
         "src/vite-env.d.ts",
       ],
+      // text-summary prints to the CI log; json-summary feeds the PR run summary.
+      reporter: ["text-summary", "json-summary"],
+      // A floor, not a target: set just under the 2026-11-19 baseline
+      // (51.78% lines). Raise when coverage goes up; never lower to pass a PR.
+      thresholds: { lines: 51, statements: 50, branches: 43, functions: 46 },
     },
   },
 });

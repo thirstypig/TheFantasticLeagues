@@ -40,7 +40,7 @@ updated: 2026-07-23
 
 ## Tests the docs system needs
 
-**Status: implemented 2026-07-24.** `scripts/__tests__/` — 41 tests, run by the server
+**Status: implemented 2026-07-24.** `scripts/__tests__/` — 47 tests, run by the server
 vitest project (`include` covers `../scripts/**/*.test.mjs`, same pattern as
 `../shared/**`). The three scripts were refactored to export their pure helpers behind a
 main-guard (matching `server/src/scripts/fangraphs-audit.ts`) so importing them no longer
