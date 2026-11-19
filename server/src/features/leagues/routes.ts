@@ -246,9 +246,12 @@ router.post("/leagues/:id/my-roster/keepers", requireAuth, validateBody(keepersS
   }
 
   // 2. Validate Roster Items belong to this team
-  // Security check: ensure all keeperIds provided effectively belong to this team
+  // Security check: every keeperId must be an ACTIVE row on this team. A released
+  // row (a player dropped or traded away) still has this teamId, so without
+  // releasedAt: null an owner could "keep" a player who is no longer theirs.
+  // Same filter as the commissioner path (KeeperPrepService.saveKeepersForTeam).
   const validRosters = await prisma.roster.findMany({
-      where: { teamId: team.id, id: { in: keeperIds } }
+      where: { teamId: team.id, id: { in: keeperIds }, releasedAt: null }
   });
 
   if (validRosters.length !== keeperIds.length) {
