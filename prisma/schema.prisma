@@ -186,7 +186,6 @@ model User {
 
   pushSubscriptions      PushSubscription[]
   notificationPreference NotificationPreference?
-  chatMessages           ChatMessage[]
   profile                UserProfile?
 
   userSessions UserSession[]
@@ -346,7 +345,6 @@ model League {
   playerValues           PlayerValue[]
   aiInsights             AiInsight[]
   boardCards             BoardCard[]
-  chatMessages           ChatMessage[]
   rosterSlotEvents       RosterSlotEvent[]
   teamStatsCategoryDaily TeamStatsCategoryDaily[]
   waiverPeriods          WaiverPeriod[]
@@ -1518,35 +1516,6 @@ model NotificationPreference {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// ======================
-//  League Chat
-// ======================
-
-model ChatMessage {
-  id        Int       @id @default(autoincrement())
-  leagueId  Int
-  userId    Int
-  text      String    @db.Text
-  type      String    @default("user") // "user", "system"
-  metadata  Json? // for system messages: { activityType, tradeId, etc. }
-  createdAt DateTime  @default(now())
-  deletedAt DateTime? // soft delete for moderation
-
-  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id])
-
-  @@index([leagueId, createdAt])
-}
-
-model ChatReadCursor {
-  id         Int      @id @default(autoincrement())
-  userId     Int
-  leagueId   Int
-  lastReadId Int
-  updatedAt  DateTime @updatedAt
-
-  @@unique([userId, leagueId])
-}
 
 // ======================
 //  Roster Rules Enforcement (2026-04-21 plan)
