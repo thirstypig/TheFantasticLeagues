@@ -4,7 +4,7 @@
 
 - **Schema** at `prisma/schema.prisma`
 - **Never run migrations without explicit confirmation**
-- **Key models**: Franchise, FranchiseMembership, User, UserProfile, League, LeagueMembership, LeagueInvite, Team, Player, Roster, Period, TeamStatsPeriod, Trade, WaiverClaim, WaiverPeriod, WaiverAddEntry, WaiverDropEntry, AuctionLot, AuctionBid, AuctionSession, AiInsight, TransactionEvent, HistoricalSeason, HistoricalStanding, HistoricalPlayerStat, ChatMessage, PushSubscription, NotificationPreference, Matchup
+- **Key models**: Franchise, FranchiseMembership, User, UserProfile, League, LeagueMembership, LeagueInvite, Team, Player, Roster, Period, TeamStatsPeriod, Trade, WaiverClaim, WaiverPeriod, WaiverAddEntry, WaiverDropEntry, AuctionLot, AuctionBid, AuctionSession, AiInsight, TransactionEvent, HistoricalSeason, HistoricalStanding, HistoricalPlayerStat, PushSubscription, NotificationPreference, Matchup
 
 ## Critical Special Columns
 
