@@ -30,7 +30,7 @@ updated: 2026-11-19
 | `.ts` | 693 | 119,937 |
 | `.tsx` | 396 | 97,705 |
 | `.md` | 587 | 72,918 |
-| `.json` | 36 | 40,203 |
+| `.json` | 36 | 40,248 |
 | `.css` | 15 | 2,482 |
 | `.sql` | 42 | 2,236 |
 | `.prisma` | 1 | 1,751 |
@@ -38,7 +38,7 @@ updated: 2026-11-19
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 187 |
-| **All tracked** | **2,051** | **383,264** |
+| **All tracked** | **2,051** | **383,309** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
