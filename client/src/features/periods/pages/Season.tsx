@@ -92,18 +92,22 @@ export default function Season() {
     return () => { canceled = true; };
   }, [leagueId]);
 
-  // Per-period max — used to grade cell intensity. Max gets iridescent;
-  // ≥80% of max gets chip-strong; rest are transparent.
-  const periodMaxes = useMemo(() => {
-    if (rows.length === 0) return [] as number[];
+  // Per-period best and worst — used to grade cell intensity (see cellTier).
+  const periodRanges = useMemo(() => {
+    if (rows.length === 0) return [] as Array<{ max: number; min: number }>;
     const numPeriods = rows[0].periodPoints.length;
-    const maxes: number[] = [];
+    const ranges: Array<{ max: number; min: number }> = [];
     for (let i = 0; i < numPeriods; i++) {
-      let mx = 0;
-      for (const r of rows) mx = Math.max(mx, r.periodPoints[i] ?? 0);
-      maxes.push(mx);
+      let max = -Infinity;
+      let min = Infinity;
+      for (const r of rows) {
+        const p = r.periodPoints[i] ?? 0;
+        max = Math.max(max, p);
+        min = Math.min(min, p);
+      }
+      ranges.push({ max, min });
     }
-    return maxes;
+    return ranges;
   }, [rows]);
 
   // Period-over-period delta = last period's points - prior period's points.
@@ -287,9 +291,9 @@ export default function Season() {
                               </Link>
                             </td>
                             {t.periodPoints.map((p, j) => {
-                              const max = periodMaxes[j] ?? 0;
-                              const isPeak = p === max && max > 0;
-                              const isStrong = !isPeak && max > 0 && p / max >= 0.8;
+                              const tier = cellTier(p, periodRanges[j] ?? { max: 0, min: 0 });
+                              const isPeak = tier === "peak";
+                              const isStrong = tier === "strong";
                               return (
                                 <td
                                   key={j}
@@ -354,6 +358,18 @@ export default function Season() {
 }
 
 // ─── helpers ───
+
+/**
+ * How to highlight one period cell: the best score gets "peak", scores within 80% of it get
+ * "strong". When every team scored the same, nobody is ahead, so nothing is highlighted
+ * (an all-tie period used to paint every cell as the best).
+ */
+export function cellTier(p: number, range: { max: number; min: number }): "peak" | "strong" | "none" {
+  const { max, min } = range;
+  if (max <= 0 || max === min) return "none";
+  if (p === max) return "peak";
+  return p / max >= 0.8 ? "strong" : "none";
+}
 
 /** "Period 6" → "P6"; anything else falls back to the matrix-header abbreviation. */
 export function periodShortLabel(name: string): string {
