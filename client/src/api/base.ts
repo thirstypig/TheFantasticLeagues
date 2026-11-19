@@ -86,6 +86,31 @@ import { supabase } from '../lib/supabase';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
+/**
+ * A 2xx HTML page means the request never reached the API: the SPA fallback
+ * answered a wrong or relative URL. Returning {} in that case hid a crash on
+ * the commissioner scoring page, whose URLs were "GET /api/..." strings that
+ * fetch() resolved against the current page (found via PostHog
+ * error_boundary_caught, 2026-11-19). Fail loudly instead.
+ */
+export function assertNotHtmlPage(
+  res: Response,
+  text: string,
+  parsed: unknown,
+  url: string,
+  requestId: string | null,
+): void {
+  if (parsed !== null || !text) return;
+  if (!(res.headers.get("content-type") ?? "").includes("text/html")) return;
+  throw new ApiError({
+    message: `Expected JSON from ${url} but got an HTML page (wrong URL?)`,
+    status: res.status,
+    url,
+    requestId,
+    body: text.slice(0, 180),
+  });
+}
+
 export async function fetchJsonApi<T>(url: string, init?: RequestInit): Promise<T> {
   // Get current session token
   const { data: { session } } = await supabase.auth.getSession();
@@ -156,6 +181,7 @@ export async function fetchJsonApi<T>(url: string, init?: RequestInit): Promise<
     });
   }
 
+  assertNotHtmlPage(res, text, maybeJson, url, requestId);
   return (maybeJson ?? ({} as T)) as T;
 }
 
@@ -236,6 +262,7 @@ export async function fetchJsonPublic<T>(url: string, init?: RequestInit): Promi
     });
   }
 
+  assertNotHtmlPage(res, text, maybeJson, url, requestId);
   return (maybeJson ?? ({} as T)) as T;
 }
 

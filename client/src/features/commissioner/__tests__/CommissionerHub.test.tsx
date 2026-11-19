@@ -186,7 +186,8 @@ describe("CommissionerHub tiles and rows", () => {
     renderHub();
     expect(await screen.findByRole("link", { name: /History/ })).toBeTruthy();
     expect(href(/History/)).toBe("/commissioner/20/recent");
-    expect(href(/Scoring categories/)).toBe("/commissioner/20/scoring");
+    // Baseball categories are edited on the league Rules page; /scoring is NFL/NBA only.
+    expect(href(/Scoring categories/)).toBe("/rules");
     expect(href(/List settings/)).toBe("/commissioner/20/wire-list");
   });
 

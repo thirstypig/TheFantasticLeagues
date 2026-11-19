@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { GripVertical, Trash2, Plus, AlertCircle } from "lucide-react";
-import { useParams } from "react-router-dom";
-import { fetchJsonApi, ApiError } from "../../../api/base";
+import { Link, useParams } from "react-router-dom";
+import { fetchJsonApi, ApiError, API_BASE } from "../../../api/base";
 import { CommissionerOnly } from "../components/CommissionerOnly";
 
 interface ScoringRule {
@@ -21,7 +21,7 @@ interface RosterSlot {
 
 interface ScoringSettingsResponse {
   leagueId: number;
-  sport: "NFL" | "NBA";
+  sport: string;
   rules: ScoringRule[];
 }
 
@@ -41,7 +41,8 @@ interface SaveRosterConfigRequest {
 function ScoringSettingsBody() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const [activeTab, setActiveTab] = useState<"rules" | "roster">("rules");
-  const [sport, setSport] = useState<"NFL" | "NBA">("NFL");
+  // Server sends the league's sport; only NFL/NBA use this page (baseball → Rules).
+  const [sport, setSport] = useState<string>("NFL");
 
   // Scoring Rules state
   const [rules, setRules] = useState<ScoringRule[]>([]);
@@ -68,16 +69,16 @@ function ScoringSettingsBody() {
 
         // Fetch scoring settings
         const settingsResp = await fetchJsonApi(
-          `GET /api/leagues/${leagueId}/scoring-settings`
+          `${API_BASE}/leagues/${leagueId}/scoring-settings`
         ) as ScoringSettingsResponse;
-        setRules(settingsResp.rules);
+        setRules(settingsResp.rules ?? []);
         setSport(settingsResp.sport);
 
         // Fetch roster config
         const rosterResp = await fetchJsonApi(
-          `GET /api/leagues/${leagueId}/roster-config`
+          `${API_BASE}/leagues/${leagueId}/roster-config`
         ) as RosterConfigResponse;
-        setRosterSlots(rosterResp.slots);
+        setRosterSlots(rosterResp.slots ?? {});
 
         setRulesError(null);
         setRosterError(null);
@@ -105,7 +106,8 @@ function ScoringSettingsBody() {
       setRulesError(null);
 
       const payload: SaveScoringSettingsRequest = { rules };
-      await fetchJsonApi(`PATCH /api/leagues/${leagueId}/scoring-settings`, {
+      await fetchJsonApi(`${API_BASE}/leagues/${leagueId}/scoring-settings`, {
+        method: "PATCH",
         body: JSON.stringify(payload),
       } as RequestInit);
 
@@ -130,7 +132,8 @@ function ScoringSettingsBody() {
       setRosterError(null);
 
       const payload: SaveRosterConfigRequest = { slots: rosterSlots };
-      await fetchJsonApi(`PATCH /api/leagues/${leagueId}/roster-config`, {
+      await fetchJsonApi(`${API_BASE}/leagues/${leagueId}/roster-config`, {
+        method: "PATCH",
         body: JSON.stringify(payload),
       } as RequestInit);
 
@@ -173,6 +176,26 @@ function ScoringSettingsBody() {
             <h1 className="text-2xl font-semibold text-[var(--am-text)]">Scoring Settings</h1>
             <p className="text-sm text-[var(--am-text-muted)]">Loading...</p>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Baseball leagues score categories set on the league Rules page (/rules; Phase 3.5,
+  // server/src/lib/leagueCategories.ts). This page's points rules and roster
+  // slots are NFL/NBA only; nothing in baseball scoring reads them.
+  if (sport !== "NFL" && sport !== "NBA") {
+    return (
+      <div className="aurora-theme min-h-screen">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <h1 className="text-2xl font-semibold text-[var(--am-text)]">Scoring categories</h1>
+          <p className="text-sm text-[var(--am-text-muted)] mt-2">
+            Baseball categories are set on the league{" "}
+            <Link to="/rules" className="text-[var(--am-accent)] underline">
+              Rules
+            </Link>{" "}
+            page.
+          </p>
         </div>
       </div>
     );

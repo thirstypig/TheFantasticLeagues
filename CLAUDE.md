@@ -137,7 +137,7 @@ Ports, startup commands, npm scripts. See **[Development Setup guide](docs/guide
 
 ## Testing
 
-2633 app tests (1664 server main suite + 10 integration [4 draft + 3 IL-fee + 3 standings] in the separate `db-integration` CI job + 962 client) plus 133 MCP tests (83 fbst-app + 50 mlb-data, run separately). The server main suite now also runs the docs-system script tests (`scripts/__tests__/*.test.mjs`, 47 tests). CI runs server and client with `--coverage` and fails below the floors in each `vitest.config.ts` via a `../scripts/**` include. Unit/integration by feature module, configuration, how to run tests. See **[Testing Strategy guide](docs/guides/testing-strategy.md)**.
+2633 app tests (1664 server main suite + 10 integration [4 draft + 3 IL-fee + 3 standings] in the separate `db-integration` CI job + 962 client) plus 133 MCP tests (83 fbst-app + 50 mlb-data, run separately). The server main suite now also runs the docs-system script tests (`scripts/__tests__/*.test.mjs`, 47 tests) via a `../scripts/**` include. CI runs server and client with `--coverage` and fails below the floors in each `vitest.config.ts`. Unit/integration by feature module, configuration, how to run tests. See **[Testing Strategy guide](docs/guides/testing-strategy.md)**.
 
 ## Feedback Loop & Checklists
 
