@@ -14,9 +14,10 @@ After the 2026-11-12 rescore, P1–P3, P5, P6 match OnRoto exactly; P4 (DDG/RGS)
 James decides: accept and close, or attribute both pairs per player (audit-standings skill) and document the cause.
 
 ## Acceptance Criteria
-- [ ] Decision recorded in STATUS.md open bugs.
-- [ ] If investigated: cause documented per player, no prod write without James.
-- [ ] `git mv` this todo from pending → complete.
+- [x] Decision recorded in STATUS.md open bugs.
+- [x] (n/a — not investigated) If investigated: cause documented per player, no prod write without James.
+- [x] `git mv` this todo from pending → complete.
 
 ## Work Log
+- 2026-11-18: James accepted the two ±1 pairs and closed this (final order identical, no payout change). Recorded in STATUS.md (open bugs + decisions).
 - 2026-11-18: filed from the todo/design-review/open-items sweep.

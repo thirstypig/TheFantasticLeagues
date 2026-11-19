@@ -35,12 +35,13 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - Nothing in flight
 
 ## Open bugs / known issues
-- 2026 final vs OnRoto: P1–P3, P5, P6 exact; P4 and P7 each have one ±1 pair (DDG/RGS, RGS/The Show). Final order identical.
+- None open. (2026 final vs OnRoto: P4 and P7 each have one ±1 pair, DDG/RGS and RGS/The Show; accepted 2026-11-18 because the final order is identical and payouts don't change.)
 
 ## Next phases (in order)
 1. Public auction-keeper leagues (not scheduled)
 
 ## Decisions changed recently
+- 2026-11-18: The P4/P7 ±1 differences from OnRoto are accepted, not investigated (todo #331)
 - 2026-11-18: No sideways scrolling on a computer (1280px and wider); phones may scroll stat tables with the name pinned (Style Bible)
 - 2026-11-11: AL games don't count in NL-only leagues (OnRoto's rule)
 - 2026-11-11: 2026 roster dates follow OnRoto and the OGBA workbook
