@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+
+const noRow = <T extends { row?: number }>(xs: T[]) => xs.map(({ row: _row, ...rest }) => rest);
 import {
-  deriveKeepers, diffRoster, excelSerialToISO, findHeader, likelySamePlayer, nameKey, parseSheet, type Grid,
+  deriveKeepers, diffRoster, excelSerialToISO, findHeader, likelySamePlayer, nameKey, parseSheet, relabelSlots, type Grid,
 } from "../workbookParser.js";
 
 // Rows copied from Fantasy_Baseball_2024 (2).xls, trimmed to 2 slots per block.
@@ -51,7 +53,7 @@ describe("findHeader", () => {
 describe("parseSheet", () => {
   it("reads rosters by slot, skipping blank slots", () => {
     const p = parseSheet(rosterSheet)!;
-    expect(p.rosters["Diamond Kings"]).toEqual([
+    expect(noRow(p.rosters["Diamond Kings"])).toEqual([
       { slot: "1B", name: "M. Busch" },
       { slot: "2B", name: "K. Marte" },
     ]);
@@ -69,7 +71,7 @@ describe("parseSheet", () => {
 
   it("does not read the standings block or the salary-cap row as roster", () => {
     const p = parseSheet(pricedSheet)!;
-    expect(p.rosters["Dodger Dawgs"]).toEqual([
+    expect(noRow(p.rosters["Dodger Dawgs"])).toEqual([
       { slot: "OF", name: "J. Soto", value: "AL" },
       { slot: "C", name: "F. Alverez", value: 13 },
     ]);
@@ -181,7 +183,7 @@ describe("older layouts", () => {
     const h = findHeader(g)!;
     expect(h.teams).toHaveLength(8);
     expect(h.teams[7].rawName).toBe("Jimmy The Fluffers");
-    expect(parseSheet(g)!.rosters["Jimmy The Fluffers"]).toEqual([{ slot: "C", name: "B. Molina", value: 16 }]);
+    expect(noRow(parseSheet(g)!.rosters["Jimmy The Fluffers"])).toEqual([{ slot: "C", name: "B. Molina", value: 16 }]);
   });
 });
 
@@ -189,5 +191,28 @@ describe("likelySamePlayer distance limit", () => {
   it("does not merge surnames 3 edits apart", () => {
     expect(likelySamePlayer("J. Castro", "J. Castillo")).toBe(false);
     expect(likelySamePlayer("M. Moore", "M. Montero")).toBe(false);
+  });
+});
+
+describe("relabelSlots (End of Season 2020 kept the old label column)", () => {
+  // Rows as entered: OF, OF, 1B, C, then a DL row. Labels as left in the sheet: C, C, 1B, 2B, DL.
+  const stale: Grid = [
+    ["", "Diamond", "Demolition", "Dodger Dawgs", "Skunk Dogs"], ["", "Kings", "Lumber Co.", "", ""],
+    ["C", "J. Soto", "R. Acuna", "V. Robles", "T. Grisham"],
+    ["C", "J. Heyward", "E. Hernandez", "C. Pache", "B. Nimmo"],
+    ["1B", "J. Votto", "J. Aguilar", "J. McNeil", "K. Bryant"],
+    ["2B", "W. Contreras", "JT. Realmuto", "J. Stallings", "C. Kelly"],
+    ["DL", "", "", "M. Prior", ""],
+  ];
+  const reference = ["OF", "OF", "1B", "C", "IL1", "IL2"];
+
+  it("takes lineup labels from the reference row by row and leaves IL/DL rows alone", () => {
+    const p = relabelSlots(parseSheet(stale)!, reference);
+    expect(p.rosters["Diamond Kings"].map((e) => `${e.slot}:${e.name}`)).toEqual(["OF:J. Soto", "OF:J. Heyward", "1B:J. Votto", "C:W. Contreras"]);
+    expect(p.rosters["Dodger Dawgs"].at(-1)).toMatchObject({ slot: "DL", name: "M. Prior" });
+  });
+
+  it("refuses when the lineup rows don't line up", () => {
+    expect(() => relabelSlots(parseSheet(stale)!, ["OF", "1B", "C"])).toThrow(/lineup rows/);
   });
 });

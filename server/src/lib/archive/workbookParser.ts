@@ -47,6 +47,8 @@ export interface SheetHeader {
 export interface RosterEntry {
   slot: string;
   name: string;
+  /** Index of the slot row this came from (0 = first slot row), for relabelling. */
+  row?: number;
   /** Priced sheets only: dollar value, or a marker like "AL" / "IA". */
   value?: number | string;
 }
@@ -63,6 +65,8 @@ export interface ParsedSheet {
   rosters: Record<string, RosterEntry[]>;
   pointsRows: PointsRow[];
   totals: Record<string, number>;
+  /** The label column, one entry per slot row, top to bottom. */
+  slotLabels: string[];
   /**
    * The "2006 Standings" / "Final Standings:" block: team name → total, as
    * typed there (names can be truncated or misspelt, e.g. "Demolition Lumbe").
@@ -131,6 +135,7 @@ export function parseSheet(grid: Grid): ParsedSheet | null {
   const rosters: Record<string, RosterEntry[]> = {};
   const pointsRows: PointsRow[] = [];
   const totals: Record<string, number> = {};
+  const slotLabels: string[] = [];
   for (const t of header.teams) rosters[t.rawName] = [];
 
   for (let r = header.headerRow + 1; r < grid.length; r++) {
@@ -138,10 +143,12 @@ export function parseSheet(grid: Grid): ParsedSheet | null {
     const c0 = row[0];
     if (isSlotCell(c0)) {
       const slot = str(c0);
+      const rowIndex = slotLabels.length;
+      slotLabels.push(slot);
       for (const t of header.teams) {
         const name = str(row[t.nameCol]);
         if (!name) continue;
-        const entry: RosterEntry = { slot, name };
+        const entry: RosterEntry = { slot, name, row: rowIndex };
         if (t.valueCol !== undefined) {
           const v = row[t.valueCol];
           if (isNum(v)) entry.value = v;
@@ -163,7 +170,7 @@ export function parseSheet(grid: Grid): ParsedSheet | null {
       }
     }
   }
-  return { header, rosters, pointsRows, totals, standings: parseStandingsBlock(grid, header.headerRow + 1) };
+  return { header, rosters, pointsRows, totals, slotLabels, standings: parseStandingsBlock(grid, header.headerRow + 1) };
 }
 
 /** Reads the left copy of the standings block: label cell, then name / total pairs down the rows. */
@@ -182,6 +189,30 @@ function parseStandingsBlock(grid: Grid, fromRow: number): Record<string, number
     break;
   }
   return out;
+}
+
+/**
+ * Re-label a sheet whose label column is stale. The end-of-season sheets for
+ * 2019–2021 kept the old template's labels (C, C, 1B, 2B, SS, 3B, …) while the
+ * players were entered in the new order (OF ×5, 1B, 2B, 3B, SS, C, C, …).
+ * `labels` comes from a correctly labelled sheet of the same season; row i of
+ * this sheet takes labels[i]. Refuses if the row counts differ.
+ */
+export function relabelSlots(sheet: ParsedSheet, labels: string[]): ParsedSheet {
+  // IL/DL rows sit at the bottom, take anyone, and their count changed over
+  // the years (one DL row → IL1 + IL2), so only the lineup rows are aligned.
+  const isIl = (l: string) => /^(IL|DL)\d?$/.test(l);
+  const ownLineup = sheet.slotLabels.map((l, i) => ({ l, i })).filter((x) => !isIl(x.l));
+  const refLineup = labels.filter((l) => !isIl(l));
+  if (ownLineup.length !== refLineup.length) {
+    throw new Error(`relabel: ${ownLineup.length} lineup rows vs ${refLineup.length} in the reference`);
+  }
+  const newLabel = new Map(ownLineup.map((x, k) => [x.i, refLineup[k]]));
+  const relabelled = sheet.slotLabels.map((l, i) => newLabel.get(i) ?? l);
+  const rosters = Object.fromEntries(
+    Object.entries(sheet.rosters).map(([team, list]) => [team, list.map((e) => ({ ...e, slot: relabelled[e.row!] }))]),
+  );
+  return { ...sheet, rosters, slotLabels: relabelled };
 }
 
 // ─── Names ──────────────────────────────────────────────────────────────────
