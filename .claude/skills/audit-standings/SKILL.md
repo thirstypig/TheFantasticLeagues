@@ -61,11 +61,18 @@ stale" without checking MLB directly.
 6. **Log the run.** Append one row to the Results log in
    `docs/solutions/integration-issues/onroto-fangraphs-audit-runbook.md`.
 
-## Roster-date leg (run at every period close)
+## Period-close audit (run at every period close)
 
-Stats can be right while roster dates are wrong: every real 2026 standings error
-came from roster records (drops a period late, a drop/add never recorded, moves a
-day off), not from stat data. Points matching OnRoto doesn't rule this out.
+One command, two legs, one `PASS`/`FINDINGS`:
+
+- **Leg 1 — player stats vs MLB.** Every stored `PlayerStatsPeriod` row for a
+  player on a team in the league during the period, against the sum of his
+  statsapi **game log** (per game — not the `byDateRange` totals the syncer and
+  the nightly reconciler share, so this leg is independent of them), with the
+  league's NL/AL-only rule applied from statsapi's own team list.
+- **Leg 2 — roster dates vs OnRoto.** Stats can be right while roster dates are
+  wrong: every real 2026 standings error came from roster records (drops a period
+  late, a drop/add never recorded, moves a day off), not from stat data.
 
 1. Save OnRoto's transaction log from a browser (Cloudflare blocks curl):
    `https://onroto.fangraphs.com/baseball/webnew/display_trans.pl?OGBA+6+all+YTD+2026&session_id=guest`
@@ -73,10 +80,16 @@ day off), not from stat data. Points matching OnRoto doesn't rule this out.
 2. From `server/`:
 
    ```bash
-   ./scripts/with-prod-db.sh npx tsx src/scripts/audit-roster-dates.ts 20 2026 path/to/onroto_trans.html
+   ./scripts/with-prod-db.sh npx tsx src/scripts/audit-period-close.ts 20 2026 path/to/onroto_trans.html
+   # --period <id> limits leg 1 to one period; default is every completed period.
+   # audit-roster-dates.ts runs leg 2 alone.
    ```
 
-3. `PASS` = every in-season add, drop and trade matches OnRoto by date.
+3. Not covered: team points vs OnRoto's period standings — still by hand
+   (Kent's workbook in 2026). With both legs passing, a points difference can only
+   come from scoring math, which the standings real-DB test covers in CI.
+4. Leg 1 `FINDINGS` lists each player and category where FBST ≠ MLB. Leg 2
+   `PASS` = every in-season add, drop and trade matches OnRoto by date;
    `FINDINGS` lists each difference by player and date. Every one needs a named
    cause before the period counts as closed — never "accepted". OnRoto is the
    reference for roster dates (decided 2026-11-11) but has been wrong on stats
@@ -90,8 +103,11 @@ swap (Zac Thornton's placeholder record); `PPfaadt` resolves only by last name
 (listed, not a failure); opening-day moves are draft-day roster and are listed,
 not compared — Period 1 matching OnRoto covers opening-day rosters.
 
-2026 result (2026-11-19): **PASS** — 390 moves matched by date. Re-creating the
-four real 2026 roster errors in memory made each one show up as a finding.
+2026 result (2026-11-19): **PASS** on both legs — every scored player row in all
+7 periods equals MLB (184–192 players a period), 390 roster moves matched by date.
+Proven able to fail: re-creating the four real 2026 roster errors made each one a
+finding; turning off the NL-only rule flagged Paul Sewald's AL innings in P7;
+shifting a period's start by one day flagged 103 players.
 
 ## The falsification rule
 
