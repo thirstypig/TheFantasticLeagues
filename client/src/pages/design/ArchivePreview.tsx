@@ -50,7 +50,7 @@ function TeamDetail({ season, team }: { season: PSeason; team: PTeam }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16, padding: "12px 4px 4px" }}>
       <section>
-        <SectionLabel>Draft day{keepers.length ? ` · ${keepers.length} keepers` : ""}</SectionLabel>
+        <SectionLabel>Draft day{keepers.length ? ` · ${keepers.length} possible keepers` : ""}</SectionLabel>
         {draft.length === 0 ? (
           <p style={{ fontSize: 13, color: "var(--am-text-faint)" }}>No draft sheet for this year.</p>
         ) : (
@@ -61,7 +61,7 @@ function TeamDetail({ season, team }: { season: PSeason; team: PTeam }) {
                   <td style={{ ...cell, textAlign: "left", width: 40, color: "var(--am-text-faint)" }}>{e.slot}</td>
                   <td style={{ ...cell, textAlign: "left" }}>
                     {e.name}
-                    {e.keeper && <span style={{ marginLeft: 6, fontSize: 13, color: "var(--am-accent)" }}>keeper</span>}
+                    {e.keeper && <span title="Same team and same price as at the end of last season: kept, or bought back for the same price" style={{ marginLeft: 6, fontSize: 13, color: "var(--am-accent)" }}>possible keeper</span>}
                   </td>
                   <td style={cell}>{typeof e.price === "number" ? `$${e.price}` : e.price ?? ""}</td>
                 </tr>
