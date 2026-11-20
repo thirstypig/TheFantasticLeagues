@@ -95,6 +95,7 @@ const RosterHubV3Preview = React.lazy(() => import("./pages/design/RosterHubV3Pr
 const DesignRosterHubDeferred = React.lazy(() => import("./pages/design/DesignRosterHubDeferred"));
 const ManualSlotAssignmentPreview = React.lazy(() => import("./pages/design/ManualSlotAssignmentPreview"));
 const StagingDocsPreview = React.lazy(() => import("./pages/design/StagingDocsPreview"));
+const ArchivePreview = React.lazy(() => import("./pages/design/ArchivePreview"));
 const SportLeagueSelectorPreview = React.lazy(() => import("./pages/design/SportLeagueSelectorPreview"));
 const NBADashboard = React.lazy(() => import("./features/nba/pages/NBADashboard"));
 const NFLDashboard = React.lazy(() => import("./features/nfl/pages/NFLDashboard"));
@@ -310,6 +311,7 @@ export default function App() {
                     <Route path="/design/manual-slot-assignment" element={<ManualSlotAssignmentPreview />} />
                     {/* Phase 0 staging environment admin docs mockup */}
                     <Route path="/design/staging-docs" element={<StagingDocsPreview />} />
+                    <Route path="/design/archive" element={<ArchivePreview />} />
                     {/* Phase 2 multi-sport league creation flow: sport selector */}
                     <Route path="/create-league/select-sport" element={<SportLeagueSelectorPreview />} />
                     {/* Legacy v2 roster-hub preview retired after v3 shipped
