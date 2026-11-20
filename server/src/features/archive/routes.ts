@@ -6,6 +6,7 @@ import { asyncHandler } from '../../middleware/asyncHandler.js';
 import { validateBody } from '../../middleware/validate.js';
 import { z } from 'zod';
 import { writeAuditLog } from '../../lib/auditLog.js';
+import { requireArchiveAccess } from './archiveAccess.js';
 import { Prisma } from '@prisma/client';
 import type { HistoricalPlayerStat } from '@prisma/client';
 
@@ -48,6 +49,10 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const router = express.Router();
+
+// Members-only (owner names are shown). Path-scoped on purpose: this router is
+// mounted at /api, so a bare router.use() would gate every API route.
+router.use('/archive', requireAuth, requireArchiveAccess());
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

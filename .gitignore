@@ -80,3 +80,6 @@ MASTER-PORTS.md
 
 # vitest --coverage output (server/coverage, client/coverage)
 coverage/
+
+# Archive owner names (real people; public repo)
+server/src/scripts/archive/owners.local.json
