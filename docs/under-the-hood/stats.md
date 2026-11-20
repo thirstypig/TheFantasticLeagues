@@ -21,24 +21,24 @@ updated: 2026-11-20
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-20 from 2,067 git-tracked files.*
+*Generated 2026-11-20 from 2,073 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 697 | 120,971 |
+| `.ts` | 702 | 121,808 |
 | `.tsx` | 395 | 97,431 |
 | `.md` | 591 | 73,290 |
-| `.json` | 37 | 40,409 |
+| `.json` | 38 | 40,510 |
 | `.css` | 15 | 2,482 |
 | `.sql` | 43 | 2,245 |
 | `.mjs` | 11 | 1,796 |
-| `.prisma` | 1 | 1,720 |
+| `.prisma` | 1 | 1,773 |
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 194 |
-| **All tracked** | **2,063** | **385,583** |
+| **All tracked** | **2,069** | **386,577** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -47,7 +47,7 @@ updated: 2026-11-20
 | Measure | Count |
 |---|---:|
 | API routes | 297 |
-| Prisma models | 64 |
+| Prisma models | 66 |
 | Prisma migrations | 41 |
 | Server feature modules | 33 |
 | Client feature modules | 28 |

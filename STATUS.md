@@ -38,7 +38,7 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - Settings shows the stats source in plain words and always shows the saved value (a stored "ALL" used to display as "NL")
 
 ## In progress
-- Past seasons archive rebuild (2003–2025, minus 2010–2013): PR 1 of 4 — a parser reads the commissioner's season workbooks into per-year JSON and checks each year against itself (recorded period points must add up to the recorded totals). Next: replace the archive data in prod (the current archive has wrong 2022/2024 standings and broken team codes), then an adds/drops view by period, then re-scoring 2016 and 2021–2025 with the live scoring code
+- Past seasons archive rebuild (2003–2025, minus 2010–2013). PR 1 (#537) merged: workbook parser with self-checks. PR 2: new archive tables (one row per team per season with owner and recorded points; rosters by draft, period and season end), a loader that fills them, and the archive locked to OGBA members. Next: the archive page moves to the new tables (with adds/drops by period) and the old archive rows are removed; then re-scoring 2016 and 2021–2025 with the live scoring code
 
 ## Open bugs / known issues
 - None open. 2026 standings match OnRoto exactly in P1, P2, P3, P5, P6. The P4 and P7 ±1 pairs are OnRoto errors, verified 2026-11-19: FBST matches MLB and Baseball-Reference in both (todo #331). A full player-by-player sweep against MLB game logs (all 7 periods, 2026-11-19) found every stat that feeds standings correct.

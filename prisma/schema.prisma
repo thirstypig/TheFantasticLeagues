@@ -1088,8 +1088,10 @@ model HistoricalSeason {
   leagueId Int?
   league   League? @relation(fields: [leagueId], references: [id])
 
-  periods   HistoricalPeriod[]
-  standings HistoricalStanding[]
+  periods       HistoricalPeriod[]
+  standings     HistoricalStanding[]
+  teams         HistoricalTeam[]
+  rosterEntries HistoricalRosterEntry[]
 
   createdAt DateTime @default(now())
 
@@ -1179,6 +1181,57 @@ model HistoricalStanding {
 
   @@unique([seasonId, teamCode])
   @@index([seasonId])
+}
+
+/// One team in one archived season, as the commissioner's workbook records it.
+/// `code` is the franchise code, stable across years and names (Crush Brothers
+/// Inc. 2003 and Dodger Dawgs 2025 are both DDG). Loaded by
+/// scripts/archive/load-archive-seasons.ts from the parsed workbooks.
+model HistoricalTeam {
+  id       Int              @id @default(autoincrement())
+  seasonId Int
+  season   HistoricalSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+
+  code      String // franchise code (DMK, DLC, DDG, …)
+  name      String // the name used that season
+  ownerName String? // null where unknown; never committed to the repo
+
+  /// Points per scoring period as recorded in the workbook; index 0 = P1, last = the "End" period.
+  recordedPeriodPoints Float[]
+  /// Final total as recorded (Total row, or the standings block in years without period rows).
+  recordedTotal        Float?
+  /// Anything a reader should know about this row's numbers (e.g. 2008's +0.5).
+  note                 String?
+
+  @@unique([seasonId, code])
+  @@index([seasonId])
+}
+
+enum HistoricalRosterKind {
+  SALARIES // prior season's final roster priced for this year (keeper candidates)
+  DRAFT // opening roster with auction/keeper prices; plays period 1
+  PERIOD // roster after a meeting; plays periodNumber
+  FINAL // end-of-season roster
+}
+
+/// A player on an archived team's roster at one point in the season.
+model HistoricalRosterEntry {
+  id       Int              @id @default(autoincrement())
+  seasonId Int
+  season   HistoricalSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+
+  teamCode     String
+  kind         HistoricalRosterKind
+  periodNumber Int? // PERIOD and DRAFT (=1) only
+  slot         String // as written: C, 1B, OF, CM, DH, P, IL1, R, CO, DL…
+  playerName   String // as written in the workbook, typos included
+  salary       Int?
+  salaryNote   String? // non-numeric price cell: "AL" (left the NL), "IA"
+  isKeeper     Boolean  @default(false)
+  mlbId        String?
+
+  @@index([seasonId, kind, periodNumber])
+  @@index([seasonId, teamCode])
 }
 
 // ======================
