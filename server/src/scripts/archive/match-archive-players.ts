@@ -17,8 +17,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { matchPlayer, type MatchResult, type MlbCandidate } from "../../lib/archive/mlbNameMatcher.js";
-import { splitWorkbookName } from "../../lib/archive/mlbNameMatcher.js";
+import { archivePlayerKey, matchPlayer, type MatchResult, type MlbCandidate } from "../../lib/archive/mlbNameMatcher.js";
 import type { SeasonData } from "../../lib/archive/seasonBuilder.js";
 
 const API = "https://statsapi.mlb.com/api/v1";
@@ -82,10 +81,13 @@ interface Mention { year: number; team: string; name: string; slot: string }
 
 function mentions(season: SeasonData): Mention[] {
   const out: Mention[] = [];
-  const add = (r: Record<string, { slot: string; name: string }[]> | null) => {
-    for (const [team, list] of Object.entries(r ?? {})) for (const e of list) out.push({ year: season.year, team, name: e.name, slot: e.slot });
+  const add = (r: Record<string, { slot: string; name: string }[]> | null, suffix = "") => {
+    for (const [team, list] of Object.entries(r ?? {})) for (const e of list) out.push({ year: season.year, team: team + suffix, name: e.name, slot: e.slot });
   };
-  add(season.salaries); add(season.draft); add(season.finalRosters);
+  // The Salaries sheet is LAST season's roster: matched on its own, never
+  // grouped with this season (2020 LDY: "W. Smith" was the pitcher in 2019's
+  // roster and the catcher in 2020's).
+  add(season.salaries, "@prior"); add(season.draft); add(season.finalRosters);
   for (const p of season.periodRosters) add(p.rosters);
   return out;
 }
@@ -98,6 +100,7 @@ async function main() {
 
   const matches: Record<string, { mlbId: number; fullName: string; how: string; beat?: string }> = {};
   const pendingAmbiguous: { year: number; k: string; spellings: string; slots: string; candidates: MlbCandidate[] }[] = [];
+  const candidatesOut: Record<string, { mlbId: number; fullName: string }[]> = {};
   const tiebreaks: string[] = [];
   const review: string[] = [];
   const summary: string[] = ["| Year | Names | Matched | Ambiguous | Unmatched |", "|---|---|---|---|---|"];
@@ -109,7 +112,7 @@ async function main() {
     const pool = mergePool(await seasonRoster(year, cacheDir), await seasonRoster(year - 1, cacheDir));
 
     // Group mentions by (team, abbreviation, surname).
-    const keyOf = (m: Mention) => { const { abbr, surname } = splitWorkbookName(m.name); return `${m.team}|${abbr}|${surname.replace(/[^a-z]/g, "")}`; };
+    const keyOf = (m: Mention) => archivePlayerKey(m.team, m.name, m.slot);
     const groups = new Map<string, Mention[]>();
     for (const m of mentions(season)) groups.set(keyOf(m), [...(groups.get(keyOf(m)) ?? []), m]);
 
@@ -138,15 +141,19 @@ async function main() {
     // is the "Wiln. Contreras" of later periods, not William by catcher slot).
     for (const [k, r] of [...results]) {
       if (r.status === "matched" && !r.how.includes("tiebreak")) continue;
-      const [team, abbr, sur] = k.split("|");
+      const [team, abbr, sur, role] = k.split("|");
       const fuller = [...results.entries()].filter(([k2, r2]) => {
-        const [t2, a2, s2] = k2.split("|");
-        return k2 !== k && t2 === team && s2 === sur && a2.length > abbr.length && a2.startsWith(abbr) && r2.status === "matched";
+        const [t2, a2, s2, role2] = k2.split("|");
+        if (k2 === k || t2 !== team || s2 !== sur || r2.status !== "matched") return false;
+        const sameRoleFuller = role2 === role && a2.length > abbr.length && a2.startsWith(abbr);
+        // An IL / rookie-spot mention takes the one pitcher-or-hitter match of the same spelling.
+        const fromRole = role === "X" && role2 !== "X" && a2.startsWith(abbr);
+        return sameRoleFuller || fromRole;
       });
       const ids = new Set(fuller.map(([, r2]) => (r2 as Extract<MatchResult, { status: "matched" }>).candidate.mlbId));
       if (ids.size === 1) {
         const src = fuller[0][1] as Extract<MatchResult, { status: "matched" }>;
-        results.set(k, { status: "matched", candidate: src.candidate, how: `same team, fuller spelling "${fuller[0][0].split("|")[1]}."` });
+        results.set(k, { status: "matched", candidate: src.candidate, how: `same team, same player as "${fuller[0][0].split("|")[1]}. ${sur}" (${fuller[0][0].split("|")[3]})` });
       }
     }
 
@@ -166,6 +173,7 @@ async function main() {
       } else {
         none++;
         const sug = suggestions.get(k);
+        candidatesOut[`${year}|${k}`] = sug ? [{ mlbId: sug.mlbId, fullName: sug.name }] : [];
         review.push(`| ${year} | ${k.split("|")[0]} | ${spellings} | ${slots} | no MLB match${sug ? ` — suggested: **${sug.name}** (${sug.mlbId}), ${sug.why}` : ""} |`);
       }
     }
@@ -178,12 +186,12 @@ async function main() {
   // match is one of its candidates and the two neighbours don't disagree.
   let carried = 0;
   for (const p of pendingAmbiguous) {
-    const [team, , sur] = p.k.split("|");
+    const [team, , sur, role] = p.k.split("|");
     const ids = new Set<number>();
     for (const y of [p.year - 1, p.year + 1]) {
       for (const [mk, mv] of Object.entries(matches)) {
-        const [my, mt, , ms] = mk.split("|");
-        if (Number(my) === y && mt === team && ms === sur && !mv.how.includes("tiebreak") && p.candidates.some((c) => c.mlbId === mv.mlbId)) ids.add(mv.mlbId);
+        const [my, mt, , ms, mr] = mk.split("|");
+        if (Number(my) === y && mt === team && ms === sur && (mr === role || role === "X") && !mv.how.includes("tiebreak") && p.candidates.some((c) => c.mlbId === mv.mlbId)) ids.add(mv.mlbId);
       }
     }
     if (ids.size === 1) {
@@ -192,11 +200,13 @@ async function main() {
       matches[`${p.year}|${p.k}`] = { mlbId: id, fullName: cand.fullName, how: "same team, adjacent season" };
       carried++;
     } else {
+      candidatesOut[`${p.year}|${p.k}`] = p.candidates.map((c) => ({ mlbId: c.mlbId, fullName: c.fullName }));
       review.push(`| ${p.year} | ${team} | ${p.spellings} | ${p.slots} | ambiguous: ${p.candidates.map((c) => `${c.fullName} (${c.position}${c.nl ? "" : ", AL"}, ${c.mlbId})`).join("; ")} |`);
     }
   }
   console.log(`ambiguous resolved by the same team's adjacent season: ${carried}; still ambiguous: ${pendingAmbiguous.length - carried}`);
   writeFileSync(join(outDir, "matches.json"), JSON.stringify(matches, null, 1));
+  writeFileSync(join(outDir, "candidates.json"), JSON.stringify(candidatesOut, null, 1));
   writeFileSync(join(outDir, "REVIEW.md"), [
     ...summary, "",
     "## Not matched", "", "| Year | Team | Workbook name(s) | Slots | Problem |", "|---|---|---|---|---|", ...review, "",

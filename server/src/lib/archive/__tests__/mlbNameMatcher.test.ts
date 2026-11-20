@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isAbbreviationOf, matchPlayer, splitWorkbookName, type MlbCandidate } from "../mlbNameMatcher.js";
+import { archivePlayerKey, isAbbreviationOf, matchPlayer, splitWorkbookName, type MlbCandidate } from "../mlbNameMatcher.js";
 
 // Real people and the workbook spellings that refer to them (2004–2025 sheets).
 const c = (mlbId: number, fullName: string, firstName: string, lastName: string, position: string, nl = true): MlbCandidate =>
@@ -92,5 +92,13 @@ describe("matchPlayer", () => {
   it("prefers the NL player when an AL namesake also fits", () => {
     const al = c(999, "Francisco Alvarez", "Francisco", "Alvarez", "C", false);
     expect(matchPlayer("F. Alvarez", "C", [alvarez, al])).toMatchObject({ status: "matched", candidate: { mlbId: 682626 } });
+  });
+});
+
+describe("archivePlayerKey", () => {
+  it("keeps two same-spelling players on one team apart by role (2021 RGS: Edwin and Elias Díaz)", () => {
+    expect(archivePlayerKey("RGS", "E. Diaz", "P")).not.toBe(archivePlayerKey("RGS", "E. Diaz", "C"));
+    expect(archivePlayerKey("RGS", "E. Diaz", "C")).toBe(archivePlayerKey("RGS", "E. Díaz", "1B"));
+    expect(archivePlayerKey("RGS", "E. Diaz", "IL1")).toBe("RGS|e|diaz|X");
   });
 });

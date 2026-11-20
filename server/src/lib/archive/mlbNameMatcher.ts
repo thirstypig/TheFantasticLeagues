@@ -152,3 +152,22 @@ export function matchPlayer(raw: string, slot: string, pool: MlbCandidate[]): Ma
   }
   return { status: "ambiguous", candidates: unique.map((x) => x.c) };
 }
+
+/** Role a roster slot implies: P = pitcher, H = hitter, X = either (IL, DL, rookie spot). */
+export function slotRole(slot: string): "P" | "H" | "X" {
+  const s = slot.trim().toUpperCase();
+  if (/^(P|SP|RP)$/.test(s)) return "P";
+  if (/^(IL\d?|DL\d?|R|BN|RES)$/.test(s)) return "X";
+  return "H";
+}
+
+/**
+ * Identity of "one player" inside a season's sheets: team + abbreviation +
+ * surname + role. Role is part of it because one team can roster two people
+ * with the same spelling at once — 2021 RGing Sluggers had Edwin Díaz (P) and
+ * Elias Díaz (C) both written "E. Diaz".
+ */
+export function archivePlayerKey(team: string, name: string, slot: string): string {
+  const { abbr, surname } = splitWorkbookName(name);
+  return `${team}|${abbr}|${surname.replace(/[^a-z]/g, "")}|${slotRole(slot)}`;
+}
