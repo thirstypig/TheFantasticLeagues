@@ -1,0 +1,161 @@
+{
+ "_source": "statsapi /people/660271/stats?stats=gameLog&season=2026, fetched 2026-11-19, trimmed to the fields the audit reads",
+ "pitching": [
+  {
+   "date": "2026-03-31",
+   "gameType": "R",
+   "team": {
+    "id": 119,
+    "name": "Los Angeles Dodgers"
+   },
+   "stat": {
+    "atBats": 19,
+    "hits": 1,
+    "runs": 0,
+    "homeRuns": 0,
+    "rbi": null,
+    "stolenBases": 0,
+    "wins": 1,
+    "saves": 0,
+    "strikeOuts": 6,
+    "inningsPitched": "6.0",
+    "earnedRuns": 0,
+    "baseOnBalls": 3
+   }
+  },
+  {
+   "date": "2026-04-08",
+   "gameType": "R",
+   "team": {
+    "id": 119,
+    "name": "Los Angeles Dodgers"
+   },
+   "stat": {
+    "atBats": 23,
+    "hits": 4,
+    "runs": 1,
+    "homeRuns": 0,
+    "rbi": null,
+    "stolenBases": 0,
+    "wins": 0,
+    "saves": 0,
+    "strikeOuts": 2,
+    "inningsPitched": "6.0",
+    "earnedRuns": 0,
+    "baseOnBalls": 1
+   }
+  },
+  {
+   "date": "2026-04-15",
+   "gameType": "R",
+   "team": {
+    "id": 119,
+    "name": "Los Angeles Dodgers"
+   },
+   "stat": {
+    "atBats": 20,
+    "hits": 2,
+    "runs": 1,
+    "homeRuns": 0,
+    "rbi": null,
+    "stolenBases": 0,
+    "wins": 1,
+    "saves": 0,
+    "strikeOuts": 10,
+    "inningsPitched": "6.0",
+    "earnedRuns": 1,
+    "baseOnBalls": 2
+   }
+  }
+ ],
+ "hitting": [
+  {
+   "date": "2026-07-17",
+   "gameType": "R",
+   "team": {
+    "id": 119,
+    "name": "Los Angeles Dodgers"
+   },
+   "stat": {
+    "atBats": 4,
+    "hits": 0,
+    "runs": 0,
+    "homeRuns": 0,
+    "rbi": 0,
+    "stolenBases": 0,
+    "wins": null,
+    "saves": null,
+    "strikeOuts": 0,
+    "inningsPitched": null,
+    "earnedRuns": null,
+    "baseOnBalls": 0
+   }
+  },
+  {
+   "date": "2026-07-19",
+   "gameType": "R",
+   "team": {
+    "id": 119,
+    "name": "Los Angeles Dodgers"
+   },
+   "stat": {
+    "atBats": 5,
+    "hits": 2,
+    "runs": 1,
+    "homeRuns": 0,
+    "rbi": 2,
+    "stolenBases": 0,
+    "wins": null,
+    "saves": null,
+    "strikeOuts": 1,
+    "inningsPitched": null,
+    "earnedRuns": null,
+    "baseOnBalls": 0
+   }
+  },
+  {
+   "date": "2026-07-19",
+   "gameType": "R",
+   "team": {
+    "id": 119,
+    "name": "Los Angeles Dodgers"
+   },
+   "stat": {
+    "atBats": 4,
+    "hits": 1,
+    "runs": 0,
+    "homeRuns": 0,
+    "rbi": 0,
+    "stolenBases": 0,
+    "wins": null,
+    "saves": null,
+    "strikeOuts": 1,
+    "inningsPitched": null,
+    "earnedRuns": null,
+    "baseOnBalls": 0
+   }
+  },
+  {
+   "date": "2026-07-20",
+   "gameType": "R",
+   "team": {
+    "id": 119,
+    "name": "Los Angeles Dodgers"
+   },
+   "stat": {
+    "atBats": 4,
+    "hits": 0,
+    "runs": 0,
+    "homeRuns": 0,
+    "rbi": 0,
+    "stolenBases": 0,
+    "wins": null,
+    "saves": null,
+    "strikeOuts": 2,
+    "inningsPitched": null,
+    "earnedRuns": null,
+    "baseOnBalls": 1
+   }
+  }
+ ]
+}
