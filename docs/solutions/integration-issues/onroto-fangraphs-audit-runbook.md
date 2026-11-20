@@ -8,7 +8,7 @@ problem_type: audit-methodology / runbook
 symptom: Every OnRoto standings audit re-derives the same scattered procedure (Railway prod-URL export, the fangraphs-audit.ts invocation, the session_id=guest FG scrape, which HTML rows hold the raw values, the cell-by-cell diff); and clock-time-based timing assumptions ("before 9 AM PT FG hasn't synced") produce false "FG is stale" calls.
 root_cause: The audit procedure was never consolidated — pieces lived in the script header, docs/plans/standings-nested-stats-refactor.md, closed-period-psp-frozen-with-stale-boundary.md, and report §4. Separately, the timing memory keyed staleness off wall-clock (~9 AM PT) rather than FG's own authoritative "STANDINGS through MM.DD.YY" header.
 related_modules: standings, players, periods, fangraphs-audit, mlb-data-sync
-prs: []
+prs: [534, 535]
 tags: fangraphs, onroto, audit, runbook, standings, sync-timing, session-id-guest, reconciliation
 ---
 
@@ -28,6 +28,19 @@ raw values).
 ---
 
 ## TL;DR
+
+**At a period close, start with one command (since 2026-11-19, #535):**
+`./scripts/with-prod-db.sh npx tsx src/scripts/audit-period-close.ts 20 <season> <onroto_trans.html>`
+from `server/`. It checks every scored player's stored stats against the MLB
+game log (independent of the syncer's `byDateRange` path) and every in-season
+roster move against OnRoto's transaction log, and prints one PASS/FINDINGS.
+OnRoto's transaction log is Cloudflare-gated — save it from a browser (steps in
+the audit-standings skill). OnRoto publishes **no per-period standings** to a
+guest (checked 2026-11-20: standings, alt standings, team stats and the archive
+pages are season-to-date or current-week only; the "Select Report Date" page
+is a commissioner *refresh* that rewrites OnRoto's stored reports — never
+submit it), so period points vs OnRoto stay a manual comparison. The steps
+below are the season-to-date FanGraphs diff.
 
 1. Export **prod** DB URLs from Railway (the script's `.env` points at LOCAL Supabase).
 2. Run `npx tsx src/scripts/fangraphs-audit.ts 20` → FBST season totals from `PlayerStatsPeriod` (production's source).
@@ -154,6 +167,10 @@ against FanGraphs and our own audit tool. Investigation depth is not
 verification; the four external sources are.
 
 ### Automated (run this EVERY audit)
+
+`audit-period-close.ts` (TL;DR) now covers every scored player, not only the
+fully-owned ones below, and is the stronger check; `audit-mlb-crosscheck.ts`
+stays useful mid-period because it self-aligns to a live frontier.
 
 The MLB.com leg is automated — run it every audit, not just on a residual:
 
@@ -300,6 +317,7 @@ shift FBST endDates. See
 | 2026-10-19 | 09.27.26 | **Post-season run. Period 7 (ends 09-30) was still `active` 19 days after the season ended** — never closed. Period leg (P6): 212 checked, **1 mismatch — Geraldo Perdomo H stored 31, MLB statsapi = Baseball Reference = 30** (26 G / 97 AB, per-date diff empty): the stale-PSP signature (late hit→error revision past the 5-day window). **The nightly closed-period alarm (todo #301) should have caught it and was silent: `ALERT_EMAIL_TO` was unset in Railway, so it only logged.** Season leg INCOMPLETE: The Show (R20 HR8 RBI24 W1 K20), Devil Dawgs (W1 K18), RGing (R1 RBI1 SB1) are **identical** to the 08-30 late-drop attributions — the backdates were never applied (commissioner decision pending). Diamond Kings, Dodger Dawgs, Demolition, Los Doyers residuals changed since 08-31 and are unattributed (needs the per-team OnRoto diff). The 2 skipped players are Spiers and Dollander in P3; Dollander is the 08-31 `releasedAt < acquiredAt` roster anomaly, so the INCOMPLETE is likely that data defect, not the instrument. P7 close (IL fee dry run = $0: last stints ended 08-30, P7's first day, exclusive end) and the P6 re-sync were handed to James as a script — prod writes are gated. Report: `docs/reports/standings-audit-period-6-2026-10-19.md`. |
 | 2026-11-09 | 09.27.26 | **Final season audit — stat data is correct; every FG residual is roster state.** Ran `audit-standings.ts` for all 7 periods: P1–P5 + P7 PASS, P6 = the same Perdomo H 31 vs 30 as 10-19 (still unhealed). Season leg INCOMPLETE with residuals **byte-identical to 10-19** (nothing repaired, nothing drifted; regular season ended 09-27, so FG's "through 09.27.26" is complete — no timing lag). **Instrument finding: the period leg is NOT independent** — it calls `reconcilePeriodStats`, which shares `byDateRange` with the syncer (ADR-014), and the BBRef leg is hard-coded `bbref: true` ("still-unwired"), so "Sources reached: bbref=yes" is false. So an independent three-way was run off-repo: **(A) MLB `gameLog`** summed per period window vs **every one of the 1,578 stored PlayerStatsPeriod rows** (356 players, 12 fields): only 1 scoring-relevant mismatch — Perdomo — plus 40 from Ohtani's by-design hitter/pitcher split (pitcher row's stored pitching == real Ohtani's gameLog pitching) and **217 on 58 players with a PSP row in a period they were never rostered** (207 in P1; e.g. Josh Bell P1 stored AB 9 vs 71) — unreachable by scoring (`computeWithPeriodStats` iterates rosters only), but they are why `reconcilePeriodStats` checks 184 of 267 P1 rows. **(B) Baseball Reference** season tables vs MLB gameLog totals: **0 differences across 354 players** (1 skipped: two "Max Muncy"s). FBST 7-period sums vs MLB for the 132 full-season players: 8 diffs, **every one exactly equal to Perdomo or an unrostered-P1 orphan row**. Perdomo's extra hit moves Demolition's P6 AVG .23990→.23906, still above RGing .23551 → **0 points**. Since every scoring-relevant stat matches MLB = BBRef, the season-leg residuals are roster/attribution: The Show / Devil Dawgs / RGing = the 08-30 late drops (backdates still not applied); Diamond Kings, Dodger Dawgs, Demolition, Los Doyers (now W+3 K+32 vs the 08-31 Griffin+Sewald K27) remain unattributed — needs the per-team OnRoto roster diff (Cloudflare-gated → Playwright). Coverage gap unchanged: Spiers + Dollander (P3). Reports: `docs/reports/standings-audit-period-{6,7}-2026-11-09.md`. |
 | 2026-11-09 (b) | 09.27.26 | **OnRoto roster diff — every season residual attributed; closure EXACT.** Per-player diff (audit accumulator run per player vs `parseFgTeamPage`) reproduces all 8 team residuals, and with OnRoto's roster dates applied, production equals FG on every category for every team except one FG-missing RBI (Sal Stewart 09-26; MLB = BBRef). **Correction to the 10-19 and earlier 11-09 rows: Diamond Kings and Dodger Dawgs were never real residuals.** Production already matches FG (DK exact, Dodger RBI+1). The audit double-counted Trade 22 because `isInPeriodWindow` compares raw timestamps (trade stamped 08-30T15:41) where production uses UTC days. Real mechanisms: 7 drops recorded 08-30 that OnRoto had at 08-02 (Miller, Ramos, Hicks, García, Peralta, Griffin; Lowe ~08-03) — each delta equals the player's MLB P6 line exactly; Sheehan's drop never recorded (Demolition 07-05..open; OnRoto released him 08-02); Webb's add never recorded (OnRoto ~08-04); Norby's add one day late (08-31 vs 08-30); Sewald K+9 unproven (OnRoto credits nothing after 08-04 although he's listed active; ARI DFA 08-10, TOR claim 08-12). **Falsified:** "OnRoto drops stats after an MLB team change" (Curtis Mead reconciles). **Point impact of adopting OnRoto's dates:** only 7th/8th change — Devil Dawgs 255 passes Los Doyers 250 (252 without Sewald). **Parser finding:** FG standings EXCLUDE reserved-table rows; `fgTeamParser.ts`'s "sum of all rows" holds only for the page's TOTAL row (all 5 self-check gaps equal the reserved rows exactly). Data anomaly: Gabriel Hughes' DK row has releasedAt < acquiredAt (like Dollander). Full write-up: `docs/reports/onroto-roster-diff-2026-11-09.md` (DOC-026). |
+| 2026-11-19 | 09.27.26 | **Period-close command, post-rescore: PASS on both legs.** `audit-period-close.ts` (#535) — every scored PSP row in all 7 periods (184–192 players a period) equals the summed MLB game log with the NL-only rule; 390/390 in-season roster moves match OnRoto's transaction log by date (#534). Proven able to fail on prod data: NL-only rule off → Sewald's AL innings flagged in P7; period start shifted one day → 103 players flagged; the four real 2026 roster errors re-created in memory → each flagged. Perdomo's stale H (11-09 row) is healed. |
 
 ## Scope note
 
