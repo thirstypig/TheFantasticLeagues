@@ -8,7 +8,7 @@ phase: null
 owner: james
 tags: [docs-system]
 links: [DOC-001]
-updated: 2026-11-19
+updated: 2026-11-20
 ---
 
 # Repo statistics
@@ -21,15 +21,15 @@ updated: 2026-11-19
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-19 from 2,057 git-tracked files.*
+*Generated 2026-11-20 from 2,062 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 689 | 119,833 |
+| `.ts` | 693 | 120,563 |
 | `.tsx` | 395 | 97,431 |
-| `.md` | 591 | 73,223 |
+| `.md` | 591 | 73,256 |
 | `.json` | 36 | 40,248 |
 | `.css` | 15 | 2,482 |
 | `.sql` | 43 | 2,245 |
@@ -38,7 +38,7 @@ updated: 2026-11-19
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 194 |
-| **All tracked** | **2,053** | **383,275** |
+| **All tracked** | **2,058** | **384,980** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -124,5 +124,5 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 Planning status: 34/82 planning tasks done, 0 in progress.
 
-`server/data/planning.json` last updated **2026-11-18** (1 days ago).
+`server/data/planning.json` last updated **2026-11-18** (2 days ago).
 

@@ -5,7 +5,7 @@ description: Reconcile FBST standings against MLB statsapi, FanGraphs OnRoto, an
 
 # Standings audit
 
-Two legs, both emitted on every run:
+Two legs, both emitted on every run (plus a separate roster-date leg — see below):
 
 | Leg | Compares | Answers |
 |---|---|---|
@@ -60,6 +60,38 @@ stale" without checking MLB directly.
 
 6. **Log the run.** Append one row to the Results log in
    `docs/solutions/integration-issues/onroto-fangraphs-audit-runbook.md`.
+
+## Roster-date leg (run at every period close)
+
+Stats can be right while roster dates are wrong: every real 2026 standings error
+came from roster records (drops a period late, a drop/add never recorded, moves a
+day off), not from stat data. Points matching OnRoto doesn't rule this out.
+
+1. Save OnRoto's transaction log from a browser (Cloudflare blocks curl):
+   `https://onroto.fangraphs.com/baseball/webnew/display_trans.pl?OGBA+6+all+YTD+2026&session_id=guest`
+   (Playwright: navigate, then save `document.documentElement.outerHTML`).
+2. From `server/`:
+
+   ```bash
+   ./scripts/with-prod-db.sh npx tsx src/scripts/audit-roster-dates.ts 20 2026 path/to/onroto_trans.html
+   ```
+
+3. `PASS` = every in-season add, drop and trade matches OnRoto by date.
+   `FINDINGS` lists each difference by player and date. Every one needs a named
+   cause before the period counts as closed — never "accepted". OnRoto is the
+   reference for roster dates (decided 2026-11-11) but has been wrong on stats
+   twice; a difference is a question, not an automatic repair.
+
+What the tool already handles (each one bit during the 2026 build, all tested):
+OnRoto lengthens aliases on name collisions (`DomSmith`, `TanScott`, `LGarciaJr`);
+two players on one team can share an alias (Jacob/Jared Young, both `JYoung`);
+OnRoto logs some moves twice (McCann/Steer 08-02); a same-minute release+add is a
+swap (Zac Thornton's placeholder record); `PPfaadt` resolves only by last name
+(listed, not a failure); opening-day moves are draft-day roster and are listed,
+not compared — Period 1 matching OnRoto covers opening-day rosters.
+
+2026 result (2026-11-19): **PASS** — 390 moves matched by date. Re-creating the
+four real 2026 roster errors in memory made each one show up as a finding.
 
 ## The falsification rule
 
