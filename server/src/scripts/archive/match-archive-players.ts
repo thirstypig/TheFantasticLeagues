@@ -100,7 +100,7 @@ async function main() {
 
   const matches: Record<string, { mlbId: number; fullName: string; how: string; beat?: string }> = {};
   const pendingAmbiguous: { year: number; k: string; spellings: string; slots: string; candidates: MlbCandidate[] }[] = [];
-  const candidatesOut: Record<string, { mlbId: number; fullName: string }[]> = {};
+  const candidatesOut: Record<string, { mlbId: number; fullName: string; note?: string }[]> = {};
   const tiebreaks: string[] = [];
   const review: string[] = [];
   const summary: string[] = ["| Year | Names | Matched | Ambiguous | Unmatched |", "|---|---|---|---|---|"];
@@ -173,7 +173,7 @@ async function main() {
       } else {
         none++;
         const sug = suggestions.get(k);
-        candidatesOut[`${year}|${k}`] = sug ? [{ mlbId: sug.mlbId, fullName: sug.name }] : [];
+        candidatesOut[`${year}|${k}`] = sug ? [{ mlbId: sug.mlbId, fullName: sug.name, note: sug.why }] : [];
         review.push(`| ${year} | ${k.split("|")[0]} | ${spellings} | ${slots} | no MLB match${sug ? ` — suggested: **${sug.name}** (${sug.mlbId}), ${sug.why}` : ""} |`);
       }
     }

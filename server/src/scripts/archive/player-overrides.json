@@ -1,5 +1,5 @@
 {
-  "_comment": "Workbook spellings the matcher can't resolve by rule, mapped to MLB ids. Every id was checked against statsapi /people on 2026-11-20. 'confirmed' entries are applied; unconfirmed ones only appear as suggestions on the review list until James confirms them. 'years' limits an entry to the seasons it was seen in, so a later player with the same spelling isn't captured.",
+  "_comment": "Workbook spellings the matcher can't resolve by rule, mapped to MLB ids. Every id was checked against statsapi /people on 2026-11-20 (the last three on 2026-11-21). 'confirmed' entries are applied; unconfirmed ones only appear as suggestions on the player-check page until someone confirms them there (that decision is stored in the database, not here). 'years' limits an entry to the seasons it was seen in, so a later player with the same spelling isn't captured.",
   "entries": [
     { "spellings": ["D. Gordon"], "years": [2014, 2018], "mlbId": 543829, "name": "Dee Strange-Gordon", "why": "MLB lists him as Strange-Gordon", "confirmed": true },
     { "spellings": ["M. Stanton"], "years": [2014, 2014], "mlbId": 519317, "name": "Giancarlo Stanton", "why": "went by Mike early in his career", "confirmed": true },
@@ -29,6 +29,9 @@
     { "spellings": ["G. Munoz"], "years": [2018, 2018], "mlbId": 622168, "name": "Yairo Muñoz", "why": "wrong first initial", "confirmed": false },
     { "spellings": ["A. Eflin"], "years": [2020, 2021], "mlbId": 621107, "name": "Zach Eflin", "why": "wrong first initial", "confirmed": false },
     { "spellings": ["H. Grove"], "years": [2022, 2022], "mlbId": 675627, "name": "Michael Grove", "why": "wrong first initial", "confirmed": false },
-    { "spellings": ["E. Estevez"], "years": [2016, 2016], "mlbId": 608032, "name": "Carlos Estévez", "why": "wrong first initial", "confirmed": false }
+    { "spellings": ["E. Estevez"], "years": [2016, 2016], "mlbId": 608032, "name": "Carlos Estévez", "why": "wrong first initial", "confirmed": false },
+    { "spellings": ["P. Strokes"], "years": [2019, 2019], "mlbId": 467008, "name": "Pedro Strop", "why": "looks like an autocorrect of Strop", "confirmed": false },
+    { "spellings": ["R. Brooks"], "years": [2024, 2024], "mlbId": 548384, "name": "Brooks Raley", "why": "a guess: written surname-first? He was hurt after April, so check", "confirmed": false },
+    { "spellings": ["E. Jeremiah"], "years": [2024, 2024], "mlbId": 669093, "name": "Jeremiah Estrada", "why": "looks like it was written surname-first", "confirmed": false }
   ]
 }
