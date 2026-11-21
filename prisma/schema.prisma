@@ -179,6 +179,7 @@ model User {
   ownedTeams           Team[]                @relation("TeamOwner")
   teamOwnerships       TeamOwnership[]
   auditLogs            AuditLog[]
+  archivePlayerDecisions HistoricalPlayerMatch[] @relation("ArchivePlayerDecisions")
   boardCards           BoardCard[]
   boardReplies         BoardCardReply[]
   productBoardCards    ProductBoardCard[]    @relation("ProductBoardCards")
@@ -1092,6 +1093,7 @@ model HistoricalSeason {
   standings     HistoricalStanding[]
   teams         HistoricalTeam[]
   rosterEntries HistoricalRosterEntry[]
+  playerMatches HistoricalPlayerMatch[]
 
   createdAt DateTime @default(now())
 
@@ -1228,10 +1230,66 @@ model HistoricalRosterEntry {
   salary       Int?
   salaryNote   String? // non-numeric price cell: "AL" (left the NL), "IA"
   isKeeper     Boolean  @default(false)
-  mlbId        String?
+  // Which MLB player this is lives on HistoricalPlayerMatch, joined in code by
+  // archivePlayerKey(teamCode, playerName, slot). No id is stored here.
 
   @@index([seasonId, kind, periodNumber])
   @@index([seasonId, teamCode])
+}
+
+enum HistoricalMatchStatus {
+  VERIFIED // the name fits one MLB player, and he was eligible for every slot he held
+  SUGGESTED // several fit the name; exactly one is eligible for every slot
+  FLAGGED // one fits the name, but he wasn't eligible for a slot he held
+  OPEN // none fits, or the rules can't separate the ones that do
+}
+
+enum HistoricalMatchDecision {
+  PICK // this is the player (a candidate, or anyone found by search)
+  EXCEPTION // keep the flagged match: the league allowed it at the time
+  WRONG // the flagged match is the wrong player; still unknown
+  NONE // none of the candidates; still unknown
+}
+
+/// One name on one team in one archived season, and the MLB player it resolves
+/// to. The single source of truth for "who is this": roster entries join to it
+/// in code by archivePlayerKey (server/src/lib/archive/mlbNameMatcher.ts).
+/// Rules: server/src/lib/archive/playerReview.ts.
+model HistoricalPlayerMatch {
+  id       Int              @id @default(autoincrement())
+  seasonId Int
+  season   HistoricalSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+
+  key      String // "2004|MNB|j|wright|P": year | team | abbreviation | surname | role
+  teamCode String
+  role     String // P pitcher slot, H hitter slot, X either (IL, rookie spot)
+  names    String[] // spellings as written in the workbook
+  slots    String[]
+  seenIn   String[] // draft, P2 … P7, final
+
+  // Written by load-archive-matches.ts on every run.
+  status    HistoricalMatchStatus
+  autoMlbId Int? // the matcher's player (VERIFIED and FLAGGED)
+  autoName  String?
+  detail    Json // ReviewDetail: checks, season line, ranked candidates, suggestion
+
+  // Written by a person on the player-check page. A re-run never touches these.
+  decision    HistoricalMatchDecision?
+  decidedById Int?
+  decidedBy   User?                    @relation("ArchivePlayerDecisions", fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedAt   DateTime?
+
+  /// Who the name resolves to right now: the decision if there is one, else the
+  /// matcher's player for VERIFIED/FLAGGED, else null (still unknown).
+  mlbId   Int?
+  mlbName String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([seasonId, key])
+  @@index([seasonId, status])
+  @@index([decidedById])
 }
 
 // ======================

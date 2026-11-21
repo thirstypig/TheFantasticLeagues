@@ -1,0 +1,99 @@
+/* Archive player check (/archive/player-check). Classes are apc-*: pc-* belongs to the shared player card.
+   Style Bible: four text sizes (24 / 17 / 15 / 13), cards sit on the page,
+   boxes inside a card sit on Chip, inputs and pickers on Field. No box shares
+   a background with what it sits on. */
+
+.apc-page { max-width: 1100px; margin: 0 auto; padding: 0 16px 48px; display: flex; flex-direction: column; gap: 16px; color: var(--am-text); }
+.apc-title { margin: 0; font-family: var(--am-display); font-size: 24px; font-weight: 700; line-height: 1.2; }
+.apc-lede { margin: 4px 0 0; font-size: 17px; line-height: 1.4; color: var(--am-text-muted); max-width: 72ch; }
+.apc-note { margin: 0; font-size: 15px; line-height: 1.4; color: var(--am-text-muted); }
+.apc-error { margin: 0; font-size: 15px; color: var(--am-negative); }
+
+.apc-card { background: var(--am-surface); border: 1px solid var(--am-border); border-radius: 6px; }
+
+.apc-progress { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 15px; }
+.apc-bar { flex: 1 1 200px; min-width: 120px; height: 8px; border-radius: 999px; background: var(--am-chip-strong); overflow: hidden; }
+.apc-bar > span { display: block; height: 100%; background: var(--am-positive); }
+
+/* Seasons */
+.apc-seasons { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.apc-seasons th { padding: 8px 12px; font-size: 13px; font-weight: 600; text-align: right; color: var(--am-text-muted); border-bottom: 1px solid var(--am-border); white-space: nowrap; }
+.apc-seasons td { padding: 0 12px; height: 44px; font-size: 15px; text-align: right; border-bottom: 1px solid var(--am-border); white-space: nowrap; }
+.apc-seasons th:first-child, .apc-seasons td:first-child { text-align: left; }
+.apc-seasons tbody tr { cursor: pointer; }
+.apc-seasons tbody tr:hover, .apc-seasons tbody tr.is-selected { background: var(--am-chip); }
+.apc-seasons tbody tr.is-selected td { font-weight: 700; }
+.apc-seasons tfoot td { border-bottom: 0; font-weight: 700; }
+.apc-seasons .is-zero { color: var(--am-text-muted); }
+.apc-seasons .is-todo { color: var(--am-negative); font-weight: 700; }
+.apc-year { min-height: 44px; padding: 0; border: 0; background: transparent; font: inherit; font-weight: inherit; color: var(--am-accent); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Filters */
+.apc-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; scroll-margin-top: 72px; /* clear the sticky top bar */ }
+.apc-field { min-height: 44px; padding: 0 12px; font: inherit; font-size: 17px; color: var(--am-text); background: var(--am-field); border: 1px solid var(--am-field-line); border-radius: 6px; }
+.apc-seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--am-field-line); border-radius: 6px; overflow: hidden; background: var(--am-field); }
+.apc-seg button { min-height: 42px; padding: 0 12px; border: 0; border-right: 1px solid var(--am-field-line); background: transparent; font: inherit; font-size: 15px; color: var(--am-text); cursor: pointer; }
+.apc-seg button:last-child { border-right: 0; }
+.apc-seg button[aria-pressed="true"] { background: var(--am-accent); color: var(--am-on-accent); font-weight: 600; }
+.apc-toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 15px; cursor: pointer; }
+.apc-toggle input { width: 18px; height: 18px; accent-color: var(--am-accent); }
+.apc-count { margin-left: auto; font-size: 15px; color: var(--am-text-muted); }
+
+/* One name */
+.apc-list { display: flex; flex-direction: column; gap: 12px; }
+.apc-item { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.apc-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+.apc-name { margin: 0; font-size: 17px; font-weight: 700; }
+.apc-meta { font-size: 15px; color: var(--am-text-muted); }
+.apc-chip { flex: none; font-size: 13px; font-weight: 600; padding: 2px 8px; border-radius: 10px; border: 1px solid currentColor; }
+.apc-chip.is-alert { color: var(--am-negative); }
+.apc-chip.is-good { color: var(--am-positive); }
+.apc-chip.is-plain { color: var(--am-text-muted); }
+.apc-slot { display: inline-block; font-size: 13px; font-weight: 600; padding: 0 6px; border-radius: 4px; border: 1px solid var(--am-border); background: var(--am-chip); color: var(--am-text); }
+
+.apc-cands { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.apc-cand { min-width: 0; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; background: var(--am-chip); border: 1px solid var(--am-border); border-radius: 6px; }
+.apc-cand.is-suggested, .apc-cand.is-chosen { border-color: var(--am-positive); }
+.apc-cand.is-chosen { box-shadow: inset 0 0 0 1px var(--am-positive); }
+.apc-cand .apc-slot, .apc-cand .apc-btn { background: var(--am-surface); }
+.apc-tags { display: flex; flex-wrap: wrap; gap: 8px; font-size: 13px; font-weight: 700; }
+.apc-tag-good { color: var(--am-positive); }
+.apc-tag-alert { color: var(--am-negative); }
+.apc-cand-name { font-size: 17px; font-weight: 700; overflow-wrap: anywhere; }
+.apc-cand-name a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.apc-line { font-size: 15px; color: var(--am-text-muted); font-variant-numeric: tabular-nums; }
+.apc-check { display: flex; gap: 6px; align-items: baseline; font-size: 15px; }
+.apc-mark { flex: none; width: 1.1em; font-weight: 700; }
+.apc-mark.is-yes { color: var(--am-positive); }
+.apc-mark.is-no { color: var(--am-negative); }
+
+.apc-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.apc-btn { min-height: 44px; padding: 0 14px; border-radius: 6px; border: 1px solid var(--am-field-line); background: var(--am-chip); font: inherit; font-size: 15px; font-weight: 600; color: var(--am-text); cursor: pointer; text-align: left; }
+.apc-btn.is-primary, .apc-cand .apc-btn.is-primary { background: var(--am-accent); border-color: var(--am-accent); color: var(--am-on-accent); }
+.apc-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.apc-cand .apc-btn { margin-top: auto; }
+
+.apc-decided { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 8px 12px; border-radius: 6px; font-size: 15px; border: 1px solid var(--am-positive); background: color-mix(in srgb, var(--am-positive) 12%, var(--am-surface)); }
+.apc-decided.is-unknown { border-color: var(--am-negative); background: color-mix(in srgb, var(--am-negative) 10%, var(--am-surface)); }
+.apc-decided strong { font-weight: 700; }
+.apc-decided a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.apc-decided .apc-btn { margin-left: auto; background: var(--am-surface); }
+
+.apc-search { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; border-top: 1px solid var(--am-border); }
+.apc-search form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; }
+.apc-search label { flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--am-text-muted); }
+.apc-search .apc-field { width: 100%; box-sizing: border-box; }
+
+.apc-page button:focus-visible, .apc-page select:focus-visible, .apc-page input:focus-visible, .apc-page a:focus-visible { outline: 2px solid var(--am-accent); outline-offset: 2px; }
+
+.apc-skeleton { padding: 16px; }
+.apc-skeleton > div { height: 16px; margin-bottom: 10px; border-radius: 4px; background: var(--am-chip); }
+
+/* Phones: the season table keeps the columns that drive the work. */
+@media (max-width: 599px) {
+  .apc-seasons th, .apc-seasons td { padding-left: 6px; padding-right: 6px; }
+  .apc-seasons th { white-space: normal; vertical-align: bottom; }
+  .apc-seasons .apc-col-verified { display: none; }
+  .apc-count { margin-left: 0; flex-basis: 100%; }
+  .apc-decided .apc-btn { margin-left: 0; }
+}

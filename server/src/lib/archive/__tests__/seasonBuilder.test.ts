@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+
+const noRow = <T extends { row?: number }>(xs: T[]) => xs.map(({ row: _row, ...rest }) => rest);
 import { buildSeason, resolveTeam, type FranchiseMap } from "../seasonBuilder.js";
 import { parseSheet, type Grid } from "../workbookParser.js";
 
@@ -48,7 +50,7 @@ describe("buildSeason", () => {
   });
 
   it("maps an unrecognised draft header by column order and says so", () => {
-    expect(s.draft!.DDG).toEqual([{ slot: "C", name: "C. Three", value: 9 }]);
+    expect(noRow(s.draft!.DDG)).toEqual([{ slot: "C", name: "C. Three", value: 9 }]);
     expect(s.checks).toContainEqual({ level: "warn", message: 'draft: matched by column order: "Mr. Rotoboto"→DDG' });
   });
 

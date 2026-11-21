@@ -1,0 +1,37 @@
+{
+  "_comment": "Workbook spellings the matcher can't resolve by rule, mapped to MLB ids. Every id was checked against statsapi /people on 2026-11-20 (the last three on 2026-11-21). 'confirmed' entries are applied; unconfirmed ones only appear as suggestions on the player-check page until someone confirms them there (that decision is stored in the database, not here). 'years' limits an entry to the seasons it was seen in, so a later player with the same spelling isn't captured.",
+  "entries": [
+    { "spellings": ["D. Gordon"], "years": [2014, 2018], "mlbId": 543829, "name": "Dee Strange-Gordon", "why": "MLB lists him as Strange-Gordon", "confirmed": true },
+    { "spellings": ["M. Stanton"], "years": [2014, 2014], "mlbId": 519317, "name": "Giancarlo Stanton", "why": "went by Mike early in his career", "confirmed": true },
+    { "spellings": ["K. Hernandez", "K. Hermandez"], "years": [2015, 2025], "mlbId": 571771, "name": "Enrique (Kiké) Hernández", "why": "MLB lists him as Enrique", "confirmed": true },
+    { "spellings": ["M. Bryd"], "years": [2003, 2003], "mlbId": 407781, "name": "Marlon Byrd", "why": "letters swapped", "confirmed": true },
+    { "spellings": ["R. Aruelia"], "years": [2006, 2006], "mlbId": 110383, "name": "Rich Aurilia", "why": "misspelt", "confirmed": true },
+    { "spellings": ["K.Kouz"], "years": [2008, 2008], "mlbId": 450260, "name": "Kevin Kouzmanoff", "why": "abbreviated surname", "confirmed": true },
+    { "spellings": ["R. Nen"], "years": [2004, 2004], "mlbId": 119718, "name": "Robb Nen", "why": "injured; not on that year's active roster", "confirmed": true },
+    { "spellings": ["M. Prior"], "years": [2008, 2008], "mlbId": 407578, "name": "Mark Prior", "why": "injured; not on that year's active roster", "confirmed": true },
+    { "spellings": ["CJ Abrams", "CJ. Abrams"], "years": [2020, 2021], "mlbId": 682928, "name": "CJ Abrams", "why": "prospect in a reserve slot before his debut", "confirmed": true },
+    { "spellings": ["M. Gore"], "years": [2020, 2020], "mlbId": 669022, "name": "MacKenzie Gore", "why": "prospect before his debut", "confirmed": true },
+    { "spellings": ["K. Bryant"], "years": [2014, 2014], "mlbId": 592178, "name": "Kris Bryant", "why": "prospect in a reserve slot before his debut", "confirmed": true },
+    { "spellings": ["J. Crawford"], "years": [2016, 2016], "mlbId": 641487, "name": "J.P. Crawford", "why": "prospect in a reserve slot before his debut", "confirmed": true },
+    { "spellings": ["Carlson. D"], "years": [2020, 2020], "mlbId": 666185, "name": "Dylan Carlson", "why": "written surname-first", "confirmed": true },
+    { "spellings": ["F. Rivero"], "years": [2017, 2017], "mlbId": 553878, "name": "Felipe Vázquez", "why": "changed his surname from Rivero in 2018", "confirmed": true },
+
+    { "spellings": ["M. Nimmo"], "years": [2022, 2023], "mlbId": 607043, "name": "Brandon Nimmo", "why": "wrong first initial", "confirmed": false },
+    { "spellings": ["Y. O'Neil"], "years": [2021, 2021], "mlbId": 641933, "name": "Tyler O'Neill", "why": "wrong first initial", "confirmed": false },
+    { "spellings": ["N. Haniger"], "years": [2023, 2023], "mlbId": 571745, "name": "Mitch Haniger", "why": "wrong first initial", "confirmed": false },
+    { "spellings": ["D. De La Cruz"], "years": [2023, 2024], "mlbId": 650559, "name": "Bryan De La Cruz", "why": "wrong first initial", "confirmed": false },
+    { "spellings": ["D. Donovan"], "years": [2023, 2023], "mlbId": 680977, "name": "Brendan Donovan", "why": "wrong first initial", "confirmed": false },
+    { "spellings": ["G. Gurriel"], "years": [2024, 2024], "mlbId": 666971, "name": "Lourdes Gurriel Jr.", "why": "wrong first initial", "confirmed": false },
+    { "spellings": ["C. Abies"], "years": [2024, 2024], "mlbId": 645277, "name": "Ozzie Albies", "why": "wrong initial and misspelt", "confirmed": false },
+    { "spellings": ["B. Hammock"], "years": [2004, 2004], "mlbId": 425631, "name": "Robby Hammock", "why": "wrong first initial", "confirmed": false },
+    { "spellings": ["T. Hawkins"], "years": [2004, 2004], "mlbId": 115629, "name": "LaTroy Hawkins", "why": "wrong first initial", "confirmed": false },
+    { "spellings": ["C. Hawpe"], "years": [2005, 2005], "mlbId": 425547, "name": "Brad Hawpe", "why": "wrong first initial", "confirmed": false },
+    { "spellings": ["G. Munoz"], "years": [2018, 2018], "mlbId": 622168, "name": "Yairo Muñoz", "why": "wrong first initial", "confirmed": false },
+    { "spellings": ["A. Eflin"], "years": [2020, 2021], "mlbId": 621107, "name": "Zach Eflin", "why": "wrong first initial", "confirmed": false },
+    { "spellings": ["H. Grove"], "years": [2022, 2022], "mlbId": 675627, "name": "Michael Grove", "why": "wrong first initial", "confirmed": false },
+    { "spellings": ["E. Estevez"], "years": [2016, 2016], "mlbId": 608032, "name": "Carlos Estévez", "why": "wrong first initial", "confirmed": false },
+    { "spellings": ["P. Strokes"], "years": [2019, 2019], "mlbId": 467008, "name": "Pedro Strop", "why": "looks like an autocorrect of Strop", "confirmed": false },
+    { "spellings": ["R. Brooks"], "years": [2024, 2024], "mlbId": 548384, "name": "Brooks Raley", "why": "a guess: written surname-first? He was hurt after April, so check", "confirmed": false },
+    { "spellings": ["E. Jeremiah"], "years": [2024, 2024], "mlbId": 669093, "name": "Jeremiah Estrada", "why": "looks like it was written surname-first", "confirmed": false }
+  ]
+}

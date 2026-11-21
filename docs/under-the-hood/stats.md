@@ -8,7 +8,7 @@ phase: null
 owner: james
 tags: [docs-system]
 links: [DOC-001]
-updated: 2026-11-20
+updated: 2026-11-21
 ---
 
 # Repo statistics
@@ -21,24 +21,24 @@ updated: 2026-11-20
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-20 from 2,073 git-tracked files.*
+*Generated 2026-11-21 from 2,106 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 702 | 121,808 |
-| `.tsx` | 395 | 97,431 |
+| `.ts` | 728 | 125,485 |
+| `.tsx` | 398 | 98,219 |
 | `.md` | 591 | 73,290 |
-| `.json` | 38 | 40,510 |
-| `.css` | 15 | 2,482 |
-| `.sql` | 43 | 2,245 |
+| `.json` | 39 | 40,822 |
+| `.css` | 16 | 2,582 |
+| `.sql` | 45 | 2,351 |
+| `.prisma` | 1 | 1,831 |
 | `.mjs` | 11 | 1,796 |
-| `.prisma` | 1 | 1,773 |
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 194 |
-| **All tracked** | **2,069** | **386,577** |
+| **All tracked** | **2,102** | **391,618** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -46,9 +46,9 @@ updated: 2026-11-20
 
 | Measure | Count |
 |---|---:|
-| API routes | 297 |
-| Prisma models | 66 |
-| Prisma migrations | 41 |
+| API routes | 301 |
+| Prisma models | 67 |
+| Prisma migrations | 43 |
 | Server feature modules | 33 |
 | Client feature modules | 28 |
 | Cross-feature imports (ADR-015 baseline) | 83 |
@@ -124,5 +124,5 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 Planning status: 34/82 planning tasks done, 0 in progress.
 
-`server/data/planning.json` last updated **2026-11-18** (2 days ago).
+`server/data/planning.json` last updated **2026-11-18** (3 days ago).
 

@@ -141,6 +141,7 @@ export const ADMIN_LINKS: NavLink[] = [
   { to: "/changelog", label: "Changelog" },
   { to: "/admin/users", label: "Admin Users" },
   { to: "/admin/reports", label: "Admin Reports" },
+  { to: "/archive/player-check", label: "Archive Player Check" },
 ];
 
 export function ACCOUNT_LINKS(isAdmin: boolean): NavLink[] {

@@ -3,10 +3,15 @@
  * itself. Pure — the caller supplies a sheet loader.
  */
 import {
-  deriveKeepers, diffRoster, type ParsedSheet, type RosterEntry,
+  deriveKeepers, diffRoster, relabelSlots, type ParsedSheet, type RosterEntry,
 } from "./workbookParser.js";
 
-export interface SheetRef { file: string; sheet: string }
+export interface SheetRef {
+  file: string;
+  sheet: string;
+  /** Take the slot labels from this (correctly labelled) sheet instead — see relabelSlots. */
+  slotLabelsFrom?: { file: string; sheet: string };
+}
 
 export interface SeasonSpec {
   year: number;
@@ -108,8 +113,17 @@ export function buildSeason(spec: SeasonSpec, franchises: FranchiseMap, load: Sh
   const get = (ref: SheetRef | undefined, label: string): ParsedSheet | null => {
     if (!ref) return null;
     const p = load(ref);
-    if (!p) checks.push({ level: "error", message: `${label}: sheet "${ref.sheet}" missing or unreadable in ${ref.file}` });
-    return p;
+    if (!p) { checks.push({ level: "error", message: `${label}: sheet "${ref.sheet}" missing or unreadable in ${ref.file}` }); return null; }
+    if (!ref.slotLabelsFrom) return p;
+    const reference = load(ref.slotLabelsFrom);
+    if (!reference) { checks.push({ level: "error", message: `${label}: label reference "${ref.slotLabelsFrom.sheet}" missing` }); return p; }
+    try {
+      checks.push({ level: "warn", message: `${label}: stale label column; slots taken from "${ref.slotLabelsFrom.sheet}"` });
+      return relabelSlots(p, reference.slotLabels);
+    } catch (e) {
+      checks.push({ level: "error", message: `${label}: ${(e as Error).message}` });
+      return p;
+    }
   };
 
   const finalSheet = get(spec.final, "final");
