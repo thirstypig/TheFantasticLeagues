@@ -1,6 +1,6 @@
 # STATUS
 
-**Last updated:** 2026-11-21
+**Last updated:** 2026-11-22
 
 ## One-line description
 The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with auctions, keepers and a commissioner. It replaces spreadsheets and OnRoto for the OGBA league.
@@ -38,7 +38,7 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - Settings shows the stats source in plain words and always shows the saved value (a stored "ALL" used to display as "NL")
 
 ## In progress
-- Past seasons archive rebuild (2003–2025, minus 2010–2013). #537 parser and #538 archive tables merged (seasons loaded in prod). PR #539 (open): every workbook name matched to an exact MLB player and checked against position eligibility; 5,140 settled, 145 need a person. New admin page /archive/player-check (linked from /admin, open to OGBA members, commissioner decisions final) to confirm, pick, or search MLB for the right player. After merge: run load-archive-matches.ts against prod once. Then: archive page on the new tables (adds/drops by period), old archive rows removed, re-scoring
+- Past seasons archive rebuild (2003–2025, all 23 seasons). #537–#539 merged; prod has 19 seasons and the player check (/archive/player-check, 145 names to decide). PR (feat/archive-new-workbooks): James's 2026-11-22 workbooks add 2010–2013, per-period rosters for 2006–2014 and 2017–2020, the full 2017 draft, and real keeper lists for 2008–2013 and 2015; the player check grows to 245 names. After merge James reloads seasons, then the player check (decisions kept). Then: archive page on the new tables, old rows removed, re-scoring
 
 ## Open bugs / known issues
 - None open. 2026 standings match OnRoto exactly in P1, P2, P3, P5, P6. The P4 and P7 ±1 pairs are OnRoto errors, verified 2026-11-19: FBST matches MLB and Baseball-Reference in both (todo #331). A full player-by-player sweep against MLB game logs (all 7 periods, 2026-11-19) found every stat that feeds standings correct.

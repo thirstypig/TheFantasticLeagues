@@ -99,9 +99,9 @@ async function main() {
     const [now, prior, career, lines] = await Promise.all([
       cached<Record<string, number>>(join(cacheDir, `fielding-${year}.json`), idList, 100, (b) => factsUrl.fielding(b, year), parseFielding, () => ({})),
       cached<Record<string, number>>(join(cacheDir, `fielding-${year - 1}.json`), idList, 100, (b) => factsUrl.fielding(b, year - 1), parseFielding, () => ({})),
-      // v2: v1 double-counted the seasons of players who changed teams.
-      cached<Career>(join(cacheDir, "career-v2.json"), idList, 50, (b) => factsUrl.career(b), parseCareer, emptyCareer),
-      cached<SeasonLine>(join(cacheDir, `lines-${year}.json`), idList, 100, (b) => factsUrl.line(b, year), parseSeasonLine, emptyLine),
+      // v3: v1 double-counted traded seasons; v2 stored innings jsonb can't round-trip.
+      cached<Career>(join(cacheDir, "career-v3.json"), idList, 50, (b) => factsUrl.career(b), parseCareer, emptyCareer),
+      cached<SeasonLine>(join(cacheDir, `lines-v2-${year}.json`), idList, 100, (b) => factsUrl.line(b, year), parseSeasonLine, emptyLine),
     ]);
     // Last season's slot for each (team, name key), from the Salaries sheet.
     const keptSlot = new Map<string, string>();

@@ -73,3 +73,61 @@ describe("buildSeason", () => {
     ]);
   });
 });
+
+describe("a team named twice in one header (2010 draft: 'Dodger Dawgs' over the Devil Dawgs column)", () => {
+  const dupDraft: Grid = [
+    ["", "Diamond", "", "Demolition", "", "Dodger Dawgs", "", "Dodger Dawgs", ""],
+    ["", "Kings", "", "Lumber Co.", "", "", "", "", ""],
+    ["C", "A. One", 5, "B. Two", 3, "C. Three", 9, "D. Four", 1],
+  ];
+  const sheets: Record<string, Grid> = { final, dupDraft };
+  const load = (ref: { sheet: string }) => parseSheet(sheets[ref.sheet]);
+
+  it("keeps both columns' players and gives the second column to the team in that position", () => {
+    const s = buildSeason({ year: 2010, final: { file: "f", sheet: "final" }, draft: { file: "f", sheet: "dupDraft" } }, franchises, load);
+    expect(s.draft!.DDG.map((e) => e.name)).toEqual(["C. Three"]);
+    expect(s.draft!.SKD.map((e) => e.name)).toEqual(["D. Four"]);
+    expect(s.checks.some((c) => c.level === "warn" && c.message.startsWith("draft: matched by column order"))).toBe(true);
+  });
+
+  it("is an error, not a silent overwrite, when the column count gives no safe fallback", () => {
+    const s = buildSeason({ year: 2010, draft: { file: "f", sheet: "dupDraft" } }, franchises, (ref) => (ref.sheet === "dupDraft" ? parseSheet(dupDraft) : null));
+    // No final sheet: the draft header is the team list, so there is no independent column order.
+    expect(s.checks.some((c) => c.level === "error" && /named twice|unknown team/.test(c.message))).toBe(true);
+  });
+});
+
+describe("an explicit Keepers sheet", () => {
+  const keepersSheet: Grid = [
+    ["", "Diamond", "", "Demolition", "", "Dodger Dawgs", "", "Skunk Dogs", ""],
+    ["", "Kings", "", "Lumber Co.", "", "", "", "", ""],
+    ["C", "A.  One", 5, "", "", "C. Three", 9, "Z. Gone", 2],
+  ];
+  const draft4: Grid = [
+    ["", "Diamond", "", "Demolition", "", "Dodger Dawgs", "", "Skunk Dogs", ""],
+    ["", "Kings", "", "Lumber Co.", "", "", "", "", ""],
+    ["C", "A. One", 5, "B. Two", 3, "C. Three", 9, "D. Four", 1],
+  ];
+  const salaries4 = draft4; // every price matches: derivation alone would call all four keepers
+  const sheets: Record<string, Grid> = { final, keepersSheet, draft4, salaries4 };
+  const load = (ref: { sheet: string }) => parseSheet(sheets[ref.sheet]);
+  const s = buildSeason({
+    year: 2012, final: { file: "f", sheet: "final" }, draft: { file: "f", sheet: "draft4" },
+    salaries: { file: "f", sheet: "salaries4" }, keepers: { file: "f", sheet: "keepersSheet" },
+  }, franchises, load);
+
+  it("wins over keepers derived from prices, using the draft roster's spelling", () => {
+    expect(s.keepersSource).toBe("sheet");
+    expect(s.keepers).toEqual({ DMK: ["A. One"], DLC: [], DDG: ["C. Three"], SKD: ["Z. Gone"] });
+  });
+
+  it("warns about a listed keeper who is not on the draft roster", () => {
+    expect(s.checks.some((c) => c.message === "SKD: keeper not on the draft roster: Z. Gone")).toBe(true);
+  });
+
+  it("falls back to derived (possible) keepers without one", () => {
+    const d = buildSeason({ year: 2012, final: { file: "f", sheet: "final" }, draft: { file: "f", sheet: "draft4" }, salaries: { file: "f", sheet: "salaries4" } }, franchises, load);
+    expect(d.keepersSource).toBe("derived");
+    expect(d.keepers!.DLC).toEqual(["B. Two"]);
+  });
+});

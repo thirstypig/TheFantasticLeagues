@@ -3,7 +3,7 @@
  * itself. Pure — the caller supplies a sheet loader.
  */
 import {
-  deriveKeepers, diffRoster, relabelSlots, type ParsedSheet, type RosterEntry,
+  deriveKeepers, diffRoster, likelySamePlayer, relabelSlots, type ParsedSheet, type RosterEntry,
 } from "./workbookParser.js";
 
 export interface SheetRef {
@@ -17,7 +17,8 @@ export interface SeasonSpec {
   year: number;
   draft?: SheetRef;
   salaries?: SheetRef;
-  keepersOnly?: SheetRef;
+  /** A sheet listing only each team's kept players. Wins over keepers derived from salaries. */
+  keepers?: SheetRef;
   periods?: string[];
   periodsFile?: string;
   final?: SheetRef;
@@ -49,6 +50,8 @@ export interface SeasonData {
   draft: Record<string, RosterEntry[]> | null;
   salaries: Record<string, RosterEntry[]> | null;
   keepers: Record<string, string[]> | null;
+  /** "sheet": the workbook lists the keepers; "derived": same team + same price (possible keepers). */
+  keepersSource: "sheet" | "derived" | null;
   periodRosters: PeriodRoster[];
   moves: PeriodMoves[];
   finalRosters: Record<string, RosterEntry[]> | null;
@@ -89,6 +92,13 @@ function byCode<T>(
 ): Record<string, T> {
   const entries = Object.entries(map);
   const codes = entries.map(([raw]) => resolveTeam(raw, franchises));
+  // A header naming one team twice (2010's draft sheet has "Dodger Dawgs" in
+  // the Devil Dawgs column) would silently overwrite that team's roster.
+  const dup = new Set(codes.filter((c, i) => c && codes.indexOf(c) !== i));
+  codes.forEach((c, i) => { if (c && dup.has(c)) codes[i] = null; });
+  if (dup.size && !(order && entries.length === order.length)) {
+    checks.push({ level: "error", message: `${where}: ${[...dup].join(", ")} named twice in the header` });
+  }
   if (codes.some((c) => !c) && order && entries.length === order.length) {
     const positional = entries.map((_, i) => order[i]);
     const conflicts = codes.some((c, i) => c && c !== positional[i]);
@@ -132,9 +142,12 @@ export function buildSeason(spec: SeasonSpec, franchises: FranchiseMap, load: Sh
 
   // Teams: the final sheet's header is the authority for names that year.
   const headerSource = finalSheet ?? draftSheet ?? salarySheet;
+  const seenCodes = new Set<string>();
   const teams: SeasonTeam[] = (headerSource?.header.teams ?? []).flatMap((t) => {
     const code = resolveTeam(t.rawName, franchises);
     if (!code) { checks.push({ level: "error", message: `unknown team "${t.rawName}"` }); return []; }
+    if (seenCodes.has(code)) { checks.push({ level: "error", message: `${code} named twice in the team header ("${t.rawName}")` }); return []; }
+    seenCodes.add(code);
     return [{ code, name: t.rawName }];
   });
   if (teams.length !== 8) checks.push({ level: "warn", message: `${teams.length} teams (expected 8)` });
@@ -144,7 +157,21 @@ export function buildSeason(spec: SeasonSpec, franchises: FranchiseMap, load: Sh
   const salaries = salarySheet ? byCode(salarySheet.rosters, franchises, "salaries", checks, order) : null;
 
   let keepers: Record<string, string[]> | null = null;
-  if (draft && salaries) {
+  let keepersSource: SeasonData["keepersSource"] = null;
+  const keeperSheet = get(spec.keepers, "keepers");
+  if (keeperSheet) {
+    const listed = byCode(keeperSheet.rosters, franchises, "keepers", checks, order);
+    keepers = {};
+    for (const code of order) {
+      // Use the draft roster's spelling, so a keeper matches his draft-day row.
+      keepers[code] = (listed[code] ?? []).map((k) => draft?.[code]?.find((d) => likelySamePlayer(d.name, k.name))?.name ?? k.name);
+      const missing = (listed[code] ?? []).filter((k) => draft && !draft[code]?.some((d) => likelySamePlayer(d.name, k.name)));
+      if (missing.length) checks.push({ level: "warn", message: `${code}: keeper${missing.length > 1 ? "s" : ""} not on the draft roster: ${missing.map((m) => m.name).join(", ")}` });
+    }
+    keepersSource = "sheet";
+    checks.push({ level: "ok", message: `keepers per team (from the Keepers sheet): ${order.map((c) => keepers![c].length).join(",")}` });
+  } else if (draft && salaries) {
+    keepersSource = "derived";
     keepers = {};
     for (const code of Object.keys(draft)) {
       keepers[code] = deriveKeepers(salaries[code] ?? [], draft[code]).map((e) => e.name);
@@ -225,6 +252,7 @@ export function buildSeason(spec: SeasonSpec, franchises: FranchiseMap, load: Sh
     draft,
     salaries,
     keepers,
+    keepersSource,
     periodRosters,
     moves,
     finalRosters: finalSheet ? byCode(finalSheet.rosters, franchises, "final rosters", checks) : null,

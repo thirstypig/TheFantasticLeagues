@@ -10,6 +10,7 @@ const season: SeasonData = {
   salaries: { DDG: [{ slot: "C", name: "R. Martin", value: 31 }], LDY: [{ slot: "P", name: "J. Soto", value: "AL" }] },
   draft: { DDG: [{ slot: "C", name: "R. Martin", value: 31 }, { slot: "1B", name: "Ad. Gonzalez", value: 25 }], LDY: [] },
   keepers: { DDG: ["R. Martin"], LDY: [] },
+  keepersSource: "derived",
   periodRosters: [
     { period: 1, source: "Keepers", rosters: { DDG: [{ slot: "C", name: "R. Martin" }], LDY: [] } },
     { period: 2, source: "May 1", rosters: { DDG: [{ slot: "C", name: "R. Martin" }], LDY: [{ slot: "OF", name: "J. Bay" }] } },
