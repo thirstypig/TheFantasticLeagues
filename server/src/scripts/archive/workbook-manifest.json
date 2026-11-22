@@ -86,7 +86,16 @@
       "final": {
         "file": "1C45tpqaGa_x2AdWAL85qU2BaMDZBYU1f.xls",
         "sheet": "Season End 2006"
-      }
+      },
+      "periods": [
+        "April 30",
+        "May 21",
+        "June 11",
+        "July 09",
+        "August 6",
+        "Aug 27"
+      ],
+      "periodsFile": "1aSikjRFZzu5X8Sw_QG-D2CD0ykhYk2JO.xls"
     },
     {
       "year": 2007,
@@ -101,13 +110,22 @@
       "final": {
         "file": "1_-O32O_UXmfGCQTRiSMEKhhPm6Wumvsa.xls",
         "sheet": "2007 Final"
-      }
+      },
+      "periods": [
+        "April 29",
+        "May 20",
+        "June 10",
+        "July 8",
+        "August 5",
+        "August 26"
+      ],
+      "periodsFile": "1wEb6hj-Sef2ALi04cg3Ssc8ds-MLoUuF.xls"
     },
     {
       "year": 2008,
       "draft": {
-        "file": "1_-O32O_UXmfGCQTRiSMEKhhPm6Wumvsa.xls",
-        "sheet": "Keepers"
+        "file": "1WzWf943I8HHdHlAAOY3St8iCO2VOAAA2.xls",
+        "sheet": "Draft"
       },
       "salaries": {
         "file": "1_-O32O_UXmfGCQTRiSMEKhhPm6Wumvsa.xls",
@@ -116,30 +134,184 @@
       "final": {
         "file": "1-qAG6F85cj-zPU94WtMsyatzfRliP2tH.xls",
         "sheet": "2008 Final Rosters"
-      }
+      },
+      "keepers": {
+        "file": "1WzWf943I8HHdHlAAOY3St8iCO2VOAAA2.xls",
+        "sheet": "Keepers"
+      },
+      "periods": [
+        "4-27",
+        "5-18",
+        "6-15",
+        "7-13",
+        "8-03",
+        "8-24"
+      ],
+      "periodsFile": "1WzWf943I8HHdHlAAOY3St8iCO2VOAAA2.xls"
     },
     {
       "year": 2009,
       "salaries": {
-        "file": "1-qAG6F85cj-zPU94WtMsyatzfRliP2tH.xls",
+        "file": "1LLsMbgwbpxaNNOGW37ZwHUZ2IW-NmKyQ.xls",
         "sheet": "2009 Salaries"
       },
-      "keepersOnly": {
-        "file": "1-qAG6F85cj-zPU94WtMsyatzfRliP2tH.xls",
+      "draft": {
+        "file": "1LLsMbgwbpxaNNOGW37ZwHUZ2IW-NmKyQ.xls",
+        "sheet": "Draft"
+      },
+      "keepers": {
+        "file": "1LLsMbgwbpxaNNOGW37ZwHUZ2IW-NmKyQ.xls",
         "sheet": "Keepers"
       },
-      "_note": "2009 final rosters/points would be in the 2010 workbook, which is not in Drive."
+      "final": {
+        "file": "1zCTsAmiJCJH7U-xdh8oUQ-XQ-F0zZ7-g.xls",
+        "sheet": "End of Season 2009"
+      },
+      "periods": [
+        "May 5",
+        "May 31",
+        "June 21",
+        "July 12",
+        "Aug 9",
+        "Sept 9"
+      ],
+      "periodsFile": "1LLsMbgwbpxaNNOGW37ZwHUZ2IW-NmKyQ.xls"
+    },
+    {
+      "year": 2010,
+      "draft": {
+        "file": "1zCTsAmiJCJH7U-xdh8oUQ-XQ-F0zZ7-g.xls",
+        "sheet": "Draft"
+      },
+      "salaries": {
+        "file": "1zCTsAmiJCJH7U-xdh8oUQ-XQ-F0zZ7-g.xls",
+        "sheet": "2010 Salaries"
+      },
+      "keepers": {
+        "file": "1zCTsAmiJCJH7U-xdh8oUQ-XQ-F0zZ7-g.xls",
+        "sheet": "Keepers"
+      },
+      "final": {
+        "file": "1x5FlMXtk_BjnQ8Zi1QRBnuFd88-RWXDM.xls",
+        "sheet": "2010 End of Season"
+      },
+      "periods": [
+        " May 2",
+        "May 23",
+        "June 20",
+        "July 11",
+        "August 8",
+        "August 29"
+      ],
+      "periodsFile": "1zCTsAmiJCJH7U-xdh8oUQ-XQ-F0zZ7-g.xls"
+    },
+    {
+      "year": 2011,
+      "draft": {
+        "file": "1x5FlMXtk_BjnQ8Zi1QRBnuFd88-RWXDM.xls",
+        "sheet": "Draft"
+      },
+      "salaries": {
+        "file": "1x5FlMXtk_BjnQ8Zi1QRBnuFd88-RWXDM.xls",
+        "sheet": "2011 Salaries"
+      },
+      "keepers": {
+        "file": "1x5FlMXtk_BjnQ8Zi1QRBnuFd88-RWXDM.xls",
+        "sheet": "Keepers"
+      },
+      "final": {
+        "file": "13Uboy2lp4cFoZZalthBk9x9xBT2zXyjg.xls",
+        "sheet": "End of Season 2011"
+      },
+      "periods": [
+        " May 2",
+        "May 22",
+        "June 19",
+        "July 10",
+        "Aug 7",
+        "Aug 28"
+      ],
+      "periodsFile": "1x5FlMXtk_BjnQ8Zi1QRBnuFd88-RWXDM.xls"
+    },
+    {
+      "year": 2012,
+      "draft": {
+        "file": "13Uboy2lp4cFoZZalthBk9x9xBT2zXyjg.xls",
+        "sheet": "Draft"
+      },
+      "salaries": {
+        "file": "13Uboy2lp4cFoZZalthBk9x9xBT2zXyjg.xls",
+        "sheet": "2012 Salaries"
+      },
+      "keepers": {
+        "file": "13Uboy2lp4cFoZZalthBk9x9xBT2zXyjg.xls",
+        "sheet": "Keepers"
+      },
+      "final": {
+        "file": "1j6nf49yrsTBvxjq03WnW0MRMcatpR5sI.xls",
+        "sheet": "End of Season 2012"
+      },
+      "periods": [
+        " May 6",
+        "June 3",
+        "June 24",
+        "July 22",
+        "August 12",
+        "Sept 2"
+      ],
+      "periodsFile": "13Uboy2lp4cFoZZalthBk9x9xBT2zXyjg.xls"
+    },
+    {
+      "year": 2013,
+      "draft": {
+        "file": "1j6nf49yrsTBvxjq03WnW0MRMcatpR5sI.xls",
+        "sheet": "Draft"
+      },
+      "salaries": {
+        "file": "1j6nf49yrsTBvxjq03WnW0MRMcatpR5sI.xls",
+        "sheet": "2013 Salaries"
+      },
+      "keepers": {
+        "file": "1j6nf49yrsTBvxjq03WnW0MRMcatpR5sI.xls",
+        "sheet": "Keepers"
+      },
+      "final": {
+        "file": "1XUrDpYhCwLm6foXk06LYM8jFcfb_ty2X.xls",
+        "sheet": "End of Season 2013"
+      },
+      "periods": [
+        " May 5",
+        "June 2",
+        "June 23",
+        "July 21",
+        "August 18",
+        "Sept 9"
+      ],
+      "periodsFile": "1j6nf49yrsTBvxjq03WnW0MRMcatpR5sI.xls"
     },
     {
       "year": 2014,
       "salaries": {
-        "file": "1NgnJjCAPCmvhc5Bqk7UK0bsiVH6S7DeO.xls",
-        "sheet": "2014 Salaries (2)"
+        "file": "1XUrDpYhCwLm6foXk06LYM8jFcfb_ty2X.xls",
+        "sheet": "2014 Salaries"
       },
       "final": {
         "file": "1NgnJjCAPCmvhc5Bqk7UK0bsiVH6S7DeO.xls",
         "sheet": "End of Season 2014"
-      }
+      },
+      "draft": {
+        "file": "1XUrDpYhCwLm6foXk06LYM8jFcfb_ty2X.xls",
+        "sheet": "Draft"
+      },
+      "periods": [
+        " May 4",
+        "June 1",
+        "June 22",
+        "July 20",
+        "August 17",
+        "Sept 7"
+      ],
+      "periodsFile": "1XUrDpYhCwLm6foXk06LYM8jFcfb_ty2X.xls"
     },
     {
       "year": 2015,
@@ -154,6 +326,10 @@
       "final": {
         "file": "1NgnJjCAPCmvhc5Bqk7UK0bsiVH6S7DeO.xls",
         "sheet": "End of Season 2015"
+      },
+      "keepers": {
+        "file": "1JhuIOd4qBv8bbOM6iV1Var85yJP5NF3q.xls",
+        "sheet": "Keepers"
       }
     },
     {
@@ -183,17 +359,26 @@
     {
       "year": 2017,
       "draft": {
-        "file": "10ExAMHugFZPDecA5EMDgxoi_mjA3WvFW.xls",
+        "file": "10CTz9QV3WahfrJ5YoszDAub6m4jUVVTH.xls",
         "sheet": "Draft"
       },
       "salaries": {
-        "file": "10ExAMHugFZPDecA5EMDgxoi_mjA3WvFW.xls",
+        "file": "10CTz9QV3WahfrJ5YoszDAub6m4jUVVTH.xls",
         "sheet": "2017 Salaries"
       },
       "final": {
         "file": "1qcwnSXF_VhEIJm6N6fOnKwgrOkRC4MwE.xls",
         "sheet": "End of Season 2017"
-      }
+      },
+      "periods": [
+        "April 30",
+        "May 28",
+        "June 18",
+        "July 16",
+        "Aug 13",
+        "Sept 10"
+      ],
+      "periodsFile": "10CTz9QV3WahfrJ5YoszDAub6m4jUVVTH.xls"
     },
     {
       "year": 2018,
@@ -204,7 +389,20 @@
       "final": {
         "file": "1XQqltr_lnPDZsOfpvAykiGbQ3l566U6jozpt23Somrg.xlsx",
         "sheet": "End of Season 2018"
-      }
+      },
+      "draft": {
+        "file": "1R1jtdK5WpGJ3mu4rW1RJXWKjWy4UdVJg.xls",
+        "sheet": "Draft"
+      },
+      "periods": [
+        "April 29",
+        "May 27",
+        "June 17",
+        "July 15",
+        "Aug 12",
+        "Sept 09"
+      ],
+      "periodsFile": "1R1jtdK5WpGJ3mu4rW1RJXWKjWy4UdVJg.xls"
     },
     {
       "year": 2019,
@@ -219,7 +417,20 @@
           "file": "1CainundHfcser5H-QP-IzC85EB3_4GUke4RdYIQN7Wk.xlsx",
           "sheet": "Draft"
         }
-      }
+      },
+      "salaries": {
+        "file": "1W4YiZEoOTCBqbruIfX9mHY1e7ehGFJSf.xls",
+        "sheet": "2019 Salaries"
+      },
+      "periods": [
+        "April 28",
+        "May 26",
+        "June 16",
+        "July 14",
+        "Aug 11",
+        "Sept 08"
+      ],
+      "periodsFile": "1W4YiZEoOTCBqbruIfX9mHY1e7ehGFJSf.xls"
     },
     {
       "year": 2020,
@@ -233,9 +444,10 @@
       },
       "periods": [
         "Aug 2",
-        "Aug 23"
+        "Aug 23",
+        "Sept 23"
       ],
-      "periodsFile": "1dcTdNqt9jqAnk7SyGe6ZDutYNDTX8UCy.xls",
+      "periodsFile": "1NkJZpJXjYpCGo4vgSU49S7ACxvnI3bEz.xls",
       "final": {
         "file": "1s5tfv2ALF28Cdi6QoygyN7TU_73P7jH_.xls",
         "sheet": "End of Season 2020",

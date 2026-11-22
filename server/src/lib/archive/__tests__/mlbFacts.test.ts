@@ -35,7 +35,7 @@ describe("a player traded mid-season is counted once", () => {
     expect(career.ipBy["2009"]).toBeCloseTo(47, 6);
     expect(career.abBy["2009"]).toBe(14);
     // A one-team season is unaffected.
-    expect(career.ipBy["2007"]).toBeCloseTo(201 + 2 / 3, 6);
+    expect(career.ipBy["2007"]).toBeCloseTo(201 + 2 / 3, 4);
     expect(career.primary).toBe("P");
   });
 
@@ -48,11 +48,22 @@ describe("a player traded mid-season is counted once", () => {
   });
 });
 
+describe("innings survive a jsonb round trip", () => {
+  it("are stored to four decimals, which jsonb keeps exactly, and still give exact outs", () => {
+    const line = parseSeasonLine(gorzelannyLine2007);
+    expect(line.ip).toBe(201.6667);
+    expect(Number(JSON.parse(JSON.stringify(line.ip)).toPrecision(16))).toBe(line.ip);
+    expect(Math.round(line.ip * 3)).toBe(605);
+    expect(parseCareer(gorzelannyCareer).ipBy["2009"]).toBe(47);
+    expect(parseCareer(gorzelannyCareer).ipBy["2006"]).toBe(61.6667);
+  });
+});
+
 describe("parseSeasonLine", () => {
   it("reads a pitcher's hitting and pitching lines together", () => {
     const line = parseSeasonLine(gorzelannyLine2007);
     expect(line.pa).toBe(72);
-    expect(line.ip).toBeCloseTo(201 + 2 / 3, 6);
+    expect(line.ip).toBeCloseTo(201 + 2 / 3, 4);
     expect(line.w).toBe(14);
     expect(line.k).toBe(135);
     expect(line.era).toBe("3.88");
@@ -68,7 +79,7 @@ describe("toSeasonFacts", () => {
   it("counts only seasons before the one being checked", () => {
     const career = parseCareer(gorzelannyCareer);
     const facts = toSeasonFacts({ games: { P: 32 }, priorGames: { P: 11 }, career }, 2007, "P");
-    expect(facts.careerIpBefore).toBeCloseTo(6 + 61 + 2 / 3, 6); // 2005 + 2006
+    expect(facts.careerIpBefore).toBeCloseTo(6 + 61 + 2 / 3, 4); // 2005 + 2006
     expect(facts.careerAbBefore).toBe(20);
     expect(facts.primaryPosition).toBe("P");
     expect(facts.keptFromSlot).toBe("P");

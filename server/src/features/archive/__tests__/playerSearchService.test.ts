@@ -53,7 +53,7 @@ describe("searchCandidates", () => {
     expect(getPeople.mock.calls[0][0]).toBe("https://statsapi.mlb.com/api/v1/sports/1/players?season=2004&fields=people,id,fullName,firstName,lastName,useName");
     expect(result.more).toBe(false);
     expect(result.candidates.map((c) => [c.mlbId, c.name, c.eligibleSlots])).toEqual([[124605, "Jaret Wright", 1], [124604, "Jamey Wright", 1]]);
-    expect(result.candidates[0].playingTime).toBeCloseTo(186 + 1 / 3, 6);
+    expect(result.candidates[0].playingTime).toBeCloseTo(186 + 1 / 3, 4);
     expect(result.candidates[0].checks).toEqual([{ slot: "P", eligible: true, reason: "32 G at P" }]);
   });
 

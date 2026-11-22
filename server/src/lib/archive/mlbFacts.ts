@@ -63,6 +63,14 @@ const num = (v: unknown): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
+/**
+ * Innings are stored in a jsonb column, which keeps 16 significant digits:
+ * 212.33333333333334 comes back as 212.3333333333333 and every re-run would
+ * see a change. Four decimals survive the round trip and still give exact
+ * outs (Math.round(ip * 3)).
+ */
+export const roundInnings = (ip: number) => Math.round(ip * 1e4) / 1e4;
+
 /** statsapi innings are outs after the dot: "201.2" is 201⅔. */
 export function inningsToNumber(ip: unknown): number {
   const [whole, outs] = String(ip ?? "0").split(".");
@@ -110,7 +118,7 @@ export function parseCareer(person: StatsPerson): Career {
         (sum, sp) => sum + (kind === "hitting" ? num(sp.stat?.atBats) : inningsToNumber(sp.stat?.inningsPitched)), 0,
       );
       if (kind === "hitting") career.abBy[season] = total;
-      else career.ipBy[season] = total;
+      else career.ipBy[season] = roundInnings(total);
     }
   }
   return career;
@@ -136,6 +144,7 @@ export function parseSeasonLine(person: StatsPerson): SeasonLine {
       }
     }
   }
+  line.ip = roundInnings(line.ip);
   return line;
 }
 

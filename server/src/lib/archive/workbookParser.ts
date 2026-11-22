@@ -120,6 +120,15 @@ export function findHeader(grid: Grid): SheetHeader | null {
       rawName: rows.map((row) => (isNum(row[c]) ? "" : str(row[c]))).filter(Boolean).join(" "),
       nameCol: c,
     }));
+    // Rosters are keyed by name, so a team written twice (2010 draft: "Dodger
+    // Dawgs" over the Devil Dawgs column) would merge two columns into one.
+    // Keep the second distinct; the season builder resolves it by column order.
+    const seen = new Map<string, number>();
+    for (const t of teams) {
+      const n = (seen.get(t.rawName) ?? 0) + 1;
+      seen.set(t.rawName, n);
+      if (n > 1) t.rawName = `${t.rawName} (column ${n})`;
+    }
     // Priced layout: team columns two apart with the gap column holding values.
     const gaps = teams.slice(1).map((t, i) => t.nameCol - teams[i].nameCol);
     const priced = gaps.filter((g) => g === 2).length >= gaps.length / 2 && gaps.every((g) => g >= 2);

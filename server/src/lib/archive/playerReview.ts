@@ -124,7 +124,7 @@ export function playingTime(line: SeasonLine | null | undefined, role: string): 
   if (!line) return 0;
   if (role === "P") return line.ip;
   if (role === "H") return line.pa;
-  return Math.max(line.pa, line.ip * 3);
+  return Math.max(line.pa, Math.round(line.ip * 3));
 }
 
 /** Innings the way a box score writes them: 186⅓ is "186.1", never "186.3". */
