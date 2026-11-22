@@ -26,8 +26,10 @@ export interface AllTimeStandingEntry {
   teamName: string;
   totalPoints: number;
   seasons: number;
+  /** Average finishing place, two decimals. The leaderboard is ordered by this. */
   avgRank: number;
   avgScore: number;
+  championships: number;
 }
 
 export interface Records {
@@ -57,6 +59,7 @@ export interface TrophyCase {
 export interface SeasonResult { year: number; code: string; name: string; total: number }
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** Competition ranking: 1, 2, 2, 4 — tied totals share a place. */
 export function rankSeason(results: SeasonResult[]): (SeasonResult & { rank: number })[] {
@@ -97,12 +100,19 @@ export function buildTrophyCase(results: SeasonResult[]): TrophyCase {
     agg.set(r.code, a);
   }
 
+  // Ordered by average finish (James, 2026-11-22: rankings matter, all-time
+  // points don't — teams played different numbers of seasons). Exact averages
+  // decide; a tie goes to more titles, then more seasons.
   const allTimeStandings: AllTimeStandingEntry[] = [...agg.entries()]
     .map(([code, a]) => ({
-      teamCode: code, teamName: currentName.get(code)!, totalPoints: round1(a.totalPoints), seasons: a.seasons,
-      avgRank: round1(a.totalRank / a.seasons), avgScore: round1(a.totalPoints / a.seasons),
+      entry: {
+        teamCode: code, teamName: currentName.get(code)!, totalPoints: round1(a.totalPoints), seasons: a.seasons,
+        avgRank: round2(a.totalRank / a.seasons), avgScore: round1(a.totalPoints / a.seasons), championships: a.championships,
+      },
+      exact: a.totalRank / a.seasons,
     }))
-    .sort((a, b) => b.totalPoints - a.totalPoints);
+    .sort((a, b) => a.exact - b.exact || b.entry.championships - a.entry.championships || b.entry.seasons - a.entry.seasons)
+    .map((x) => x.entry);
 
   const dynastyScores: DynastyScoreEntry[] = [...agg.entries()]
     .map(([code, a]) => ({

@@ -42,7 +42,7 @@ describe("one franchise is one team, across every year and name", () => {
 
   it("adds up totals and averages finishes per franchise", () => {
     const dmk = tc.allTimeStandings.find((r) => r.teamCode === "DMK")!;
-    expect(dmk).toEqual({ teamCode: "DMK", teamName: "Diamond Kings", totalPoints: 974, seasons: 3, avgRank: 1.7, avgScore: 324.7 });
+    expect(dmk).toEqual({ teamCode: "DMK", teamName: "Diamond Kings", totalPoints: 974, seasons: 3, avgRank: 1.67, avgScore: 324.7, championships: 2 });
     // DDG: 4th of 4, 4th of 4, 1st of 3
     expect(tc.allTimeStandings.find((r) => r.teamCode === "DDG")!.avgRank).toBe(3);
   });
@@ -59,6 +59,29 @@ describe("most championships", () => {
   it("names every franchise in a tie", () => {
     const tc = buildTrophyCase([R(2009, "SKD", "Skunk Dogs", 368.5), R(2009, "DMK", "Diamond Kings", 284.5), R(2011, "DMK", "Diamond Kings", 363.5), R(2011, "SKD", "Skunk Dogs", 321)]);
     expect(tc.records.mostChampionships).toEqual({ teamCode: "DMK, SKD", teamName: "Diamond Kings & Skunk Dogs", count: 1 });
+  });
+});
+
+describe("the all-time leaderboard", () => {
+  it("is ordered by average finish, not by points", () => {
+    // MNB: 2nd and 2nd in two seasons (avg 2.0) beats LDY's 3 seasons (3, 3, 2 → 2.67)
+    // even though LDY scored more points in total.
+    const tc = buildTrophyCase(results);
+    expect(tc.allTimeStandings.map((r) => [r.teamCode, r.avgRank])).toEqual([["DMK", 1.67], ["MNB", 2], ["LDY", 2.67], ["DDG", 3]]);
+    const ldy = tc.allTimeStandings.find((r) => r.teamCode === "LDY")!;
+    const mnb = tc.allTimeStandings.find((r) => r.teamCode === "MNB")!;
+    expect(ldy.totalPoints).toBeGreaterThan(mnb.totalPoints);
+  });
+
+  it("breaks an exact tie on average finish by titles", () => {
+    // 2010: A 1st, B 2nd, C 3rd. 2011: C 1st, B 2nd, A 3rd.
+    // A and C average 2.0 with a title each; B averages 2.0 with none.
+    const tc = buildTrophyCase([
+      R(2010, "AAA", "A", 300), R(2010, "BBB", "B", 250), R(2010, "CCC", "C", 200),
+      R(2011, "CCC", "C", 300), R(2011, "BBB", "B", 250), R(2011, "AAA", "A", 200),
+    ]);
+    expect(tc.allTimeStandings.map((r) => r.avgRank)).toEqual([2, 2, 2]);
+    expect(tc.allTimeStandings[2].teamCode).toBe("BBB");
   });
 });
 
