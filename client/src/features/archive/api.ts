@@ -55,6 +55,7 @@ export interface AllTimeStandingEntry {
   seasons: number;
   avgRank: number;
   avgScore: number;
+  championships: number;
 }
 
 export interface DynastyScoreEntry {

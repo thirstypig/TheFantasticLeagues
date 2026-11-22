@@ -93,10 +93,9 @@ export default function TrophyCaseTab({ leagueId }: TrophyCaseTabProps) {
               <ThemedTr>
                 <ThemedTh className="w-12">#</ThemedTh>
                 <ThemedTh>Team</ThemedTh>
-                <ThemedTh className="text-right">Total Pts</ThemedTh>
+                <ThemedTh className="text-right">Avg finish</ThemedTh>
+                <ThemedTh className="text-right">Titles</ThemedTh>
                 <ThemedTh className="text-right">Seasons</ThemedTh>
-                <ThemedTh className="text-right">Avg Rank</ThemedTh>
-                <ThemedTh className="text-right">Avg Score</ThemedTh>
               </ThemedTr>
             </ThemedThead>
             <tbody>
@@ -107,10 +106,9 @@ export default function TrophyCaseTab({ leagueId }: TrophyCaseTabProps) {
                     <span className="font-medium text-[var(--lg-text)]">{resolve(row.teamCode, row.teamName)}</span>
                     <span className="ml-2 text-xs text-[var(--lg-text-muted)]">{row.teamCode}</span>
                   </ThemedTd>
-                  <ThemedTd className="text-right font-semibold text-[var(--lg-text)]">{row.totalPoints}</ThemedTd>
+                  <ThemedTd className="text-right font-semibold text-[var(--lg-text)]">{row.avgRank.toFixed(2)}</ThemedTd>
+                  <ThemedTd className="text-right text-[var(--lg-text-muted)]">{row.championships}</ThemedTd>
                   <ThemedTd className="text-right text-[var(--lg-text-muted)]">{row.seasons}</ThemedTd>
-                  <ThemedTd className="text-right text-[var(--lg-text-muted)]">{row.avgRank}</ThemedTd>
-                  <ThemedTd className="text-right text-[var(--lg-text-muted)]">{row.avgScore}</ThemedTd>
                 </ThemedTr>
               ))}
             </tbody>
