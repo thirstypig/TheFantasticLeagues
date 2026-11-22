@@ -11,7 +11,7 @@ import { buildTrophyCase, computeTrophyCase, rankSeason, type SeasonResult } fro
 const db = prisma as unknown as { league: { findUnique: ReturnType<typeof vi.fn> }; historicalTeam: { findMany: ReturnType<typeof vi.fn> } };
 
 // Recorded totals from the archive (prod, 2026-11-22), trimmed to four franchises.
-const R = (year: number, code: string, name: string, total: number): SeasonResult => ({ year, code, name, total });
+const R = (year: number, code: string, name: string, total: number, owner: string | null = null): SeasonResult => ({ year, code, name, owner, total });
 const results: SeasonResult[] = [
   R(2004, "DMK", "Diamond Kings", 361), R(2004, "LDY", "VIP BALCOS", 326.5), R(2004, "DDG", "Crush Brothers Inc.", 263), R(2004, "MNB", "MoneyBall", 329.5),
   R(2005, "DMK", "Kent Diamond Kings", 352), R(2005, "LDY", "VIP BALCOS", 307.5), R(2005, "DDG", "Disco Rover", 304), R(2005, "MNB", "MoneyBall", 349.5),
@@ -33,16 +33,16 @@ describe("one franchise is one team, across every year and name", () => {
 
   it("but names a champion as the team was called that year", () => {
     expect(tc.championships).toEqual([
-      { year: 2004, teamCode: "DMK", teamName: "Diamond Kings" },
-      { year: 2005, teamCode: "DMK", teamName: "Kent Diamond Kings" },
-      { year: 2025, teamCode: "DDG", teamName: "Dodger Dawgs" },
+      { year: 2004, teamCode: "DMK", teamName: "Diamond Kings", owner: null },
+      { year: 2005, teamCode: "DMK", teamName: "Kent Diamond Kings", owner: null },
+      { year: 2025, teamCode: "DDG", teamName: "Dodger Dawgs", owner: null },
     ]);
-    expect(tc.records.mostChampionships).toEqual({ teamCode: "DMK", teamName: "Diamond Kings", count: 2 });
+    expect(tc.records.mostChampionships).toEqual({ teamCode: "DMK", teamName: "Diamond Kings", owners: ["Diamond Kings"], count: 2 });
   });
 
   it("adds up totals and averages finishes per franchise", () => {
     const dmk = tc.allTimeStandings.find((r) => r.teamCode === "DMK")!;
-    expect(dmk).toEqual({ teamCode: "DMK", teamName: "Diamond Kings", totalPoints: 974, seasons: 3, avgRank: 1.67, avgScore: 324.7, championships: 2 });
+    expect(dmk).toEqual({ key: "DMK", owner: null, teamCode: "DMK", teamName: "Diamond Kings", totalPoints: 974, seasons: 3, avgRank: 1.67, avgScore: 324.7, championships: 2 });
     // DDG: 4th of 4, 4th of 4, 1st of 3
     expect(tc.allTimeStandings.find((r) => r.teamCode === "DDG")!.avgRank).toBe(3);
   });
@@ -55,10 +55,42 @@ describe("one franchise is one team, across every year and name", () => {
   });
 });
 
+describe("credited to owners", () => {
+  // Kurt's franchise across three names; James's across three; one season with no owner on record.
+  const owned: SeasonResult[] = [
+    R(2004, "DDG", "Crush Brothers Inc.", 263, "Kurt Sakamoto"), R(2004, "LDY", "VIP BALCOS", 326.5, "James Chang"), R(2004, "DMK", "Diamond Kings", 361, "Kent Sakamoto"),
+    R(2005, "DDG", "Disco Rover", 304, "Kurt Sakamoto"), R(2005, "LDY", "VIP BALCOS", 307.5, "James Chang"), R(2005, "DMK", "Diamond Kings", 352, "Kent Sakamoto"),
+    R(2008, "LDY", "The Fluffers", 276, "James Chang"), R(2008, "DDG", "Dodger Dawgs", 350.5, "Kurt Sakamoto"), R(2008, "DMK", "Diamond Kings", 277.5, null),
+  ];
+  const tc = buildTrophyCase(owned);
+
+  it("puts each owner on one row, with the team he ran most recently", () => {
+    const rows = tc.allTimeStandings.map((r) => [r.key, r.owner, r.teamName, r.seasons]);
+    expect(rows).toContainEqual(["Kurt Sakamoto", "Kurt Sakamoto", "Dodger Dawgs", 3]);
+    expect(rows).toContainEqual(["James Chang", "James Chang", "The Fluffers", 3]);
+  });
+
+  it("falls back to the franchise code for a season with no owner on record", () => {
+    expect(tc.allTimeStandings.find((r) => r.key === "DMK")).toMatchObject({ owner: null, teamName: "Diamond Kings", seasons: 1 });
+    expect(tc.allTimeStandings.find((r) => r.key === "Kent Sakamoto")).toMatchObject({ owner: "Kent Sakamoto", seasons: 2 });
+  });
+
+  it("names the owner on a championship and on records", () => {
+    expect(tc.championships[0]).toEqual({ year: 2004, teamCode: "DMK", teamName: "Diamond Kings", owner: "Kent Sakamoto" });
+    expect(tc.records.mostChampionships).toEqual({ teamCode: "DMK", teamName: "Diamond Kings", owners: ["Kent Sakamoto"], count: 2 });
+    expect(tc.records.bestSeason!.owner).toBe("Kent Sakamoto");
+  });
+
+  it("joins one owner's two franchises into one row", () => {
+    const two = buildTrophyCase([R(2010, "AAA", "First Team", 300, "Pat Lee"), R(2010, "BBB", "Other", 200, "Sam Cho"), R(2011, "CCC", "Second Team", 300, "Pat Lee"), R(2011, "BBB", "Other", 200, "Sam Cho")]);
+    expect(two.allTimeStandings[0]).toMatchObject({ key: "Pat Lee", seasons: 2, championships: 2, teamCode: "CCC", teamName: "Second Team" });
+  });
+});
+
 describe("most championships", () => {
   it("names every franchise in a tie", () => {
     const tc = buildTrophyCase([R(2009, "SKD", "Skunk Dogs", 368.5), R(2009, "DMK", "Diamond Kings", 284.5), R(2011, "DMK", "Diamond Kings", 363.5), R(2011, "SKD", "Skunk Dogs", 321)]);
-    expect(tc.records.mostChampionships).toEqual({ teamCode: "DMK, SKD", teamName: "Diamond Kings & Skunk Dogs", count: 1 });
+    expect(tc.records.mostChampionships).toEqual({ teamCode: "DMK, SKD", teamName: "Diamond Kings & Skunk Dogs", owners: ["Diamond Kings", "Skunk Dogs"], count: 1 });
   });
 });
 
@@ -95,8 +127,8 @@ describe("rankSeason", () => {
 describe("best and worst season", () => {
   it("only full seasons compete: 2020 (60 games, 4 periods) and 2003 (6 periods) are left out", () => {
     const tc = buildTrophyCase([...results, R(2020, "LDY", "Los Doyers", 111.5), R(2020, "DMK", "Diamond Kings", 253), R(2003, "DDG", "Crush Brothers Inc.", 179.5)]);
-    expect(tc.records.worstSeason).toEqual({ year: 2025, teamCode: "DMK", teamName: "Diamond Kings", totalScore: 261 });
-    expect(tc.records.bestSeason).toEqual({ year: 2025, teamCode: "DDG", teamName: "Dodger Dawgs", totalScore: 399 });
+    expect(tc.records.worstSeason).toEqual({ year: 2025, teamCode: "DMK", teamName: "Diamond Kings", owner: null, totalScore: 261 });
+    expect(tc.records.bestSeason).toEqual({ year: 2025, teamCode: "DDG", teamName: "Dodger Dawgs", owner: null, totalScore: 399 });
     // ...but 2020 still counts as a championship.
     expect(tc.championships.some((c) => c.year === 2020 && c.teamCode === "DMK")).toBe(true);
   });
@@ -112,11 +144,12 @@ it("is empty with no seasons", () => {
 describe("computeTrophyCase", () => {
   it("reads the archive of the league's franchise, so the current league (20) finds seasons stored under 2025's (1)", async () => {
     db.league.findUnique.mockResolvedValue({ franchiseId: 1 });
-    db.historicalTeam.findMany.mockResolvedValue([{ code: "DMK", name: "Diamond Kings", recordedTotal: 361, season: { year: 2004 } }]);
+    db.historicalTeam.findMany.mockResolvedValue([{ code: "DMK", name: "Diamond Kings", ownerName: "Kent Sakamoto", recordedTotal: 361, season: { year: 2004 } }]);
     const tc = await computeTrophyCase(20);
     expect(db.league.findUnique).toHaveBeenCalledWith({ where: { id: 20 }, select: { franchiseId: true } });
     expect(db.historicalTeam.findMany.mock.calls[0][0].where).toEqual({ recordedTotal: { not: null }, season: { league: { franchiseId: 1 } } });
-    expect(tc.championships).toEqual([{ year: 2004, teamCode: "DMK", teamName: "Diamond Kings" }]);
+    expect(tc.championships).toEqual([{ year: 2004, teamCode: "DMK", teamName: "Diamond Kings", owner: "Kent Sakamoto" }]);
+    expect(db.historicalTeam.findMany.mock.calls[0][0].select).toMatchObject({ ownerName: true });
   });
 
   it("is empty for an unknown league", async () => {

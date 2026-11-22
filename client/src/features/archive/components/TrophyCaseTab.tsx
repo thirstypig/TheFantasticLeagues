@@ -46,6 +46,11 @@ export default function TrophyCaseTab({ leagueId }: TrophyCaseTabProps) {
   if (!data) return null;
 
   const resolve = (code: string, fallback: string) => OGBA_TEAM_NAMES[code] || fallback;
+  // Credited to the owner; the team name is a detail. No owner on record → the team name leads.
+  const who = (owner: string | null, code: string, teamName: string) => ({
+    primary: owner ?? resolve(code, teamName),
+    secondary: owner ? teamName : null,
+  });
 
   const categoryLabels: Record<string, string> = {
     R: 'Runs', HR: 'Home Runs', RBI: 'RBI', SB: 'Stolen Bases', AVG: 'Batting Avg',
@@ -72,9 +77,9 @@ export default function TrophyCaseTab({ leagueId }: TrophyCaseTabProps) {
               >
                 <div className="text-3xl font-bold text-yellow-500 mb-1">{c.year}</div>
                 <div className="text-base font-medium text-[var(--lg-text)]">
-                  {resolve(c.teamCode, c.teamName)}
+                  {who(c.owner, c.teamCode, c.teamName).primary}
                 </div>
-                <div className="text-xs text-[var(--lg-text-muted)] mt-1">{c.teamCode}</div>
+                <div className="text-sm text-[var(--lg-text-muted)] mt-1">{c.owner ? c.teamName : c.teamCode}</div>
               </div>
             ))}
           </div>
@@ -92,7 +97,7 @@ export default function TrophyCaseTab({ leagueId }: TrophyCaseTabProps) {
             <ThemedThead>
               <ThemedTr>
                 <ThemedTh className="w-12">#</ThemedTh>
-                <ThemedTh>Team</ThemedTh>
+                <ThemedTh>Owner</ThemedTh>
                 <ThemedTh className="text-right">Avg finish</ThemedTh>
                 <ThemedTh className="text-right">Titles</ThemedTh>
                 <ThemedTh className="text-right">Seasons</ThemedTh>
@@ -100,11 +105,11 @@ export default function TrophyCaseTab({ leagueId }: TrophyCaseTabProps) {
             </ThemedThead>
             <tbody>
               {data.allTimeStandings.map((row, idx) => (
-                <ThemedTr key={row.teamCode}>
+                <ThemedTr key={row.key}>
                   <ThemedTd className="font-medium text-[var(--lg-text-muted)]">{idx + 1}</ThemedTd>
                   <ThemedTd>
-                    <span className="font-medium text-[var(--lg-text)]">{resolve(row.teamCode, row.teamName)}</span>
-                    <span className="ml-2 text-xs text-[var(--lg-text-muted)]">{row.teamCode}</span>
+                    <span className="font-medium text-[var(--lg-text)]">{who(row.owner, row.teamCode, row.teamName).primary}</span>
+                    {row.owner && <span className="ml-2 text-sm text-[var(--lg-text-muted)]">{row.teamName}</span>}
                   </ThemedTd>
                   <ThemedTd className="text-right font-semibold text-[var(--lg-text)]">{row.avgRank.toFixed(2)}</ThemedTd>
                   <ThemedTd className="text-right text-[var(--lg-text-muted)]">{row.championships}</ThemedTd>
@@ -126,7 +131,7 @@ export default function TrophyCaseTab({ leagueId }: TrophyCaseTabProps) {
           {data.records.bestSeason && (
             <RecordCard
               label="Best Season"
-              team={resolve(data.records.bestSeason.teamCode, data.records.bestSeason.teamName)}
+              team={data.records.bestSeason.owner ? `${data.records.bestSeason.owner} · ${data.records.bestSeason.teamName}` : resolve(data.records.bestSeason.teamCode, data.records.bestSeason.teamName)}
               year={data.records.bestSeason.year}
               value={`${data.records.bestSeason.totalScore} pts`}
               accent="text-green-500"
@@ -135,7 +140,7 @@ export default function TrophyCaseTab({ leagueId }: TrophyCaseTabProps) {
           {data.records.worstSeason && (
             <RecordCard
               label="Worst Season"
-              team={resolve(data.records.worstSeason.teamCode, data.records.worstSeason.teamName)}
+              team={data.records.worstSeason.owner ? `${data.records.worstSeason.owner} · ${data.records.worstSeason.teamName}` : resolve(data.records.worstSeason.teamCode, data.records.worstSeason.teamName)}
               year={data.records.worstSeason.year}
               value={`${data.records.worstSeason.totalScore} pts`}
               accent="text-red-400"
@@ -144,7 +149,7 @@ export default function TrophyCaseTab({ leagueId }: TrophyCaseTabProps) {
           {data.records.mostChampionships && (
             <RecordCard
               label="Most Championships"
-              team={resolve(data.records.mostChampionships.teamCode, data.records.mostChampionships.teamName)}
+              team={data.records.mostChampionships.owners.join(" & ")}
               value={`${data.records.mostChampionships.count} titles`}
               accent="text-yellow-500"
             />
@@ -173,7 +178,7 @@ export default function TrophyCaseTab({ leagueId }: TrophyCaseTabProps) {
             <ThemedThead>
               <ThemedTr>
                 <ThemedTh className="w-12">#</ThemedTh>
-                <ThemedTh>Team</ThemedTh>
+                <ThemedTh>Owner</ThemedTh>
                 <ThemedTh className="text-right">Score</ThemedTh>
                 <ThemedTh className="text-right">Titles</ThemedTh>
                 <ThemedTh className="text-right">Seasons</ThemedTh>
@@ -182,11 +187,11 @@ export default function TrophyCaseTab({ leagueId }: TrophyCaseTabProps) {
             </ThemedThead>
             <tbody>
               {data.dynastyScores.map((row, idx) => (
-                <ThemedTr key={row.teamCode}>
+                <ThemedTr key={row.key}>
                   <ThemedTd className="font-medium text-[var(--lg-text-muted)]">{idx + 1}</ThemedTd>
                   <ThemedTd>
-                    <span className="font-medium text-[var(--lg-text)]">{resolve(row.teamCode, row.teamName)}</span>
-                    <span className="ml-2 text-xs text-[var(--lg-text-muted)]">{row.teamCode}</span>
+                    <span className="font-medium text-[var(--lg-text)]">{who(row.owner, row.teamCode, row.teamName).primary}</span>
+                    {row.owner && <span className="ml-2 text-sm text-[var(--lg-text-muted)]">{row.teamName}</span>}
                   </ThemedTd>
                   <ThemedTd className="text-right font-semibold text-purple-500">{row.score}</ThemedTd>
                   <ThemedTd className="text-right text-yellow-500 font-medium">{row.championships || '-'}</ThemedTd>
