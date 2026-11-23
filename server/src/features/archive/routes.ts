@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { writeAuditLog } from '../../lib/auditLog.js';
 import { requireArchiveAccess } from './archiveAccess.js';
 import { playerCheckRouter } from './playerCheckRoutes.js';
+import { archiveHistoryRouter } from './historyRoutes.js';
 import { Prisma } from '@prisma/client';
 import type { HistoricalPlayerStat } from '@prisma/client';
 
@@ -58,6 +59,7 @@ router.use('/archive', requireAuth, requireArchiveAccess());
 // Player check (/archive/player-check…): after the guard above, before the
 // /archive/:year/… routes below.
 router.use(playerCheckRouter);
+router.use(archiveHistoryRouter);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

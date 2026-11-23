@@ -55,14 +55,15 @@ async function main() {
     const { teams, entries } = buildArchiveRows(parsed, owners);
     const byKind = entries.reduce<Record<string, number>>((m, e) => ((m[e.kind] = (m[e.kind] ?? 0) + 1), m), {});
     const notes = teams.filter((t) => t.note).map((t) => `${t.code}: ${t.note}`);
-    console.log(`${year}: ${teams.length} teams, ${entries.length} roster rows ${JSON.stringify(byKind)}${notes.length ? `\n   notes: ${notes.join(" | ")}` : ""}`);
+    console.log(`${year}: ${teams.length} teams, ${entries.length} roster rows ${JSON.stringify(byKind)}${parsed.keepersSource === "sheet" ? " · keepers from the Keepers sheet" : ""}${notes.length ? `\n   notes: ${notes.join(" | ")}` : ""}`);
     if (!apply) continue;
 
     await prisma.$transaction(async (tx) => {
+      const keepersFromSheet = parsed.keepersSource === "sheet";
       const season = await tx.historicalSeason.upsert({
         where: { year_leagueId: { year, leagueId } },
-        create: { year, leagueId },
-        update: {},
+        create: { year, leagueId, keepersFromSheet },
+        update: { keepersFromSheet },
         select: { id: true },
       });
       await tx.historicalRosterEntry.deleteMany({ where: { seasonId: season.id } });

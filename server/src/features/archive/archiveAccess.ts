@@ -1,4 +1,5 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma.js";
 
 /**
@@ -25,4 +26,12 @@ export function requireArchiveAccess(): RequestHandler {
     if (!membership) return res.status(403).json({ error: "The archive is visible to league members only" });
     return next();
   };
+}
+
+/**
+ * The archived seasons a viewer may see: an admin, all of them; a member, the
+ * seasons of a franchise he belongs to.
+ */
+export function archiveSeasonScope(user: { id: number; isAdmin: boolean }): Prisma.HistoricalSeasonWhereInput {
+  return user.isAdmin ? {} : { league: { franchise: { memberships: { some: { userId: user.id } } } } };
 }
