@@ -78,6 +78,8 @@ export interface FavoriteKeeper {
 export interface OwnerProfile {
   key: string;
   owner: string | null;
+  /** Who owned the team, as runs of seasons, most recent first (shown when it changed). */
+  owners: { name: string; from: number; to: number }[];
   /** Each team name with the seasons it was used, most recent first. */
   teams: { name: string; from: number; to: number }[];
   titleYears: number[];
@@ -127,22 +129,58 @@ export function favoriteKeepers(rows: KeeperRow[], limit = 6): FavoriteKeeper[] 
     .map((p) => ({ name: p.name, mlbId: p.mlbId, seasons: [...p.seasons].sort((x, y) => x - y), possible: p.possible }));
 }
 
-/** Team names as runs of consecutive use, most recent first: Los Doyers 2016–2025, The Fluffers 2008–2009… */
-export function teamRuns(results: SeasonResult[]): OwnerProfile['teams'] {
+/** Runs of consecutive seasons with the same value, most recent first. */
+function runsOf(results: SeasonResult[], value: (r: SeasonResult) => string): { name: string; from: number; to: number }[] {
   const sorted = [...results].sort((a, b) => a.year - b.year);
-  const runs: OwnerProfile['teams'] = [];
+  const runs: { name: string; from: number; to: number }[] = [];
   for (const r of sorted) {
     const last = runs[runs.length - 1];
-    if (last && last.name === r.name) last.to = r.year;
-    else runs.push({ name: r.name, from: r.year, to: r.year });
+    if (last && last.name === value(r)) last.to = r.year;
+    else runs.push({ name: value(r), from: r.year, to: r.year });
   }
   return runs.reverse();
+}
+
+/** Team names as runs of consecutive use, most recent first: Los Doyers 2016–2025, The Fluffers 2008–2009… */
+export function teamRuns(results: SeasonResult[]): OwnerProfile['teams'] {
+  return runsOf(results, (r) => r.name);
 }
 
 /** One franchise's season: the name it used that year and its recorded total. */
 export interface SeasonResult { year: number; code: string; name: string; owner: string | null; total: number }
 
-const keyOf = (r: SeasonResult) => r.owner?.trim() || r.code;
+/** The people in an owner name: "Tim Yuba & Jerrod Jue" → tim yuba, jerrod jue. */
+const people = (owner: string | null) => (owner ?? "").split("&").map((p) => p.trim().toLowerCase()).filter(Boolean);
+
+/**
+ * Which leaderboard row each season belongs to. Within one franchise,
+ * consecutive seasons stay together while the owners share a person (Tim Yuba
+ * & Jerrod Jue → Tim Yuba); a complete change of owner (Spencer Chao → Jay &
+ * William Chan) starts a new row. A row is keyed by its most recent owner, so
+ * one owner across two franchises is still one row. No owner on record → the
+ * franchise code.
+ */
+export function ownerLineages(results: SeasonResult[]): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const code of new Set(results.map((r) => r.code))) {
+    const seasons = results.filter((r) => r.code === code).sort((a, b) => a.year - b.year);
+    let group: SeasonResult[] = [];
+    const close = () => {
+      if (!group.length) return;
+      const key = group[group.length - 1].owner?.trim() || code;
+      for (const r of group) out.set(`${r.year}|${r.code}`, key);
+      group = [];
+    };
+    for (const r of seasons) {
+      const prev = group[group.length - 1];
+      const shared = prev && people(prev.owner).some((p) => people(r.owner).includes(p));
+      if (prev && !shared && (prev.owner || r.owner)) close();
+      group.push(r);
+    }
+    close();
+  }
+  return out;
+}
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -161,6 +199,8 @@ export function buildTrophyCase(results: SeasonResult[], keepers: KeeperRow[] = 
   };
   if (results.length === 0) return empty;
 
+  const lineage = ownerLineages(results);
+  const keyOf = (r: { year: number; code: string; owner: string | null }) => lineage.get(`${r.year}|${r.code}`) ?? (r.owner?.trim() || r.code);
   const years = [...new Set(results.map((r) => r.year))].sort((a, b) => a - b);
   const ranked = years.flatMap((y) => rankSeason(results.filter((r) => r.year === y)));
   const teamsIn = new Map(years.map((y) => [y, results.filter((r) => r.year === y).length]));
@@ -238,14 +278,15 @@ export function buildTrophyCase(results: SeasonResult[], keepers: KeeperRow[] = 
     };
   }
 
-  const keeperKey = (k: KeeperRow) => k.owner?.trim() || k.code;
+  const keeperKey = (k: KeeperRow) => keyOf({ year: k.year, code: k.code, owner: k.owner });
   const profiles: Record<string, OwnerProfile> = {};
   for (const key of agg.keys()) {
     profiles[key] = {
       key,
       owner: ownerOf(key),
       teams: teamRuns(ranked.filter((r) => keyOf(r) === key)),
-      titleYears: championships.filter((c) => (c.owner?.trim() || c.teamCode) === key).map((c) => c.year),
+      owners: runsOf(ranked.filter((r) => keyOf(r) === key), (r) => r.owner?.trim() || r.name),
+      titleYears: championships.filter((c) => keyOf({ year: c.year, code: c.teamCode, owner: c.owner }) === key).map((c) => c.year),
       favoriteKeepers: favoriteKeepers(keepers.filter((k) => keeperKey(k) === key)),
     };
   }

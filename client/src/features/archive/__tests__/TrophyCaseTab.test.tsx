@@ -16,6 +16,7 @@ const data = {
   ],
   allTimeStandings: [
     { key: "Kurt Sakamoto", owner: "Kurt Sakamoto", teamCode: "DDG", teamName: "Dodger Dawgs", teamNames: ["Dodger Dawgs", "Disco Rover", "Crush Brothers Inc."], totalPoints: 1, seasons: 23, avgRank: 4.09, avgScore: 1, championships: 2 },
+    { key: "Tim Yuba", owner: "Tim Yuba", teamCode: "SKD", teamName: "Skunk Dogs", teamNames: ["Skunk Dogs"], totalPoints: 1, seasons: 23, avgRank: 3.39, avgScore: 1, championships: 6 },
     { key: "James Chang", owner: "James Chang", teamCode: "LDY", teamName: "Los Doyers", teamNames: ["Los Doyers", "The Fluffers", "VIP BALCOS"], totalPoints: 1, seasons: 16, avgRank: 6, avgScore: 1, championships: 0 },
   ],
   records: { bestSeason: null, worstSeason: null, mostChampionships: null, bestCategoryBySeason: {} },
@@ -23,11 +24,17 @@ const data = {
   profiles: {
     "Kurt Sakamoto": {
       key: "Kurt Sakamoto", owner: "Kurt Sakamoto",
+      owners: [{ name: "Kurt Sakamoto", from: 2003, to: 2025 }],
       teams: [{ name: "Dodger Dawgs", from: 2006, to: 2025 }, { name: "Crush Brothers Inc.", from: 2003, to: 2004 }],
       titleYears: [2012, 2025],
       favoriteKeepers: [{ name: "Buster Posey", mlbId: 457763, seasons: [2012, 2013, 2014], possible: true }, { name: "Pablo Sandoval", mlbId: null, seasons: [2009, 2010], possible: false }],
     },
-    "James Chang": { key: "James Chang", owner: "James Chang", teams: [{ name: "Los Doyers", from: 2016, to: 2025 }], titleYears: [], favoriteKeepers: [] },
+    "Tim Yuba": {
+      key: "Tim Yuba", owner: "Tim Yuba",
+      owners: [{ name: "Tim Yuba", from: 2005, to: 2025 }, { name: "Tim Yuba & Jerrod Jue", from: 2004, to: 2004 }],
+      teams: [{ name: "Skunk Dogs", from: 2003, to: 2025 }], titleYears: [2009], favoriteKeepers: [],
+    },
+    "James Chang": { key: "James Chang", owner: "James Chang", owners: [{ name: "James Chang", from: 2004, to: 2025 }], teams: [{ name: "Los Doyers", from: 2016, to: 2025 }], titleYears: [], favoriteKeepers: [] },
   },
   keeperSeasons: [2006, 2025],
 };
@@ -43,7 +50,7 @@ describe("TrophyCaseTab", () => {
     expect(screen.getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["#", "Owner", "Avg finish", "Titles", "Seasons"]);
     const rows = within(screen.getByRole("table")).getAllByRole("row").slice(1).map((r) => r.textContent);
     expect(rows[0]).toBe("1Kurt SakamotoDodger Dawgs · Disco Rover · Crush Brothers Inc.4.09223");
-    expect(rows[1]).toBe("2James ChangLos Doyers · The Fluffers · VIP BALCOS6.00—16");
+    expect(rows[2]).toBe("3James ChangLos Doyers · The Fluffers · VIP BALCOS6.00—16");
     expect(screen.queryByText(/Dynasty/)).toBeNull();
     expect(screen.queryByText(/Records/)).toBeNull();
   });
@@ -59,6 +66,14 @@ describe("TrophyCaseTab", () => {
     expect(keepers.textContent).toContain("Pablo Sandoval2009–20102 seasons");
     expect(screen.getByText(/same team at the same price as last season/)).toBeTruthy();
     expect(screen.getByRole("region", { name: "Teams" }).textContent).toContain("Crush Brothers Inc.2003–2004");
+  });
+
+  it("lists the owners when they changed, and not when they didn't", async () => {
+    render(<TrophyCaseTab leagueId={20} />);
+    fireEvent.click(await screen.findByRole("button", { name: /Tim Yuba/ }));
+    expect(screen.getByRole("region", { name: "Owners" }).textContent).toBe("OwnersTim Yuba2005–2025Tim Yuba & Jerrod Jue2004");
+    fireEvent.click(screen.getByRole("button", { name: /Kurt Sakamoto/ }));
+    expect(screen.queryByRole("region", { name: "Owners" })).toBeNull();
   });
 
   it("says so when an owner has no repeat keepers, and closes on a second tap", async () => {

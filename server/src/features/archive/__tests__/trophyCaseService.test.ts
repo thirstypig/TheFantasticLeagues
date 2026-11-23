@@ -9,7 +9,7 @@ vi.mock("../../../db/prisma.js", () => ({
 vi.mock("../../../lib/logger.js", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
 import { prisma } from "../../../db/prisma.js";
-import { buildTrophyCase, computeTrophyCase, favoriteKeepers, rankSeason, teamRuns, type KeeperRow, type SeasonResult } from "../services/trophyCaseService.js";
+import { buildTrophyCase, computeTrophyCase, favoriteKeepers, ownerLineages, rankSeason, teamRuns, type KeeperRow, type SeasonResult } from "../services/trophyCaseService.js";
 
 type Fn = ReturnType<typeof vi.fn>;
 const db = prisma as unknown as { league: { findUnique: Fn }; historicalTeam: { findMany: Fn }; historicalRosterEntry: { findMany: Fn }; historicalPlayerMatch: { findMany: Fn } };
@@ -125,12 +125,49 @@ describe("owner profiles", () => {
     );
     expect(tc.profiles["James Chang"]).toEqual({
       key: "James Chang", owner: "James Chang",
+      // The same owner on both sides of a gap is one run.
+      owners: [{ name: "James Chang", from: 2004, to: 2016 }],
       teams: [{ name: "Los Doyers", from: 2016, to: 2016 }, { name: "VIP BALCOS", from: 2004, to: 2004 }],
       titleYears: [2004],
       favoriteKeepers: [{ name: "C. Kershaw", mlbId: null, seasons: [2016, 2017], possible: false }],
     });
     expect(tc.profiles["Kurt Sakamoto"].titleYears).toEqual([2016]);
     expect(tc.keeperSeasons).toEqual([2016, 2017]);
+  });
+});
+
+describe("owner lineages (James, 2026-11-23)", () => {
+  // Skunk Dogs: Tim Yuba with Jerrod Jue in 2004, Tim alone after. The Show: Spencer Chao in 2017, then the Chans.
+  const seasons: SeasonResult[] = [
+    R(2004, "SKD", "Skunk Dogs", 330.5, "Tim Yuba & Jerrod Jue"), R(2005, "SKD", "Skunk Dogs", 343.5, "Tim Yuba"), R(2009, "SKD", "Skunk Dogs", 368.5, "Tim Yuba"),
+    R(2017, "TSH", "The Show", 304.5, "Spencer Chao"), R(2018, "TSH", "The Show", 260.5, "Jay & William Chan"), R(2022, "TSH", "The Show", 391, "Jay & William Chan"),
+    R(2017, "SKD", "Skunk Dogs", 262, "Tim Yuba"), R(2018, "SKD", "Skunk Dogs", 323, "Tim Yuba"), R(2022, "SKD", "Skunk Dogs", 318, "Tim Yuba"),
+    R(2004, "DMK", "Diamond Kings", 361, "Kent Sakamoto"), R(2005, "DMK", "Diamond Kings", 352, "Kent Sakamoto"), R(2009, "DMK", "Diamond Kings", 284.5, "Kent Sakamoto"),
+  ];
+
+  it("keeps a co-owned season on the continuing owner's row", () => {
+    const l = ownerLineages(seasons);
+    expect(l.get("2004|SKD")).toBe("Tim Yuba");
+    expect(l.get("2005|SKD")).toBe("Tim Yuba");
+  });
+
+  it("starts a new row when the owner changes completely", () => {
+    const l = ownerLineages(seasons);
+    expect(l.get("2017|TSH")).toBe("Spencer Chao");
+    expect(l.get("2018|TSH")).toBe("Jay & William Chan");
+  });
+
+  it("shows the owners in the profile and counts each season once", () => {
+    const tc = buildTrophyCase(seasons);
+    const tim = tc.allTimeStandings.find((r) => r.key === "Tim Yuba")!;
+    expect(tim).toMatchObject({ owner: "Tim Yuba", seasons: 6 });
+    expect(tc.profiles["Tim Yuba"].owners).toEqual([{ name: "Tim Yuba", from: 2005, to: 2022 }, { name: "Tim Yuba & Jerrod Jue", from: 2004, to: 2004 }]);
+    expect(tc.allTimeStandings.find((r) => r.key === "Spencer Chao")).toMatchObject({ seasons: 1, teamNames: ["The Show"] });
+    expect(tc.allTimeStandings.find((r) => r.key === "Jay & William Chan")).toMatchObject({ seasons: 2, championships: 1 });
+    // 2009 and 2018 are Tim's; 2017 is Spencer's, 2022 the Chans'.
+    expect(tc.profiles["Tim Yuba"].titleYears).toEqual([2009, 2018]);
+    expect(tc.profiles["Spencer Chao"].titleYears).toEqual([2017]);
+    expect(tc.profiles["Jay & William Chan"].titleYears).toEqual([2022]);
   });
 });
 
