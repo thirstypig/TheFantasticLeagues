@@ -129,6 +129,10 @@ describe("owner profiles", () => {
       owners: [{ name: "James Chang", from: 2004, to: 2016 }],
       teams: [{ name: "Los Doyers", from: 2016, to: 2016 }, { name: "VIP BALCOS", from: 2004, to: 2004 }],
       titleYears: [2004],
+      seasons: [
+        { year: 2016, teamName: "Los Doyers", owner: "James Chang", rank: 2, teams: 2, total: 200 },
+        { year: 2004, teamName: "VIP BALCOS", owner: "James Chang", rank: 1, teams: 2, total: 300 },
+      ],
       favoriteKeepers: [{ name: "C. Kershaw", mlbId: null, seasons: [2016, 2017], possible: false }],
     });
     expect(tc.profiles["Kurt Sakamoto"].titleYears).toEqual([2016]);
