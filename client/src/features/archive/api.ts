@@ -44,11 +44,16 @@ export async function updateArchivePlayerStat(id: number, data: Partial<{ fullNa
 // Trophy Case
 export interface ChampionshipEntry {
   year: number;
+  /** The team's name that year. */
   teamName: string;
   teamCode: string;
+  owner: string | null;
 }
 
 export interface AllTimeStandingEntry {
+  /** The owner, or the franchise code when no owner is on record. */
+  key: string;
+  owner: string | null;
   teamCode: string;
   teamName: string;
   totalPoints: number;
@@ -59,6 +64,8 @@ export interface AllTimeStandingEntry {
 }
 
 export interface DynastyScoreEntry {
+  key: string;
+  owner: string | null;
   teamCode: string;
   teamName: string;
   score: number;
@@ -68,9 +75,10 @@ export interface DynastyScoreEntry {
 }
 
 export interface TrophyCaseRecords {
-  bestSeason: { year: number; teamCode: string; teamName: string; totalScore: number } | null;
-  worstSeason: { year: number; teamCode: string; teamName: string; totalScore: number } | null;
-  mostChampionships: { teamCode: string; teamName: string; count: number } | null;
+  bestSeason: { year: number; teamCode: string; teamName: string; owner: string | null; totalScore: number } | null;
+  worstSeason: { year: number; teamCode: string; teamName: string; owner: string | null; totalScore: number } | null;
+  /** Every owner tied for the most titles. */
+  mostChampionships: { teamCode: string; teamName: string; owners: string[]; count: number } | null;
   bestCategoryBySeason: Record<string, { year: number; teamCode: string; teamName: string; value: number }>;
 }
 
