@@ -21,24 +21,24 @@ updated: 2026-11-23
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-23 from 2,117 git-tracked files.*
+*Generated 2026-11-23 from 2,118 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 736 | 126,611 |
-| `.tsx` | 399 | 97,144 |
+| `.ts` | 736 | 126,629 |
+| `.tsx` | 399 | 97,187 |
 | `.md` | 591 | 73,290 |
 | `.json` | 39 | 41,031 |
 | `.css` | 17 | 2,673 |
-| `.sql` | 46 | 2,356 |
+| `.sql` | 47 | 2,359 |
 | `.prisma` | 1 | 1,840 |
 | `.mjs` | 11 | 1,796 |
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 194 |
-| **All tracked** | **2,113** | **391,983** |
+| **All tracked** | **2,114** | **392,047** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -48,7 +48,7 @@ updated: 2026-11-23
 |---|---:|
 | API routes | 303 |
 | Prisma models | 67 |
-| Prisma migrations | 44 |
+| Prisma migrations | 45 |
 | Server feature modules | 33 |
 | Client feature modules | 28 |
 | Cross-feature imports (ADR-015 baseline) | 80 |

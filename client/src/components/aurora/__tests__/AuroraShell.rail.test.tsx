@@ -54,12 +54,12 @@ describe("AuroraShell left rail", () => {
     expect(screen.getByRole("button", { name: "Account menu" })).toBeInTheDocument();
   });
 
-  it("has exactly 4 tab links in spec order", () => {
+  it("has exactly 5 tab links in spec order", () => {
     renderAt("/");
     const rail = screen.getByRole("navigation", { name: "Main navigation" });
     const links = within(rail).getAllByRole("link");
-    expect(links.map((l) => l.textContent)).toEqual(["Today", "My Team", "Players", "League"]);
-    expect(links.map((l) => l.getAttribute("href"))).toEqual(["/", "/teams/LDY", "/players", "/league"]);
+    expect(links.map((l) => l.textContent)).toEqual(["Today", "My Team", "Players", "League", "Archive"]);
+    expect(links.map((l) => l.getAttribute("href"))).toEqual(["/", "/teams/LDY", "/players", "/league", "/archive"]);
   });
 
   it("renders no sport or hidden-page links", () => {

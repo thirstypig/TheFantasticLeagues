@@ -5,7 +5,7 @@ export type GlyphKind =
   | "search" | "filter" | "back" | "more" | "moreDots"
   | "shield" | "chevD" | "chevR" | "sort" | "sortUp" | "sortDn"
   | "x" | "check" | "cog" | "trade" | "calendar" | "trophy"
-  | "spark" | "bell" | "plus" | "star" | "starOn";
+  | "spark" | "bell" | "plus" | "star" | "starOn" | "archive";
 
 interface GlyphProps {
   kind: GlyphKind;
@@ -72,6 +72,8 @@ export function Glyph({ kind, size = 18 }: GlyphProps): React.ReactElement | nul
       return <svg {...common}><rect x="4" y="5" width="16" height="16" rx="2" /><path d="M4 10h16M9 3v4M15 3v4" /></svg>;
     case "trophy":
       return <svg {...common}><path d="M8 4h8v4a4 4 0 1 1-8 0V4zM5 5H3v2a3 3 0 0 0 3 3M19 5h2v2a3 3 0 0 1-3 3M9 16h6l1 4H8z" /></svg>;
+    case "archive":
+      return <svg {...common}><rect x="3" y="4" width="18" height="5" rx="1" /><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4" /></svg>;
     case "spark":
       return <svg {...common}><path d="M12 3l1.8 4.2L18 9l-4.2 1.8L12 15l-1.8-4.2L6 9l4.2-1.8z" /></svg>;
     case "bell":
