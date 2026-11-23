@@ -83,6 +83,8 @@ export interface OwnerProfile {
   /** Each team name with the seasons it was used, most recent first. */
   teams: { name: string; from: number; to: number }[];
   titleYears: number[];
+  /** Every season played, most recent first: where they finished, and with which team. */
+  seasons: { year: number; teamName: string; owner: string | null; rank: number; teams: number; total: number }[];
   /** Kept in at least two seasons, most seasons first. */
   favoriteKeepers: FavoriteKeeper[];
 }
@@ -287,6 +289,9 @@ export function buildTrophyCase(results: SeasonResult[], keepers: KeeperRow[] = 
       teams: teamRuns(ranked.filter((r) => keyOf(r) === key)),
       owners: runsOf(ranked.filter((r) => keyOf(r) === key), (r) => r.owner?.trim() || r.name),
       titleYears: championships.filter((c) => keyOf({ year: c.year, code: c.teamCode, owner: c.owner }) === key).map((c) => c.year),
+      seasons: ranked.filter((r) => keyOf(r) === key)
+        .map((r) => ({ year: r.year, teamName: r.name, owner: r.owner?.trim() || null, rank: r.rank, teams: teamsIn.get(r.year) ?? 0, total: r.total }))
+        .sort((a, b) => b.year - a.year),
       favoriteKeepers: favoriteKeepers(keepers.filter((k) => keeperKey(k) === key)),
     };
   }

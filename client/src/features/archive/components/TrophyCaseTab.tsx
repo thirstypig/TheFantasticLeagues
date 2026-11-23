@@ -4,7 +4,7 @@
 // Rebuilt from the commissioner's workbooks, so it can be incomplete.
 import React, { useEffect, useRef, useState } from "react";
 import { getTrophyCase, type OwnerProfile, type TrophyCaseData } from "../api";
-import { seasonRanges } from "../lib/seasonView";
+import { fmtPoints, ordinal, seasonRanges } from "../lib/seasonView";
 
 const span = (from: number, to: number) => (from === to ? String(from) : `${from}–${to}`);
 
@@ -32,6 +32,23 @@ function Profile({ profile, keeperSeasons }: { profile: OwnerProfile; keeperSeas
           <ul className="arc-roster">
             {profile.teams.map((t) => (
               <li key={`${t.name}-${t.from}`}><span className="arc-pname">{t.name}</span><span className="arc-price">{span(t.from, t.to)}</span></li>
+            ))}
+          </ul>
+        </section>
+        <section className="arc-section" aria-label="Season by season">
+          <h3>Season by season</h3>
+          <ul className="arc-roster">
+            {profile.seasons.map((s) => (
+              <li key={s.year}>
+                <span className="arc-slot" style={{ width: 44 }}>{s.year}</span>
+                <span className="arc-pname">
+                  {s.rank === 1 ? <strong>Champion</strong> : `${ordinal(s.rank)} of ${s.teams}`}
+                  {(profile.teams.length > 1 || new Set(profile.owners.map((o) => o.name)).size > 1) && (
+                    <span className="arc-teamname">{s.teamName}{s.owner && s.owner !== profile.owner ? ` · ${s.owner}` : ""}</span>
+                  )}
+                </span>
+                <span className="arc-price">{fmtPoints(s.total)} pts</span>
+              </li>
             ))}
           </ul>
         </section>

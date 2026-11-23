@@ -100,6 +100,8 @@ export interface OwnerProfile {
   owners: { name: string; from: number; to: number }[];
   teams: { name: string; from: number; to: number }[];
   titleYears: number[];
+  /** Every season played, most recent first. */
+  seasons: { year: number; teamName: string; owner: string | null; rank: number; teams: number; total: number }[];
   favoriteKeepers: FavoriteKeeper[];
 }
 

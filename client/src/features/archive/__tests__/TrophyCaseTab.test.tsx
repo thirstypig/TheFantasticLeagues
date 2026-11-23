@@ -27,14 +27,20 @@ const data = {
       owners: [{ name: "Kurt Sakamoto", from: 2003, to: 2025 }],
       teams: [{ name: "Dodger Dawgs", from: 2006, to: 2025 }, { name: "Crush Brothers Inc.", from: 2003, to: 2004 }],
       titleYears: [2012, 2025],
+      seasons: [
+        { year: 2025, teamName: "Dodger Dawgs", owner: "Kurt Sakamoto", rank: 1, teams: 8, total: 399 },
+        { year: 2004, teamName: "Crush Brothers Inc.", owner: "Kurt Sakamoto", rank: 7, teams: 8, total: 263 },
+      ],
       favoriteKeepers: [{ name: "Buster Posey", mlbId: 457763, seasons: [2012, 2013, 2014], possible: true }, { name: "Pablo Sandoval", mlbId: null, seasons: [2009, 2010], possible: false }],
     },
     "Tim Yuba": {
       key: "Tim Yuba", owner: "Tim Yuba",
       owners: [{ name: "Tim Yuba", from: 2005, to: 2025 }, { name: "Tim Yuba & Jerrod Jue", from: 2004, to: 2004 }],
       teams: [{ name: "Skunk Dogs", from: 2003, to: 2025 }], titleYears: [2009], favoriteKeepers: [],
+      seasons: [{ year: 2009, teamName: "Skunk Dogs", owner: "Tim Yuba", rank: 1, teams: 8, total: 368.5 }, { year: 2004, teamName: "Skunk Dogs", owner: "Tim Yuba & Jerrod Jue", rank: 3, teams: 8, total: 330.5 }],
     },
-    "James Chang": { key: "James Chang", owner: "James Chang", owners: [{ name: "James Chang", from: 2004, to: 2025 }], teams: [{ name: "Los Doyers", from: 2016, to: 2025 }], titleYears: [], favoriteKeepers: [] },
+    "James Chang": { key: "James Chang", owner: "James Chang", owners: [{ name: "James Chang", from: 2004, to: 2025 }], teams: [{ name: "Los Doyers", from: 2016, to: 2025 }], titleYears: [], favoriteKeepers: [],
+      seasons: [{ year: 2025, teamName: "Los Doyers", owner: "James Chang", rank: 4, teams: 8, total: 320 }] },
   },
   keeperSeasons: [2006, 2025],
 };
@@ -66,6 +72,23 @@ describe("TrophyCaseTab", () => {
     expect(keepers.textContent).toContain("Pablo Sandoval2009–20102 seasons");
     expect(screen.getByText(/same team at the same price as last season/)).toBeTruthy();
     expect(screen.getByRole("region", { name: "Teams" }).textContent).toContain("Crush Brothers Inc.2003–2004");
+  });
+
+  it("lists every season's finish, most recent first, with the team name when it changed", async () => {
+    render(<TrophyCaseTab leagueId={20} />);
+    fireEvent.click(await screen.findByRole("button", { name: /Kurt Sakamoto/ }));
+    const seasons = within(screen.getByRole("region", { name: "Season by season" })).getAllByRole("listitem").map((li) => li.textContent);
+    expect(seasons).toEqual(["2025ChampionDodger Dawgs399 pts", "20047th of 8Crush Brothers Inc.263 pts"]);
+    // One team, one owner: no repeated team name on every line.
+    fireEvent.click(screen.getByRole("button", { name: /James Chang/ }));
+    expect(within(screen.getByRole("region", { name: "Season by season" })).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["20254th of 8320 pts"]);
+  });
+
+  it("shows a co-owner on the seasons they shared", async () => {
+    render(<TrophyCaseTab leagueId={20} />);
+    fireEvent.click(await screen.findByRole("button", { name: /Tim Yuba/ }));
+    const seasons = within(screen.getByRole("region", { name: "Season by season" })).getAllByRole("listitem").map((li) => li.textContent);
+    expect(seasons[1]).toBe("20043rd of 8Skunk Dogs · Tim Yuba & Jerrod Jue330.5 pts");
   });
 
   it("lists the owners when they changed, and not when they didn't", async () => {
