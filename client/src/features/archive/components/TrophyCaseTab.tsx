@@ -108,8 +108,8 @@ export default function TrophyCaseTab({ leagueId }: TrophyCaseTabProps) {
                 <ThemedTr key={row.key}>
                   <ThemedTd className="font-medium text-[var(--lg-text-muted)]">{idx + 1}</ThemedTd>
                   <ThemedTd>
-                    <span className="font-medium text-[var(--lg-text)]">{who(row.owner, row.teamCode, row.teamName).primary}</span>
-                    {row.owner && <span className="ml-2 text-sm text-[var(--lg-text-muted)]">{row.teamName}</span>}
+                    <span className="block text-[15px] font-semibold text-[var(--lg-text)]">{who(row.owner, row.teamCode, row.teamName).primary}</span>
+                    {row.owner && <span className="block text-[13px] text-[var(--lg-text-muted)]">{row.teamNames.join(" · ")}</span>}
                   </ThemedTd>
                   <ThemedTd className="text-right font-semibold text-[var(--lg-text)]">{row.avgRank.toFixed(2)}</ThemedTd>
                   <ThemedTd className="text-right text-[var(--lg-text-muted)]">{row.championships}</ThemedTd>
@@ -190,8 +190,8 @@ export default function TrophyCaseTab({ leagueId }: TrophyCaseTabProps) {
                 <ThemedTr key={row.key}>
                   <ThemedTd className="font-medium text-[var(--lg-text-muted)]">{idx + 1}</ThemedTd>
                   <ThemedTd>
-                    <span className="font-medium text-[var(--lg-text)]">{who(row.owner, row.teamCode, row.teamName).primary}</span>
-                    {row.owner && <span className="ml-2 text-sm text-[var(--lg-text-muted)]">{row.teamName}</span>}
+                    <span className="block text-[15px] font-semibold text-[var(--lg-text)]">{who(row.owner, row.teamCode, row.teamName).primary}</span>
+                    {row.owner && <span className="block text-[13px] text-[var(--lg-text-muted)]">{row.teamNames.join(" · ")}</span>}
                   </ThemedTd>
                   <ThemedTd className="text-right font-semibold text-purple-500">{row.score}</ThemedTd>
                   <ThemedTd className="text-right text-yellow-500 font-medium">{row.championships || '-'}</ThemedTd>

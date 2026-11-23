@@ -42,7 +42,7 @@ describe("one franchise is one team, across every year and name", () => {
 
   it("adds up totals and averages finishes per franchise", () => {
     const dmk = tc.allTimeStandings.find((r) => r.teamCode === "DMK")!;
-    expect(dmk).toEqual({ key: "DMK", owner: null, teamCode: "DMK", teamName: "Diamond Kings", totalPoints: 974, seasons: 3, avgRank: 1.67, avgScore: 324.7, championships: 2 });
+    expect(dmk).toEqual({ key: "DMK", owner: null, teamCode: "DMK", teamName: "Diamond Kings", teamNames: ["Diamond Kings", "Kent Diamond Kings"], totalPoints: 974, seasons: 3, avgRank: 1.67, avgScore: 324.7, championships: 2 });
     // DDG: 4th of 4, 4th of 4, 1st of 3
     expect(tc.allTimeStandings.find((r) => r.teamCode === "DDG")!.avgRank).toBe(3);
   });
@@ -68,6 +68,12 @@ describe("credited to owners", () => {
     const rows = tc.allTimeStandings.map((r) => [r.key, r.owner, r.teamName, r.seasons]);
     expect(rows).toContainEqual(["Kurt Sakamoto", "Kurt Sakamoto", "Dodger Dawgs", 3]);
     expect(rows).toContainEqual(["James Chang", "James Chang", "The Fluffers", 3]);
+  });
+
+  it("lists every team name an owner used, most recent first", () => {
+    expect(tc.allTimeStandings.find((r) => r.key === "James Chang")!.teamNames).toEqual(["The Fluffers", "VIP BALCOS"]);
+    expect(tc.allTimeStandings.find((r) => r.key === "Kurt Sakamoto")!.teamNames).toEqual(["Dodger Dawgs", "Disco Rover", "Crush Brothers Inc."]);
+    expect(tc.dynastyScores.find((r) => r.key === "Kurt Sakamoto")!.teamNames).toEqual(["Dodger Dawgs", "Disco Rover", "Crush Brothers Inc."]);
   });
 
   it("falls back to the franchise code for a season with no owner on record", () => {

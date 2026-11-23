@@ -34,6 +34,8 @@ export interface AllTimeStandingEntry {
   /** The owner's most recent team. */
   teamCode: string;
   teamName: string;
+  /** Every name the owner's teams have used, most recent first (Los Doyers, The Fluffers, VIP BALCOS). */
+  teamNames: string[];
   totalPoints: number;
   seasons: number;
   /** Average finishing place, two decimals. The leaderboard is ordered by this. */
@@ -55,6 +57,7 @@ export interface DynastyScoreEntry {
   owner: string | null;
   teamCode: string;
   teamName: string;
+  teamNames: string[];
   score: number;
   championships: number;
   seasons: number;
@@ -97,6 +100,8 @@ export function buildTrophyCase(results: SeasonResult[]): TrophyCase {
   const latest = new Map<string, SeasonResult>();
   for (const r of ranked) latest.set(keyOf(r), r); // ranked is oldest season first
   const ownerOf = (key: string) => latest.get(key)!.owner?.trim() || null;
+  // Every name an owner's teams went by, most recent first.
+  const namesOf = (key: string) => [...new Set(ranked.filter((r) => keyOf(r) === key).map((r) => r.name).reverse())];
   const label = (key: string) => ownerOf(key) ?? latest.get(key)!.name;
 
   const championships: ChampionshipEntry[] = ranked
@@ -123,7 +128,7 @@ export function buildTrophyCase(results: SeasonResult[]): TrophyCase {
   const allTimeStandings: AllTimeStandingEntry[] = [...agg.entries()]
     .map(([key, a]) => ({
       entry: {
-        key, owner: ownerOf(key), teamCode: latest.get(key)!.code, teamName: latest.get(key)!.name, totalPoints: round1(a.totalPoints), seasons: a.seasons,
+        key, owner: ownerOf(key), teamCode: latest.get(key)!.code, teamName: latest.get(key)!.name, teamNames: namesOf(key), totalPoints: round1(a.totalPoints), seasons: a.seasons,
         avgRank: round2(a.totalRank / a.seasons), avgScore: round1(a.totalPoints / a.seasons), championships: a.championships,
       },
       exact: a.totalRank / a.seasons,
@@ -133,7 +138,7 @@ export function buildTrophyCase(results: SeasonResult[]): TrophyCase {
 
   const dynastyScores: DynastyScoreEntry[] = [...agg.entries()]
     .map(([key, a]) => ({
-      key, owner: ownerOf(key), teamCode: latest.get(key)!.code, teamName: latest.get(key)!.name, score: a.dynastyScore, championships: a.championships,
+      key, owner: ownerOf(key), teamCode: latest.get(key)!.code, teamName: latest.get(key)!.name, teamNames: namesOf(key), score: a.dynastyScore, championships: a.championships,
       seasons: a.seasons, avgRank: round1(a.totalRank / a.seasons),
     }))
     .sort((a, b) => b.score - a.score);
