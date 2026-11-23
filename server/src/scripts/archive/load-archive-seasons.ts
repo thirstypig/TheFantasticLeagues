@@ -12,14 +12,15 @@
  *
  * --league   the league the archive hangs off (OGBA: 1, the 2025 league,
  *            which every existing HistoricalSeason row already uses).
- * --owners   JSON { "<franchise code>": "<owner name>" }. Kept out of git
+ * --owners   JSON { "<franchise code>": "<owner>" | [{ from?, to?, owner }] } — see
+ *            ownerFor in archiveRows.ts. Kept out of git
  *            (public repo); default: owners.local.json next to this script.
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { prisma } from "../../db/prisma.js";
-import { buildArchiveRows, type ParsedSeasonFile } from "../../lib/archive/archiveRows.js";
+import { buildArchiveRows, type OwnersFile, type ParsedSeasonFile } from "../../lib/archive/archiveRows.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -39,7 +40,7 @@ async function main() {
     console.error("usage: load-archive-seasons.ts <parsedDir> --league <id> [--owners <file>] [--apply] [year...]");
     process.exit(2);
   }
-  const owners: Record<string, string> = existsSync(ownersPath) ? JSON.parse(readFileSync(ownersPath, "utf8")) : {};
+  const owners: OwnersFile = existsSync(ownersPath) ? JSON.parse(readFileSync(ownersPath, "utf8")) : {};
   if (!existsSync(ownersPath)) console.warn(`(no owners file at ${ownersPath} — owner names will be blank)`);
 
   const league = await prisma.league.findUnique({ where: { id: leagueId }, select: { id: true, name: true } });

@@ -48,13 +48,30 @@ function teamNote(season: SeasonData, code: string): string | null {
   return `As recorded in the commissioner's workbook, which does not add up here: ${msgs.join("; ")}.`;
 }
 
+/**
+ * Owners file: franchise code → one owner for every season, or a list of
+ * owners by season range ("from"/"to" inclusive, either may be left open):
+ *   "SKD": [{ "to": 2004, "from": 2004, "owner": "Tim Yuba & Jerrod Jue" }, { "owner": "Tim Yuba" }]
+ * The first range covering the year wins; an entry with no range is the default.
+ */
+export type OwnerSpan = { from?: number; to?: number; owner: string };
+export type OwnersFile = Record<string, string | OwnerSpan[]>;
+
+export function ownerFor(owners: OwnersFile, code: string, year: number): string | null {
+  const entry = owners[code];
+  if (entry == null) return null;
+  if (typeof entry === "string") return entry;
+  const hit = entry.find((s) => (s.from == null || year >= s.from) && (s.to == null || year <= s.to));
+  return hit?.owner ?? null;
+}
+
 export function buildArchiveRows(
-  season: SeasonData, owners: Record<string, string>,
+  season: SeasonData, owners: OwnersFile,
 ): { teams: TeamRow[]; entries: RosterRow[] } {
   const teams: TeamRow[] = season.teams.map((t) => ({
     code: t.code,
     name: t.name,
-    ownerName: owners[t.code] ?? null,
+    ownerName: ownerFor(owners, t.code, season.year),
     recordedPeriodPoints: season.recordedPoints.map((p) => p[t.code]).filter((v): v is number => typeof v === "number"),
     recordedTotal: season.recordedTotals[t.code] ?? null,
     note: teamNote(season, t.code),

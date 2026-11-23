@@ -96,6 +96,8 @@ export interface FavoriteKeeper {
 export interface OwnerProfile {
   key: string;
   owner: string | null;
+  /** Who owned the team, as runs of seasons, most recent first. */
+  owners: { name: string; from: number; to: number }[];
   teams: { name: string; from: number; to: number }[];
   titleYears: number[];
   favoriteKeepers: FavoriteKeeper[];

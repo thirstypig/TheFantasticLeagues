@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildArchiveRows } from "../archiveRows.js";
+import { buildArchiveRows, ownerFor } from "../archiveRows.js";
 import type { SeasonData } from "../seasonBuilder.js";
 
 // Shaped like the parser's 2008 output: one team whose recorded total doesn't
@@ -53,5 +53,25 @@ describe("buildArchiveRows", () => {
     expect(draft.map((e) => [e.playerName, e.isKeeper, e.salary])).toEqual([["R. Martin", true, 31], ["Ad. Gonzalez", false, 25]]);
     expect(entries.find((e) => e.playerName === "J. Soto")).toMatchObject({ salary: null, salaryNote: "AL" });
     expect(entries.filter((e) => e.kind !== "DRAFT").every((e) => !e.isKeeper)).toBe(true);
+  });
+});
+
+describe("ownerFor", () => {
+  const owners = {
+    LDY: "James Chang",
+    SKD: [{ from: 2004, to: 2004, owner: "Tim Yuba & Jerrod Jue" }, { owner: "Tim Yuba" }],
+    TSH: [{ to: 2017, owner: "Spencer Chao" }, { from: 2018, owner: "Jay & William Chan" }],
+  };
+  it("gives one owner for every season when the file has a name", () => {
+    expect(ownerFor(owners, "LDY", 2004)).toBe("James Chang");
+  });
+  it("picks the season's owner from ranges, with an open entry as the default", () => {
+    expect(ownerFor(owners, "SKD", 2004)).toBe("Tim Yuba & Jerrod Jue");
+    expect(ownerFor(owners, "SKD", 2003)).toBe("Tim Yuba");
+    expect(ownerFor(owners, "TSH", 2017)).toBe("Spencer Chao");
+    expect(ownerFor(owners, "TSH", 2025)).toBe("Jay & William Chan");
+  });
+  it("is null for a team with no owner on file", () => {
+    expect(ownerFor(owners, "DVD", 2010)).toBeNull();
   });
 });

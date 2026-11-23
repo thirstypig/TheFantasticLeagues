@@ -17,6 +17,16 @@ function Profile({ profile, keeperSeasons }: { profile: OwnerProfile; keeperSeas
         <span className="arc-note">{profile.titleYears.length ? `${profile.titleYears.length} ${profile.titleYears.length === 1 ? "title" : "titles"}: ${profile.titleYears.join(", ")}` : "No titles yet"}</span>
       </div>
       <div className="arc-cols">
+        {new Set(profile.owners.map((o) => o.name)).size > 1 && (
+          <section className="arc-section" aria-label="Owners">
+            <h3>Owners</h3>
+            <ul className="arc-roster">
+              {profile.owners.map((o) => (
+                <li key={`${o.name}-${o.from}`}><span className="arc-pname">{o.name}</span><span className="arc-price">{span(o.from, o.to)}</span></li>
+              ))}
+            </ul>
+          </section>
+        )}
         <section className="arc-section" aria-label="Teams">
           <h3>Teams</h3>
           <ul className="arc-roster">
