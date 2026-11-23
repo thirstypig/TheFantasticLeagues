@@ -25,11 +25,11 @@ const section = (args: Partial<SectionArgs>, title: string) =>
 const draftTos = (args: Partial<SectionArgs>) => (section(args, "Draft")?.links ?? []).map((l) => l.to);
 
 describe("buildPrimaryTabs", () => {
-  it("returns exactly 4 tabs in spec order", () => {
+  it("returns exactly 5 tabs in spec order", () => {
     const tabs = buildPrimaryTabs({ myTeamCode: "LDY" });
-    expect(tabs.map((t) => t.key)).toEqual(["today", "myTeam", "players", "league"]);
-    expect(tabs.map((t) => t.label)).toEqual(["Today", "My Team", "Players", "League"]);
-    expect(tabs.map((t) => t.to)).toEqual(["/", "/teams/LDY", "/players", "/league"]);
+    expect(tabs.map((t) => t.key)).toEqual(["today", "myTeam", "players", "league", "archive"]);
+    expect(tabs.map((t) => t.label)).toEqual(["Today", "My Team", "Players", "League", "Archive"]);
+    expect(tabs.map((t) => t.to)).toEqual(["/", "/teams/LDY", "/players", "/league", "/archive"]);
   });
   it("sends My Team to /teams when the user has no team", () => {
     expect(buildPrimaryTabs({ myTeamCode: null })[1].to).toBe("/teams");
@@ -62,13 +62,18 @@ describe("activeTabFor", () => {
     expect(activeTabFor("/players", "LDY")).toBe("players");
     expect(activeTabFor("/players/660271", "LDY")).toBe("players");
   });
+  it("treats the archive and its pages as Archive, not League", () => {
+    expect(activeTabFor("/archive", "LDY")).toBe("archive");
+    expect(activeTabFor("/archive/player-check", null)).toBe("archive");
+    expect(activeTabFor("/archived", "LDY")).toBeNull();
+  });
   it("treats commissioner pages as League", () => {
     expect(activeTabFor("/commissioner/5/money", null)).toBe("league");
     expect(activeTabFor("/commissioner/5", "LDY")).toBe("league");
   });
   it.each([
     "/league", "/more", "/season", "/activity", "/trades", "/transactions", "/rules", "/payouts",
-    "/archive", "/matchup", "/auction", "/draft", "/leagues/5/keepers", "/period/3",
+    "/matchup", "/auction", "/draft", "/leagues/5/keepers", "/period/3",
   ])("treats %s as League", (p) => {
     expect(activeTabFor(p, "LDY")).toBe("league");
   });

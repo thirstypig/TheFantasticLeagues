@@ -8,13 +8,14 @@ const GLYPHS: Record<PrimaryTabKey, GlyphKind> = {
   myTeam: "me",
   players: "players",
   league: "trophy",
+  archive: "archive",
 };
 
 interface MobileTabBarProps {
   myTeamCode?: string | null;
 }
 
-/** Fixed bottom bar: Today, My Team, Players, League. */
+/** Fixed bottom bar: Today, My Team, Players, League, Archive. */
 export function MobileTabBar({ myTeamCode }: MobileTabBarProps) {
   const nav = useNavigate();
   const { pathname } = useLocation();

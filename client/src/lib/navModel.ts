@@ -1,9 +1,9 @@
 /**
- * Navigation model for the four-tab shell. Pure functions, no React: both the
+ * Navigation model for the five-tab shell. Pure functions, no React: both the
  * desktop and mobile shells render from this so they cannot drift apart.
  */
 
-export type PrimaryTabKey = "today" | "myTeam" | "players" | "league";
+export type PrimaryTabKey = "today" | "myTeam" | "players" | "league" | "archive";
 export type NavLink = { to: string; label: string };
 export type NavSection = { title: string; links: NavLink[] };
 
@@ -16,6 +16,8 @@ export function buildPrimaryTabs(args: {
     { key: "myTeam", label: "My Team", to: myTeamCode ? `/teams/${myTeamCode}` : "/teams" },
     { key: "players", label: "Players", to: "/players" },
     { key: "league", label: "League", to: "/league" },
+    // Every past OGBA season and the trophy case, open to all owners (2026-11-23).
+    { key: "archive", label: "Archive", to: "/archive" },
   ];
 }
 
@@ -29,7 +31,6 @@ const LEAGUE_PREFIXES = [
   "/teams",
   "/rules",
   "/payouts",
-  "/archive",
   "/matchup",
   "/commissioner",
   "/auction",
@@ -57,6 +58,7 @@ export function activeTabFor(
     if (pathname === own || pathname.startsWith(`${own}/`)) return "myTeam";
   }
   if (pathname === "/players" || pathname.startsWith("/players/")) return "players";
+  if (pathname === "/archive" || pathname.startsWith("/archive/")) return "archive";
   if (LEAGUE_PREFIXES.some((p) => isUnder(pathname, p))) return "league";
   return null;
 }

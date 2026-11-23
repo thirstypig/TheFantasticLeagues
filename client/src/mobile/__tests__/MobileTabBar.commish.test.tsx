@@ -1,5 +1,5 @@
 /**
- * MobileTabBar — four-tab set and active-state tests.
+ * MobileTabBar — five-tab set and active-state tests.
  */
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -18,12 +18,12 @@ function tab(key: string) {
   return screen.getByTestId("mobile-tab-bar").querySelector(`[data-tab-key="${key}"]`);
 }
 
-describe("MobileTabBar — four-tab set", () => {
-  it("shows exactly Today, My Team, Players, League", () => {
+describe("MobileTabBar — five-tab set", () => {
+  it("shows exactly Today, My Team, Players, League, Archive", () => {
     renderBar("/", "LDY");
     const buttons = Array.from(screen.getByTestId("mobile-tab-bar").querySelectorAll("button"));
-    expect(buttons.map((b) => b.textContent)).toEqual(["Today", "My Team", "Players", "League"]);
-    expect(buttons.map((b) => b.getAttribute("data-tab-key"))).toEqual(["today", "myTeam", "players", "league"]);
+    expect(buttons.map((b) => b.textContent)).toEqual(["Today", "My Team", "Players", "League", "Archive"]);
+    expect(buttons.map((b) => b.getAttribute("data-tab-key"))).toEqual(["today", "myTeam", "players", "league", "archive"]);
   });
 
   it("gives every tab a 44px minimum touch target", () => {

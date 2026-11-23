@@ -53,11 +53,11 @@ beforeEach(() => {
 });
 
 describe("MobileShell — bottom tab bar", () => {
-  it("renders the four tabs", () => {
+  it("renders the five tabs", () => {
     renderShell();
     const bar = screen.getByTestId("mobile-tab-bar");
     expect(within(bar).getAllByRole("button").map((b) => b.textContent)).toEqual([
-      "Today", "My Team", "Players", "League",
+      "Today", "My Team", "Players", "League", "Archive",
     ]);
   });
 
