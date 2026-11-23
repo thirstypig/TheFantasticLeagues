@@ -33,11 +33,13 @@ export interface PeriodRoster {
   /** 1-based scoring period this roster played. */
   period: number;
   source: string;
+  /** The day the period ended (the sheet's date, "2024-04-21"); its meeting set the next period's roster. */
+  endDate: string | null;
   rosters: Record<string, RosterEntry[]>;
 }
 
 export interface PeriodMoves {
-  /** Moves made at the meeting that started this period. */
+  /** Moves made at the meeting that started this period. Period 1: changes between the draft and the first sheet. */
   period: number;
   byTeam: Record<string, { added: string[]; dropped: string[]; respelled: { from: string; to: string }[] }>;
 }
@@ -52,6 +54,7 @@ export interface SeasonData {
   keepers: Record<string, string[]> | null;
   /** "sheet": the workbook lists the keepers; "derived": same team + same price (possible keepers). */
   keepersSource: "sheet" | "derived" | null;
+  /** One per dated sheet: sheet k is the roster that played period k. The final roster plays the last period. */
   periodRosters: PeriodRoster[];
   moves: PeriodMoves[];
   finalRosters: Record<string, RosterEntry[]> | null;
@@ -62,6 +65,26 @@ export interface SeasonData {
 }
 
 export type SheetLoader = (ref: SheetRef) => ParsedSheet | null;
+
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+
+/**
+ * A period sheet's tab name as a date: "April 21", " May 2", "Sept 09",
+ * "Aug 27", "4-27". null when the name isn't a day of the year.
+ */
+export function sheetDate(name: string, year: number): string | null {
+  const s = name.trim().toLowerCase();
+  let month: number;
+  let day: number;
+  const numeric = s.match(/^(\d{1,2})[-/](\d{1,2})$/);
+  const named = s.match(/^([a-z]+)\.?\s+(\d{1,2})$/);
+  if (numeric) { month = Number(numeric[1]); day = Number(numeric[2]); }
+  else if (named && named[1].length >= 3) { month = MONTHS.indexOf(named[1].slice(0, 3)) + 1; day = Number(named[2]); }
+  else return null;
+  const d = new Date(Date.UTC(year, month - 1, day));
+  if (month < 1 || d.getUTCMonth() !== month - 1 || d.getUTCDate() !== day) return null;
+  return d.toISOString().slice(0, 10);
+}
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
@@ -180,22 +203,33 @@ export function buildSeason(spec: SeasonSpec, franchises: FranchiseMap, load: Sh
     checks.push({ level: "ok", message: `keepers per team: ${counts.join(",")}` });
   }
 
-  // Period rosters: P1 = draft roster, P(k+1) = k-th period sheet.
+  // Period rosters. A dated sheet is the roster that played the period ending
+  // on that date (the commissioner: "the April 21 meeting is always the first
+  // period"), so sheet k = P(k); the meeting on that date set P(k+1), and the
+  // final roster played the last period. In most seasons the first sheet
+  // equals the draft, and the final roster is ~30 moves past the last sheet.
   const periodRosters: PeriodRoster[] = [];
-  if (draft) periodRosters.push({ period: 1, source: spec.draft!.sheet, rosters: draft });
   (spec.periods ?? []).forEach((sheet, i) => {
     const p = get({ file: spec.periodsFile!, sheet }, `period sheet`);
     if (!p) return;
-    const rosters = byCode(p.rosters, franchises, `period ${i + 2}`, checks, order);
+    const rosters = byCode(p.rosters, franchises, `period ${i + 1}`, checks, order);
     const filled = Object.values(rosters).reduce((n, r) => n + r.length, 0);
     if (filled === 0) { checks.push({ level: "error", message: `period sheet "${sheet}" has no names` }); return; }
-    periodRosters.push({ period: i + 2, source: sheet, rosters });
+    const endDate = sheetDate(sheet, spec.year);
+    if (!endDate) checks.push({ level: "warn", message: `period sheet "${sheet}" isn't a date` });
+    periodRosters.push({ period: i + 1, source: sheet, endDate, rosters });
   });
 
+  // Moves: draft → P1 (period 1), then each meeting, the last into the final roster.
+  const finalRosters = finalSheet ? byCode(finalSheet.rosters, franchises, "final rosters", checks) : null;
+  const chain: { period: number; rosters: Record<string, RosterEntry[]> }[] = [];
+  if (draft) chain.push({ period: 0, rosters: draft });
+  for (const p of periodRosters) chain.push(p);
+  if (finalRosters && periodRosters.length > 0) chain.push({ period: periodRosters[periodRosters.length - 1].period + 1, rosters: finalRosters });
   const moves: PeriodMoves[] = [];
-  for (let i = 1; i < periodRosters.length; i++) {
-    const prev = periodRosters[i - 1];
-    const cur = periodRosters[i];
+  for (let i = 1; i < chain.length; i++) {
+    const prev = chain[i - 1];
+    const cur = chain[i];
     if (cur.period !== prev.period + 1) continue;
     const byTeam: PeriodMoves["byTeam"] = {};
     for (const t of teams) {
@@ -255,7 +289,7 @@ export function buildSeason(spec: SeasonSpec, franchises: FranchiseMap, load: Sh
     keepersSource,
     periodRosters,
     moves,
-    finalRosters: finalSheet ? byCode(finalSheet.rosters, franchises, "final rosters", checks) : null,
+    finalRosters,
     recordedPoints,
     recordedTotals,
     checks,

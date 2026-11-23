@@ -53,18 +53,18 @@ async function main() {
     const year = Number(f.slice(0, 4));
     if (years.length && !years.includes(String(year))) continue;
     const parsed = JSON.parse(readFileSync(join(dir, f), "utf8")) as ParsedSeasonFile;
-    const { teams, entries } = buildArchiveRows(parsed, owners);
+    const { teams, entries, periodEnds } = buildArchiveRows(parsed, owners);
     const byKind = entries.reduce<Record<string, number>>((m, e) => ((m[e.kind] = (m[e.kind] ?? 0) + 1), m), {});
     const notes = teams.filter((t) => t.note).map((t) => `${t.code}: ${t.note}`);
-    console.log(`${year}: ${teams.length} teams, ${entries.length} roster rows ${JSON.stringify(byKind)}${parsed.keepersSource === "sheet" ? " · keepers from the Keepers sheet" : ""}${notes.length ? `\n   notes: ${notes.join(" | ")}` : ""}`);
+    console.log(`${year}: ${teams.length} teams, ${entries.length} roster rows ${JSON.stringify(byKind)}${parsed.keepersSource === "sheet" ? " · keepers from the Keepers sheet" : ""}${periodEnds.length ? ` · periods end ${periodEnds.join(", ")}` : ""}${notes.length ? `\n   notes: ${notes.join(" | ")}` : ""}`);
     if (!apply) continue;
 
     await prisma.$transaction(async (tx) => {
       const keepersFromSheet = parsed.keepersSource === "sheet";
       const season = await tx.historicalSeason.upsert({
         where: { year_leagueId: { year, leagueId } },
-        create: { year, leagueId, keepersFromSheet },
-        update: { keepersFromSheet },
+        create: { year, leagueId, keepersFromSheet, periodEnds },
+        update: { keepersFromSheet, periodEnds },
         select: { id: true },
       });
       await tx.historicalRosterEntry.deleteMany({ where: { seasonId: season.id } });

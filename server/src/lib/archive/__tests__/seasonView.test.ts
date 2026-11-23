@@ -13,14 +13,17 @@ const teams: SeasonViewInput["teams"] = [
 
 const entries: Entry[] = [
   e("DDG", "SALARIES", null, "C", "Should Not Appear"),
-  e("DDG", "DRAFT", 1, "C", "B. Posey", { salary: 25, isKeeper: true }),
-  e("DDG", "DRAFT", 1, "P", "J. Soto", { salaryNote: "AL" }),
+  e("DDG", "DRAFT", null, "C", "B. Posey", { salary: 25, isKeeper: true }),
+  e("DDG", "DRAFT", null, "P", "J. Soto", { salaryNote: "AL" }),
+  e("DDG", "PERIOD", 1, "C", "B. Posey"),
+  e("DDG", "PERIOD", 1, "P", "J. Soto"),
   e("DDG", "PERIOD", 2, "C", "B. Posey"),
   e("DDG", "PERIOD", 2, "3B", "R. Roberts"),
   e("DDG", "PERIOD", 3, "C", "B. Posey"),
   e("DDG", "PERIOD", 3, "3B", "R.  Roberts"), // respelled, not a move
   e("DDG", "FINAL", null, "C", "B. Posey"),
-  e("MNB", "DRAFT", 1, "P", "J. Wright"),
+  e("MNB", "DRAFT", null, "P", "J. Wright"),
+  e("MNB", "PERIOD", 1, "P", "J. Wright"),
   e("MNB", "PERIOD", 2, "P", "J. Wright"),
   e("MNB", "PERIOD", 3, "P", "J. Wright"),
 ];
@@ -30,7 +33,8 @@ const matches = new Map([
   ["2012|MNB|j|wright|P", { mlbId: null, mlbName: null }], // on the player check, undecided
 ]);
 
-const view = buildSeasonView({ year: 2012, keepersFromSheet: true, teams, entries, matches });
+const periodEnds = ["2012-05-06", "2012-06-03", ""];
+const view = buildSeasonView({ year: 2012, keepersFromSheet: true, periodEnds, teams, entries, matches });
 
 describe("buildSeasonView", () => {
   it("orders teams by finish from the recorded totals; tied totals share a place", () => {
@@ -51,20 +55,23 @@ describe("buildSeasonView", () => {
     expect(view.rosters.MNB.draft[0]).toMatchObject({ mlbId: null, mlbName: null });
   });
 
-  it("works out the moves at each meeting, ignoring a respelled name", () => {
+  it("works out the moves at each meeting, dated, ignoring a respelled name; the final roster is the last period", () => {
     expect(view.hasMoves).toBe(true);
-    expect(view.moves.map((m) => m.period)).toEqual([2, 3]);
-    expect(view.moves[0].byTeam.DDG.added.map((x) => x.name)).toEqual(["R. Roberts"]);
-    expect(view.moves[0].byTeam.DDG.dropped.map((x) => x.name)).toEqual(["J. Soto"]);
-    expect(view.moves[1].byTeam.DDG).toEqual({ added: [], dropped: [] });
-    expect(view.moves[0].byTeam.MNB).toEqual({ added: [], dropped: [] });
+    expect(view.moves.map((m) => [m.period, m.meetingDate])).toEqual([[1, null], [2, "2012-05-06"], [3, "2012-06-03"], [4, null]]);
+    expect(view.moves[0].byTeam.DDG).toEqual({ added: [], dropped: [] }); // first sheet = the draft
+    expect(view.moves[1].byTeam.DDG.added.map((x) => x.name)).toEqual(["R. Roberts"]);
+    expect(view.moves[1].byTeam.DDG.dropped.map((x) => x.name)).toEqual(["J. Soto"]);
+    expect(view.moves[2].byTeam.DDG).toEqual({ added: [], dropped: [] });
+    expect(view.moves[3].byTeam.DDG.dropped.map((x) => x.name)).toEqual(["R.  Roberts"]);
+    expect(view.moves[3].byTeam.MNB.dropped.map((x) => x.name)).toEqual(["J. Wright"]);
+    expect(view.periodEnds).toEqual(["2012-05-06", "2012-06-03", null]);
   });
 
   it("reports no moves when the meeting rosters are missing or have a gap", () => {
-    const noPeriods = buildSeasonView({ year: 2003, keepersFromSheet: false, teams, entries: entries.filter((x) => x.kind !== "PERIOD"), matches });
+    const noPeriods = buildSeasonView({ year: 2003, keepersFromSheet: false, periodEnds: [], teams, entries: entries.filter((x) => x.kind !== "PERIOD"), matches });
     expect(noPeriods.hasMoves).toBe(false);
     expect(noPeriods.moves).toEqual([]);
-    const gap = buildSeasonView({ year: 2015, keepersFromSheet: false, teams, entries: entries.filter((x) => x.periodNumber !== 2), matches });
+    const gap = buildSeasonView({ year: 2015, keepersFromSheet: false, periodEnds, teams, entries: entries.filter((x) => x.periodNumber !== 2), matches });
     expect(gap.hasMoves).toBe(false);
   });
 

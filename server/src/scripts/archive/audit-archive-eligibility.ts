@@ -85,7 +85,7 @@ async function main() {
       }
     };
     add("draft", season.draft);
-    for (const p of season.periodRosters) if (p.period > 1) add(`P${p.period}`, p.rosters);
+    for (const p of season.periodRosters) add(`P${p.period}`, p.rosters);
     add("final", season.finalRosters);
     // Salary sheets are LAST season's rosters: eligibility there belongs to year-1, skip.
 

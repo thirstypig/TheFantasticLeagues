@@ -1,6 +1,6 @@
 # STATUS
 
-**Last updated:** 2026-11-22
+**Last updated:** 2026-11-23
 
 ## One-line description
 The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with auctions, keepers and a commissioner. It replaces spreadsheets and OnRoto for the OGBA league.
@@ -38,7 +38,7 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - Settings shows the stats source in plain words and always shows the saved value (a stored "ALL" used to display as "NL")
 
 ## In progress
-- Past seasons archive rebuild (2003–2025, all 23 seasons). #537–#542 merged and loaded in prod: 23 seasons, 32,653 roster rows, player check (/archive/player-check, 245 names to decide), trophy case credited to owners and ranked by average finish. PR (feat/archive-page-v2): /archive rebuilt on the new data — season standings with points per period, each team's draft/keepers, moves at every meeting and final roster, phone-first; old Player Stats/Draft/Admin tabs removed (player stats return with the re-score). Next: delete the old archive rows, pull player stats, re-score
+- Past seasons archive rebuild (2003–2025, all 23 seasons). #537–#547 merged and loaded in prod: 23 seasons, 32,653 roster rows, player check (/archive/player-check, 245 names to decide), /archive season pages (standings, draft/keepers, moves, final roster, phone-first) and a trophy case credited to owners, ranked by average finish. Open: #548 (each owner's finish in every season); fix/archive-period-mapping (a dated period sheet is the roster that PLAYED the period ending that day — sheet k = P(k), final = last period — period end dates on the standings and each meeting, tap chevrons, "some seasons are incomplete" note; needs the season loader re-run after merge). Next: delete the old archive rows, pull player stats, re-score
 
 ## Open bugs / known issues
 - None open. 2026 standings match OnRoto exactly in P1, P2, P3, P5, P6. The P4 and P7 ±1 pairs are OnRoto errors, verified 2026-11-19: FBST matches MLB and Baseball-Reference in both (todo #331). A full player-by-player sweep against MLB game logs (all 7 periods, 2026-11-19) found every stat that feeds standings correct.
