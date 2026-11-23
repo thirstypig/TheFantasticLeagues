@@ -1,5 +1,6 @@
 import { prisma } from '../../../db/prisma.js';
 import { logger } from '../../../lib/logger.js';
+import { archivePlayerKey, splitWorkbookName } from '../../../lib/archive/mlbNameMatcher.js';
 
 /**
  * All-time trophy case, built from the rebuilt archive (HistoricalTeam): one
@@ -64,11 +65,78 @@ export interface DynastyScoreEntry {
   avgRank: number;
 }
 
+export interface FavoriteKeeper {
+  /** The MLB name once the player check settled him, else the workbook spelling. */
+  name: string;
+  mlbId: number | null;
+  /** Seasons he started on this owner's team as a keeper. */
+  seasons: number[];
+  /** Some of those seasons only "possible" keepers (same team and price, no keeper list). */
+  possible: boolean;
+}
+
+export interface OwnerProfile {
+  key: string;
+  owner: string | null;
+  /** Each team name with the seasons it was used, most recent first. */
+  teams: { name: string; from: number; to: number }[];
+  titleYears: number[];
+  /** Kept in at least two seasons, most seasons first. */
+  favoriteKeepers: FavoriteKeeper[];
+}
+
 export interface TrophyCase {
   championships: ChampionshipEntry[];
   allTimeStandings: AllTimeStandingEntry[];
   records: Records;
   dynastyScores: DynastyScoreEntry[];
+  /** Keyed like allTimeStandings[].key. */
+  profiles: Record<string, OwnerProfile>;
+  /** Seasons the workbooks give keepers for (a Keepers sheet, or derivable from prices). */
+  keeperSeasons: number[];
+}
+
+/** One keeper row: a draft-day player marked kept, with the owner of his team that season. */
+export interface KeeperRow {
+  year: number;
+  code: string;
+  owner: string | null;
+  playerName: string;
+  slot: string;
+  fromSheet: boolean;
+  mlbId: number | null;
+  mlbName: string | null;
+}
+
+/** Players an owner kept in two or more seasons — the same MLB player, or the same spelling when unresolved. */
+export function favoriteKeepers(rows: KeeperRow[], limit = 6): FavoriteKeeper[] {
+  const byPlayer = new Map<string, { name: string; mlbId: number | null; seasons: Set<number>; possible: boolean; lastYear: number }>();
+  for (const r of rows) {
+    const { abbr, surname } = splitWorkbookName(r.playerName);
+    const id = r.mlbId != null ? `id:${r.mlbId}` : `name:${abbr}|${surname}`;
+    const p = byPlayer.get(id) ?? { name: r.mlbName ?? r.playerName, mlbId: r.mlbId, seasons: new Set<number>(), possible: false, lastYear: 0 };
+    p.seasons.add(r.year);
+    if (!r.fromSheet) p.possible = true;
+    if (r.year >= p.lastYear) { p.lastYear = r.year; p.name = r.mlbName ?? r.playerName; }
+    byPlayer.set(id, p);
+  }
+  return [...byPlayer.values()]
+    .filter((p) => p.seasons.size >= 2)
+    .sort((a, b) => b.seasons.size - a.seasons.size || b.lastYear - a.lastYear || a.name.localeCompare(b.name))
+    .slice(0, limit)
+    .map((p) => ({ name: p.name, mlbId: p.mlbId, seasons: [...p.seasons].sort((x, y) => x - y), possible: p.possible }));
+}
+
+/** Team names as runs of consecutive use, most recent first: Los Doyers 2016–2025, The Fluffers 2008–2009… */
+export function teamRuns(results: SeasonResult[]): OwnerProfile['teams'] {
+  const sorted = [...results].sort((a, b) => a.year - b.year);
+  const runs: OwnerProfile['teams'] = [];
+  for (const r of sorted) {
+    const last = runs[runs.length - 1];
+    if (last && last.name === r.name) last.to = r.year;
+    else runs.push({ name: r.name, from: r.year, to: r.year });
+  }
+  return runs.reverse();
 }
 
 /** One franchise's season: the name it used that year and its recorded total. */
@@ -85,10 +153,11 @@ export function rankSeason(results: SeasonResult[]): (SeasonResult & { rank: num
   return sorted.map((r) => ({ ...r, rank: 1 + sorted.filter((o) => o.total > r.total).length }));
 }
 
-export function buildTrophyCase(results: SeasonResult[]): TrophyCase {
+export function buildTrophyCase(results: SeasonResult[], keepers: KeeperRow[] = []): TrophyCase {
   const empty: TrophyCase = {
     championships: [], allTimeStandings: [], dynastyScores: [],
     records: { bestSeason: null, worstSeason: null, mostChampionships: null, bestCategoryBySeason: {} },
+    profiles: {}, keeperSeasons: [],
   };
   if (results.length === 0) return empty;
 
@@ -169,7 +238,23 @@ export function buildTrophyCase(results: SeasonResult[]): TrophyCase {
     };
   }
 
-  return { championships, allTimeStandings, dynastyScores, records: { bestSeason, worstSeason, mostChampionships, bestCategoryBySeason: {} } };
+  const keeperKey = (k: KeeperRow) => k.owner?.trim() || k.code;
+  const profiles: Record<string, OwnerProfile> = {};
+  for (const key of agg.keys()) {
+    profiles[key] = {
+      key,
+      owner: ownerOf(key),
+      teams: teamRuns(ranked.filter((r) => keyOf(r) === key)),
+      titleYears: championships.filter((c) => (c.owner?.trim() || c.teamCode) === key).map((c) => c.year),
+      favoriteKeepers: favoriteKeepers(keepers.filter((k) => keeperKey(k) === key)),
+    };
+  }
+  const keeperSeasons = [...new Set(keepers.map((k) => k.year))].sort((a, b) => a - b);
+
+  return {
+    championships, allTimeStandings, dynastyScores, profiles, keeperSeasons,
+    records: { bestSeason, worstSeason, mostChampionships, bestCategoryBySeason: {} },
+  };
 }
 
 /** The trophy case for the archive of the franchise this league belongs to. */
@@ -181,7 +266,28 @@ export async function computeTrophyCase(leagueId: number): Promise<TrophyCase> {
     select: { code: true, name: true, ownerName: true, recordedTotal: true, season: { select: { year: true } } },
   });
   const results: SeasonResult[] = teams.map((t) => ({ year: t.season.year, code: t.code, name: t.name, owner: t.ownerName, total: t.recordedTotal! }));
-  const trophyCase = buildTrophyCase(results);
+
+  // Draft-day keepers, with each team's owner that season and the player-check identity.
+  const scope = { league: { franchiseId: league.franchiseId } };
+  const [keeperEntries, seasonTeams, matches] = await Promise.all([
+    prisma.historicalRosterEntry.findMany({
+      where: { kind: 'DRAFT', isKeeper: true, season: scope },
+      select: { teamCode: true, playerName: true, slot: true, season: { select: { id: true, year: true, keepersFromSheet: true } } },
+    }),
+    prisma.historicalTeam.findMany({ where: { season: scope }, select: { seasonId: true, code: true, ownerName: true } }),
+    prisma.historicalPlayerMatch.findMany({ where: { season: scope, mlbId: { not: null } }, select: { seasonId: true, key: true, mlbId: true, mlbName: true } }),
+  ]);
+  const ownerAt = new Map(seasonTeams.map((t) => [`${t.seasonId}|${t.code}`, t.ownerName]));
+  const matchAt = new Map(matches.map((m) => [`${m.seasonId}|${m.key}`, m]));
+  const keepers: KeeperRow[] = keeperEntries.map((e) => {
+    const m = matchAt.get(`${e.season.id}|${e.season.year}|${archivePlayerKey(e.teamCode, e.playerName, e.slot)}`);
+    return {
+      year: e.season.year, code: e.teamCode, owner: ownerAt.get(`${e.season.id}|${e.teamCode}`) ?? null,
+      playerName: e.playerName, slot: e.slot, fromSheet: e.season.keepersFromSheet,
+      mlbId: m?.mlbId ?? null, mlbName: m?.mlbName ?? null,
+    };
+  });
+  const trophyCase = buildTrophyCase(results, keepers);
   logger.info({ leagueId, seasons: new Set(results.map((r) => r.year)).size, franchises: trophyCase.allTimeStandings.length }, 'Trophy case computed');
   return trophyCase;
 }

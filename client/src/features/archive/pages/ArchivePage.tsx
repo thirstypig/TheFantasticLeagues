@@ -217,11 +217,15 @@ export default function ArchivePage() {
     <div className="arc-page">
       {header}
       <div className="arc-bar">
-        <button type="button" className="arc-step" aria-label="Previous season" disabled={idx >= years.length - 1} onClick={() => goTo(years[idx + 1])}>‹</button>
-        <select className="arc-field" aria-label="Season" value={year} onChange={(e) => goTo(Number(e.target.value))}>
-          {years.map((y) => <option key={y} value={y}>{y}</option>)}
-        </select>
-        <button type="button" className="arc-step" aria-label="Next season" disabled={idx <= 0} onClick={() => goTo(years[idx - 1])}>›</button>
+        {tab === "season" && (
+          <>
+            <button type="button" className="arc-step" aria-label="Previous season" disabled={idx >= years.length - 1} onClick={() => goTo(years[idx + 1])}>‹</button>
+            <select className="arc-field" aria-label="Season" value={year} onChange={(e) => goTo(Number(e.target.value))}>
+              {years.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+            <button type="button" className="arc-step" aria-label="Next season" disabled={idx <= 0} onClick={() => goTo(years[idx - 1])}>›</button>
+          </>
+        )}
         <div className="arc-tabs" role="tablist" aria-label="View">
           <button type="button" role="tab" aria-selected={tab === "season"} onClick={() => update({ tab: null })}>Season</button>
           <button type="button" role="tab" aria-selected={tab === "trophy"} onClick={() => update({ tab: "trophy", team: null })}>Trophy case</button>

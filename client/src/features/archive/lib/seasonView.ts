@@ -17,3 +17,15 @@ export const ordinal = (n: number) => {
   const s = ["th", "st", "nd", "rd"], v = n % 100;
   return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
 };
+
+/** "2006–2014" for a run of seasons, "2022, 2024–2025" when there are gaps. */
+export function seasonRanges(years: number[]): string {
+  const out: string[] = [];
+  for (const y of [...years].sort((a, b) => a - b)) {
+    const last = out[out.length - 1];
+    const [a, b] = last ? last.split("–").map(Number) : [];
+    if (last && (b ?? a) === y - 1) out[out.length - 1] = `${a}–${y}`;
+    else out.push(String(y));
+  }
+  return out.join(", ");
+}
