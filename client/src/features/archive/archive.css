@@ -64,7 +64,19 @@
 .arc-banners { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .arc-banner { padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; text-align: center; }
 .arc-banner-year { font-family: var(--am-display); font-size: 24px; font-weight: 700; color: var(--am-accent); line-height: 1.1; }
-.arc-board td:not(.arc-team):not(.arc-rank), .arc-board th:not(.arc-team):not(.arc-rank) { width: 88px; }
+/* The leaderboard fits the screen at every width — no sideways scroll, so
+   every column header sits over its numbers. Fixed layout: # and the three
+   numbers get set widths, the owner column takes the rest and wraps. */
+.arc-board { table-layout: fixed; }
+.arc-board th, .arc-board td { padding-left: 6px; padding-right: 6px; }
+.arc-board .arc-rank { width: 30px; }
+.arc-board .arc-team { min-width: 0; max-width: none; width: auto; position: static; }
+.arc-board .arc-num { width: 64px; text-align: right; }
+.arc-board th.arc-num { white-space: normal; line-height: 1.2; }
+@media (min-width: 600px) {
+  .arc-board th, .arc-board td { padding-left: 10px; padding-right: 10px; }
+  .arc-board .arc-num { width: 96px; }
+}
 
 .arc-page button:focus-visible, .arc-page select:focus-visible, .arc-page a:focus-visible, .arc-page tr:focus-visible { outline: 2px solid var(--am-accent); outline-offset: 2px; }
 .arc-skeleton { padding: 16px; }
