@@ -99,15 +99,15 @@ export default function TrophyCaseTab({ leagueId }: { leagueId: number }) {
 
       <section aria-label="All-time leaderboard">
         <h2 className="arc-section-title">All-time leaderboard</h2>
-        <div className="arc-card arc-scroll">
+        <div className="arc-card">
           <table className="arc-table arc-board">
             <thead>
               <tr>
                 <th className="arc-rank" scope="col">#</th>
                 <th className="arc-team" scope="col">Owner</th>
-                <th scope="col">Avg finish</th>
-                <th scope="col">Titles</th>
-                <th scope="col">Seasons</th>
+                <th className="arc-num" scope="col">Avg finish</th>
+                <th className="arc-num" scope="col">Titles</th>
+                <th className="arc-num" scope="col">Seasons</th>
               </tr>
             </thead>
             <tbody>
@@ -122,9 +122,9 @@ export default function TrophyCaseTab({ leagueId }: { leagueId: number }) {
                         {row.owner && <span className="arc-teamname">{row.teamNames.join(" · ")}</span>}
                       </button>
                     </td>
-                    <td className="arc-total">{row.avgRank.toFixed(2)}</td>
-                    <td>{row.championships || "—"}</td>
-                    <td>{row.seasons}</td>
+                    <td className="arc-num arc-total">{row.avgRank.toFixed(2)}</td>
+                    <td className="arc-num">{row.championships || "—"}</td>
+                    <td className="arc-num">{row.seasons}</td>
                   </tr>
                 );
               })}
