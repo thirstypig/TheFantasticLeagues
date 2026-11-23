@@ -56,6 +56,8 @@ export interface AllTimeStandingEntry {
   owner: string | null;
   teamCode: string;
   teamName: string;
+  /** Every name the owner's teams used, most recent first. */
+  teamNames: string[];
   totalPoints: number;
   seasons: number;
   avgRank: number;
@@ -68,6 +70,7 @@ export interface DynastyScoreEntry {
   owner: string | null;
   teamCode: string;
   teamName: string;
+  teamNames: string[];
   score: number;
   championships: number;
   seasons: number;
