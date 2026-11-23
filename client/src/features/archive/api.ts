@@ -85,11 +85,29 @@ export interface TrophyCaseRecords {
   bestCategoryBySeason: Record<string, { year: number; teamCode: string; teamName: string; value: number }>;
 }
 
+export interface FavoriteKeeper {
+  name: string;
+  mlbId: number | null;
+  seasons: number[];
+  /** Some seasons only "possible" keepers (same team and price; no keeper list that year). */
+  possible: boolean;
+}
+
+export interface OwnerProfile {
+  key: string;
+  owner: string | null;
+  teams: { name: string; from: number; to: number }[];
+  titleYears: number[];
+  favoriteKeepers: FavoriteKeeper[];
+}
+
 export interface TrophyCaseData {
   championships: ChampionshipEntry[];
   allTimeStandings: AllTimeStandingEntry[];
   records: TrophyCaseRecords;
   dynastyScores: DynastyScoreEntry[];
+  profiles: Record<string, OwnerProfile>;
+  keeperSeasons: number[];
 }
 
 export async function getTrophyCase(leagueId: number): Promise<TrophyCaseData> {

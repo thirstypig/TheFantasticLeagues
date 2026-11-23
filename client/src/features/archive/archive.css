@@ -59,6 +59,13 @@
 .arc-meeting a:hover { text-decoration: underline; }
 .arc-drop { color: var(--am-text-muted); }
 
+/* Trophy case */
+.arc-section-title { margin: 0 0 8px; font-size: 17px; font-weight: 700; }
+.arc-banners { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.arc-banner { padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; text-align: center; }
+.arc-banner-year { font-family: var(--am-display); font-size: 24px; font-weight: 700; color: var(--am-accent); line-height: 1.1; }
+.arc-board td:not(.arc-team):not(.arc-rank), .arc-board th:not(.arc-team):not(.arc-rank) { width: 88px; }
+
 .arc-page button:focus-visible, .arc-page select:focus-visible, .arc-page a:focus-visible, .arc-page tr:focus-visible { outline: 2px solid var(--am-accent); outline-offset: 2px; }
 .arc-skeleton { padding: 16px; }
 .arc-skeleton > div { height: 16px; margin-bottom: 10px; border-radius: 4px; background: var(--am-chip); }

@@ -1,14 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../../db/prisma.js", () => ({
-  prisma: { league: { findUnique: vi.fn() }, historicalTeam: { findMany: vi.fn() } },
+  prisma: {
+    league: { findUnique: vi.fn() }, historicalTeam: { findMany: vi.fn() },
+    historicalRosterEntry: { findMany: vi.fn() }, historicalPlayerMatch: { findMany: vi.fn() },
+  },
 }));
 vi.mock("../../../lib/logger.js", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
 import { prisma } from "../../../db/prisma.js";
-import { buildTrophyCase, computeTrophyCase, rankSeason, type SeasonResult } from "../services/trophyCaseService.js";
+import { buildTrophyCase, computeTrophyCase, favoriteKeepers, rankSeason, teamRuns, type KeeperRow, type SeasonResult } from "../services/trophyCaseService.js";
 
-const db = prisma as unknown as { league: { findUnique: ReturnType<typeof vi.fn> }; historicalTeam: { findMany: ReturnType<typeof vi.fn> } };
+type Fn = ReturnType<typeof vi.fn>;
+const db = prisma as unknown as { league: { findUnique: Fn }; historicalTeam: { findMany: Fn }; historicalRosterEntry: { findMany: Fn }; historicalPlayerMatch: { findMany: Fn } };
 
 // Recorded totals from the archive (prod, 2026-11-22), trimmed to four franchises.
 const R = (year: number, code: string, name: string, total: number, owner: string | null = null): SeasonResult => ({ year, code, name, owner, total });
@@ -93,6 +97,43 @@ describe("credited to owners", () => {
   });
 });
 
+describe("owner profiles", () => {
+  const K = (year: number, owner: string, playerName: string, over: Partial<KeeperRow> = {}): KeeperRow =>
+    ({ year, code: "DDG", owner, playerName, slot: "C", fromSheet: true, mlbId: null, mlbName: null, ...over });
+
+  it("ranks favorite keepers by seasons kept, needing at least two", () => {
+    const fav = favoriteKeepers([
+      K(2012, "Kurt", "B. Posey", { mlbId: 457763, mlbName: "Buster Posey" }), K(2013, "Kurt", "B. Posey", { mlbId: 457763, mlbName: "Buster Posey" }), K(2014, "Kurt", "B. Posey", { mlbId: 457763, mlbName: "Buster Posey", fromSheet: false }),
+      K(2009, "Kurt", "P. Sandoval"), K(2010, "Kurt", "P. Sandoval"),
+      K(2011, "Kurt", "J. Once"),
+    ]);
+    expect(fav).toEqual([
+      { name: "Buster Posey", mlbId: 457763, seasons: [2012, 2013, 2014], possible: true },
+      { name: "P. Sandoval", mlbId: null, seasons: [2009, 2010], possible: false },
+    ]);
+  });
+
+  it("lists team names as runs, most recent first", () => {
+    expect(teamRuns([R(2003, "DDG", "Crush Brothers Inc.", 1), R(2004, "DDG", "Crush Brothers Inc.", 1), R(2005, "DDG", "Disco Rover", 1), R(2006, "DDG", "Dodger Dawgs", 1), R(2025, "DDG", "Dodger Dawgs", 1)]))
+      .toEqual([{ name: "Dodger Dawgs", from: 2006, to: 2025 }, { name: "Disco Rover", from: 2005, to: 2005 }, { name: "Crush Brothers Inc.", from: 2003, to: 2004 }]);
+  });
+
+  it("gives every owner a profile with teams, title years and keepers", () => {
+    const tc = buildTrophyCase(
+      [R(2004, "LDY", "VIP BALCOS", 300, "James Chang"), R(2004, "DDG", "Crush Brothers Inc.", 250, "Kurt Sakamoto"), R(2016, "LDY", "Los Doyers", 200, "James Chang"), R(2016, "DDG", "Dodger Dawgs", 260, "Kurt Sakamoto")],
+      [K(2016, "James Chang", "C. Kershaw", { code: "LDY" }), K(2017, "James Chang", "C. Kershaw", { code: "LDY" })],
+    );
+    expect(tc.profiles["James Chang"]).toEqual({
+      key: "James Chang", owner: "James Chang",
+      teams: [{ name: "Los Doyers", from: 2016, to: 2016 }, { name: "VIP BALCOS", from: 2004, to: 2004 }],
+      titleYears: [2004],
+      favoriteKeepers: [{ name: "C. Kershaw", mlbId: null, seasons: [2016, 2017], possible: false }],
+    });
+    expect(tc.profiles["Kurt Sakamoto"].titleYears).toEqual([2016]);
+    expect(tc.keeperSeasons).toEqual([2016, 2017]);
+  });
+});
+
 describe("most championships", () => {
   it("names every franchise in a tie", () => {
     const tc = buildTrophyCase([R(2009, "SKD", "Skunk Dogs", 368.5), R(2009, "DMK", "Diamond Kings", 284.5), R(2011, "DMK", "Diamond Kings", 363.5), R(2011, "SKD", "Skunk Dogs", 321)]);
@@ -144,18 +185,33 @@ it("is empty with no seasons", () => {
   expect(buildTrophyCase([])).toEqual({
     championships: [], allTimeStandings: [], dynastyScores: [],
     records: { bestSeason: null, worstSeason: null, mostChampionships: null, bestCategoryBySeason: {} },
+    profiles: {}, keeperSeasons: [],
   });
 });
 
 describe("computeTrophyCase", () => {
   it("reads the archive of the league's franchise, so the current league (20) finds seasons stored under 2025's (1)", async () => {
     db.league.findUnique.mockResolvedValue({ franchiseId: 1 });
-    db.historicalTeam.findMany.mockResolvedValue([{ code: "DMK", name: "Diamond Kings", ownerName: "Kent Sakamoto", recordedTotal: 361, season: { year: 2004 } }]);
+    db.historicalTeam.findMany
+      .mockResolvedValueOnce([{ code: "DMK", name: "Diamond Kings", ownerName: "Kent Sakamoto", recordedTotal: 361, season: { year: 2004 } }])
+      .mockResolvedValueOnce([{ seasonId: 4, code: "DMK", ownerName: "Kent Sakamoto" }, { seasonId: 5, code: "DMK", ownerName: "Kent Sakamoto" }]);
+    db.historicalRosterEntry.findMany.mockResolvedValue([
+      { teamCode: "DMK", playerName: "M. Kemp", slot: "OF", season: { id: 4, year: 2008, keepersFromSheet: true } },
+      { teamCode: "DMK", playerName: "Mt. Kemp", slot: "OF", season: { id: 5, year: 2009, keepersFromSheet: false } },
+    ]);
+    db.historicalPlayerMatch.findMany.mockResolvedValue([
+      { seasonId: 4, key: "2008|DMK|m|kemp|H", mlbId: 461314, mlbName: "Matt Kemp" },
+      { seasonId: 5, key: "2009|DMK|mt|kemp|H", mlbId: 461314, mlbName: "Matt Kemp" },
+    ]);
     const tc = await computeTrophyCase(20);
     expect(db.league.findUnique).toHaveBeenCalledWith({ where: { id: 20 }, select: { franchiseId: true } });
     expect(db.historicalTeam.findMany.mock.calls[0][0].where).toEqual({ recordedTotal: { not: null }, season: { league: { franchiseId: 1 } } });
     expect(tc.championships).toEqual([{ year: 2004, teamCode: "DMK", teamName: "Diamond Kings", owner: "Kent Sakamoto" }]);
     expect(db.historicalTeam.findMany.mock.calls[0][0].select).toMatchObject({ ownerName: true });
+    expect(db.historicalRosterEntry.findMany.mock.calls[0][0].where).toEqual({ kind: "DRAFT", isKeeper: true, season: { league: { franchiseId: 1 } } });
+    // Two spellings in two seasons are one keeper, through the player check's MLB id.
+    expect(tc.profiles["Kent Sakamoto"].favoriteKeepers).toEqual([{ name: "Matt Kemp", mlbId: 461314, seasons: [2008, 2009], possible: true }]);
+    expect(tc.keeperSeasons).toEqual([2008, 2009]);
   });
 
   it("is empty for an unknown league", async () => {
