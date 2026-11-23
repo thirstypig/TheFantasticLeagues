@@ -24,7 +24,7 @@ const history = ArchiveSeasonListResponseSchema.parse({
 });
 
 const s2012 = ArchiveSeasonResponseSchema.parse({
-  year: 2012, keepersFromSheet: true, periodCount: 2, hasMoves: true,
+  year: 2012, keepersFromSheet: true, periodEnds: ["2012-05-06"], periodCount: 2, hasMoves: true,
   teams: [
     { code: "DDG", name: "Dodger Dawgs", owner: "Kurt Sakamoto", points: [72.5, 42], total: 394.5, rank: 1, note: "Total row 394.5 ≠ standings block 349.5." },
     { code: "MNB", name: "MoneyBall", owner: "Mike Gin", points: [40, 44.5], total: 351, rank: 2, note: null },
@@ -36,11 +36,11 @@ const s2012 = ArchiveSeasonResponseSchema.parse({
     },
     MNB: { draft: [], final: [] },
   },
-  moves: [{ period: 2, byTeam: { DDG: { added: [E("3B", "R. Roberts", { mlbName: "Ryan Roberts", mlbId: 1 })], dropped: [E("P", "J. Soto")] }, MNB: { added: [], dropped: [] } } }],
+  moves: [{ period: 1, meetingDate: null, byTeam: { DDG: { added: [], dropped: [] }, MNB: { added: [], dropped: [] } } }, { period: 2, meetingDate: "2012-05-06", byTeam: { DDG: { added: [E("3B", "R. Roberts", { mlbName: "Ryan Roberts", mlbId: 1 })], dropped: [E("P", "J. Soto")] }, MNB: { added: [], dropped: [] } } }],
 });
 
 const s2003 = ArchiveSeasonResponseSchema.parse({
-  year: 2003, keepersFromSheet: false, periodCount: 6, hasMoves: false,
+  year: 2003, keepersFromSheet: false, periodEnds: [], periodCount: 6, hasMoves: false,
   teams: [{ code: "DLC", name: "Demolition Lumber Co.", owner: "Yuji Ogasa", points: [40, 41, 42, 50, 51, 51], total: 275, rank: 1, note: null }],
   rosters: { DLC: { draft: [], final: [E("C", "J. Kendall", { mlbName: "Jason Kendall", mlbId: 2 })] } },
   moves: [],
@@ -62,7 +62,7 @@ describe("the season view", () => {
     await screen.findByText("2012 champion");
     expect(m.getArchiveSeason).toHaveBeenCalledWith(2012);
     const rows = within(screen.getByRole("region", { name: "2012 standings" })).getAllByRole("row");
-    expect(rows[0].textContent).toBe("#OwnerP1P2Total");
+    expect(rows[0].textContent).toBe("#OwnerP1May 6P2Total"); // each period with the day it ended; the last ends with the season
     expect(rows[1].textContent).toContain("Kurt Sakamoto");
     expect(rows[1].textContent).toContain("Dodger Dawgs");
     expect(rows[1].textContent).toContain("72.5");
@@ -74,6 +74,16 @@ describe("the season view", () => {
     await screen.findByText("2003 champion");
     expect(m.getArchiveSeason).toHaveBeenCalledWith(2003);
     expect(screen.getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["#", "Owner", "P1", "P2", "P3", "P4", "P5", "P6", "Total"]);
+    expect(screen.getByRole("note").textContent).toBe(
+      "Rebuilt from the commissioner’s old workbooks, so some seasons are incomplete and may have mistakes. The 2003 workbook is missing the draft and the moves at each meeting.",
+    );
+  });
+
+  it("says a season is rebuilt and may be incomplete even when nothing is known to be missing, and says rows can be tapped", async () => {
+    renderAt();
+    await screen.findByText("2012 champion");
+    expect(screen.getByRole("note").textContent).toBe("Rebuilt from the commissioner’s old workbooks, so some seasons are incomplete and may have mistakes.");
+    expect(screen.getByText(/Tap a team to see its draft/)).toBeTruthy();
   });
 
   it("switches season from the picker and the arrows, closing any open team", async () => {
@@ -102,7 +112,8 @@ describe("one team", () => {
     // Unresolved names show as written.
     expect(within(draft).getByText("J. Soto")).toBeTruthy();
     const moves = screen.getByRole("region", { name: "Moves at each meeting" });
-    expect(moves.textContent).toContain("Before period 2");
+    expect(moves.textContent).toContain("May 6 meeting · before period 2");
+    expect(moves.textContent).not.toContain("After the draft"); // no changes then, so not listed
     expect(moves.textContent).toContain("+ Ryan Roberts");
     expect(moves.textContent).toContain("− J. Soto");
     expect(screen.getByText(/Total row 394.5/)).toBeTruthy();

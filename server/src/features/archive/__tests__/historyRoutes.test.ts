@@ -62,7 +62,7 @@ describe("GET /api/archive/history", () => {
 
 describe("GET /api/archive/history/:year", () => {
   it("returns the season built from its teams, rosters (no salaries) and player-check names", async () => {
-    db.historicalSeason.findFirst.mockResolvedValue({ id: 9, year: 2003, keepersFromSheet: false });
+    db.historicalSeason.findFirst.mockResolvedValue({ id: 9, year: 2003, keepersFromSheet: false, periodEnds: [] });
     db.historicalTeam.findMany.mockResolvedValue([{ code: "DLC", name: "Demolition Lumber Co.", ownerName: "Yuji Ogasa", recordedPeriodPoints: [40, 41], recordedTotal: 275, note: null }]);
     db.historicalRosterEntry.findMany.mockResolvedValue([{ teamCode: "DLC", kind: "FINAL", periodNumber: null, slot: "C", playerName: "J. Kendall", salary: null, salaryNote: null, isKeeper: false }]);
     db.historicalPlayerMatch.findMany.mockResolvedValue([{ key: "2003|DLC|j|kendall|H", mlbId: 116974, mlbName: "Jason Kendall" }]);

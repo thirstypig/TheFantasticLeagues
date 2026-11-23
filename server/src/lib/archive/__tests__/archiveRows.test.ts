@@ -12,8 +12,8 @@ const season: SeasonData = {
   keepers: { DDG: ["R. Martin"], LDY: [] },
   keepersSource: "derived",
   periodRosters: [
-    { period: 1, source: "Keepers", rosters: { DDG: [{ slot: "C", name: "R. Martin" }], LDY: [] } },
-    { period: 2, source: "May 1", rosters: { DDG: [{ slot: "C", name: "R. Martin" }], LDY: [{ slot: "OF", name: "J. Bay" }] } },
+    { period: 1, source: "4-27", endDate: "2008-04-27", rosters: { DDG: [{ slot: "C", name: "R. Martin" }], LDY: [] } },
+    { period: 2, source: "Keepers", endDate: null, rosters: { DDG: [{ slot: "C", name: "R. Martin" }], LDY: [{ slot: "OF", name: "J. Bay" }] } },
   ],
   moves: [],
   finalRosters: { DDG: [{ slot: "C", name: "R. Martin" }], LDY: [{ slot: "OF", name: "J. Bay" }] },
@@ -26,7 +26,7 @@ const season: SeasonData = {
 };
 
 describe("buildArchiveRows", () => {
-  const { teams, entries } = buildArchiveRows(season, { LDY: "Owner L" });
+  const { teams, entries, periodEnds } = buildArchiveRows(season, { LDY: "Owner L" });
 
   it("stores recorded points and totals as recorded, with a note where the source doesn't add up", () => {
     expect(teams).toEqual([
@@ -38,14 +38,19 @@ describe("buildArchiveRows", () => {
     ]);
   });
 
-  it("writes each roster kind once: P1 comes from DRAFT, not duplicated as PERIOD", () => {
+  it("writes every period sheet as PERIOD k, P1 included, and the draft with no period", () => {
     const kinds = entries.map((e) => `${e.kind}:${e.periodNumber ?? "-"}:${e.teamCode}:${e.playerName}`);
     expect(kinds).toEqual([
       "SALARIES:-:DDG:R. Martin", "SALARIES:-:LDY:J. Soto",
-      "DRAFT:1:DDG:R. Martin", "DRAFT:1:DDG:Ad. Gonzalez",
+      "DRAFT:-:DDG:R. Martin", "DRAFT:-:DDG:Ad. Gonzalez",
+      "PERIOD:1:DDG:R. Martin",
       "PERIOD:2:DDG:R. Martin", "PERIOD:2:LDY:J. Bay",
       "FINAL:-:DDG:R. Martin", "FINAL:-:LDY:J. Bay",
     ]);
+  });
+
+  it("lists the day each period ended, keeping a blank where a sheet name isn't a date", () => {
+    expect(periodEnds).toEqual(["2008-04-27", ""]);
   });
 
   it("flags keepers on the draft rows only, and splits $ from text price cells", () => {

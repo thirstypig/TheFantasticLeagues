@@ -2,6 +2,10 @@
  * One archived season as the archive page shows it: standings from the
  * recorded totals, each team's draft and final roster, and the moves made at
  * every meeting (the difference between consecutive period rosters). Pure.
+ *
+ * PERIOD k is the roster that played period k (the dated sheet; the date is
+ * periodEnds[k-1], the day that period ended and the next meeting was held).
+ * The FINAL roster played the period after the last sheet.
  */
 import type { ArchiveMove, ArchiveRosterEntry, ArchiveSeasonResponse, ArchiveSeasonTeam } from "../../../../shared/api/archiveSeason.js";
 import { archivePlayerKey } from "./mlbNameMatcher.js";
@@ -10,6 +14,8 @@ import { diffRoster } from "./workbookParser.js";
 export interface SeasonViewInput {
   year: number;
   keepersFromSheet: boolean;
+  /** HistoricalSeason.periodEnds: the day each period ended, P1 first ("" = unknown). */
+  periodEnds: string[];
   teams: { code: string; name: string; ownerName: string | null; recordedPeriodPoints: number[]; recordedTotal: number | null; note: string | null }[];
   entries: { teamCode: string; kind: "SALARIES" | "DRAFT" | "PERIOD" | "FINAL"; periodNumber: number | null; slot: string; playerName: string; salary: number | null; salaryNote: string | null; isKeeper: boolean }[];
   /** Player-check rows for the season, keyed by archivePlayerKey with the year. */
@@ -55,15 +61,16 @@ export function buildSeasonView(input: SeasonViewInput): ArchiveSeasonResponse {
     };
   }
 
-  // Period rosters: P1 is the draft roster, then one per meeting.
+  // The chain: draft → P1 … Pn (dated sheets) → final (the last period).
   const periods = [...new Set(byKind("PERIOD").map((e) => e.periodNumber!))].sort((a, b) => a - b);
-  const hasMoves = byKind("DRAFT").length > 0 && periods.length > 0 && periods[0] === 2
-    && periods.every((p, i) => p === i + 2);
+  const hasMoves = byKind("DRAFT").length > 0 && periods.length > 0 && periods.every((p, i) => p === i + 1);
   const moves: ArchiveMove[] = [];
   if (hasMoves) {
+    const chain = periods.map((p) => ({ period: p, rows: byKind("PERIOD", p) }));
+    const final = byKind("FINAL");
+    if (final.length > 0) chain.push({ period: periods.length + 1, rows: final });
     let prev = byKind("DRAFT");
-    for (const p of periods) {
-      const cur = byKind("PERIOD", p);
+    for (const { period, rows: cur } of chain) {
       const byTeam: ArchiveMove["byTeam"] = {};
       for (const t of input.teams) {
         const before = prev.filter((e) => e.teamCode === t.code);
@@ -73,7 +80,8 @@ export function buildSeasonView(input: SeasonViewInput): ArchiveSeasonResponse {
           names.map((n) => entry(list.find((e) => e.playerName === n.name)!));
         byTeam[t.code] = { added: pick(after, d.added), dropped: pick(before, d.dropped) };
       }
-      moves.push({ period: p, byTeam });
+      // Period 1's changes come between the draft and the first sheet, at no meeting.
+      moves.push({ period, meetingDate: period > 1 ? input.periodEnds[period - 2] || null : null, byTeam });
       prev = cur;
     }
   }
@@ -81,6 +89,7 @@ export function buildSeasonView(input: SeasonViewInput): ArchiveSeasonResponse {
   return {
     year,
     keepersFromSheet: input.keepersFromSheet,
+    periodEnds: input.periodEnds.map((d) => d || null),
     periodCount: Math.max(0, ...input.teams.map((t) => t.recordedPeriodPoints.length)),
     hasMoves,
     teams,

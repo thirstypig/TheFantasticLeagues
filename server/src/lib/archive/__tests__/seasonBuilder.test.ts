@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 const noRow = <T extends { row?: number }>(xs: T[]) => xs.map(({ row: _row, ...rest }) => rest);
-import { buildSeason, resolveTeam, type FranchiseMap } from "../seasonBuilder.js";
+import { buildSeason, resolveTeam, sheetDate, type FranchiseMap } from "../seasonBuilder.js";
 import { parseSheet, type Grid } from "../workbookParser.js";
 
 const franchises: FranchiseMap = {
@@ -36,11 +36,28 @@ const draft: Grid = [
 ];
 const p2: Grid = [...header, ["C", "A. One", "B. Two", "C. Three", "D. Four"]];
 
+describe("sheetDate", () => {
+  it("reads every way the workbooks name a period sheet", () => {
+    expect(sheetDate("April 21", 2024)).toBe("2024-04-21");
+    expect(sheetDate(" May 2", 2010)).toBe("2010-05-02");
+    expect(sheetDate("Sept 09", 2018)).toBe("2018-09-09");
+    expect(sheetDate("Aug 27", 2006)).toBe("2006-08-27");
+    expect(sheetDate("4-27", 2008)).toBe("2008-04-27");
+  });
+
+  it("refuses a name that isn't a real day", () => {
+    expect(sheetDate("Keepers", 2008)).toBeNull();
+    expect(sheetDate("June 31", 2008)).toBeNull();
+    expect(sheetDate("13-01", 2008)).toBeNull();
+    expect(sheetDate("Ma 5", 2008)).toBeNull();
+  });
+});
+
 describe("buildSeason", () => {
-  const sheets: Record<string, Grid> = { final, draft, p2 };
+  const sheets: Record<string, Grid> = { final, draft, "April 21": p2 };
   const load = (ref: { sheet: string }) => parseSheet(sheets[ref.sheet]);
   const s = buildSeason(
-    { year: 2024, final: { file: "f", sheet: "final" }, draft: { file: "f", sheet: "draft" }, periods: ["p2"], periodsFile: "f" },
+    { year: 2024, final: { file: "f", sheet: "final" }, draft: { file: "f", sheet: "draft" }, periods: ["April 21"], periodsFile: "f" },
     franchises, load,
   );
 
@@ -54,16 +71,16 @@ describe("buildSeason", () => {
     expect(s.checks).toContainEqual({ level: "warn", message: 'draft: matched by column order: "Mr. Rotoboto"→DDG' });
   });
 
-  it("derives the meeting moves between the draft roster and the P2 roster", () => {
-    expect(s.moves).toEqual([{
-      period: 2,
-      byTeam: {
-        DMK: { added: [], dropped: [], respelled: [] },
-        DLC: { added: [], dropped: [], respelled: [] },
-        DDG: { added: [], dropped: [], respelled: [] },
-        SKD: { added: ["D. Four"], dropped: ["X. Old"], respelled: [] },
-      },
-    }]);
+  it("reads a dated sheet as the roster that played the period ending that day: the first sheet is P1", () => {
+    expect(s.periodRosters.map((p) => [p.period, p.source, p.endDate])).toEqual([[1, "April 21", "2024-04-21"]]);
+  });
+
+  it("derives changes after the draft (P1), then the meeting moves into the final roster (the last period)", () => {
+    const none = { added: [], dropped: [], respelled: [] };
+    expect(s.moves).toEqual([
+      { period: 1, byTeam: { DMK: none, DLC: none, DDG: none, SKD: { added: ["D. Four"], dropped: ["X. Old"], respelled: [] } } },
+      { period: 2, byTeam: { DMK: none, DLC: none, DDG: none, SKD: none } },
+    ]);
   });
 
   it("records points per period in order, End last", () => {

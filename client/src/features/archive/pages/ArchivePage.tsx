@@ -11,7 +11,7 @@ import { ApiError } from "../../../api/base";
 import { useLeague } from "../../../contexts/LeagueContext";
 import TrophyCaseTab from "../components/TrophyCaseTab";
 import { getArchiveHistory, getArchiveSeason } from "../historyApi";
-import { fmtPoints, ordinal, playerName, priceLabel } from "../lib/seasonView";
+import { fmtPoints, ordinal, playerName, priceLabel, seasonGaps, shortDate } from "../lib/seasonView";
 import "../archive.css";
 
 type Load<T> = { state: "loading" } | { state: "forbidden" } | { state: "error" } | { state: "ready"; data: T };
@@ -51,12 +51,19 @@ function Roster({ entries, keeperLabel, prices }: { entries: ArchiveRosterEntry[
   );
 }
 
+/** "Apr 21 meeting · before period 2"; period 1 is the changes after the draft, at no meeting. */
+function meetingLabel(period: number, meetingDate: string | null): string {
+  if (period === 1) return "After the draft";
+  const day = shortDate(meetingDate);
+  return day ? `${day} meeting · before period ${period}` : `Before period ${period}`;
+}
+
 function TeamDetail({ season, team }: { season: ArchiveSeasonResponse; team: ArchiveSeasonTeam }) {
   const roster = season.rosters[team.code] ?? { draft: [], final: [] };
   const keeperLabel = season.keepersFromSheet ? "keeper" : "possible keeper";
   const keepers = roster.draft.filter((e) => e.keeper).length;
   const moves = season.moves
-    .map((m) => ({ period: m.period, ...(m.byTeam[team.code] ?? { added: [], dropped: [] }) }))
+    .map((m) => ({ period: m.period, meetingDate: m.meetingDate, ...(m.byTeam[team.code] ?? { added: [], dropped: [] }) }))
     .filter((m) => m.added.length || m.dropped.length);
 
   return (
@@ -86,7 +93,7 @@ function TeamDetail({ season, team }: { season: ArchiveSeasonResponse; team: Arc
             <p className="arc-note">No moves all season.</p>
           ) : moves.map((m) => (
             <div key={m.period} className="arc-meeting">
-              <strong>Before period {m.period}</strong>
+              <strong>{meetingLabel(m.period, m.meetingDate)}</strong>
               {m.added.map((e, i) => <div key={`a${i}`} className="arc-add">+ <Player e={e} /> <span className="arc-price">{e.slot}</span></div>)}
               {m.dropped.map((e, i) => <div key={`d${i}`} className="arc-drop">− <Player e={e} /></div>)}
             </div>
@@ -108,6 +115,7 @@ function SeasonView({ season, openCode, setOpen }: { season: ArchiveSeasonRespon
   const open = season.teams.find((t) => t.code === openCode) ?? null;
   const champ = season.teams.find((t) => t.rank === 1);
   const periods = Array.from({ length: season.periodCount }, (_, i) => i + 1);
+  const gaps = seasonGaps(season);
 
   useEffect(() => {
     if (open) detailRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
@@ -123,13 +131,21 @@ function SeasonView({ season, openCode, setOpen }: { season: ArchiveSeasonRespon
         </div>
       )}
 
+      <p className="arc-note arc-hint">Tap a team to see its draft, its moves at each meeting and its final roster.</p>
       <div className="arc-card arc-scroll" role="region" aria-label={`${season.year} standings`} tabIndex={0}>
         <table className="arc-table">
           <thead>
             <tr>
               <th className="arc-rank" scope="col">#</th>
               <th className="arc-team" scope="col">Owner</th>
-              {periods.map((p) => <th key={p} scope="col">P{p}</th>)}
+              {periods.map((p) => {
+                const end = shortDate(season.periodEnds[p - 1]);
+                return (
+                  <th key={p} scope="col" title={end ? `Period ${p} ended ${end}` : undefined}>
+                    P{p}{end && <span className="arc-th-date">{end}</span>}
+                  </th>
+                );
+              })}
               <th scope="col">Total</th>
             </tr>
           </thead>
@@ -153,8 +169,12 @@ function SeasonView({ season, openCode, setOpen }: { season: ArchiveSeasonRespon
         </table>
       </div>
       <p className="arc-note" style={{ fontSize: 13 }}>
-        Points per scoring period as recorded in the commissioner’s workbook. Tap a team for its draft, moves and final roster.
+        Points per scoring period as recorded in the commissioner’s workbook{season.periodEnds.some(Boolean) ? "; each date is the day that period ended, and the meeting that day set the next period’s rosters" : ""}.
         {season.teams.some((t) => t.note) ? " * The workbook’s numbers don’t add up here; tap the team for details." : ""}
+      </p>
+      <p className="arc-note arc-disclaimer" role="note">
+        Rebuilt from the commissioner’s old workbooks, so some seasons are incomplete and may have mistakes.
+        {gaps.length > 0 ? ` The ${season.year} workbook is missing ${gaps.length > 1 ? `${gaps.slice(0, -1).join(", ")} and ${gaps[gaps.length - 1]}` : gaps[0]}.` : ""}
       </p>
 
       {open && (

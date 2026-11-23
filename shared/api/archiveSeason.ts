@@ -46,8 +46,10 @@ export const ArchiveSeasonTeamSchema = z.object({
 });
 
 export const ArchiveMoveSchema = z.object({
-  /** Moves made at the meeting before this scoring period. */
+  /** Moves made at the meeting before this scoring period. Period 1: changes between the draft and the first period sheet. */
   period: z.number(),
+  /** The day of that meeting ("2024-04-21"), which is the day the previous period ended. Null for period 1 or when unknown. */
+  meetingDate: z.string().nullable(),
   byTeam: z.record(z.string(), z.object({ added: z.array(ArchiveRosterEntrySchema), dropped: z.array(ArchiveRosterEntrySchema) })),
 });
 
@@ -56,6 +58,8 @@ export const ArchiveSeasonResponseSchema = z
     year: z.number(),
     /** Keepers come from the workbook's Keepers sheet; otherwise they're "possible keepers". */
     keepersFromSheet: z.boolean(),
+    /** The day each period ended, P1 first (from the workbook's period sheets). Shorter than periodCount: the last period ends with the season. */
+    periodEnds: z.array(z.string().nullable()),
     /** Scoring periods with recorded points. */
     periodCount: z.number(),
     /** The workbook has a roster for every meeting, so moves are known. */

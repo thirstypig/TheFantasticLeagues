@@ -1099,6 +1099,11 @@ model HistoricalSeason {
   /// is derived — same team and price as last season — and shown as "possible keeper".
   keepersFromSheet Boolean @default(false)
 
+  /// The day each scoring period ended ("2024-04-21"), P1 first — the dates on the
+  /// workbook's period sheets; the meeting that day set the next period's roster.
+  /// "" where a sheet's name isn't a date. Empty when the workbook has no period sheets.
+  periodEnds String[] @default([])
+
   createdAt DateTime @default(now())
 
   @@unique([year, leagueId])

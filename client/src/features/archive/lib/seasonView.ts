@@ -29,3 +29,22 @@ export function seasonRanges(years: number[]): string {
   }
   return out.join(", ");
 }
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "2024-04-21" → "Apr 21". Read as a calendar day, never through the viewer's time zone. */
+export function shortDate(iso: string | null | undefined): string | null {
+  const m = iso?.match(/^\d{4}-(\d{2})-(\d{2})$/);
+  return m ? `${MONTHS[Number(m[1]) - 1]} ${Number(m[2])}` : null;
+}
+
+/** What the workbook for this season is missing, for the season's "incomplete" note. */
+export function seasonGaps(s: { periodCount: number; hasMoves: boolean; rosters: Record<string, { draft: unknown[]; final: unknown[] }> }): string[] {
+  const out: string[] = [];
+  const rosters = Object.values(s.rosters);
+  if (s.periodCount === 0) out.push("points by period");
+  if (rosters.every((r) => r.draft.length === 0)) out.push("the draft");
+  if (!s.hasMoves) out.push("the moves at each meeting");
+  if (rosters.every((r) => r.final.length === 0)) out.push("the final rosters");
+  return out;
+}

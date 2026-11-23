@@ -35,7 +35,7 @@ router.get("/archive/history/:year", asyncHandler(async (req, res) => {
   if (!Number.isInteger(year) || year < 1900 || year > 3000) return res.status(400).json({ error: "Not a season." });
   const season = await prisma.historicalSeason.findFirst({
     where: { year, ...archiveSeasonScope(req.user!), teams: { some: {} } },
-    select: { id: true, year: true, keepersFromSheet: true },
+    select: { id: true, year: true, keepersFromSheet: true, periodEnds: true },
   });
   if (!season) return res.status(404).json({ error: `No archived ${year} season.` });
   const [teams, entries, matches] = await Promise.all([
@@ -51,7 +51,7 @@ router.get("/archive/history/:year", asyncHandler(async (req, res) => {
     prisma.historicalPlayerMatch.findMany({ where: { seasonId: season.id }, select: { key: true, mlbId: true, mlbName: true } }),
   ]);
   const body: ArchiveSeasonResponse = buildSeasonView({
-    year: season.year, keepersFromSheet: season.keepersFromSheet, teams, entries,
+    year: season.year, keepersFromSheet: season.keepersFromSheet, periodEnds: season.periodEnds, teams, entries,
     matches: new Map(matches.map((m) => [m.key, { mlbId: m.mlbId, mlbName: m.mlbName }])),
   });
   res.json(body);

@@ -67,7 +67,7 @@ export function ownerFor(owners: OwnersFile, code: string, year: number): string
 
 export function buildArchiveRows(
   season: SeasonData, owners: OwnersFile,
-): { teams: TeamRow[]; entries: RosterRow[] } {
+): { teams: TeamRow[]; entries: RosterRow[]; periodEnds: string[] } {
   const teams: TeamRow[] = season.teams.map((t) => ({
     code: t.code,
     name: t.name,
@@ -88,8 +88,12 @@ export function buildArchiveRows(
     }
   };
   push("SALARIES", null, season.salaries);
-  push("DRAFT", 1, season.draft, season.keepers);
-  for (const p of season.periodRosters) if (p.period > 1) push("PERIOD", p.period, p.rosters);
+  // DRAFT is draft day; PERIOD k is the roster that played period k (a dated
+  // sheet); FINAL is the end-of-season roster, which played the last period.
+  push("DRAFT", null, season.draft, season.keepers);
+  for (const p of season.periodRosters) push("PERIOD", p.period, p.rosters);
   push("FINAL", null, season.finalRosters);
-  return { teams, entries };
+  // "" for a sheet whose name isn't a date, so index k-1 stays period k.
+  const periodEnds = season.periodRosters.map((p) => p.endDate ?? "");
+  return { teams, entries, periodEnds };
 }
