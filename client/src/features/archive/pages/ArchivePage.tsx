@@ -1,1112 +1,242 @@
-// client/src/pages/ArchivePage.tsx
-import React, { useEffect, useState, useCallback } from 'react';
-import { Archive } from "lucide-react";
-import { getArchiveSeasons, getArchivePeriods, getArchivePeriodStats, getArchiveDraftResults, updateArchiveTeamName, fmtRate } from '../../../api';
-import { EmptyState } from '../../../components/ui/EmptyState';
-import { fetchJsonApi, API_BASE } from '../../../api/base';
-import { OGBA_TEAM_NAMES } from '../../../lib/ogbaTeams';
-import { useAuth } from '../../../auth/AuthProvider';
-import EditPlayerNameModal from '../../players/components/EditPlayerNameModal';
-import EditTeamNameModal from '../../teams/components/EditTeamNameModal';
+// Past-seasons archive (/archive), built from the commissioner's workbooks
+// (2003–2025). A season opens on its final standings; tapping a team shows its
+// draft and keepers, the moves at every meeting, and its final roster, below
+// the table — no modal. Player stat lines arrive with the re-score.
+//
+// URL: ?season=2012&team=DDG (or &tab=trophy), so a link lands on the same view.
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import type { ArchiveRosterEntry, ArchiveSeasonListResponse, ArchiveSeasonResponse, ArchiveSeasonTeam } from "@shared/api/archiveSeason";
+import { ApiError } from "../../../api/base";
+import { useLeague } from "../../../contexts/LeagueContext";
+import TrophyCaseTab from "../components/TrophyCaseTab";
+import { getArchiveHistory, getArchiveSeason } from "../historyApi";
+import { fmtPoints, ordinal, playerName, priceLabel } from "../lib/seasonView";
+import "../archive.css";
 
-import ArchiveAdminPanel from '../../admin/components/ArchiveAdminPanel';
-import TrophyCaseTab from '../components/TrophyCaseTab';
-import { useLeague } from '../../../contexts/LeagueContext';
-import { Button } from "../../../components/ui/button";
-import AIInsightsModal from '../../../components/AIInsightsModal';
-import { Glass, SectionLabel } from '../../../components/aurora/atoms';
-import { useToast } from "../../../contexts/ToastContext";
-import {
-  SeasonTable, TeamSeasonRow, PeriodMeta,
-  PeriodSummaryTable, TeamPeriodSummaryRow,
-  CategoryPeriodTable, CategoryPeriodRow
-} from '../../../components/shared/StatsTables';
-import { ThemedTable, ThemedThead, ThemedTh, ThemedTr, ThemedTd } from '../../../components/ui/ThemedTable';
+type Load<T> = { state: "loading" } | { state: "forbidden" } | { state: "error" } | { state: "ready"; data: T };
 
-interface PlayerStat {
-  id: number;
-  playerName: string;
-  displayName?: string;
-  fullName?: string;
-  mlbId?: string;
-  teamCode: string;
-  isPitcher: boolean;
-  position?: string;
-  mlbTeam?: string;
-  R?: number;
-  HR?: number;
-  RBI?: number;
-  SB?: number;
-  AVG?: number;
-  GS?: number; // Grand Slams
-  W?: number;
-  SV?: number;
-  K?: number;
-  ERA?: number;
-  WHIP?: number;
-  SO?: number; // Shut Outs
+const failed = (err: unknown): Load<never> => ({ state: err instanceof ApiError && err.status === 403 ? "forbidden" : "error" });
+
+function Who({ team }: { team: Pick<ArchiveSeasonTeam, "owner" | "name"> }) {
+  return (
+    <>
+      <span className="arc-owner">{team.owner ?? team.name}</span>
+      {team.owner && <span className="arc-teamname">{team.name}</span>}
+    </>
+  );
 }
 
-interface DraftPlayer {
-  playerName: string;
-  fullName: string;
-  teamCode: string;
-  position: string;
-  mlbTeam: string | null;
-  draftDollars: number;
-  isPitcher: boolean;
-  isKeeper: boolean;
-  id?: number; // DB ID for edits
+function Player({ e }: { e: ArchiveRosterEntry }) {
+  const name = playerName(e);
+  return e.mlbId
+    ? <a href={`https://www.mlb.com/player/${e.mlbId}`} target="_blank" rel="noopener noreferrer" title={e.name !== name ? `Written “${e.name}”` : undefined}>{name}</a>
+    : <>{name}</>;
 }
 
-interface DraftTrade {
-  fromTeamName: string;
-  fromTeamCode: string;
-  toTeamName: string;
-  toTeamCode: string;
-  amount: number;
-  note: string;
+function Roster({ entries, keeperLabel, prices }: { entries: ArchiveRosterEntry[]; keeperLabel?: string; prices?: boolean }) {
+  return (
+    <ul className="arc-roster">
+      {entries.map((e, i) => (
+        <li key={`${e.slot}-${e.name}-${i}`}>
+          <span className="arc-slot">{e.slot}</span>
+          <span className="arc-pname">
+            <Player e={e} />
+            {keeperLabel && e.keeper && <span className="arc-keeper">{keeperLabel}</span>}
+          </span>
+          {prices && <span className="arc-price">{priceLabel(e)}</span>}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
-type TabType = 'stats' | 'standings' | 'period-results' | 'draft' | 'trophy-case';
-
-// Keepers for 2024 and 2025
-const KEEPER_MAP: Record<number, Record<string, string[]>> = {
-  2024: {
-    'DKD': ['F. Tatis Jr.', 'M. Harris II', 'J.Chisholm Jr.', 'E. De La Cruz'],
-    'DLC': ['R. Acuna Jr.', 'C. Carroll', 'S. Ohtani', 'Z. Wheeler'],
-    'DDD': ['C. Walker', 'F. Lindor', 'F. Alverez', 'E. Perez'],
-    'SDS': ['M. Olson', 'T. Turner', 'S. Strider', 'S. Ohtani'],
-    'RSR': ['F. Freeman', 'O. Cruz', 'K. Schwarber', 'F. Peralta'],
-    'DD2': ['N. Jones', 'O. Albies', 'A. Riley', 'Z. Gallen'],
-    'LDL': ['M. Betts', 'M. Muncy', 'W. Smith', 'B. Miller'],
-    'TST': ['B. Harper', 'P. Alonso', 'M. Machado', 'M. Fried']
-  },
-  2025: {
-    'DKD': ['E. De La Cruz', 'F. Tatis Jr.', 'D. Crews'],
-    'DLC': ['C. Carroll', 'R. Acuna Jr.', 'S. Ohtani', 'P. Skenes'],
-    'DDD': ['F. Lindor', 'J. Chourio', 'J. Wood', 'CJ. Abrams'],
-    'SDS': ['M. Olson', 'T. Turner', 'C. Sale', 'S. Ohtani'],
-    'RSR': ['F. Freeman', 'O. Cruz', 'Wilm. Contreras', 'Y. Yamamoto'],
-    'DD2': ['A. Riley', 'J. Merrill', 'S. Suzuki', 'M. Vientos'],
-    'LDL': ['M. Betts', 'M. Muncy', 'T. Hernandez', 'W. Smith'],
-    'TST': ['P. Alonso', 'M. Machado', 'B. Harper', 'B. Snell']
-  }
-};
-
-
-
-export default function ArchivePage() {
-  const { user, isAdmin } = useAuth();
-  const { toast, confirm } = useToast();
-  const { leagueId } = useLeague();
-
-  const [seasons, setSeasons] = useState<any[]>([]);
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
-  const [periods, setPeriods] = useState<any[]>([]);
-  const [selectedPeriod, setSelectedPeriod] = useState<number | null>(null);
-  const [stats, setStats] = useState<PlayerStat[]>([]);
-  const [periodResults, setPeriodResults] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [standingsLoading, setStandingsLoading] = useState(false);
-  
-  // Matrix / Detail State
-  const [seasonRows, setSeasonRows] = useState<TeamSeasonRow[]>([]);
-  const [periodSummaryRows, setPeriodSummaryRows] = useState<TeamPeriodSummaryRow[]>([]);
-  const [categoryRows, setCategoryRows] = useState<Record<string, CategoryPeriodRow[]>>({});
-  const [periodMeta, setPeriodMeta] = useState<PeriodMeta[]>([]);
-
-  const [periodResultsLoading, setPeriodResultsLoading] = useState(false);
-  const [sortConfig, setSortConfig] = useState<{ key: string | number, direction: 'asc' | 'desc' }>({ key: 'final', direction: 'desc' });
-
-  const handleSort = (key: string | number) => {
-    setSortConfig(current => ({
-      key,
-      direction: current.key === key && current.direction === 'desc' ? 'asc' : 'desc'
-    }));
-  };
-  const [error, setError] = useState<string | null>(null);
-  const [editingStat, setEditingStat] = useState<PlayerStat| null>(null);
-  const [editingTeam, setEditingTeam] = useState<{ teamCode: string; name: string } | null>(null);
-  const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<TabType | 'admin'>('standings');
-  const [draftPlayers, setDraftPlayers] = useState<DraftPlayer[]>([]);
-  const [draftTrades, setDraftTrades] = useState<DraftTrade[]>([]);
-  const [draftLoading, setDraftLoading] = useState(false);
-  const [recalculating, setRecalculating] = useState(false);
-  const [aiModalTeam, setAiModalTeam] = useState<{ code: string; name: string } | null>(null);
-
-  const canEdit = isAdmin;
-
-  // Re-fetch data for the currently selected year/period without a full page reload
-  const reloadData = useCallback(async () => {
-    if (!selectedYear) return;
-    try {
-      setLoading(true);
-      const [periodsData, statsData] = await Promise.all([
-        getArchivePeriods(selectedYear),
-        selectedPeriod ? getArchivePeriodStats(selectedYear, selectedPeriod) : Promise.resolve({ stats: [] }),
-      ]);
-      setPeriods(periodsData.periods || []);
-      setStats(statsData.stats || []);
-      if (statsData.stats) {
-        const teams = new Set<string>(statsData.stats.map((s: PlayerStat) => s.teamCode));
-        setExpandedTeams(teams);
-      }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to reload data");
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedYear, selectedPeriod]);
-
-  const handleRecalculate = async () => {
-    if (!selectedYear || recalculating) return;
-    
-    // Determine context based on active tab
-    const tab = activeTab === 'draft' ? 'draft' : (activeTab === 'stats' ? 'stats' : null);
-    const period = activeTab === 'stats' ? selectedPeriod : null;
-    
-    const contextMsg = tab === 'draft' 
-      ? 'Opening Day' 
-      : period 
-        ? `Period ${period} start date`
-        : 'all periods';
-    
-    if (!await confirm(`Recalculate MLB team data using ${contextMsg}?`)) return;
-
-    try {
-      setRecalculating(true);
-      const result = await fetchJsonApi<any>(`${API_BASE}/archive/${selectedYear}/recalculate`, {
-        method: 'POST',
-        body: JSON.stringify({ tab, periodNumber: period }),
-      });
-      if (result.success) {
-        toast(`Recalculation complete! Updated ${result.updated} player records for ${result.tab === 'draft' ? 'Auction Draft' : result.periodNumber ? `Period ${result.periodNumber}` : 'all periods'}.`, "success");
-        await reloadData();
-      } else {
-        toast(`Recalculation failed: ${result.error}`, "error");
-      }
-    } catch (err: unknown) {
-      toast(`Error: ${err instanceof Error ? err.message : "Unknown error"}`, "error");
-    } finally {
-      setRecalculating(false);
-    }
-  };
-
-
-  // Load available seasons
-  useEffect(() => {
-    async function loadSeasons() {
-      try {
-        setLoading(true);
-        const data = await getArchiveSeasons();
-        setSeasons(data.seasons || []);
-        if (data.seasons?.length > 0) {
-          // Check if there is a 2024 season
-          const has2024 = data.seasons.some((s: any) => s.year === 2024);
-          const selected = has2024 ? 2024 : data.seasons[0];
-          setSelectedYear(typeof selected === 'number' ? selected : (selected as any).year);
-        }
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Failed to load archive');
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadSeasons();
-  }, []);
-
-  // Load periods when year changes
-  useEffect(() => {
-    if (!selectedYear) return;
-    async function loadPeriods() {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await getArchivePeriods(selectedYear!);
-        setPeriods(data.periods || []);
-        
-        // Transform periods to PeriodMeta for SeasonTable
-        const meta: PeriodMeta[] = (data.periods || []).map((p: any) => ({
-             periodId: String(p.periodNumber),
-             label: `P${p.periodNumber}`,
-             meetingDate: p.startDate ? new Date(p.startDate).toLocaleDateString() : 'Draft'
-        }));
-        setPeriodMeta(meta);
-
-        // Default to Full Season (0) instead of P1
-        setSelectedPeriod(0);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Failed to load periods');
-        setPeriods([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadPeriods();
-  }, [selectedYear]);
-
-  // Load stats when period changes
-  useEffect(() => {
-    if (!selectedYear || !selectedPeriod) return;
-    async function loadStats() {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await getArchivePeriodStats(selectedYear!, selectedPeriod!);
-        setStats(data.stats || []);
-        
-        // Expand all teams by default
-        const teams = new Set<string>(data.stats?.map((s: PlayerStat) => s.teamCode) || []);
-        setExpandedTeams(teams);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Failed to load stats');
-        setStats([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadStats();
-  }, [selectedYear, selectedPeriod]);
-
-  // Load draft results when year is selected
-  useEffect(() => {
-    if (!selectedYear) {
-      setDraftPlayers([]);
-      setDraftTrades([]);
-      return;
-    }
-    async function loadDraft() {
-      try {
-        setDraftLoading(true);
-        const data = await getArchiveDraftResults(selectedYear!);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setDraftPlayers((data.players || []).map((p: any) => ({ ...p, isKeeper: p.isKeeper ?? false })));
-        setDraftTrades(data.trades || []);
-      } catch {
-        setDraftPlayers([]);
-        setDraftTrades([]);
-      } finally {
-        setDraftLoading(false);
-      }
-    }
-    loadDraft();
-  }, [selectedYear]);
-
-  // Load standings (Matrix or Detail)
-  useEffect(() => {
-    if (!selectedYear) {
-      setSeasonRows([]);
-      setPeriodSummaryRows([]);
-      return;
-    }
-    async function loadStandings() {
-      try {
-        setStandingsLoading(true);
-        const year = selectedYear!;
-        
-        // If specific Period selected: Load Detail
-        if (selectedPeriod && selectedPeriod > 0) {
-            const url = `${API_BASE}/archive/${year}/period/${selectedPeriod}/standings`;
-            const res = await fetch(url);
-            const data = await res.json();
-            const rawStandings = data.standings || [];
-
-            // Transform to PeriodSummaryRow
-            // Raw: { teamCode, teamName, totalScore, R, R_score, ... }
-            const summary: TeamPeriodSummaryRow[] = rawStandings.map((s: any) => ({
-                teamId: s.teamCode,
-                teamName: OGBA_TEAM_NAMES[s.teamCode] || s.teamCode,
-                gamesPlayed: s.gamesPlayed || 0, // API might not return gamesPlayed yet
-                totalPoints: s.totalScore,
-                totalPointsDelta: 0,
-                categories: ['R','HR','RBI','SB','AVG','W','SV','K','ERA','WHIP'].map(cat => ({
-                    categoryId: cat,
-                    points: s[`${cat}_score`] || 0
-                }))
-            }));
-            setPeriodSummaryRows(summary);
-
-            // Transform to Category Rows
-            const cats = ['R','HR','RBI','SB','AVG','W','SV','K','ERA','WHIP'];
-            const catMap: Record<string, CategoryPeriodRow[]> = {};
-            
-            cats.forEach(cat => {
-                catMap[cat] = rawStandings.map((s: any) => ({
-                    teamId: s.teamCode,
-                    teamName: OGBA_TEAM_NAMES[s.teamCode] || s.teamCode,
-                    periodStat: s[cat] || (s.stats ? s.stats[cat] : 0), // Handle both flat and nested stats
-                    points: s[`${cat}_score`] || 0,
-                    pointsDelta: 0
-                }));
-            });
-            setCategoryRows(catMap);
-
-        } else {
-            // Full Season Matrix — single request returns all periods
-            if (periods.length === 0) return;
-
-            const matrix = await fetchJsonApi<{
-                year: number;
-                periods: { periodNumber: number; standings: any[] }[];
-            }>(`${API_BASE}/archive/${year}/standings-matrix`);
-
-            const teamMap: Record<string, TeamSeasonRow> = {};
-
-            for (const p of matrix.periods) {
-                for (const s of p.standings) {
-                    if (!teamMap[s.teamCode]) {
-                        teamMap[s.teamCode] = {
-                            teamId: s.teamCode,
-                            teamName: OGBA_TEAM_NAMES[s.teamCode] || s.teamCode,
-                            periodPoints: {},
-                            seasonTotalPoints: 0
-                        };
-                    }
-                    teamMap[s.teamCode].periodPoints[String(p.periodNumber)] = s.totalScore;
-                }
-            }
-
-            // Compute Totals
-            Object.values(teamMap).forEach(row => {
-                row.seasonTotalPoints = Object.values(row.periodPoints).reduce((sum, v) => sum + v, 0);
-            });
-
-            setSeasonRows(Object.values(teamMap));
-        }
-
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setStandingsLoading(false);
-      }
-    }
-    loadStandings();
-  }, [selectedYear, selectedPeriod, periods]);
-
-  // Load period results trend
-  useEffect(() => {
-    if (!selectedYear) {
-      setPeriodResults([]);
-      return;
-    }
-    async function loadPeriodResults() {
-      try {
-        setPeriodResultsLoading(true);
-        const year = selectedYear!;
-        const data = await fetchJsonApi<any>(`${API_BASE}/archive/${year}/period-results`);
-        setPeriodResults(data.results || []);
-      } catch (err) {
-        console.error(err);
-        setPeriodResults([]);
-      } finally {
-        setPeriodResultsLoading(false);
-      }
-    }
-    loadPeriodResults();
-  }, [selectedYear]);
-
-  // Position order for hitters: 1B, 2B, SS, 3B, OF, C, CM, MI, DH, UT
-  const HITTER_POS_ORDER: Record<string, number> = {
-    '1B': 1, '2B': 2, 'SS': 3, '3B': 4,
-    'LF': 5, 'CF': 6, 'RF': 7, 'OF': 8,
-    'C': 9, 'CM': 10, 'MI': 11, 'DH': 12, 'UT': 13
-  };
-
-  const sortHitters = (a: PlayerStat, b: PlayerStat) => {
-    const orderA = HITTER_POS_ORDER[a.position || 'UT'] ?? 99;
-    const orderB = HITTER_POS_ORDER[b.position || 'UT'] ?? 99;
-    return orderA - orderB;
-  };
-
-  // Pitchers: SP first (no saves), then relievers (with saves) at bottom
-  const sortPitchers = (a: PlayerStat, b: PlayerStat) => {
-    const aHasSaves = (a.SV ?? 0) > 0;
-    const bHasSaves = (b.SV ?? 0) > 0;
-    if (aHasSaves !== bHasSaves) return aHasSaves ? 1 : -1;
-    return (a.fullName || a.playerName).localeCompare(b.fullName || b.playerName);
-  };
-
-  // Group stats by team
-  const teamGroups = stats.reduce((acc: Record<string, PlayerStat[]>, stat) => {
-    if (!acc[stat.teamCode]) acc[stat.teamCode] = [];
-    acc[stat.teamCode].push(stat);
-    return acc;
-  }, {});
-
-  const teamCodes = Object.keys(teamGroups).sort();
-
-  const toggleTeam = (code: string) => {
-    setExpandedTeams(prev => {
-      const next = new Set(prev);
-      if (next.has(code)) next.delete(code);
-      else next.add(code);
-      return next;
-    });
-  };
-
-  const handleSaveTeamName = async (newName: string) => {
-    if (!selectedYear || !editingTeam) return;
-
-    try {
-      await updateArchiveTeamName(selectedYear, editingTeam.teamCode, newName);
-      toast("Team name updated.", "success");
-      await reloadData();
-    } catch (err: unknown) {
-      toast(`Error updating team name: ${err instanceof Error ? err.message : "Unknown error"}`, "error");
-    }
-  };
-
-  const handleSavePlayer = (updatedStat: any) => {
-    setStats(prev => prev.map(s => s.id === updatedStat.id ? updatedStat : s));
-  };
+function TeamDetail({ season, team }: { season: ArchiveSeasonResponse; team: ArchiveSeasonTeam }) {
+  const roster = season.rosters[team.code] ?? { draft: [], final: [] };
+  const keeperLabel = season.keepersFromSheet ? "keeper" : "possible keeper";
+  const keepers = roster.draft.filter((e) => e.keeper).length;
+  const moves = season.moves
+    .map((m) => ({ period: m.period, ...(m.byTeam[team.code] ?? { added: [], dropped: [] }) }))
+    .filter((m) => m.added.length || m.dropped.length);
 
   return (
-    <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
-      <Glass strong>
-        <SectionLabel>✦ Historical Archive</SectionLabel>
-        <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>Historical Archive</h1>
-        <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>League History: Season stats and draft records.</div>
-      </Glass>
-      <main>
-
-        {error && (
-          <div className="mb-8 rounded-2xl border border-red-500/20 bg-red-500/10 px-6 py-4 text-sm font-medium text-red-300 flex items-center gap-3">
-             <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-            Error: {error}
-          </div>
-        )}
-
-        {/* TOP SELECTORS */}
-        <div className="mb-12 flex flex-wrap gap-6 items-center">
-            <div className="flex items-center gap-3 liquid-glass p-1.5 rounded-2xl border border-[var(--lg-border-subtle)] pr-6 bg-[var(--lg-tint)]">
-              <div className="bg-[var(--lg-tint)] px-4 py-2 rounded-xl text-xs font-medium uppercase text-[var(--lg-text-muted)]">Season</div>
-              <select
-                value={selectedYear || ''}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="bg-transparent text-sm text-[var(--lg-text-primary)] outline-none font-bold cursor-pointer hover:text-[var(--lg-accent)] transition-colors"
-              >
-                <option value="" className="bg-[var(--am-surface)] text-[var(--am-text)] border-none">Select Year...</option>
-                {seasons.map((s) => {
-                  const year = typeof s === 'number' ? s : s.year;
-                  return (
-                    <option key={year} value={year} className="bg-[var(--am-surface)] text-[var(--am-text)] border-none">{year}</option>
-                  );
-                })}
-              </select>
+    <>
+      <div className="arc-detail-head">
+        <h2>{team.owner ?? team.name}</h2>
+        <span className="arc-note">
+          {team.owner ? `${team.name} · ` : ""}{team.rank ? `${ordinal(team.rank)}, ` : ""}{fmtPoints(team.total)} points
+        </span>
+      </div>
+      {team.note && <p className="arc-note"><span className="arc-flag">Note: </span>{team.note}</p>}
+      <div className="arc-cols">
+        <section className="arc-section" aria-label="Draft day">
+          <h3>Draft day{keepers ? ` · ${keepers} ${keepers === 1 ? keeperLabel : `${keeperLabel}s`}` : ""}</h3>
+          {roster.draft.length
+            ? <Roster entries={roster.draft} keeperLabel={keeperLabel} prices />
+            : <p className="arc-note">The {season.year} workbook has no draft sheet.</p>}
+          {!season.keepersFromSheet && keepers > 0 && (
+            <p className="arc-note" style={{ marginTop: 6, fontSize: 13 }}>Possible keeper: on this team at the same price as last season — kept, or bought back for that price.</p>
+          )}
+        </section>
+        <section className="arc-section" aria-label="Moves at each meeting">
+          <h3>Moves at each meeting</h3>
+          {!season.hasMoves ? (
+            <p className="arc-note">The {season.year} workbook doesn’t have a roster for each meeting, so the moves aren’t known. Compare the draft and final rosters.</p>
+          ) : moves.length === 0 ? (
+            <p className="arc-note">No moves all season.</p>
+          ) : moves.map((m) => (
+            <div key={m.period} className="arc-meeting">
+              <strong>Before period {m.period}</strong>
+              {m.added.map((e, i) => <div key={`a${i}`} className="arc-add">+ <Player e={e} /> <span className="arc-price">{e.slot}</span></div>)}
+              {m.dropped.map((e, i) => <div key={`d${i}`} className="arc-drop">− <Player e={e} /></div>)}
             </div>
+          ))}
+        </section>
+        <section className="arc-section" aria-label="End of season">
+          <h3>End of season</h3>
+          {roster.final.length
+            ? <Roster entries={roster.final} />
+            : <p className="arc-note">The {season.year} workbook has no final roster.</p>}
+        </section>
+      </div>
+    </>
+  );
+}
 
-            <div className="flex items-center gap-3 liquid-glass p-1.5 rounded-2xl border border-[var(--lg-border-subtle)] pr-6 bg-[var(--lg-tint)]">
-              <div className="bg-[var(--lg-tint)] px-4 py-2 rounded-xl text-xs font-medium uppercase text-[var(--lg-text-muted)]">View</div>
-              <select
-                value={selectedPeriod || ''}
-                onChange={(e) => setSelectedPeriod(Number(e.target.value))}
-                disabled={!selectedYear}
-                className="bg-transparent text-sm text-[var(--lg-text-primary)] outline-none font-bold cursor-pointer hover:text-[var(--lg-accent)] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                <option value="0" className="bg-[var(--am-surface)] text-[var(--am-text)] border-none">Full Season</option>
-                {periods.map((p) => {
-                  const formatDate = (dateStr: string | null) => {
-                    if (!dateStr) return '';
-                    const d = new Date(dateStr);
-                    return `${d.getMonth() + 1}/${d.getDate()}`;
-                  };
-                  const startLabel = p.periodNumber === 1 ? 'Start' : formatDate(p.startDate);
-                  const endLabel = formatDate(p.endDate);
-                  const dateRange = startLabel && endLabel ? ` [${startLabel} → ${endLabel}]` : '';
-                  return (
-                    <option key={p.id} value={p.periodNumber} className="bg-[var(--am-surface)] text-[var(--am-text)] border-none">
-                      Period {p.periodNumber}{dateRange}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
+function SeasonView({ season, openCode, setOpen }: { season: ArchiveSeasonResponse; openCode: string | null; setOpen: (code: string | null) => void }) {
+  const detailRef = useRef<HTMLDivElement>(null);
+  const open = season.teams.find((t) => t.code === openCode) ?? null;
+  const champ = season.teams.find((t) => t.rank === 1);
+  const periods = Array.from({ length: season.periodCount }, (_, i) => i + 1);
 
-            {canEdit && (
-              <Button
-                onClick={handleRecalculate}
-                disabled={recalculating || !selectedYear}
-                variant="amber"
-                size="sm"
-              >
-                {recalculating ? 'Processing...' : '⟳ Sync Data'}
-              </Button>
-            )}
+  useEffect(() => {
+    if (open) detailRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  }, [open]);
+
+  return (
+    <>
+      {champ && (
+        <div className="arc-card arc-champ">
+          <span className="arc-note">{season.year} champion</span>
+          <strong>{champ.owner ?? champ.name}</strong>
+          {champ.owner && <span className="arc-note">{champ.name} · {fmtPoints(champ.total)} points</span>}
         </div>
+      )}
 
-        {/* NAVIGATION TABS */}
-        {selectedYear && (
-          <div className="mb-12 flex gap-1 lg-card p-1 w-fit">
-            <Button
-              onClick={() => setActiveTab('standings')}
-              variant={activeTab === 'standings' ? 'default' : 'ghost'}
-              className="px-8"
-            >
-              Standings
-            </Button>
-            <Button
-              onClick={() => setActiveTab('stats')}
-              variant={activeTab === 'stats' ? 'default' : 'ghost'}
-              className="px-8"
-            >
-              Player Stats
-            </Button>
-            <Button
-              onClick={() => setActiveTab('draft')}
-              variant={activeTab === 'draft' ? 'default' : 'ghost'}
-              className="px-8"
-            >
-              Draft Results
-            </Button>
-            <Button
-              onClick={() => setActiveTab('trophy-case')}
-              variant={activeTab === 'trophy-case' ? 'default' : 'ghost'}
-              className="px-8"
-            >
-              Trophy Case
-            </Button>
-            {canEdit && (
-              <Button
-                onClick={() => setActiveTab('admin')}
-                variant={activeTab === 'admin' ? 'amber' : 'ghost'}
-                className={`px-8 ${activeTab !== 'admin' ? 'text-amber-500/60 hover:text-amber-500' : ''}`}
-              >
-                Admin
-              </Button>
-            )}
-          </div>
-        )}
+      <div className="arc-card arc-scroll" role="region" aria-label={`${season.year} standings`} tabIndex={0}>
+        <table className="arc-table">
+          <thead>
+            <tr>
+              <th className="arc-rank" scope="col">#</th>
+              <th className="arc-team" scope="col">Owner</th>
+              {periods.map((p) => <th key={p} scope="col">P{p}</th>)}
+              <th scope="col">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {season.teams.map((t) => {
+              const isOpen = t.code === openCode;
+              return (
+                <tr key={t.code} className={isOpen ? "is-open" : ""} onClick={() => setOpen(isOpen ? null : t.code)}>
+                  <td className="arc-rank">{t.rank ?? "—"}</td>
+                  <td className="arc-team">
+                    <button type="button" className="arc-teambtn" aria-expanded={isOpen} onClick={(e) => { e.stopPropagation(); setOpen(isOpen ? null : t.code); }}>
+                      <Who team={t} />
+                    </button>
+                  </td>
+                  {periods.map((p) => <td key={p}>{fmtPoints(t.points[p - 1] ?? null)}</td>)}
+                  <td className="arc-total">{fmtPoints(t.total)}{t.note && <span className="arc-flag" title={t.note}> *</span>}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="arc-note" style={{ fontSize: 13 }}>
+        Points per scoring period as recorded in the commissioner’s workbook. Tap a team for its draft, moves and final roster.
+        {season.teams.some((t) => t.note) ? " * The workbook’s numbers don’t add up here; tap the team for details." : ""}
+      </p>
 
+      {open && (
+        <div ref={detailRef} className="arc-card arc-detail" aria-live="polite">
+          <TeamDetail season={season} team={open} />
+        </div>
+      )}
+    </>
+  );
+}
 
-        {/* Draft Results Tab */}
-        {activeTab === 'draft' && selectedYear && (
-          <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-              {/* Pre-Draft Trades */}
-              <div className="lg:col-span-2">
-                {draftTrades.length > 0 ? (
-                  <div className="rounded-3xl liquid-glass border border-[var(--lg-border-subtle)] shadow-xl overflow-hidden">
-                    <div className="bg-amber-500/10 border-b border-amber-500/20 px-6 py-4 flex items-center gap-3">
-                       <span className="text-amber-500">📝</span>
-                       <h3 className="text-sm font-medium uppercase text-amber-500">Pre-Draft Trades</h3>
-                    </div>
-                    <div className="p-6">
-                      <ThemedTable bare>
-                        <tbody className="divide-y divide-[var(--lg-divide)]">
-                          {draftTrades.map((trade, i) => (
-                            <ThemedTr key={i} className="group border-none">
-                                <ThemedTd className="py-2.5">
-                                    <div className="flex items-center gap-3">
-                                        <div className="bg-[var(--lg-tint)] px-3 py-1 rounded-xl text-xs font-bold tabular-nums text-[var(--lg-text-primary)] border border-[var(--lg-border-faint)]">${trade.amount}</div>
-                                        <div className="font-semibold">{trade.fromTeamName} <span className="text-[var(--lg-text-muted)] opacity-30">→</span> {trade.toTeamName}</div>
-                                    </div>
-                                </ThemedTd>
-                                <ThemedTd align="right" className="py-2.5">
-                                    {trade.note && <div className="text-[var(--lg-text-muted)] text-xs font-medium uppercase opacity-40 group-hover:opacity-100 transition-opacity">"{trade.note}"</div>}
-                                </ThemedTd>
-                            </ThemedTr>
-                          ))}
-                        </tbody>
-                      </ThemedTable>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-3xl border border-dashed border-[var(--lg-border-subtle)] p-12 text-center text-[var(--lg-text-muted)] italic text-sm opacity-40">
-                    No pre-draft trades for this season.
-                  </div>
-                )}
-              </div>
+export default function ArchivePage() {
+  const { leagueId } = useLeague();
+  const [params, setParams] = useSearchParams();
+  const [list, setList] = useState<Load<ArchiveSeasonListResponse>>({ state: "loading" });
+  const [season, setSeason] = useState<Load<ArchiveSeasonResponse>>({ state: "loading" });
 
-              {/* Keeper Legend */}
-              <div className="rounded-3xl liquid-glass border border-[var(--lg-border-subtle)] p-6 shadow-xl">
-                <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)] mb-4">Legend</div>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                     <span className="text-xs font-bold text-[var(--lg-text-secondary)]">Keeper</span>
-                     <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20 text-xs font-bold uppercase tracking-tight">Keeper</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                     <span className="text-xs font-bold text-[var(--lg-text-secondary)]">Hitter</span>
-                     <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                     <span className="text-xs font-bold text-[var(--lg-text-secondary)]">Pitcher</span>
-                     <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
-                  </div>
-                </div>
-              </div>
-            </div>
+  const years = useMemo(() => (list.state === "ready" ? list.data.seasons.map((s) => s.year) : []), [list]);
+  const asked = Number(params.get("season"));
+  const year = years.includes(asked) ? asked : years[0] ?? null;
+  const tab = params.get("tab") === "trophy" ? "trophy" : "season";
+  const openCode = params.get("team");
 
-            {/* Draft Results by Team */}
-            {draftLoading ? (
-              <div className="text-center py-20 text-[var(--lg-text-muted)] italic animate-pulse">Loading draft data...</div>
-            ) : draftPlayers.length === 0 ? (
-              <EmptyState icon={Archive} title={`No player records for ${selectedYear}`} description="Import historical data to see draft results here." compact />
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {Object.keys(OGBA_TEAM_NAMES).sort().map(teamCode => {
-                  const teamPlayers = draftPlayers.filter(p => p.teamCode === teamCode);
-                  if (teamPlayers.length === 0) return null;
-                  
-                  // Sort by position order: 1B, 2B, SS, 3B, OF, C, CM, MI, DH
-                  const DRAFT_POS_ORDER: Record<string, number> = {
-                    '1B': 1, '2B': 2, 'SS': 3, '3B': 4, 'OF': 5,
-                    'LF': 5, 'CF': 5, 'RF': 5, 'C': 6, 'CM': 7, 'MI': 8, 'DH': 9
-                  };
+  const update = (next: Record<string, string | null>) => {
+    const p = new URLSearchParams(params);
+    for (const [k, v] of Object.entries(next)) (v == null ? p.delete(k) : p.set(k, v));
+    setParams(p, { replace: true });
+  };
 
-                  const hitters = teamPlayers.filter(p => !p.isPitcher).sort((a, b) => {
-                    const posA = DRAFT_POS_ORDER[a.position] ?? 99;
-                    const posB = DRAFT_POS_ORDER[b.position] ?? 99;
-                    if (posA !== posB) return posA - posB;
-                    return b.draftDollars - a.draftDollars;
-                  });
-                  const pitchers = teamPlayers.filter(p => p.isPitcher).sort((a, b) => b.draftDollars - a.draftDollars);
-                  const totalSpent = teamPlayers.reduce((sum, p) => sum + p.draftDollars, 0);
-                  const isExpanded = expandedTeams.has(teamCode);
+  useEffect(() => {
+    let live = true;
+    getArchiveHistory().then((data) => live && setList({ state: "ready", data }), (err) => live && setList(failed(err)));
+    return () => { live = false; };
+  }, []);
 
-                  // Keepers from database field or fallback to hardcoded map
-                  const yearKeepers = KEEPER_MAP[selectedYear!]?.[teamCode] || [];
+  useEffect(() => {
+    if (year == null) return;
+    let live = true;
+    setSeason({ state: "loading" });
+    getArchiveSeason(year).then((data) => live && setSeason({ state: "ready", data }), (err) => live && setSeason(failed(err)));
+    return () => { live = false; };
+  }, [year]);
 
-                  return (
-                    <div key={teamCode} className="rounded-3xl liquid-glass border border-[var(--lg-border-subtle)] shadow-xl overflow-hidden self-start">
-                      {/* Collapsible Header */}
-                      <button
-                        onClick={() => {
-                          const newExpanded = new Set(expandedTeams);
-                          if (isExpanded) newExpanded.delete(teamCode);
-                          else newExpanded.add(teamCode);
-                          setExpandedTeams(newExpanded);
-                        }}
-                        className="w-full px-8 py-6 flex items-center justify-between bg-[var(--lg-tint)] border-b border-[var(--lg-border-subtle)] hover:bg-[var(--lg-tint-hover)] transition-colors"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-transform ${isExpanded ? 'rotate-180 bg-[var(--lg-tint-hover)]' : 'bg-[var(--lg-tint)] opacity-40'}`}>
-                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                          </div>
-                          <div>
-                            <div className="font-semibold text-lg text-[var(--lg-text-heading)]">{OGBA_TEAM_NAMES[teamCode] || teamCode}</div>
-                            <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-60">{teamPlayers.length} Players</div>
-                          </div>
-                        </div>
-                        <div className="text-xl font-bold text-emerald-400 tabular-nums">${totalSpent}</div>
-                      </button>
-                      
-                      {/* Collapsible Content - Compact Tables */}
-                      {isExpanded && (
-                        <div className="w-full">
-                          {/* Hitters */}
-                          {hitters.length > 0 && (
-                            <div className="border-b border-[var(--lg-border-faint)]">
-                              <div className="px-8 py-3 bg-blue-500/5 text-xs font-medium uppercase text-blue-400">Batting Roster</div>
-                              <div className="overflow-x-auto">
-                              <ThemedTable bare>
-                                <ThemedThead>
-                                  <ThemedTr>
-                                    <ThemedTh className="px-8">Player</ThemedTh>
-                                    <ThemedTh align="center" className="w-12">Pos</ThemedTh>
-                                    <ThemedTh align="center" className="w-12">MLB</ThemedTh>
-                                    <ThemedTh align="right" className="px-8 w-20">$</ThemedTh>
-                                  </ThemedTr>
-                                </ThemedThead>
-                                <tbody className="divide-y divide-[var(--lg-divide)]">
-                                  {hitters.map((p, i) => {
-                                    const isKeeper = p.isKeeper || yearKeepers.some((k: string) => 
-                                      p.playerName === k || p.fullName === k || p.fullName.includes(k)
-                                    );
-                                    return (
-                                      <ThemedTr key={i} className={isKeeper ? 'bg-amber-500/5' : ''}>
-                                        <ThemedTd className="px-8">
-                                          <div className="flex items-center gap-3">
-                                            <span className="text-blue-400">{p.fullName}</span>
-                                            {isKeeper && (
-                                              <span className="px-1.5 py-0.5 rounded-lg bg-amber-500 text-white text-xs font-bold uppercase shadow-lg shadow-amber-500/20">K</span>
-                                            )}
-                                          </div>
-                                        </ThemedTd>
-                                        <ThemedTd align="center">{p.mlbTeam || 'FA'}</ThemedTd>
-                                        <ThemedTd align="right" className="px-8"><span className="text-emerald-400">${p.draftDollars}</span></ThemedTd>
-                                      </ThemedTr>
-                                    );
-                                  })}
-                                </tbody>
-                              </ThemedTable>
-                              </div>
-                            </div>
-                          )}
+  const header = (
+    <header>
+      <h1 className="arc-title">Archive</h1>
+      <p className="arc-lede">Every OGBA season from the commissioner’s workbooks, 2003–2025.</p>
+    </header>
+  );
 
-                          {/* Pitchers */}
-                          {pitchers.length > 0 && (
-                            <div>
-                              <div className="px-8 py-3 bg-purple-500/5 text-xs font-medium uppercase text-purple-400">Pitching Roster</div>
-                              <div className="overflow-x-auto">
-                              <ThemedTable bare>
-                                <ThemedThead>
-                                  <ThemedTr>
-                                    <ThemedTh className="px-8">Player</ThemedTh>
-                                    <ThemedTh align="center" className="w-12">Pos</ThemedTh>
-                                    <ThemedTh align="center" className="w-12">MLB</ThemedTh>
-                                    <ThemedTh align="right" className="px-8 w-20">$</ThemedTh>
-                                  </ThemedTr>
-                                </ThemedThead>
-                                <tbody className="divide-y divide-[var(--lg-divide)]">
-                                  {pitchers.map((p, i) => {
-                                    const isKeeper = p.isKeeper || yearKeepers.some((k: string) =>
-                                      p.playerName === k || p.fullName === k || p.fullName.includes(k)
-                                    );
-                                    return (
-                                      <ThemedTr key={i} className={isKeeper ? 'bg-amber-500/5' : ''}>
-                                        <ThemedTd className="px-8">
-                                          <div className="flex items-center gap-3">
-                                            <span className="text-purple-400">{p.fullName}</span>
-                                            {isKeeper && (
-                                              <span className="px-1.5 py-0.5 rounded bg-amber-500 text-white text-xs font-bold uppercase">K</span>
-                                            )}
-                                          </div>
-                                        </ThemedTd>
-                                        <ThemedTd align="center">{p.mlbTeam || 'FA'}</ThemedTd>
-                                        <ThemedTd align="right" className="px-8"><span className="text-emerald-400">${p.draftDollars}</span></ThemedTd>
-                                      </ThemedTr>
-                                    );
-                                  })}
-                                </tbody>
-                              </ThemedTable>
-                              </div>
-                            </div>
-                          )}
+  if (list.state === "loading") return <div className="arc-page">{header}<div className="arc-card arc-skeleton" aria-busy="true"><div /><div /><div /></div></div>;
+  if (list.state === "forbidden") return <div className="arc-page">{header}<p className="arc-lede">The archive is open to league members only.</p></div>;
+  if (list.state === "error") return <div className="arc-page">{header}<p role="alert" className="arc-error">Couldn’t load the archive. Reload the page to try again.</p></div>;
+  if (year == null) return <div className="arc-page">{header}<p className="arc-lede">No seasons have been archived yet.</p></div>;
 
-                          {/* No footer needed, layout looks cleaner without it or inside the list */}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+  const idx = years.indexOf(year);
+  const goTo = (y: number) => update({ season: String(y), team: null });
 
-        {/* Standings Tab Content */}
-        {activeTab === 'standings' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {standingsLoading ? (
-              <div className="text-center py-20 text-[var(--lg-text-muted)] italic animate-pulse">Loading standings...</div>
-            ) : selectedPeriod && selectedPeriod > 0 ? (
-                // Period Detail View
-                <div className="space-y-12">
-                    <PeriodSummaryTable 
-                        periodId={String(selectedPeriod)} 
-                        rows={periodSummaryRows} 
-                        categories={['R','HR','RBI','SB','AVG','W','SV','K','ERA','WHIP']} 
-                    />
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                        {Object.entries(categoryRows).map(([catId, rows]) => (
-                            <CategoryPeriodTable 
-                                key={catId} 
-                                periodId={String(selectedPeriod)} 
-                                categoryId={catId} 
-                                rows={rows} 
-                            />
-                        ))}
-                    </div>
-                </div>
-            ) : (
-                // Season Matrix View
-                <div className="rounded-3xl liquid-glass border border-[var(--lg-border-subtle)] shadow-2xl overflow-hidden overflow-x-auto">
-                  <SeasonTable
-                      periods={periodMeta}
-                      rows={seasonRows}
-                  />
-                </div>
-            )}
-          </div>
-        )}
+  return (
+    <div className="arc-page">
+      {header}
+      <div className="arc-bar">
+        <button type="button" className="arc-step" aria-label="Previous season" disabled={idx >= years.length - 1} onClick={() => goTo(years[idx + 1])}>‹</button>
+        <select className="arc-field" aria-label="Season" value={year} onChange={(e) => goTo(Number(e.target.value))}>
+          {years.map((y) => <option key={y} value={y}>{y}</option>)}
+        </select>
+        <button type="button" className="arc-step" aria-label="Next season" disabled={idx <= 0} onClick={() => goTo(years[idx - 1])}>›</button>
+        <div className="arc-tabs" role="tablist" aria-label="View">
+          <button type="button" role="tab" aria-selected={tab === "season"} onClick={() => update({ tab: null })}>Season</button>
+          <button type="button" role="tab" aria-selected={tab === "trophy"} onClick={() => update({ tab: "trophy", team: null })}>Trophy case</button>
+        </div>
+      </div>
 
-
-        {/* Period Trends Tab (Cumulative Results) */}
-        {activeTab === 'period-results' && selectedYear && (
-          <div className="rounded-3xl liquid-glass border border-[var(--lg-border-subtle)] shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="bg-[var(--lg-tint)] border-b border-[var(--lg-border-subtle)] px-8 py-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-[var(--lg-text-heading)]">Standings Evolution</h2>
-                <div className="mt-1 text-sm font-medium text-[var(--lg-text-muted)]">Cumulative points across all periods.</div>
-              </div>
-              <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-40">Click to sort</div>
-            </div>
-
-            <div className="overflow-x-auto">
-              {periodResultsLoading ? (
-                <div className="text-center py-20 text-[var(--lg-text-muted)] italic animate-pulse">Loading points...</div>
-              ) : periodResults.length === 0 ? (
-                <div className="text-center py-20 text-[var(--lg-text-muted)] italic opacity-40">No data available.</div>
-              ) : (
-                <ThemedTable bare>
-                  <ThemedThead>
-                    <ThemedTr>
-                      <ThemedTh className="px-8">Team</ThemedTh>
-                      {periodResults.map(p => (
-                        <ThemedTh
-                          key={p.periodNumber}
-                          onClick={() => handleSort(p.periodNumber)}
-                          align="center"
-                          className="px-4"
-                        >
-                          <div className="flex items-center justify-center gap-2">
-                            P{p.periodNumber}
-                            {sortConfig.key === p.periodNumber && (
-                              <span className="text-[var(--lg-accent)]">{sortConfig.direction === 'desc' ? '▼' : '▲'}</span>
-                            )}
-                          </div>
-                        </ThemedTh>
-                      ))}
-                      <ThemedTh
-                        onClick={() => handleSort('final')}
-                        align="center"
-                        className="px-8"
-                      >
-                        <div className="flex items-center justify-center gap-1">
-                          RESULT
-                          {sortConfig.key === 'final' && (
-                            <span>{sortConfig.direction === 'desc' ? '▼' : '▲'}</span>
-                          )}
-                        </div>
-                      </ThemedTh>
-                    </ThemedTr>
-                  </ThemedThead>
-                  <tbody className="divide-y divide-[var(--lg-divide)]">
-                    {Object.keys(OGBA_TEAM_NAMES)
-                      .sort((a, b) => {
-                        const getScore = (teamCode: string, key: string | number) => {
-                          if (key === 'final') {
-                            const lastPeriod = periodResults[periodResults.length - 1];
-                            return lastPeriod?.standings?.find((s: any) => s.teamCode === teamCode)?.totalScore || 0;
-                          }
-                          const period = periodResults.find(p => p.periodNumber === key);
-                          return period?.standings?.find((s: any) => s.teamCode === teamCode)?.totalScore || 0;
-                        };
-                        const scoreA = getScore(a, sortConfig.key);
-                        const scoreB = getScore(b, sortConfig.key);
-                        return sortConfig.direction === 'desc' ? scoreB - scoreA : scoreA - scoreB;
-                      })
-                      .map((teamCode) => {
-                        const finalScore = periodResults[periodResults.length - 1]?.standings
-                          ?.find((s: any) => s.teamCode === teamCode)?.totalScore || 0;
-
-                        return (
-                          <ThemedTr key={teamCode} className="group border-none">
-                            <ThemedTd className="px-8">
-                              {OGBA_TEAM_NAMES[teamCode] || teamCode}
-                            </ThemedTd>
-                            {periodResults.map(p => {
-                              const standing = p.standings?.find((s: any) => s.teamCode === teamCode);
-                              const maxScore = Math.max(...p.standings.map((s: any) => s.totalScore));
-                              const isWinner = standing && standing.totalScore === maxScore;
-                              return (
-                                <ThemedTd key={p.periodNumber} align="center" className={`px-4 ${isWinner ? 'bg-amber-500/5' : ''}`}>
-                                  {isWinner ? <span className="font-bold text-amber-400">{standing ? standing.totalScore.toFixed(1) : '-'}</span> : (standing ? standing.totalScore.toFixed(1) : '-')}
-                                </ThemedTd>
-                              );
-                            })}
-                            <ThemedTd align="center" className="px-8">
-                              <span className="font-bold text-[var(--lg-text-primary)]">{finalScore.toFixed(1)}</span>
-                            </ThemedTd>
-                          </ThemedTr>
-                        );
-                      })}
-                  </tbody>
-                </ThemedTable>
-              )}
-            </div>
-            <div className="px-8 py-4 bg-[var(--lg-tint)] border-t border-[var(--lg-border-subtle)] text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-60">
-              * Values represent cumulative point totals through each period.
-            </div>
-          </div>
-        )}
-
-
-        {/* Stats Tab Content */}
-        {activeTab === 'stats' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {loading ? (
-              <div className="text-center py-20 text-[var(--lg-text-muted)] italic animate-pulse">Loading...</div>
-            ) : stats.length === 0 && selectedYear && selectedPeriod ? (
-              <EmptyState icon={Archive} title="No records found" description="Select a year and period to view statistics." compact />
-            ) : (
-              <div className="space-y-8">
-                <div className="flex items-center gap-4 bg-[var(--lg-tint)] p-4 rounded-3xl border border-[var(--lg-border-subtle)] shadow-lg justify-center w-fit mx-auto mb-12">
-                   <div className="bg-[var(--lg-tint)] px-3 py-1.5 rounded-xl text-xs font-medium uppercase text-[var(--lg-text-muted)]">Summary</div>
-                   <div className="text-sm font-bold text-[var(--lg-text-primary)]">{stats.length} Players • {teamCodes.length} Teams</div>
-                </div>
-
-                {teamCodes.map((teamCode) => {
-                  const teamPlayers = teamGroups[teamCode];
-                  const hitters = teamPlayers.filter(p => !p.isPitcher).sort(sortHitters);
-                  const pitchers = teamPlayers.filter(p => p.isPitcher).sort(sortPitchers);
-                  const isExpanded = expandedTeams.has(teamCode);
-                  const missingIds = teamPlayers.filter(p => !p.mlbId).length;
-
-                  return (
-                    <div key={teamCode} className="rounded-3xl liquid-glass border border-[var(--lg-border-subtle)] shadow-xl overflow-hidden self-start">
-                      <button
-                        onClick={() => toggleTeam(teamCode)}
-                        className="w-full px-8 py-6 flex items-center justify-between bg-[var(--lg-tint)] border-b border-[var(--lg-border-subtle)] hover:bg-[var(--lg-tint-hover)] transition-colors"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-transform ${isExpanded ? 'rotate-180 bg-[var(--lg-tint-hover)]' : 'bg-[var(--lg-tint)] opacity-40'}`}>
-                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                          </div>
-                          <div>
-                            <div className="font-semibold text-lg text-[var(--lg-text-heading)]">{OGBA_TEAM_NAMES[teamCode] || teamCode}</div>
-                            <div className="text-xs font-medium uppercase text-[var(--lg-text-muted)] opacity-60">
-                               {hitters.length}H / {pitchers.length}P
-                               {missingIds > 0 && <span className="ml-2 text-amber-500">⚠️ {missingIds} UNLINKED</span>}
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-
-                      {isExpanded && (
-                        <div className="p-8 space-y-12 animate-in slide-in-from-top-4 duration-300">
-                          {hitters.length > 0 && (
-                            <div className="rounded-2xl border border-[var(--lg-border-faint)] overflow-hidden">
-                              <div className="px-6 py-3 bg-blue-500/5 text-xs font-medium uppercase text-blue-400 border-b border-[var(--lg-border-faint)]">Batting Stats</div>
-                              <div className="overflow-x-auto">
-                                <ThemedTable bare>
-                                  <ThemedThead>
-                                    <ThemedTr>
-                                      <ThemedTh className="px-6">Player</ThemedTh>
-                                      <ThemedTh align="center">Pos</ThemedTh>
-                                      <ThemedTh align="center">MLB</ThemedTh>
-                                      <ThemedTh align="right">R</ThemedTh>
-                                      <ThemedTh align="right">HR</ThemedTh>
-                                      <ThemedTh align="right">RBI</ThemedTh>
-                                      <ThemedTh align="right">SB</ThemedTh>
-                                      <ThemedTh align="right">AVG</ThemedTh>
-                                      <ThemedTh align="right" className="px-6">GS</ThemedTh>
-                                    </ThemedTr>
-                                  </ThemedThead>
-                                  <tbody className="divide-y divide-[var(--lg-divide)]">
-                                    {hitters.map((p) => (
-                                      <ThemedTr key={p.id} onClick={() => setEditingStat(p)} className="cursor-pointer group">
-                                        <ThemedTd className="px-6">
-                                          <div className="flex items-center gap-2">
-                                            <span className="group-hover:text-[var(--lg-accent)] transition-colors">{p.displayName || p.fullName || p.playerName}</span>
-                                            {!p.mlbId && <span className="text-amber-500 text-xs" title="Missing MLB ID">⚠️</span>}
-                                          </div>
-                                        </ThemedTd>
-                                        <ThemedTd align="center">{p.position || '—'}</ThemedTd>
-                                        <ThemedTd align="center">{p.mlbTeam || '—'}</ThemedTd>
-                                        <ThemedTd align="right">{p.R ?? '0'}</ThemedTd>
-                                        <ThemedTd align="right">{p.HR ?? '0'}</ThemedTd>
-                                        <ThemedTd align="right">{p.RBI ?? '0'}</ThemedTd>
-                                        <ThemedTd align="right">{p.SB ?? '0'}</ThemedTd>
-                                        <ThemedTd align="right">{p.AVG !== undefined ? fmtRate(p.AVG) : '.000'}</ThemedTd>
-                                        <ThemedTd align="right" className="px-6"><span className="text-sky-400">{p.GS ?? '0'}</span></ThemedTd>
-                                      </ThemedTr>
-                                    ))}
-                                  </tbody>
-                                </ThemedTable>
-                              </div>
-                            </div>
-                          )}
-
-                          {pitchers.length > 0 && (
-                            <div className="rounded-2xl border border-[var(--lg-border-faint)] overflow-hidden">
-                              <div className="px-6 py-3 bg-purple-500/5 text-xs font-medium uppercase text-purple-400 border-b border-[var(--lg-border-faint)]">Pitching Stats</div>
-                              <div className="overflow-x-auto">
-                                <ThemedTable bare>
-                                  <ThemedThead>
-                                    <ThemedTr>
-                                      <ThemedTh className="px-6">Player</ThemedTh>
-                                      <ThemedTh align="center">Pos</ThemedTh>
-                                      <ThemedTh align="center">MLB</ThemedTh>
-                                      <ThemedTh align="right">W</ThemedTh>
-                                      <ThemedTh align="right">SV</ThemedTh>
-                                      <ThemedTh align="right">K</ThemedTh>
-                                      <ThemedTh align="right">ERA</ThemedTh>
-                                      <ThemedTh align="right">WHIP</ThemedTh>
-                                      <ThemedTh align="right" className="px-6">SO</ThemedTh>
-                                    </ThemedTr>
-                                  </ThemedThead>
-                                  <tbody className="divide-y divide-[var(--lg-divide)]">
-                                    {pitchers.map((p) => (
-                                      <ThemedTr key={p.id} onClick={() => setEditingStat(p)} className="cursor-pointer group">
-                                        <ThemedTd className="px-6">
-                                          <div className="flex items-center gap-2">
-                                            <span className="group-hover:text-[var(--lg-accent)] transition-colors">{p.displayName || p.fullName || p.playerName}</span>
-                                            {!p.mlbId && <span className="text-amber-500 text-xs" title="Missing MLB ID">⚠️</span>}
-                                          </div>
-                                        </ThemedTd>
-                                        <ThemedTd align="center">{p.position || 'P'}</ThemedTd>
-                                        <ThemedTd align="center">{p.mlbTeam || '—'}</ThemedTd>
-                                        <ThemedTd align="right">{p.W ?? '0'}</ThemedTd>
-                                        <ThemedTd align="right">{p.SV ?? '0'}</ThemedTd>
-                                        <ThemedTd align="right">{p.K ?? '0'}</ThemedTd>
-                                        <ThemedTd align="right">{p.ERA?.toFixed(2) ?? '0.00'}</ThemedTd>
-                                        <ThemedTd align="right">{p.WHIP?.toFixed(2) ?? '0.00'}</ThemedTd>
-                                        <ThemedTd align="right" className="px-6"><span className="text-purple-400">{p.SO ?? '0'}</span></ThemedTd>
-                                      </ThemedTr>
-                                    ))}
-                                  </tbody>
-                                </ThemedTable>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Trophy Case Tab Content */}
-        {activeTab === 'trophy-case' && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <TrophyCaseTab leagueId={leagueId} />
-          </div>
-        )}
-
-        {/* Admin Tab Content */}
-        {activeTab === 'admin' && canEdit && selectedYear && (
-          <div className="animate-in fade-in zoom-in-95 duration-500">
-             <ArchiveAdminPanel year={selectedYear} />
-          </div>
-        )}
-
-        {/* Edit Modal */}
-        {editingStat && (
-          <EditPlayerNameModal
-            onClose={() => setEditingStat(null)}
-            onSave={handleSavePlayer}
-            stat={editingStat}
-          />
-        )}
-
-        {editingTeam && (
-          <EditTeamNameModal
-            isOpen={!!editingTeam}
-            onClose={() => setEditingTeam(null)}
-            onSave={handleSaveTeamName}
-            currentName={editingTeam.name}
-            teamCode={editingTeam.teamCode}
-          />
-        )}
-
-        {/* AI Insights Modal */}
-        {aiModalTeam && selectedYear && (
-          <AIInsightsModal
-            isOpen={!!aiModalTeam}
-            onClose={() => setAiModalTeam(null)}
-            year={selectedYear}
-            teamCode={aiModalTeam.code}
-            teamName={aiModalTeam.name}
-          />
-        )}
-      </main>
+      {tab === "trophy" ? (
+        <TrophyCaseTab leagueId={leagueId} />
+      ) : season.state === "loading" ? (
+        <div className="arc-card arc-skeleton" aria-busy="true"><div /><div /><div /></div>
+      ) : season.state !== "ready" ? (
+        <p role="alert" className="arc-error">Couldn’t load {year}. Try another season or reload.</p>
+      ) : (
+        <SeasonView season={season.data} openCode={openCode} setOpen={(code) => update({ team: code })} />
+      )}
     </div>
   );
 }

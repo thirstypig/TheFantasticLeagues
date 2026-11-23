@@ -1095,6 +1095,10 @@ model HistoricalSeason {
   rosterEntries HistoricalRosterEntry[]
   playerMatches HistoricalPlayerMatch[]
 
+  /// The workbook lists the keepers (a Keepers sheet). Otherwise HistoricalRosterEntry.isKeeper
+  /// is derived — same team and price as last season — and shown as "possible keeper".
+  keepersFromSheet Boolean @default(false)
+
   createdAt DateTime @default(now())
 
   @@unique([year, leagueId])

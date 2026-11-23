@@ -27,6 +27,7 @@ import {
   type PlayerCheckDecisionBody, type PlayerCheckItem, type PlayerCheckItemResponse, type PlayerCheckResponse,
   type PlayerCheckSearchResponse, type PlayerCheckStatus,
 } from "../../../../shared/api/archivePlayerCheck.js";
+import { archiveSeasonScope } from "./archiveAccess.js";
 import { lookupPlayerName, MIN_QUERY_LENGTH, searchCandidates } from "./services/playerSearchService.js";
 
 const router = express.Router();
@@ -34,9 +35,7 @@ const router = express.Router();
 type Viewer = { id: number; isAdmin: boolean };
 
 /** A member sees and decides only the archive of a franchise he belongs to; an admin, all of it. */
-function seasonScope(user: Viewer): Prisma.HistoricalSeasonWhereInput {
-  return user.isAdmin ? {} : { league: { franchise: { memberships: { some: { userId: user.id } } } } };
-}
+const seasonScope = archiveSeasonScope;
 
 const withContext = {
   season: { select: { year: true } },
