@@ -5,9 +5,9 @@ import supertest from "supertest";
 vi.mock("../../../db/prisma.js", () => ({
   prisma: {
     franchiseMembership: { findFirst: vi.fn() },
-    historicalSeason: { findMany: vi.fn() },
   },
 }));
+vi.mock("../services/trophyCaseService.js", () => ({ computeTrophyCase: vi.fn().mockResolvedValue({}) }));
 vi.mock("../../../lib/logger.js", () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() } }));
 // Real requireAuth is replaced by "signed in iff req.user is set" so the test
 // exercises the archive guard, not Supabase.
@@ -19,10 +19,10 @@ vi.mock("../../../middleware/auth.js", () => ({
 
 import { prisma } from "../../../db/prisma.js";
 import { archiveRouter } from "../routes.js";
+import { computeTrophyCase } from "../services/trophyCaseService.js";
 
 const mockPrisma = prisma as unknown as {
   franchiseMembership: { findFirst: ReturnType<typeof vi.fn> };
-  historicalSeason: { findMany: ReturnType<typeof vi.fn> };
 };
 
 function appAs(user: { id: number; isAdmin: boolean } | null) {
@@ -39,20 +39,19 @@ function appAs(user: { id: number; isAdmin: boolean } | null) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockPrisma.historicalSeason.findMany.mockResolvedValue([]);
 });
 
 describe("archive is members-only", () => {
   it("returns 403 to a signed-in user who is not in the franchise", async () => {
     mockPrisma.franchiseMembership.findFirst.mockResolvedValue(null);
-    const res = await supertest(appAs({ id: 42, isAdmin: false })).get("/api/archive/seasons");
+    const res = await supertest(appAs({ id: 42, isAdmin: false })).get("/api/archive/trophy-case?leagueId=1");
     expect(res.status).toBe(403);
-    expect(mockPrisma.historicalSeason.findMany).not.toHaveBeenCalled();
+    expect(computeTrophyCase).not.toHaveBeenCalled();
   });
 
   it("looks the user up by franchise membership of a league that has archived seasons", async () => {
     mockPrisma.franchiseMembership.findFirst.mockResolvedValue(null);
-    await supertest(appAs({ id: 42, isAdmin: false })).get("/api/archive/2024/standings");
+    await supertest(appAs({ id: 42, isAdmin: false })).get("/api/archive/history/2024");
     expect(mockPrisma.franchiseMembership.findFirst).toHaveBeenCalledWith({
       where: { userId: 42, franchise: { leagues: { some: { historicalSeasons: { some: {} } } } } },
       select: { id: true },
@@ -61,18 +60,18 @@ describe("archive is members-only", () => {
 
   it("lets a franchise member through", async () => {
     mockPrisma.franchiseMembership.findFirst.mockResolvedValue({ id: 7 });
-    const res = await supertest(appAs({ id: 42, isAdmin: false })).get("/api/archive/seasons");
+    const res = await supertest(appAs({ id: 42, isAdmin: false })).get("/api/archive/trophy-case?leagueId=1");
     expect(res.status).toBe(200);
   });
 
   it("lets an admin through without a membership lookup", async () => {
-    const res = await supertest(appAs({ id: 1, isAdmin: true })).get("/api/archive/seasons");
+    const res = await supertest(appAs({ id: 1, isAdmin: true })).get("/api/archive/trophy-case?leagueId=1");
     expect(res.status).toBe(200);
     expect(mockPrisma.franchiseMembership.findFirst).not.toHaveBeenCalled();
   });
 
   it("returns 401 when signed out", async () => {
-    const res = await supertest(appAs(null)).get("/api/archive/seasons");
+    const res = await supertest(appAs(null)).get("/api/archive/trophy-case?leagueId=1");
     expect(res.status).toBe(401);
   });
 

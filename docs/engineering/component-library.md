@@ -80,7 +80,7 @@ complete.
 
 `AppShell` · `Sidebar` · `BottomNav` · `ErrorBoundary` · `ErrorProvider` · `ErrorToast` ·
 `ThemeToggle` · `RouteAnnouncer` · `PostHogTracker` · `GATracker` · `AdUnit` ·
-`GoogleSignInButton` · `MermaidDiagram` · `TrendArrow` · `AIInsightsModal`
+`GoogleSignInButton` · `MermaidDiagram` · `TrendArrow`
 
 > `ErrorProvider` **must** wrap everything in `main.tsx` — it's the subscriber that renders
 > the `ErrorToast` stack. Without it, errors reach the bus and vanish.
