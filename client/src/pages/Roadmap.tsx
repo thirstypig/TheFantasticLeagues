@@ -461,7 +461,7 @@ const completedFeatures: CompletedGroup[] = [
       { title: "League Board", description: "Card-based async communication: Commissioner announcements, Trade Block (auto-synced from rosters), Banter. Thread replies, thumbs up/down reactions.", session: "57" },
       { title: "Pricing Page", description: "Seasonal pricing: Free / Pro $29/season / Commissioner $49/season. Founding member lifetime deal ($99). FAQ.", session: "57" },
       { title: "Sport-Agnostic Engine Phase 1", description: "SportConfig interface, baseball.ts extracted, getSportConfig() registry. Foundation for football (Aug 2027) and basketball (Oct 2027).", session: "57" },
-      { title: "Trophy Case", description: "Dynasty scores, championship history, all-time records from 20+ years of archived HistoricalStanding data.", session: "57" },
+      { title: "Trophy Case", description: "Dynasty scores, championship history, all-time records from 20+ years of archived seasons.", session: "57" },
       { title: "Local Timezone Display", description: "timeUtils.ts: cached Intl.DateTimeFormat, three-tier display (countdown/relative/absolute), useCountdownSeconds hook.", session: "57" },
       { title: "League Health Dashboard", description: "Commissioner 'Health' tab: per-team engagement scoring (0-100), status badges, at-risk first sort.", session: "57" },
       { title: "Period Awards", description: "Manager of Period, Pickup of Period, Category Kings. PeriodAwardsCard on Home page.", session: "57" },

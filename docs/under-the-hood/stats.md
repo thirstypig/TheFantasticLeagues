@@ -21,24 +21,24 @@ updated: 2026-11-24
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-24 from 2,107 git-tracked files.*
+*Generated 2026-11-24 from 1,975 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 729 | 123,397 |
-| `.tsx` | 395 | 96,449 |
-| `.md` | 591 | 73,289 |
-| `.json` | 39 | 41,031 |
+| `.ts` | 709 | 120,464 |
+| `.tsx` | 395 | 96,454 |
+| `.md` | 589 | 72,771 |
+| `.json` | 36 | 38,066 |
 | `.css` | 17 | 2,673 |
 | `.sql` | 47 | 2,359 |
-| `.prisma` | 1 | 1,840 |
 | `.mjs` | 11 | 1,796 |
+| `.prisma` | 1 | 1,754 |
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 194 |
-| **All tracked** | **2,103** | **388,076** |
+| **All tracked** | **1,971** | **367,215** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -47,7 +47,7 @@ updated: 2026-11-24
 | Measure | Count |
 |---|---:|
 | API routes | 283 |
-| Prisma models | 67 |
+| Prisma models | 64 |
 | Prisma migrations | 45 |
 | Server feature modules | 33 |
 | Client feature modules | 28 |
@@ -55,12 +55,12 @@ updated: 2026-11-24
 
 ## Docs
 
-**223** board-scope markdown files (`docs/` plus the four root docs), of which **154** carry frontmatter.
+**222** board-scope markdown files (`docs/` plus the four root docs), of which **154** carry frontmatter.
 
-*595 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
+*593 markdown files exist repo-wide; the rest live in `todos/` and `.claude/`, which use their own
 unrelated frontmatter vocabularies and are deliberately excluded from the tables below.*
 
-> **69 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
+> **68 board-scope docs have no frontmatter** and therefore cannot be indexed, filtered,
 > or cross-linked. Retrofitting them is the largest single piece of remaining docs work.
 
 | Type | Docs | In vocabulary? |

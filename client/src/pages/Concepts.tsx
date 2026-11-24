@@ -73,7 +73,7 @@ const STRATEGIC: StrategicConcept[] = [
     phase: "planned",
     tagline: "All-time records, dynasty scores, championship history from 20+ years",
     description:
-      "HistoricalStanding table has 20+ years of OGBA data. Build a Trophy Case showing: most titles, highest season point total, dynasty score (weighted championships + finishes), head-to-head all-time records, era-adjusted rankings.",
+      "The archive has 20+ years of OGBA data. Build a Trophy Case showing: most titles, highest season point total, dynasty score (weighted championships + finishes), head-to-head all-time records, era-adjusted rankings.",
     todoLink: "/todo#features",
     roadmapLink: "/roadmap#growth",
   },

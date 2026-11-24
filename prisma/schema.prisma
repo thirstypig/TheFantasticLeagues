@@ -1089,8 +1089,6 @@ model HistoricalSeason {
   leagueId Int?
   league   League? @relation(fields: [leagueId], references: [id])
 
-  periods       HistoricalPeriod[]
-  standings     HistoricalStanding[]
   teams         HistoricalTeam[]
   rosterEntries HistoricalRosterEntry[]
   playerMatches HistoricalPlayerMatch[]
@@ -1108,90 +1106,6 @@ model HistoricalSeason {
 
   @@unique([year, leagueId])
   @@index([year])
-}
-
-model HistoricalPeriod {
-  id           Int              @id @default(autoincrement())
-  seasonId     Int
-  season       HistoricalSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
-  periodNumber Int // 1-6
-  startDate    DateTime?
-  endDate      DateTime?
-
-  stats HistoricalPlayerStat[]
-
-  @@unique([seasonId, periodNumber])
-  @@index([seasonId])
-}
-
-model HistoricalPlayerStat {
-  id       Int              @id @default(autoincrement())
-  periodId Int
-  period   HistoricalPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
-
-  playerName String
-  fullName   String? // Full display name - commissioner can override
-
-  mlbId     String?
-  teamCode  String // OGBA team code
-  isPitcher Boolean
-
-  // MLB player info
-  position String? // Primary position from MLB API (e.g., SS, CF, P)
-  mlbTeam  String? // Current MLB team name
-
-  // Hitting stats
-  AB  Int?
-  H   Int?
-  R   Int?
-  HR  Int?
-  RBI Int?
-  SB  Int?
-  AVG Float?
-  GS  Int? // Grand Slams
-
-  // Pitching stats
-  W    Int?
-  SV   Int?
-  K    Int?
-  IP   Float?
-  ER   Int?
-  ERA  Float?
-  WHIP Float?
-  SO   Int? // Shut Outs
-
-  draftDollars Int?
-  isKeeper     Boolean @default(false)
-
-  @@index([periodId, teamCode])
-  @@index([periodId])
-}
-
-model HistoricalStanding {
-  id       Int              @id @default(autoincrement())
-  seasonId Int
-  season   HistoricalSeason @relation(fields: [seasonId], references: [id], onDelete: Cascade)
-
-  teamCode String
-  teamName String
-
-  // Category scores for the SEASON
-  R_score    Int?
-  HR_score   Int?
-  RBI_score  Int?
-  SB_score   Int?
-  AVG_score  Int?
-  W_score    Int?
-  SV_score   Int?
-  K_score    Int?
-  ERA_score  Int?
-  WHIP_score Int?
-
-  totalScore Int
-  finalRank  Int
-
-  @@unique([seasonId, teamCode])
-  @@index([seasonId])
 }
 
 /// One team in one archived season, as the commissioner's workbook records it.
