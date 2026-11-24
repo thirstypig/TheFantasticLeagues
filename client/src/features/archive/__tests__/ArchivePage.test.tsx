@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { ArchiveSeasonListResponseSchema, ArchiveSeasonResponseSchema, type ArchiveSeasonResponse } from "@shared/api/archiveSeason";
 
-vi.mock("../historyApi", () => ({ getArchiveHistory: vi.fn(), getArchiveSeason: vi.fn() }));
+vi.mock("../historyApi", () => ({ getArchiveHistory: vi.fn(), getArchiveSeason: vi.fn(), downloadWorkbook: vi.fn() }));
 vi.mock("../playerCheckApi", () => ({ getMyAuditAccess: vi.fn() }));
 vi.mock("../components/TrophyCaseTab", () => ({ default: ({ leagueId }: { leagueId: number }) => <div>Trophy case for league {leagueId}</div> }));
 vi.mock("../../../contexts/LeagueContext", () => ({ useLeague: () => ({ leagueId: 20 }) }));
@@ -21,8 +21,8 @@ const E = (slot: string, name: string, over: Partial<ArchiveSeasonResponse["rost
 
 const history = ArchiveSeasonListResponseSchema.parse({
   seasons: [
-    { year: 2012, champion: { owner: "Kurt Sakamoto", teamName: "Dodger Dawgs" } },
-    { year: 2003, champion: { owner: "Yuji Ogasa", teamName: "Demolition Lumber Co." } },
+    { year: 2012, champion: { owner: "Kurt Sakamoto", teamName: "Dodger Dawgs" }, workbook: { fileName: "Fantasy_Baseball_2012.xls", bytes: 118272 } },
+    { year: 2003, champion: { owner: "Yuji Ogasa", teamName: "Demolition Lumber Co." }, workbook: null },
   ],
 });
 
@@ -202,5 +202,33 @@ describe("player check link", () => {
     renderAt();
     await waitFor(() => expect(check.getMyAuditAccess).toHaveBeenCalledTimes(2));
     expect(screen.queryByRole("link", { name: /player names/ })).toBeNull();
+  });
+});
+
+describe("source workbooks", () => {
+  it("names the season's original workbook and downloads it on tap", async () => {
+    m.downloadWorkbook.mockResolvedValue(undefined);
+    renderAt("/archive?season=2012");
+    expect(await screen.findByText("Fantasy_Baseball_2012.xls", { selector: "strong" })).toBeTruthy();
+    expect(screen.getByText(/116 KB, the commissioner’s workbook, unedited\./)).toBeTruthy();
+    fireEvent.click(screen.getAllByRole("button", { name: "Download Fantasy_Baseball_2012.xls, the 2012 workbook" })[0]);
+    expect(m.downloadWorkbook).toHaveBeenCalledWith(2012, "Fantasy_Baseball_2012.xls");
+  });
+
+  it("shows why when the download fails, and lets you try again", async () => {
+    m.downloadWorkbook.mockRejectedValueOnce(new Error("The 2012 workbook hasn’t been uploaded yet."));
+    renderAt("/archive?season=2012");
+    const btn = (await screen.findAllByRole("button", { name: /the 2012 workbook/ }))[0];
+    fireEvent.click(btn);
+    expect(await screen.findByText("The 2012 workbook hasn’t been uploaded yet.")).toBeTruthy();
+    expect((btn as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("lists every season that has a workbook in one place, and says nothing for a season without one", async () => {
+    renderAt("/archive?season=2003");
+    await waitFor(() => expect(screen.getByText("All source workbooks (1 season)")).toBeTruthy());
+    expect(screen.queryByText(/the commissioner’s workbook, unedited/)).toBeNull();
+    const list = screen.getByText("All source workbooks (1 season)").closest("details")!;
+    expect(within(list).getByText("Fantasy_Baseball_2012.xls · 116 KB")).toBeTruthy();
   });
 });
