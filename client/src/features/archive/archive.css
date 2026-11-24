@@ -17,8 +17,10 @@
 .arc-step { min-width: 44px; min-height: 44px; border: 1px solid var(--am-field-line); border-radius: 6px; background: var(--am-chip); font: inherit; font-size: 17px; color: var(--am-text); cursor: pointer; }
 .arc-step:disabled { opacity: 0.4; cursor: default; }
 .arc-tabs { display: inline-flex; border: 1px solid var(--am-field-line); border-radius: 6px; overflow: hidden; background: var(--am-field); }
-.arc-tabs button { min-height: 44px; padding: 0 14px; border: 0; background: transparent; font: inherit; font-size: 15px; color: var(--am-text); cursor: pointer; }
-.arc-tabs button[aria-selected="true"] { background: var(--am-accent); color: var(--am-on-accent); font-weight: 600; }
+.arc-tabs a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-left: 1px solid var(--am-field-line); font-size: 15px; color: var(--am-text); text-decoration: none; white-space: nowrap; }
+.arc-tabs a:first-child { border-left: 0; }
+.arc-tabs a[aria-current="page"] { background: var(--am-accent); color: var(--am-on-accent); font-weight: 600; }
+.arc-tabs a:focus-visible { outline: 2px solid var(--am-accent); outline-offset: -2px; }
 
 .arc-champ { padding: 14px 16px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
 .arc-champ strong { font-size: 17px; }

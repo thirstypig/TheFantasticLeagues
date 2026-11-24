@@ -8,9 +8,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom";
 import type { PlayerCheckDecisionBody, PlayerCheckItem, PlayerCheckResponse, PlayerCheckStatus } from "@shared/api/archivePlayerCheck";
 import { ApiError } from "../../../api/base";
+import { ArchiveTabs } from "../components/ArchiveTabs";
 import { PlayerCheckCard } from "../components/PlayerCheckCard";
 import { filterItems, filtersToParams, parseFilters, seasonRows, STATUS_LABEL, type CheckFilters } from "../lib/playerCheck";
 import { decidePlayer, getPlayerCheck, undoPlayerDecision } from "../playerCheckApi";
+import "../archive.css";
 import "../playerCheck.css";
 
 type Load =
@@ -77,14 +79,17 @@ export default function PlayerCheckPage() {
   const onDecide = useCallback((item: PlayerCheckItem, body: PlayerCheckDecisionBody) => save(item, () => decidePlayer(item.id, body)), [save]);
   const onUndo = useCallback((item: PlayerCheckItem) => save(item, () => undoPlayerDecision(item.id)), [save]);
 
+  // The Archive section's tab strip, with Player check selected (no tab for someone turned away).
+  const tabStrip = <ArchiveTabs active="check" showCheck={load.state !== "forbidden"} />;
+
   if (load.state === "loading") {
-    return <div className="apc-page"><h1 className="apc-title">Archive player check</h1><div className="apc-card apc-skeleton" aria-busy="true"><div /><div /><div /></div></div>;
+    return <div className="apc-page">{tabStrip}<h1 className="apc-title">Archive player check</h1><div className="apc-card apc-skeleton" aria-busy="true"><div /><div /><div /></div></div>;
   }
   if (load.state === "forbidden") {
-    return <div className="apc-page"><h1 className="apc-title">Archive player check</h1><p className="apc-lede">{load.message}</p></div>;
+    return <div className="apc-page">{tabStrip}<h1 className="apc-title">Archive player check</h1><p className="apc-lede">{load.message}</p></div>;
   }
   if (load.state === "error") {
-    return <div className="apc-page"><h1 className="apc-title">Archive player check</h1><p role="alert" className="apc-error">Couldn’t load the player check. Reload the page to try again.</p></div>;
+    return <div className="apc-page">{tabStrip}<h1 className="apc-title">Archive player check</h1><p role="alert" className="apc-error">Couldn’t load the player check. Reload the page to try again.</p></div>;
   }
 
   const { items, seasons, teams, viewer } = load.data;
@@ -98,7 +103,7 @@ export default function PlayerCheckPage() {
 
   if (seasons.length === 0) {
     return (
-      <div className="apc-page">
+      <div className="apc-page">{tabStrip}
         <h1 className="apc-title">Archive player check</h1>
         <p className="apc-lede">Nothing to check yet. The archive’s player list hasn’t been loaded.</p>
       </div>
@@ -106,7 +111,7 @@ export default function PlayerCheckPage() {
   }
 
   return (
-    <div className="apc-page">
+    <div className="apc-page">{tabStrip}
       <header>
         <h1 className="apc-title">Archive player check</h1>
         <p className="apc-lede">

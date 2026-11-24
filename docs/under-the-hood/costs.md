@@ -8,7 +8,7 @@ phase: null
 owner: james
 tags: [deploy]
 links: [DOC-001]
-updated: 2026-11-24
+updated: 2026-11-25
 ---
 
 # Unit economics
@@ -76,5 +76,5 @@ disagreeing with this table.*
 
 ---
 
-<sub>Generated 2026-11-24 from `docs/costs.config.json`. Edit the config, not this file.</sub>
+<sub>Generated 2026-11-25 from `docs/costs.config.json`. Edit the config, not this file.</sub>
 

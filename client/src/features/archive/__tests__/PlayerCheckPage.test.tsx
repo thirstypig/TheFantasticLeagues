@@ -372,3 +372,23 @@ describe("searching for someone who isn't listed", () => {
     await waitFor(() => expect(card("P. Strokes").textContent).toContain("Not found yet. Search for the right one."));
   });
 });
+
+describe("archive tabs", () => {
+  it("sits in the Archive section: Season | Trophy case | Player check, with Player check selected", async () => {
+    renderPage();
+    const strip = await screen.findByRole("navigation", { name: "Archive" });
+    const links = within(strip).getAllByRole("link");
+    expect(links.map((l) => l.textContent)).toEqual(["Season", "Trophy case", "Player check"]);
+    expect(within(strip).getByRole("link", { name: "Player check" }).getAttribute("aria-current")).toBe("page");
+    expect(within(strip).getByRole("link", { name: "Trophy case" }).getAttribute("href")).toBe("/archive?tab=trophy");
+  });
+
+  it("shows no Player check tab to someone turned away", async () => {
+    m.getPlayerCheck.mockRejectedValue(apiError(403, "Ask the commissioner to turn on player-check access for you."));
+    renderPage();
+    const strip = await screen.findByRole("navigation", { name: "Archive" });
+    await screen.findByText("Ask the commissioner to turn on player-check access for you.");
+    expect(within(strip).queryByRole("link", { name: "Player check" })).toBeNull();
+  });
+});
+

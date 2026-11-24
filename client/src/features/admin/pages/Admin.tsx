@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../../auth/AuthProvider";
 import AdminLeagueTools from "../components/AdminLeagueTools";
 import { Glass, SectionLabel } from "../../../components/aurora/atoms";
-import { ADMIN_LINKS } from "../../../lib/navModel";
+import { ADMIN_SECTIONS } from "../../../lib/navModel";
 import { fetchJsonApi, API_BASE } from "../../../api/base";
 import { subscribeErrors, type SurfacedError } from "../../../lib/errorBus";
 import {
@@ -411,19 +411,26 @@ export default function Admin() {
 
       <Glass>
         <SectionLabel>Hidden pages</SectionLabel>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {ADMIN_LINKS.map((l) => (
-            <Link
-              key={l.to}
-              to={l.to}
-              style={{
-                display: "inline-flex", alignItems: "center", minHeight: 44, padding: "0 14px",
-                borderRadius: 6, fontSize: 17, color: "var(--am-text)",
-                background: "var(--am-chip)", border: "1px solid var(--am-border)", textDecoration: "none",
-              }}
-            >
-              {l.label}
-            </Link>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {ADMIN_SECTIONS.map((section) => (
+            <div key={section.title}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--am-text-muted)", marginBottom: 6 }}>{section.title}</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {section.links.map((l) => (
+                  <Link
+                    key={l.to}
+                    to={l.to}
+                    style={{
+                      display: "inline-flex", alignItems: "center", minHeight: 44, padding: "0 14px",
+                      borderRadius: 6, fontSize: 17, color: "var(--am-text)",
+                      background: "var(--am-chip)", border: "1px solid var(--am-border)", textDecoration: "none",
+                    }}
+                  >
+                    {l.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </Glass>

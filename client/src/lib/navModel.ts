@@ -124,27 +124,60 @@ export function buildLeagueSections(args: {
   return sections;
 }
 
-/** Pages still routed but hidden from owners; linked only from the admin entry. */
-export const ADMIN_LINKS: NavLink[] = [
-  { to: "/ai", label: "AI" },
-  { to: "/analytics", label: "Analytics" },
-  { to: "/weekly-report", label: "Weekly Report" },
-  { to: "/board", label: "Board" },
-  { to: "/draft-report", label: "Draft Report" },
-  { to: "/community", label: "Community" },
-  { to: "/nba", label: "NBA" },
-  { to: "/nfl", label: "NFL" },
-  { to: "/concepts", label: "Concepts" },
-  { to: "/roadmap", label: "Roadmap" },
-  { to: "/todo", label: "Todo" },
-  { to: "/docs", label: "Docs" },
-  { to: "/tech", label: "Under the Hood" },
-  { to: "/status", label: "Status" },
-  { to: "/changelog", label: "Changelog" },
-  { to: "/admin/users", label: "Admin Users" },
-  { to: "/admin/reports", label: "Admin Reports" },
-  { to: "/archive/player-check", label: "Archive Player Check" },
+/**
+ * Pages still routed but hidden from owners, linked only from the admin page,
+ * in labeled groups. "Test pages" are mock-ups with made-up data (site admins
+ * only, behind TestPageGate), kept apart so nobody mistakes them for real ones.
+ */
+export const ADMIN_SECTIONS: NavSection[] = [
+  {
+    title: "Admin tools",
+    links: [
+      { to: "/admin/users", label: "Admin Users" },
+      { to: "/admin/reports", label: "Admin Reports" },
+    ],
+  },
+  {
+    title: "Archive",
+    links: [
+      { to: "/archive/player-check", label: "Archive Player Check" },
+      { to: "/archive/player-check/access", label: "Who can help" },
+    ],
+  },
+  {
+    title: "Hidden from owners",
+    links: [
+      { to: "/ai", label: "AI" },
+      { to: "/analytics", label: "Analytics" },
+      { to: "/weekly-report", label: "Weekly Report" },
+      { to: "/board", label: "Board" },
+      { to: "/draft-report", label: "Draft Report" },
+      { to: "/community", label: "Community" },
+    ],
+  },
+  {
+    title: "Test pages (sample data)",
+    links: [
+      { to: "/nba", label: "NBA" },
+      { to: "/nfl", label: "NFL" },
+    ],
+  },
+  {
+    title: "Product & docs",
+    links: [
+      { to: "/concepts", label: "Concepts" },
+      { to: "/roadmap", label: "Roadmap" },
+      { to: "/todo", label: "Todo" },
+      { to: "/docs", label: "Docs" },
+      { to: "/tech", label: "Under the Hood" },
+      { to: "/status", label: "Status" },
+      { to: "/changelog", label: "Changelog" },
+    ],
+  },
 ];
+
+/** Every hidden page, flat. */
+export const ADMIN_LINKS: NavLink[] = ADMIN_SECTIONS.flatMap((s) => s.links);
 
 export function ACCOUNT_LINKS(isAdmin: boolean): NavLink[] {
   const links: NavLink[] = [
