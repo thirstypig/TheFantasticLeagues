@@ -16,20 +16,20 @@ import { asyncHandler } from "../../middleware/asyncHandler.js";
 import { buildSeasonView } from "../../lib/archive/seasonView.js";
 import type { ArchiveSeasonListResponse, ArchiveSeasonResponse } from "../../../../shared/api/archiveSeason.js";
 import { archiveSeasonScope } from "./archiveAccess.js";
-import { SOURCE_WORKBOOK_BUCKET, sourceWorkbookFor, workbookObjectKey } from "./sourceWorkbooks.js";
+import { SOURCE_WORKBOOK_BUCKET, SOURCE_WORKBOOK_FRANCHISE_ID, sourceWorkbookFor, workbookObjectKey } from "./sourceWorkbooks.js";
 
 const router = express.Router();
 
 router.get("/archive/history", asyncHandler(async (req, res) => {
   const seasons = await prisma.historicalSeason.findMany({
     where: { ...archiveSeasonScope(req.user!), teams: { some: {} } },
-    select: { year: true, teams: { select: { name: true, ownerName: true, recordedTotal: true } } },
+    select: { year: true, league: { select: { franchiseId: true } }, teams: { select: { name: true, ownerName: true, recordedTotal: true } } },
     orderBy: { year: "desc" },
   });
   const body: ArchiveSeasonListResponse = {
     seasons: seasons.map((s) => {
       const top = s.teams.filter((t) => t.recordedTotal != null).sort((a, b) => b.recordedTotal! - a.recordedTotal!)[0];
-      const wb = sourceWorkbookFor(s.year);
+      const wb = sourceWorkbookFor(s.year, s.league?.franchiseId);
       return {
         year: s.year,
         champion: top ? { owner: top.ownerName, teamName: top.name } : null,
@@ -76,12 +76,12 @@ function attachment(fileName: string): string {
 router.get("/archive/history/:year/workbook", asyncHandler(async (req, res) => {
   const year = Number(req.params.year);
   if (!Number.isInteger(year) || year < 1900 || year > 3000) return res.status(400).json({ error: "Not a season." });
-  // Same visibility as the season itself: members of the franchise it belongs to.
+  // The workbooks are OGBA's: the season must be OGBA's, and visible to the viewer like the season itself.
   const season = await prisma.historicalSeason.findFirst({
-    where: { year, ...archiveSeasonScope(req.user!), teams: { some: {} } },
-    select: { id: true },
+    where: { AND: [{ year, teams: { some: {} }, league: { franchiseId: SOURCE_WORKBOOK_FRANCHISE_ID } }, archiveSeasonScope(req.user!)] },
+    select: { league: { select: { franchiseId: true } } },
   });
-  const wb = sourceWorkbookFor(year);
+  const wb = season ? sourceWorkbookFor(year, season.league?.franchiseId) : undefined;
   if (!season || !wb) return res.status(404).json({ error: `No workbook for ${year}.` });
 
   const { data, error } = await supabaseAdmin.storage.from(SOURCE_WORKBOOK_BUCKET).download(workbookObjectKey(wb));

@@ -15,6 +15,13 @@
  */
 export const SOURCE_WORKBOOK_BUCKET = "archive-workbooks";
 
+/**
+ * The franchise these workbooks belong to (OGBA). The registry is keyed by year,
+ * so every lookup must also match this franchise: another franchise's 2012 is
+ * not OGBA's 2012.
+ */
+export const SOURCE_WORKBOOK_FRANCHISE_ID = 1;
+
 export interface SourceWorkbook {
   year: number;
   /** The file's name in the commissioner's Drive folder. */
@@ -54,5 +61,6 @@ export const SOURCE_WORKBOOKS: readonly SourceWorkbook[] = [
 /** Storage object key: content-addressed, so a shared file (2003/2004) is stored once. */
 export const workbookObjectKey = (w: SourceWorkbook) => `${w.sha256}.xls`;
 
-export const sourceWorkbookFor = (year: number): SourceWorkbook | undefined =>
-  SOURCE_WORKBOOKS.find((w) => w.year === year);
+/** The workbook for an archived season of `franchiseId`, if that's OGBA and the year has one. */
+export const sourceWorkbookFor = (year: number, franchiseId: number | null | undefined): SourceWorkbook | undefined =>
+  franchiseId === SOURCE_WORKBOOK_FRANCHISE_ID ? SOURCE_WORKBOOKS.find((w) => w.year === year) : undefined;

@@ -19,10 +19,16 @@ describe("source workbook registry", () => {
     for (const w of SOURCE_WORKBOOKS) {
       expect(w.fileName).toContain(String(w.year === 2003 ? 2004 : w.year));
     }
-    expect(sourceWorkbookFor(2003)!.sha256).toBe(sourceWorkbookFor(2004)!.sha256);
+    expect(sourceWorkbookFor(2003, 1)!.sha256).toBe(sourceWorkbookFor(2004, 1)!.sha256);
   });
 
   it("has no workbook for a season that isn't archived", () => {
-    expect(sourceWorkbookFor(2026)).toBeUndefined();
+    expect(sourceWorkbookFor(2026, 1)).toBeUndefined();
+  });
+
+  it("belongs to OGBA only: another franchise's season of the same year has none", () => {
+    expect(sourceWorkbookFor(2012, 1)).toBeDefined();
+    expect(sourceWorkbookFor(2012, 2)).toBeUndefined();
+    expect(sourceWorkbookFor(2012, null)).toBeUndefined();
   });
 });

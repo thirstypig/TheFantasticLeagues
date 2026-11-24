@@ -47,8 +47,8 @@ beforeEach(() => {
 describe("GET /api/archive/history", () => {
   it("lists the member's franchise's seasons, newest first, with each champion", async () => {
     db.historicalSeason.findMany.mockResolvedValue([
-      { year: 2012, teams: [{ name: "MoneyBall", ownerName: "Mike Gin", recordedTotal: 351 }, { name: "Dodger Dawgs", ownerName: "Kurt Sakamoto", recordedTotal: 394.5 }] },
-      { year: 2003, teams: [{ name: "Demolition Lumber Co.", ownerName: null, recordedTotal: 275 }] },
+      { year: 2012, league: { franchiseId: 1 }, teams: [{ name: "MoneyBall", ownerName: "Mike Gin", recordedTotal: 351 }, { name: "Dodger Dawgs", ownerName: "Kurt Sakamoto", recordedTotal: 394.5 }] },
+      { year: 2003, league: { franchiseId: 1 }, teams: [{ name: "Demolition Lumber Co.", ownerName: null, recordedTotal: 275 }] },
     ]);
     const res = await app({ id: 42, isAdmin: false }).get("/api/archive/history").expect(200);
     expect(db.historicalSeason.findMany.mock.calls[0][0].where).toEqual({ ...MEMBER_SCOPE, teams: { some: {} } });
@@ -90,7 +90,8 @@ describe("GET /api/archive/history/:year", () => {
 });
 
 describe("GET /api/archive/history/:year/workbook", () => {
-  const wb2012 = sourceWorkbookFor(2012)!;
+  const wb2012 = sourceWorkbookFor(2012, 1)!;
+  const OGBA_2012 = { league: { franchiseId: 1 } };
   /** A Blob-like whose bytes hash to the recorded SHA-256 (or not). */
   const blobOf = (bytes: Buffer) => ({ arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.length) });
   // The real workbooks aren't in the repo, so the success case points the 2012 entry's
@@ -98,7 +99,7 @@ describe("GET /api/archive/history/:year/workbook", () => {
   const fake = Buffer.from("stand-in for the 2012 workbook");
 
   it("sends the original file, named as the commissioner named it, only after its hash checks out", async () => {
-    db.historicalSeason.findFirst.mockResolvedValue({ id: 3 });
+    db.historicalSeason.findFirst.mockResolvedValue(OGBA_2012);
     const real = { ...wb2012 };
     (wb2012 as { sha256: string }).sha256 = createHash("sha256").update(fake).digest("hex");
     storage.download.mockResolvedValue({ data: blobOf(fake), error: null });
@@ -108,7 +109,9 @@ describe("GET /api/archive/history/:year/workbook", () => {
       }).expect(200);
       expect(storage.from).toHaveBeenCalledWith("archive-workbooks");
       expect(storage.download).toHaveBeenCalledWith(`${wb2012.sha256}.xls`);
-      expect(db.historicalSeason.findFirst.mock.calls[0][0].where).toEqual({ year: 2012, ...MEMBER_SCOPE, teams: { some: {} } });
+      expect(db.historicalSeason.findFirst.mock.calls[0][0].where).toEqual({
+        AND: [{ year: 2012, teams: { some: {} }, league: { franchiseId: 1 } }, MEMBER_SCOPE],
+      });
       expect(res.headers["content-type"]).toBe("application/vnd.ms-excel");
       expect(res.headers["content-disposition"]).toBe(`attachment; filename="Fantasy_Baseball_2012.xls"; filename*=UTF-8''Fantasy_Baseball_2012.xls`);
       expect(Buffer.compare(res.body as Buffer, fake)).toBe(0);
@@ -118,7 +121,7 @@ describe("GET /api/archive/history/:year/workbook", () => {
   });
 
   it("refuses to send a stored file that isn't byte-for-byte the original", async () => {
-    db.historicalSeason.findFirst.mockResolvedValue({ id: 3 });
+    db.historicalSeason.findFirst.mockResolvedValue(OGBA_2012);
     storage.download.mockResolvedValue({ data: blobOf(Buffer.from("tampered")), error: null });
     const res = await app({ id: 42, isAdmin: false }).get("/api/archive/history/2012/workbook").expect(500);
     expect(res.body.error).toMatch(/integrity check/);
@@ -126,7 +129,7 @@ describe("GET /api/archive/history/:year/workbook", () => {
   });
 
   it("says the workbook isn't uploaded yet when storage doesn't have it", async () => {
-    db.historicalSeason.findFirst.mockResolvedValue({ id: 3 });
+    db.historicalSeason.findFirst.mockResolvedValue(OGBA_2012);
     storage.download.mockResolvedValue({ data: null, error: { message: "Object not found" } });
     const res = await app({ id: 42, isAdmin: false }).get("/api/archive/history/2012/workbook").expect(404);
     expect(res.body.error).toMatch(/hasn't been uploaded/);
@@ -135,7 +138,7 @@ describe("GET /api/archive/history/:year/workbook", () => {
   it("gives nothing for a season the viewer can't see, or one without a workbook, without touching storage", async () => {
     db.historicalSeason.findFirst.mockResolvedValue(null);
     await app({ id: 42, isAdmin: false }).get("/api/archive/history/2012/workbook").expect(404);
-    db.historicalSeason.findFirst.mockResolvedValue({ id: 3 });
+    db.historicalSeason.findFirst.mockResolvedValue(OGBA_2012);
     await app({ id: 42, isAdmin: false }).get("/api/archive/history/1999/workbook").expect(404);
     await app({ id: 42, isAdmin: false }).get("/api/archive/history/abc/workbook").expect(400);
     expect(storage.download).not.toHaveBeenCalled();
@@ -145,5 +148,26 @@ describe("GET /api/archive/history/:year/workbook", () => {
     db.franchiseMembership.findFirst.mockResolvedValue(null);
     await app({ id: 42, isAdmin: false }).get("/api/archive/history/2012/workbook").expect(403);
     expect(storage.download).not.toHaveBeenCalled();
+  });
+
+  it("never serves OGBA's file for another franchise's season of the same year", async () => {
+    // The query is bound to OGBA, so another franchise's 2012 isn't found...
+    db.historicalSeason.findFirst.mockResolvedValue(null);
+    await app({ id: 42, isAdmin: false }).get("/api/archive/history/2012/workbook").expect(404);
+    expect(db.historicalSeason.findFirst.mock.calls[0][0].where.AND[0].league).toEqual({ franchiseId: 1 });
+    // ...and even if a non-OGBA season came back, the registry wouldn't match it.
+    db.historicalSeason.findFirst.mockResolvedValue({ league: { franchiseId: 2 } });
+    await app({ id: 42, isAdmin: false }).get("/api/archive/history/2012/workbook").expect(404);
+    expect(storage.download).not.toHaveBeenCalled();
+  });
+});
+
+describe("workbooks in the season list belong to OGBA only", () => {
+  it("attaches no workbook to another franchise's season", async () => {
+    db.historicalSeason.findMany.mockResolvedValue([
+      { year: 2012, league: { franchiseId: 2 }, teams: [{ name: "Elsewhere", ownerName: null, recordedTotal: 300 }] },
+    ]);
+    const res = await app({ id: 1, isAdmin: true }).get("/api/archive/history").expect(200);
+    expect(res.body.seasons[0].workbook).toBeNull();
   });
 });
