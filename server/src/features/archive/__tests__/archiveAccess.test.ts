@@ -82,3 +82,30 @@ describe("archive is members-only", () => {
     expect(mockPrisma.franchiseMembership.findFirst).not.toHaveBeenCalled();
   });
 });
+
+describe("trophy case is checked against the league's franchise", () => {
+  it("lets a franchise member in without a membership of that one league", async () => {
+    // 1st lookup: archive guard; 2nd: the league's franchise.
+    mockPrisma.franchiseMembership.findFirst.mockResolvedValueOnce({ id: 7 }).mockResolvedValueOnce({ id: 7 });
+    const res = await supertest(appAs({ id: 42, isAdmin: false })).get("/api/archive/trophy-case?leagueId=1");
+    expect(res.status).toBe(200);
+    expect(mockPrisma.franchiseMembership.findFirst).toHaveBeenLastCalledWith({
+      where: { userId: 42, franchise: { leagues: { some: { id: 1 } } } },
+      select: { id: true },
+    });
+    expect(computeTrophyCase).toHaveBeenCalledWith(1);
+  });
+
+  it("refuses a member of another franchise asking for this league", async () => {
+    mockPrisma.franchiseMembership.findFirst.mockResolvedValueOnce({ id: 9 }).mockResolvedValueOnce(null);
+    const res = await supertest(appAs({ id: 42, isAdmin: false })).get("/api/archive/trophy-case?leagueId=1");
+    expect(res.status).toBe(403);
+    expect(computeTrophyCase).not.toHaveBeenCalled();
+  });
+
+  it("lets an admin in without any lookup", async () => {
+    const res = await supertest(appAs({ id: 1, isAdmin: true })).get("/api/archive/trophy-case?leagueId=1");
+    expect(res.status).toBe(200);
+    expect(mockPrisma.franchiseMembership.findFirst).not.toHaveBeenCalled();
+  });
+});

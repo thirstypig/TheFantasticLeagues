@@ -35,3 +35,18 @@ export function requireArchiveAccess(): RequestHandler {
 export function archiveSeasonScope(user: { id: number; isAdmin: boolean }): Prisma.HistoricalSeasonWhereInput {
   return user.isAdmin ? {} : { league: { franchise: { memberships: { some: { userId: user.id } } } } };
 }
+
+/**
+ * May this viewer read the archive of the franchise that `leagueId` belongs to?
+ * Same rule as requireArchiveAccess, applied to one franchise: an admin, or a
+ * member of that franchise. Membership of the one league isn't required, so
+ * an owner who sat out a season still sees his franchise's trophy case.
+ */
+export async function canViewLeagueArchive(user: { id: number; isAdmin: boolean }, leagueId: number): Promise<boolean> {
+  if (user.isAdmin) return true;
+  const membership = await prisma.franchiseMembership.findFirst({
+    where: { userId: user.id, franchise: { leagues: { some: { id: leagueId } } } },
+    select: { id: true },
+  });
+  return membership !== null;
+}

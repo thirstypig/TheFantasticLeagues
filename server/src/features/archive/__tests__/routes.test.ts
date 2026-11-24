@@ -15,6 +15,7 @@ vi.mock("../../../middleware/asyncHandler.js", () => ({
 }));
 vi.mock("../archiveAccess.js", () => ({
   requireArchiveAccess: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+  canViewLeagueArchive: vi.fn().mockResolvedValue(true),
 }));
 vi.mock("../playerCheckRoutes.js", () => ({ playerCheckRouter: express.Router() }));
 vi.mock("../historyRoutes.js", () => ({ archiveHistoryRouter: express.Router() }));
@@ -24,6 +25,7 @@ vi.mock("../services/trophyCaseService.js", () => ({
 
 import { archiveRouter } from "../routes.js";
 import { computeTrophyCase } from "../services/trophyCaseService.js";
+import { canViewLeagueArchive } from "../archiveAccess.js";
 
 const app = express();
 app.use((req: Request, _res: Response, next: NextFunction) => {
@@ -80,6 +82,14 @@ describe("GET /archive/trophy-case", () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ championships: [] });
     expect(computeTrophyCase).toHaveBeenCalledWith(1);
+    expect(canViewLeagueArchive).toHaveBeenCalledWith({ id: 1, isAdmin: false }, 1);
+  });
+
+  it("refuses a viewer outside the league's franchise", async () => {
+    vi.mocked(canViewLeagueArchive).mockResolvedValueOnce(false);
+    const res = await supertest(app).get("/archive/trophy-case?leagueId=1");
+    expect(res.status).toBe(403);
+    expect(computeTrophyCase).not.toHaveBeenCalled();
   });
 
   it("rejects a leagueId that isn't a number", async () => {
