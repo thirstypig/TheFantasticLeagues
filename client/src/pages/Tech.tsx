@@ -393,39 +393,44 @@ const erdDiagrams: { label: string; chart: string }[] = [
   {
     label: "Historical Archive",
     chart: `erDiagram
-    HistoricalSeason ||--o{ HistoricalPeriod : "has many"
-    HistoricalSeason ||--o{ HistoricalStanding : "has many"
-    HistoricalPeriod ||--o{ HistoricalPlayerStat : "has many"
+    HistoricalSeason ||--o{ HistoricalTeam : "has many"
+    HistoricalSeason ||--o{ HistoricalRosterEntry : "has many"
+    HistoricalSeason ||--o{ HistoricalPlayerMatch : "has many"
 
     HistoricalSeason {
         int id PK
         int year
         int leagueId FK
+        boolean keepersFromSheet
+        string_array periodEnds
     }
-    HistoricalPeriod {
+    HistoricalTeam {
         int id PK
         int seasonId FK
-        int periodNumber
-        datetime startDate
-        datetime endDate
+        string code
+        string name
+        string ownerName
+        float recordedTotal
     }
-    HistoricalPlayerStat {
+    HistoricalRosterEntry {
         int id PK
-        int periodId FK
-        string playerName
-        string mlbId
+        int seasonId FK
         string teamCode
-        boolean isPitcher
-        string position
-        int draftDollars
+        string kind
+        int periodNumber
+        string slot
+        string playerName
+        int salary
         boolean isKeeper
     }
-    HistoricalStanding {
+    HistoricalPlayerMatch {
         int id PK
         int seasonId FK
-        string teamCode
-        int totalScore
-        int finalRank
+        string key
+        string status
+        int autoMlbId
+        string decision
+        int mlbId
     }
     RosterEntry {
         int id PK

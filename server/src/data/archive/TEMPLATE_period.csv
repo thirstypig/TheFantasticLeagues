@@ -1,9 +1,0 @@
-player_name,mlb_id,team_code,is_pitcher,AB,H,R,HR,RBI,SB,AVG,W,SV,K,IP,ER,ERA,WHIP
-Shohei Ohtani,660271,TG,false,497,134,102,44,95,20,.270,,,,,,,
-Aaron Judge,592450,TG,false,550,147,120,62,131,9,.267,,,,,,,
-Ronald Acuna Jr.,660670,WD,false,596,217,149,41,106,73,.337,,,,,,,
-Mookie Betts,605141,WD,false,537,153,107,39,107,14,.285,,,,,,,
-Justin Verlander,434378,TG,true,,,,,,,,,13,0,162,136.1,36,2.38,0.90
-Gerrit Cole,543037,TG,true,,,,,,,,,15,0,222,209.0,67,2.63,1.02
-Spencer Strider,675911,WD,true,,,,,,,,,20,0,281,186.2,53,3.86,0.99
-Blake Snell,605483,WD,true,,,,,,,,,14,0,234,180.0,55,2.25,1.19
