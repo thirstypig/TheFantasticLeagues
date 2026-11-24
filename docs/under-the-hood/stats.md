@@ -8,7 +8,7 @@ phase: null
 owner: james
 tags: [docs-system]
 links: [DOC-001]
-updated: 2026-11-23
+updated: 2026-11-24
 ---
 
 # Repo statistics
@@ -21,15 +21,15 @@ updated: 2026-11-23
 > — see the roadmap and the changelog. Nothing on this page should be used to feel
 > productive.
 
-*Generated 2026-11-23 from 2,118 git-tracked files.*
+*Generated 2026-11-24 from 2,107 git-tracked files.*
 
 ## Code
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 736 | 126,629 |
-| `.tsx` | 399 | 97,187 |
-| `.md` | 591 | 73,290 |
+| `.ts` | 729 | 123,397 |
+| `.tsx` | 395 | 96,449 |
+| `.md` | 591 | 73,289 |
 | `.json` | 39 | 41,031 |
 | `.css` | 17 | 2,673 |
 | `.sql` | 47 | 2,359 |
@@ -38,7 +38,7 @@ updated: 2026-11-23
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 194 |
-| **All tracked** | **2,114** | **392,047** |
+| **All tracked** | **2,103** | **388,076** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -46,7 +46,7 @@ updated: 2026-11-23
 
 | Measure | Count |
 |---|---:|
-| API routes | 303 |
+| API routes | 283 |
 | Prisma models | 67 |
 | Prisma migrations | 45 |
 | Server feature modules | 33 |
@@ -124,5 +124,5 @@ unrelated frontmatter vocabularies and are deliberately excluded from the tables
 
 Planning status: 34/82 planning tasks done, 0 in progress.
 
-`server/data/planning.json` last updated **2026-11-18** (5 days ago).
+`server/data/planning.json` last updated **2026-11-18** (6 days ago).
 
