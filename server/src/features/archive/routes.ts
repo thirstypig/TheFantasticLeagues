@@ -1,7 +1,7 @@
 import express from 'express';
-import { requireAuth, requireLeagueMember } from '../../middleware/auth.js';
+import { requireAuth } from '../../middleware/auth.js';
 import { asyncHandler } from '../../middleware/asyncHandler.js';
-import { requireArchiveAccess } from './archiveAccess.js';
+import { canViewLeagueArchive, requireArchiveAccess } from './archiveAccess.js';
 import { playerCheckRouter } from './playerCheckRoutes.js';
 import { archiveHistoryRouter } from './historyRoutes.js';
 import { computeTrophyCase } from './services/trophyCaseService.js';
@@ -59,10 +59,14 @@ router.get('/archive/search-mlb', requireAuth, asyncHandler(async (req, res) => 
  * GET /api/archive/trophy-case?leagueId=X
  * All-time trophy case: championships, all-time standings, records, dynasty scores.
  */
-router.get('/archive/trophy-case', requireAuth, requireLeagueMember('leagueId'), asyncHandler(async (req, res) => {
+router.get('/archive/trophy-case', requireAuth, asyncHandler(async (req, res) => {
   const leagueId = Number(req.query.leagueId);
-  if (!Number.isFinite(leagueId)) {
+  if (!Number.isInteger(leagueId)) {
     return res.status(400).json({ error: 'Invalid leagueId' });
+  }
+  // Franchise-level, like the rest of the archive (not membership of this one league).
+  if (!(await canViewLeagueArchive(req.user!, leagueId))) {
+    return res.status(403).json({ error: 'The archive is visible to league members only' });
   }
   const result = await computeTrophyCase(leagueId);
   return res.json(result);
