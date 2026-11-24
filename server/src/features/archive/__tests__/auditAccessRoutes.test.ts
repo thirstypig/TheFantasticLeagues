@@ -6,6 +6,7 @@ vi.mock("../../../db/prisma.js", () => ({
   prisma: {
     franchiseMembership: { findFirst: vi.fn(), findMany: vi.fn(), update: vi.fn() },
     teamOwnership: { findMany: vi.fn() },
+    league: { findFirst: vi.fn() },
   },
 }));
 vi.mock("../../../lib/logger.js", () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() } }));
@@ -27,6 +28,7 @@ type Fn = ReturnType<typeof vi.fn>;
 const db = prisma as unknown as {
   franchiseMembership: { findFirst: Fn; findMany: Fn; update: Fn };
   teamOwnership: { findMany: Fn };
+  league: { findFirst: Fn };
 };
 const audit = writeAuditLog as unknown as Fn;
 
@@ -48,6 +50,7 @@ function appAs(user: { id: number; isAdmin: boolean }) {
 beforeEach(() => {
   vi.resetAllMocks();
   db.franchiseMembership.findFirst.mockResolvedValue({ id: 7 }); // passes the archive's members-only guard
+  db.league.findFirst.mockResolvedValue({ id: 20 }); // the franchise's latest league
 });
 
 describe("GET /api/archive/audit-access/me", () => {
@@ -72,20 +75,19 @@ describe("GET /api/archive/audit-access/me", () => {
 });
 
 describe("GET /api/archive/audit-access (site admin)", () => {
-  it("lists every non-admin member of an archived franchise with the teams he owns there", async () => {
+  it("lists every non-admin member of an archived franchise with the teams he owns in its latest league", async () => {
     db.franchiseMembership.findMany.mockResolvedValue([
-      {
-        id: 40, franchiseId: 1, role: "COMMISSIONER", archiveAudit: "ALL",
-        user: { name: "Kent", email: "k@x", teamOwnerships: [
-          { team: { code: "DMK", league: { franchiseId: 1 } } },
-          { team: { code: "DMK", league: { franchiseId: 1 } } }, // same team, two seasons' leagues
-          { team: { code: "ZZZ", league: { franchiseId: 2 } } }, // another franchise: not his OGBA team
-        ] },
-      },
-      { id: 41, franchiseId: 1, role: "OWNER", archiveAudit: "NONE", user: { name: "", email: "a@x", teamOwnerships: [] } },
+      { id: 40, franchiseId: 1, userId: 26, role: "COMMISSIONER", archiveAudit: "ALL", user: { name: "Kent", email: "k@x" } },
+      { id: 41, franchiseId: 1, userId: 25, role: "OWNER", archiveAudit: "NONE", user: { name: "", email: "a@x" } },
     ]);
+    db.teamOwnership.findMany.mockImplementation(async ({ where }: { where: { userId: number } }) =>
+      (where.userId === 26 ? [{ team: { code: "DMK" } }, { team: { code: "DMK" } }] : []));
     const res = await appAs(ADMIN).get("/api/archive/audit-access").expect(200);
     expect(db.franchiseMembership.findMany.mock.calls[0][0].where).toEqual({ franchise: HAS_ARCHIVE, user: { isAdmin: false } });
+    expect(db.teamOwnership.findMany).toHaveBeenCalledWith({
+      where: { userId: 26, team: { leagueId: 20, code: { not: null } } },
+      select: { team: { select: { code: true } } },
+    });
     expect(AuditAccessListResponseSchema.parse(res.body).members).toEqual([
       { membershipId: 41, name: "a@x", role: "OWNER", teamCodes: [], access: "NONE" },
       { membershipId: 40, name: "Kent", role: "COMMISSIONER", teamCodes: ["DMK"], access: "ALL" },

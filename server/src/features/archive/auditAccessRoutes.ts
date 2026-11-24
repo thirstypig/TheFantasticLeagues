@@ -17,7 +17,7 @@ import {
   AuditAccessUpdateBodySchema,
   type AuditAccessListResponse, type AuditAccessMeResponse, type AuditAccessMember, type AuditAccessUpdateBody,
 } from "../../../../shared/api/archivePlayerCheck.js";
-import { resolveAuditAccess } from "./auditAccess.js";
+import { currentTeamCodes, resolveAuditAccess } from "./auditAccess.js";
 
 const router = express.Router();
 
@@ -34,28 +34,16 @@ router.get("/archive/audit-access", requireAdmin, asyncHandler(async (_req, res)
   const memberships = await prisma.franchiseMembership.findMany({
     // Site admins always have full access, so they aren't listed.
     where: { franchise: hasArchive, user: { isAdmin: false } },
-    select: {
-      id: true, franchiseId: true, role: true, archiveAudit: true,
-      user: {
-        select: {
-          name: true, email: true,
-          teamOwnerships: { select: { team: { select: { code: true, league: { select: { franchiseId: true } } } } } },
-        },
-      },
-    },
+    select: { id: true, franchiseId: true, userId: true, role: true, archiveAudit: true, user: { select: { name: true, email: true } } },
   });
-  const members: AuditAccessMember[] = memberships
-    .map((m) => ({
-      membershipId: m.id,
-      name: m.user.name || m.user.email,
-      role: m.role,
-      teamCodes: [...new Set(
-        m.user.teamOwnerships
-          .filter((o) => o.team.league.franchiseId === m.franchiseId && o.team.code)
-          .map((o) => o.team.code!),
-      )].sort(),
-      access: m.archiveAudit,
-    }))
+  // The same "own team" rule the player check uses: teams owned in the franchise's latest league.
+  const members: AuditAccessMember[] = (await Promise.all(memberships.map(async (m) => ({
+    membershipId: m.id,
+    name: m.user.name || m.user.email,
+    role: m.role,
+    teamCodes: await currentTeamCodes(m.userId, m.franchiseId),
+    access: m.archiveAudit,
+  }))))
     .sort((a, b) => a.name.localeCompare(b.name) || a.membershipId - b.membershipId);
   const body: AuditAccessListResponse = { members };
   res.json(body);

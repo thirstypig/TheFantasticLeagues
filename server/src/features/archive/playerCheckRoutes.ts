@@ -28,7 +28,7 @@ import {
   type PlayerCheckDecisionBody, type PlayerCheckItem, type PlayerCheckItemResponse, type PlayerCheckResponse,
   type PlayerCheckSearchResponse, type PlayerCheckStatus,
 } from "../../../../shared/api/archivePlayerCheck.js";
-import { auditOf, requireAuditAccess, type AuditAccess } from "./auditAccess.js";
+import { auditOf, hasFinalSay, requireAuditAccess, type AuditAccess } from "./auditAccess.js";
 import { lookupPlayerName, MIN_QUERY_LENGTH, searchCandidates } from "./services/playerSearchService.js";
 
 const router = express.Router();
@@ -36,21 +36,30 @@ const router = express.Router();
 router.use("/archive/player-check", requireAuditAccess());
 
 const withContext = {
-  season: { select: { year: true } },
+  season: { select: { year: true, league: { select: { franchiseId: true } } } },
   decidedBy: {
-    select: { name: true, isAdmin: true, franchiseMemberships: { where: { archiveAudit: "ALL" }, select: { id: true } } },
+    select: { name: true, isAdmin: true, franchiseMemberships: { where: { archiveAudit: "ALL" }, select: { franchiseId: true } } },
   },
 } satisfies Prisma.HistoricalPlayerMatchInclude;
 type Row = Prisma.HistoricalPlayerMatchGetPayload<{ include: typeof withContext }>;
 
 const detailOf = (row: Row) => row.detail as unknown as ReviewDetail;
 
+const franchiseOf = (row: Row) => row.season.league?.franchiseId ?? null;
+
 /**
- * Was this decision made by someone with final say (a site admin, or the member
- * set to ALL)? One whose maker is gone counts as final, so nobody can quietly change it.
+ * Was this decision made by someone with final say over this row's franchise (a
+ * site admin, or a member set to ALL in that franchise)? One whose maker is gone
+ * counts as final, so nobody can quietly change it.
  */
 const decidedByFinal = (row: Row) =>
-  row.decidedBy ? row.decidedBy.isAdmin || row.decidedBy.franchiseMemberships.length > 0 : true;
+  row.decidedBy
+    ? row.decidedBy.isAdmin || row.decidedBy.franchiseMemberships.some((m) => m.franchiseId === franchiseOf(row))
+    : true;
+
+/** May this viewer change the row's current decision? */
+const canChange = (row: Row, audit: AuditAccess) =>
+  canChangeDecision({ final: hasFinalSay(audit, franchiseOf(row)) }, { decision: row.decision, decidedByFinal: decidedByFinal(row) });
 
 /** Verified names are settled and never reach the page; every query here filters them out. */
 function listedStatus(row: Row): PlayerCheckStatus {
@@ -82,7 +91,7 @@ function toItem(row: Row, teamName: string, audit: AuditAccess): PlayerCheckItem
           name: row.mlbName,
           byName: row.decidedBy?.name ?? null,
           at: row.decidedAt ? row.decidedAt.toISOString() : null,
-          locked: !canChangeDecision(audit, { decision: row.decision, decidedByFinal: decidedByFinal(row) }),
+          locked: !canChange(row, audit),
         }
       : null,
   };
@@ -160,7 +169,7 @@ router.put("/archive/player-check/:id/decision", validateBody(PlayerCheckDecisio
   const body = req.body as PlayerCheckDecisionBody;
   const row = await findRow(req.params.id, audit);
   if (!row) return res.status(404).json({ error: "That name isn't on the player check." });
-  if (!canChangeDecision(audit, { decision: row.decision, decidedByFinal: decidedByFinal(row) })) {
+  if (!canChange(row, audit)) {
     return res.status(403).json({ error: LOCKED });
   }
 
@@ -214,7 +223,7 @@ router.delete("/archive/player-check/:id/decision", asyncHandler(async (req, res
     const same: PlayerCheckItemResponse = { item: toItem(row, await teamNameFor(row), audit) };
     return res.json(same);
   }
-  if (!canChangeDecision(audit, { decision: row.decision, decidedByFinal: decidedByFinal(row) })) {
+  if (!canChange(row, audit)) {
     return res.status(403).json({ error: LOCKED });
   }
   const updated = await prisma.historicalPlayerMatch.update({

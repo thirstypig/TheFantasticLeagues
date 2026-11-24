@@ -6,6 +6,7 @@ vi.mock("../../../db/prisma.js", () => ({
   prisma: {
     franchiseMembership: { findFirst: vi.fn(), findMany: vi.fn() },
     teamOwnership: { findMany: vi.fn() },
+    league: { findFirst: vi.fn() },
     historicalSeason: { findMany: vi.fn() },
     historicalTeam: { findUnique: vi.fn() },
     historicalPlayerMatch: { findMany: vi.fn(), groupBy: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
@@ -36,6 +37,7 @@ type Fn = ReturnType<typeof vi.fn>;
 const db = prisma as unknown as {
   franchiseMembership: { findFirst: Fn; findMany: Fn };
   teamOwnership: { findMany: Fn };
+  league: { findFirst: Fn };
   historicalSeason: { findMany: Fn };
   historicalTeam: { findUnique: Fn };
   historicalPlayerMatch: { findMany: Fn; groupBy: Fn; findFirst: Fn; update: Fn };
@@ -51,7 +53,7 @@ const COMMISH = { id: 26, isAdmin: false };
 const MEMBER_SCOPE = { season: { league: { franchiseId: 1 } }, teamCode: { in: ["MNB"] } };
 const COMMISH_SCOPE = { season: { league: { franchiseId: 1 } } };
 const notVerified = (scope: object, extra: object = {}) => ({ AND: [scope, { ...extra, status: { not: "VERIFIED" } }] });
-const byFinal = { name: "Kent", isAdmin: false, franchiseMemberships: [{ id: 3 }] };
+const byFinal = { name: "Kent", isAdmin: false, franchiseMemberships: [{ franchiseId: 1 }] };
 
 function appAs(user: { id: number; isAdmin: boolean } | null) {
   const app = express();
@@ -77,7 +79,7 @@ function openRow(over: Record<string, unknown> = {}) {
     status: "OPEN", autoMlbId: null, autoName: null,
     detail: { keptFromSlot: "P", how: null, checks: [], line: null, candidates: wrights, suggestion: { mlbId: 124605, why: "eligible and played the most (186.3 IP)", closeCall: false } },
     decision: null, decidedById: null, decidedAt: null, mlbId: null, mlbName: null,
-    season: { year: 2004 }, decidedBy: null,
+    season: { year: 2004, league: { franchiseId: 1 } }, decidedBy: null,
     ...over,
   };
 }
@@ -97,6 +99,7 @@ beforeEach(() => {
   db.franchiseMembership.findMany.mockImplementation(async ({ where }: { where: { userId: number } }) =>
     [{ franchiseId: 1, archiveAudit: where.userId === COMMISH.id ? "ALL" : "OWN_TEAM" }]);
   db.teamOwnership.findMany.mockResolvedValue([{ team: { code: "MNB" } }]);
+  db.league.findFirst.mockResolvedValue({ id: 20 }); // the franchise's latest league (2026)
   db.historicalTeam.findUnique.mockResolvedValue({ name: "MoneyBall" });
   db.historicalPlayerMatch.update.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => ({
     ...openRow(), ...data, decidedBy: data.decidedById ? { name: "Mike", isAdmin: false, franchiseMemberships: [] } : null,
@@ -116,7 +119,7 @@ describe("GET /api/archive/player-check", () => {
       { seasonId: 1, status: "VERIFIED", _count: { _all: 369 } },
     ]);
     db.historicalPlayerMatch.findMany.mockResolvedValue([
-      openRow({ id: 30, seasonId: 1, teamCode: "LDY", season: { year: 2025 }, names: ["T. Scott"] }),
+      openRow({ id: 30, seasonId: 1, teamCode: "LDY", season: { year: 2025, league: { franchiseId: 1 } }, names: ["T. Scott"] }),
       flaggedRow({ decision: "EXCEPTION", decidedById: 1, decidedAt: new Date("2026-11-21T01:41:40.827Z"), decidedBy: { name: "James", isAdmin: true, franchiseMemberships: [] } }),
       openRow(),
     ]);
@@ -124,8 +127,12 @@ describe("GET /api/archive/player-check", () => {
 
   it("shows an owner only his own franchise's names, and never the verified names", async () => {
     const res = await appAs(MEMBER).get("/api/archive/player-check").expect(200);
+    // "Own team" = the team he owns in the franchise's latest league that has owners, not any season's.
+    expect(db.league.findFirst).toHaveBeenCalledWith({
+      where: { franchiseId: 1, teams: { some: { ownerships: { some: {} } } } }, orderBy: [{ season: "desc" }, { id: "desc" }], select: { id: true },
+    });
     expect(db.teamOwnership.findMany).toHaveBeenCalledWith({
-      where: { userId: 42, team: { league: { franchiseId: 1 }, code: { not: null } } },
+      where: { userId: 42, team: { leagueId: 20, code: { not: null } } },
       select: { team: { select: { code: true } } },
     });
     expect(db.historicalSeason.findMany.mock.calls[0][0].where).toEqual({ playerMatches: { some: MEMBER_SCOPE } });
@@ -398,7 +405,27 @@ describe("who is let onto the player check", () => {
     db.historicalPlayerMatch.findFirst.mockResolvedValue(openRow());
     await appAs(MEMBER).put("/api/archive/player-check/10/decision").send({ decision: "PICK", mlbId: 124604 }).expect(200);
     expect(db.historicalPlayerMatch.findFirst.mock.calls[0][0].include.decidedBy).toEqual({
-      select: { name: true, isAdmin: true, franchiseMemberships: { where: { archiveAudit: "ALL" }, select: { id: true } } },
+      select: { name: true, isAdmin: true, franchiseMemberships: { where: { archiveAudit: "ALL" }, select: { franchiseId: true } } },
     });
+  });
+
+  it("gives no final say in a franchise where the viewer isn't set to all teams", async () => {
+    // Own team in franchise 1, all teams in franchise 2: the franchise-1 row stays locked to him.
+    db.franchiseMembership.findMany.mockResolvedValue([
+      { franchiseId: 1, archiveAudit: "OWN_TEAM" }, { franchiseId: 2, archiveAudit: "ALL" },
+    ]);
+    db.historicalPlayerMatch.findFirst.mockResolvedValue(openRow({ decision: "PICK", decidedById: 1, mlbId: 124605, mlbName: "Jaret Wright", decidedBy: { name: "James", isAdmin: true, franchiseMemberships: [] } }));
+    await appAs(MEMBER).put("/api/archive/player-check/10/decision").send({ decision: "NONE" }).expect(403);
+  });
+
+  it("doesn't lock a decision made by someone whose final say is in another franchise", async () => {
+    db.historicalPlayerMatch.findFirst.mockResolvedValue(openRow({ decision: "PICK", decidedById: 77, mlbId: 124605, mlbName: "Jaret Wright", decidedBy: { name: "Other", isAdmin: false, franchiseMemberships: [{ franchiseId: 2 }] } }));
+    await appAs(MEMBER).put("/api/archive/player-check/10/decision").send({ decision: "NONE" }).expect(200);
+  });
+
+  it("gives an owner nothing when the franchise has no league to own a team in", async () => {
+    db.league.findFirst.mockResolvedValue(null);
+    await appAs(MEMBER).get("/api/archive/player-check").expect(403);
+    expect(db.teamOwnership.findMany).not.toHaveBeenCalled();
   });
 });
