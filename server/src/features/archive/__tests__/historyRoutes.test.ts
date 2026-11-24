@@ -12,6 +12,8 @@ vi.mock("../../../db/prisma.js", () => ({
   },
 }));
 vi.mock("../../../lib/logger.js", () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() } }));
+const storage = vi.hoisted(() => ({ download: vi.fn(), from: vi.fn() }));
+vi.mock("../../../lib/supabase.js", () => ({ supabaseAdmin: { storage: { from: storage.from } } }));
 vi.mock("../../../middleware/auth.js", () => ({
   requireAuth: (req: Request, res: Response, next: NextFunction) => (req.user ? next() : res.status(401).end()),
   requireAdmin: (_req: Request, _res: Response, next: NextFunction) => next(),
@@ -20,7 +22,10 @@ vi.mock("../../../middleware/auth.js", () => ({
 
 import { ArchiveSeasonListResponseSchema, ArchiveSeasonResponseSchema } from "../../../../../shared/api/archiveSeason.js";
 import { prisma } from "../../../db/prisma.js";
+import { createHash } from "node:crypto";
 import { archiveRouter } from "../routes.js";
+import { logger } from "../../../lib/logger.js";
+import { sourceWorkbookFor } from "../sourceWorkbooks.js";
 
 type Fn = ReturnType<typeof vi.fn>;
 const db = prisma as unknown as Record<string, Record<string, Fn>>;
@@ -36,6 +41,7 @@ function app(user: { id: number; isAdmin: boolean } | null) {
 beforeEach(() => {
   vi.resetAllMocks();
   db.franchiseMembership.findFirst.mockResolvedValue({ id: 7 });
+  storage.from.mockReturnValue({ download: storage.download });
 });
 
 describe("GET /api/archive/history", () => {
@@ -48,8 +54,9 @@ describe("GET /api/archive/history", () => {
     expect(db.historicalSeason.findMany.mock.calls[0][0].where).toEqual({ ...MEMBER_SCOPE, teams: { some: {} } });
     expect(ArchiveSeasonListResponseSchema.parse(res.body)).toEqual(res.body);
     expect(res.body.seasons).toEqual([
-      { year: 2012, champion: { owner: "Kurt Sakamoto", teamName: "Dodger Dawgs" } },
-      { year: 2003, champion: { owner: null, teamName: "Demolition Lumber Co." } },
+      { year: 2012, champion: { owner: "Kurt Sakamoto", teamName: "Dodger Dawgs" }, workbook: { fileName: "Fantasy_Baseball_2012.xls", bytes: 118272 } },
+      // 2003 has no workbook of its own: its final rosters are in the 2004 file.
+      { year: 2003, champion: { owner: null, teamName: "Demolition Lumber Co." }, workbook: { fileName: "Baseball Rosters 2004.xls", bytes: 40960 } },
     ]);
   });
 
@@ -79,5 +86,64 @@ describe("GET /api/archive/history/:year", () => {
     await app({ id: 42, isAdmin: false }).get("/api/archive/history/1999").expect(404);
     expect(db.historicalSeason.findFirst.mock.calls[0][0].where).toEqual({ year: 1999, ...MEMBER_SCOPE, teams: { some: {} } });
     await app({ id: 42, isAdmin: false }).get("/api/archive/history/abc").expect(400);
+  });
+});
+
+describe("GET /api/archive/history/:year/workbook", () => {
+  const wb2012 = sourceWorkbookFor(2012)!;
+  /** A Blob-like whose bytes hash to the recorded SHA-256 (or not). */
+  const blobOf = (bytes: Buffer) => ({ arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.length) });
+  // The real workbooks aren't in the repo, so the success case points the 2012 entry's
+  // hash at a stand-in buffer for the length of the test, then restores it.
+  const fake = Buffer.from("stand-in for the 2012 workbook");
+
+  it("sends the original file, named as the commissioner named it, only after its hash checks out", async () => {
+    db.historicalSeason.findFirst.mockResolvedValue({ id: 3 });
+    const real = { ...wb2012 };
+    (wb2012 as { sha256: string }).sha256 = createHash("sha256").update(fake).digest("hex");
+    storage.download.mockResolvedValue({ data: blobOf(fake), error: null });
+    try {
+      const res = await app({ id: 42, isAdmin: false }).get("/api/archive/history/2012/workbook").buffer(true).parse((r, cb) => {
+        const chunks: Buffer[] = []; r.on("data", (c: Buffer) => chunks.push(c)); r.on("end", () => cb(null, Buffer.concat(chunks)));
+      }).expect(200);
+      expect(storage.from).toHaveBeenCalledWith("archive-workbooks");
+      expect(storage.download).toHaveBeenCalledWith(`${wb2012.sha256}.xls`);
+      expect(db.historicalSeason.findFirst.mock.calls[0][0].where).toEqual({ year: 2012, ...MEMBER_SCOPE, teams: { some: {} } });
+      expect(res.headers["content-type"]).toBe("application/vnd.ms-excel");
+      expect(res.headers["content-disposition"]).toBe(`attachment; filename="Fantasy_Baseball_2012.xls"; filename*=UTF-8''Fantasy_Baseball_2012.xls`);
+      expect(Buffer.compare(res.body as Buffer, fake)).toBe(0);
+    } finally {
+      (wb2012 as { sha256: string }).sha256 = real.sha256;
+    }
+  });
+
+  it("refuses to send a stored file that isn't byte-for-byte the original", async () => {
+    db.historicalSeason.findFirst.mockResolvedValue({ id: 3 });
+    storage.download.mockResolvedValue({ data: blobOf(Buffer.from("tampered")), error: null });
+    const res = await app({ id: 42, isAdmin: false }).get("/api/archive/history/2012/workbook").expect(500);
+    expect(res.body.error).toMatch(/integrity check/);
+    expect(logger.error).toHaveBeenCalled();
+  });
+
+  it("says the workbook isn't uploaded yet when storage doesn't have it", async () => {
+    db.historicalSeason.findFirst.mockResolvedValue({ id: 3 });
+    storage.download.mockResolvedValue({ data: null, error: { message: "Object not found" } });
+    const res = await app({ id: 42, isAdmin: false }).get("/api/archive/history/2012/workbook").expect(404);
+    expect(res.body.error).toMatch(/hasn't been uploaded/);
+  });
+
+  it("gives nothing for a season the viewer can't see, or one without a workbook, without touching storage", async () => {
+    db.historicalSeason.findFirst.mockResolvedValue(null);
+    await app({ id: 42, isAdmin: false }).get("/api/archive/history/2012/workbook").expect(404);
+    db.historicalSeason.findFirst.mockResolvedValue({ id: 3 });
+    await app({ id: 42, isAdmin: false }).get("/api/archive/history/1999/workbook").expect(404);
+    await app({ id: 42, isAdmin: false }).get("/api/archive/history/abc/workbook").expect(400);
+    expect(storage.download).not.toHaveBeenCalled();
+  });
+
+  it("is closed to non-members", async () => {
+    db.franchiseMembership.findFirst.mockResolvedValue(null);
+    await app({ id: 42, isAdmin: false }).get("/api/archive/history/2012/workbook").expect(403);
+    expect(storage.download).not.toHaveBeenCalled();
   });
 });

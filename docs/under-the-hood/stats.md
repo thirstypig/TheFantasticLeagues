@@ -27,18 +27,18 @@ updated: 2026-11-24
 
 | Type | Files | Lines |
 |---|---:|---:|
-| `.ts` | 709 | 120,602 |
-| `.tsx` | 395 | 96,528 |
+| `.ts` | 709 | 120,599 |
+| `.tsx` | 395 | 96,536 |
 | `.md` | 589 | 72,771 |
 | `.json` | 36 | 38,066 |
-| `.css` | 17 | 2,697 |
+| `.css` | 17 | 2,689 |
 | `.sql` | 48 | 2,369 |
 | `.mjs` | 11 | 1,796 |
-| `.prisma` | 1 | 1,767 |
+| `.prisma` | 1 | 1,754 |
 | `.js` | 9 | 1,280 |
 | `.cjs` | 4 | 650 |
 | `.yml` | 2 | 194 |
-| **All tracked** | **1,972** | **367,474** |
+| **All tracked** | **1,972** | **367,465** |
 
 <sub>Excludes the 4 files this script generates — they are output, not authored work, and counting them would make this report unable to converge on its own line total.</sub>
 
@@ -46,7 +46,7 @@ updated: 2026-11-24
 
 | Measure | Count |
 |---|---:|
-| API routes | 283 |
+| API routes | 284 |
 | Prisma models | 64 |
 | Prisma migrations | 46 |
 | Server feature modules | 33 |

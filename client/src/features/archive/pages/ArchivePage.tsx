@@ -7,11 +7,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import type { ArchiveAuditLevel } from "@shared/api/archivePlayerCheck";
-import type { ArchiveRosterEntry, ArchiveSeasonListResponse, ArchiveSeasonResponse, ArchiveSeasonTeam } from "@shared/api/archiveSeason";
+import type { ArchiveRosterEntry, ArchiveSeasonListItem, ArchiveSeasonListResponse, ArchiveSeasonResponse, ArchiveSeasonTeam } from "@shared/api/archiveSeason";
 import { ApiError } from "../../../api/base";
 import { useLeague } from "../../../contexts/LeagueContext";
 import TrophyCaseTab from "../components/TrophyCaseTab";
-import { getArchiveHistory, getArchiveSeason } from "../historyApi";
+import { downloadWorkbook, getArchiveHistory, getArchiveSeason } from "../historyApi";
 import { getMyAuditAccess } from "../playerCheckApi";
 import { fmtPoints, ordinal, playerName, priceLabel, seasonGaps, shortDate } from "../lib/seasonView";
 import "../archive.css";
@@ -112,12 +112,58 @@ function TeamDetail({ season, team }: { season: ArchiveSeasonResponse; team: Arc
   );
 }
 
-function SeasonView({ season, openCode, setOpen }: { season: ArchiveSeasonResponse; openCode: string | null; setOpen: (code: string | null) => void }) {
+const kb = (bytes: number) => `${Math.round(bytes / 1024)} KB`;
+
+/** A button that saves one season's original workbook, with its own busy and error state. */
+function WorkbookButton({ year, workbook, label }: { year: number; workbook: NonNullable<ArchiveSeasonListItem["workbook"]>; label: string }) {
+  const [state, setState] = useState<{ busy: boolean; error: string | null }>({ busy: false, error: null });
+  const go = async () => {
+    setState({ busy: true, error: null });
+    try {
+      await downloadWorkbook(year, workbook.fileName);
+      setState({ busy: false, error: null });
+    } catch (err) {
+      setState({ busy: false, error: err instanceof Error ? err.message : "Couldn’t download that workbook." });
+    }
+  };
+  return (
+    <>
+      <button type="button" className="arc-dl" onClick={go} disabled={state.busy} aria-label={`Download ${workbook.fileName}, the ${year} workbook`}>
+        {state.busy ? "Downloading…" : label}
+      </button>
+      {state.error && <span role="alert" className="arc-error arc-dl-error">{state.error}</span>}
+    </>
+  );
+}
+
+/** Every season's original workbook, in one list. */
+function SourceWorkbooks({ seasons }: { seasons: ArchiveSeasonListItem[] }) {
+  const withFile = seasons.filter((s) => s.workbook);
+  if (withFile.length === 0) return null;
+  return (
+    <details className="arc-card arc-sources">
+      <summary>All source workbooks ({withFile.length} {withFile.length === 1 ? "season" : "seasons"})</summary>
+      <p className="arc-note">The commissioner’s original spreadsheets, unedited: the source of truth this archive was read from.</p>
+      <ul>
+        {withFile.map((s) => (
+          <li key={s.year}>
+            <span className="arc-sources-year">{s.year}</span>
+            <span className="arc-sources-file">{s.workbook!.fileName} · {kb(s.workbook!.bytes)}</span>
+            <WorkbookButton year={s.year} workbook={s.workbook!} label="Download" />
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+function SeasonView({ season, workbooks, openCode, setOpen }: { season: ArchiveSeasonResponse; workbooks: ArchiveSeasonListItem[]; openCode: string | null; setOpen: (code: string | null) => void }) {
   const detailRef = useRef<HTMLDivElement>(null);
   const open = season.teams.find((t) => t.code === openCode) ?? null;
   const champ = season.teams.find((t) => t.rank === 1);
   const periods = Array.from({ length: season.periodCount }, (_, i) => i + 1);
   const gaps = seasonGaps(season);
+  const workbook = workbooks.find((s) => s.year === season.year)?.workbook ?? null;
 
   useEffect(() => {
     if (open) detailRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
@@ -178,12 +224,20 @@ function SeasonView({ season, openCode, setOpen }: { season: ArchiveSeasonRespon
         Rebuilt from the commissioner’s old workbooks, so some seasons are incomplete and may have mistakes.
         {gaps.length > 0 ? ` The ${season.year} workbook is missing ${gaps.length > 1 ? `${gaps.slice(0, -1).join(", ")} and ${gaps[gaps.length - 1]}` : gaps[0]}.` : ""}
       </p>
+      {workbook && (
+        <p className="arc-note arc-source">
+          <span>Source: <strong>{workbook.fileName}</strong> · {kb(workbook.bytes)}, the commissioner’s workbook, unedited.</span>
+          <WorkbookButton year={season.year} workbook={workbook} label="Download workbook" />
+        </p>
+      )}
 
       {open && (
         <div ref={detailRef} className="arc-card arc-detail" aria-live="polite">
           <TeamDetail season={season} team={open} />
         </div>
       )}
+
+      <SourceWorkbooks seasons={workbooks} />
     </>
   );
 }
@@ -276,7 +330,7 @@ export default function ArchivePage() {
       ) : season.state !== "ready" ? (
         <p role="alert" className="arc-error">Couldn’t load {year}. Try another season or reload.</p>
       ) : (
-        <SeasonView season={season.data} openCode={openCode} setOpen={(code) => update({ team: code })} />
+        <SeasonView season={season.data} workbooks={list.data.seasons} openCode={openCode} setOpen={(code) => update({ team: code })} />
       )}
     </div>
   );

@@ -13,6 +13,8 @@ import { z } from "zod";
 export const ArchiveSeasonListItemSchema = z.object({
   year: z.number(),
   champion: z.object({ owner: z.string().nullable(), teamName: z.string() }).nullable(),
+  /** The commissioner's original workbook for the season, unedited (GET /api/archive/history/:year/workbook). */
+  workbook: z.object({ fileName: z.string(), bytes: z.number() }).nullable(),
 });
 
 export const ArchiveSeasonListResponseSchema = z.object({ seasons: z.array(ArchiveSeasonListItemSchema) }).strict();
