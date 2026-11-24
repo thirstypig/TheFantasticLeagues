@@ -15,6 +15,8 @@ import PlayerCheckPage from "../pages/PlayerCheckPage";
 import { decided, flaggedPujols, JAMEY, JARET, line, openWright, picked, response, suggestedHawpe } from "./playerCheckFixtures";
 
 const m = vi.mocked(api);
+/** An owner let in for his own team (MNB); his decisions aren't final. */
+const OWNER = { isAdmin: false, final: false, level: "OWN_TEAM" as const, teamCodes: ["MNB"] };
 
 const apiError = (status: number, serverMessage: string | null = null) =>
   new ApiError({ message: serverMessage ?? `HTTP ${status}`, status, url: "/api/archive/player-check", requestId: null, body: null, serverMessage });
@@ -95,21 +97,30 @@ describe("what the page shows", () => {
     expect(within(card("C. Hawpe")).getByText("Offered because: wrong first initial")).toBeTruthy();
   });
 
-  it("tells an admin that members can help, and a member that the commissioner's decisions are final", async () => {
+  it("tells each kind of viewer what their decisions mean, and only an admin how to choose helpers", async () => {
     const { unmount } = renderPage();
-    expect(await screen.findByText(/Any league member you send this page to can help/)).toBeTruthy();
+    expect(await screen.findByText(/Yours and the commissioner’s are final/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Choose who can help" }).getAttribute("href")).toBe("/archive/player-check/access");
     unmount();
-    m.getPlayerCheck.mockResolvedValue(response([openWright], { viewer: { isAdmin: false } }));
+
+    m.getPlayerCheck.mockResolvedValue(response([openWright], { viewer: OWNER }));
+    const owner = renderPage();
+    expect(await screen.findByText(/You’re checking the names on .+\. Your decisions are saved under your name; the commissioner’s are final\./)).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Choose who can help" })).toBeNull();
+    owner.unmount();
+
+    m.getPlayerCheck.mockResolvedValue(response([openWright], { viewer: { isAdmin: false, final: true, level: "ALL", teamCodes: null } }));
     renderPage();
-    expect(await screen.findByText(/Your decisions are saved under your name\. The commissioner’s are final\./)).toBeTruthy();
+    expect(await screen.findByText(/You have the commissioner’s final say/)).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Choose who can help" })).toBeNull();
   });
 });
 
 describe("when there is nothing to work on", () => {
-  it("says the archive is members-only on a 403, and shows no names", async () => {
-    m.getPlayerCheck.mockRejectedValue(apiError(403, "The archive is visible to league members only"));
+  it("shows the server's reason on a 403 (not let in, or not a member), and shows no names", async () => {
+    m.getPlayerCheck.mockRejectedValue(apiError(403, "Ask the commissioner to turn on player-check access for you."));
     renderPage();
-    expect(await screen.findByText("The archive is open to league members only.")).toBeTruthy();
+    expect(await screen.findByText("Ask the commissioner to turn on player-check access for you.")).toBeTruthy();
     expect(cards()).toHaveLength(0);
   });
 
@@ -230,7 +241,7 @@ describe("deciding", () => {
   });
 
   it("a decision the commissioner made shows no Undo to a member", async () => {
-    m.getPlayerCheck.mockResolvedValue(response([picked(openWright, JARET, { locked: true })], { viewer: { isAdmin: false } }));
+    m.getPlayerCheck.mockResolvedValue(response([picked(openWright, JARET, { locked: true })], { viewer: OWNER }));
     renderPage();
     const wright = await waitFor(() => card("J. Wright"));
     expect(within(wright).getByText("The commissioner decided this one.")).toBeTruthy();
@@ -238,7 +249,7 @@ describe("deciding", () => {
   });
 
   it("a locked 'none of these' offers a member no search either", async () => {
-    m.getPlayerCheck.mockResolvedValue(response([decided(openWright, { decision: "NONE", mlbId: null, name: null, byName: "James", at: null, locked: true })], { viewer: { isAdmin: false } }));
+    m.getPlayerCheck.mockResolvedValue(response([decided(openWright, { decision: "NONE", mlbId: null, name: null, byName: "James", at: null, locked: true })], { viewer: OWNER }));
     renderPage();
     const wright = await waitFor(() => card("J. Wright"));
     expect(within(wright).queryByLabelText("Find the player by name")).toBeNull();

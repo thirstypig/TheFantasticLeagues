@@ -177,15 +177,15 @@ describe("decisions", () => {
 });
 
 describe("who may change a decision", () => {
-  it("an admin may always", () => {
-    expect(canChangeDecision({ isAdmin: true }, { decision: "PICK", decidedByAdmin: true })).toBe(true);
+  it("someone with final say (admin or commissioner) may always", () => {
+    expect(canChangeDecision({ final: true }, { decision: "PICK", decidedByFinal: true })).toBe(true);
   });
   it("a member may decide an undecided name and revise another member's decision", () => {
-    expect(canChangeDecision({ isAdmin: false }, { decision: null, decidedByAdmin: false })).toBe(true);
-    expect(canChangeDecision({ isAdmin: false }, { decision: "PICK", decidedByAdmin: false })).toBe(true);
+    expect(canChangeDecision({ final: false }, { decision: null, decidedByFinal: false })).toBe(true);
+    expect(canChangeDecision({ final: false }, { decision: "PICK", decidedByFinal: false })).toBe(true);
   });
-  it("a member may not change what an admin decided", () => {
-    expect(canChangeDecision({ isAdmin: false }, { decision: "PICK", decidedByAdmin: true })).toBe(false);
+  it("a helper may not change what someone with final say decided", () => {
+    expect(canChangeDecision({ final: false }, { decision: "PICK", decidedByFinal: true })).toBe(false);
   });
 });
 

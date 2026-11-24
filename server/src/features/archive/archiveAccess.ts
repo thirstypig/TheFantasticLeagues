@@ -1,6 +1,7 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../../db/prisma.js";
+import { asyncHandler } from "../../middleware/asyncHandler.js";
 
 /**
  * Archive pages show past teams and their owners' names, so only members of
@@ -12,7 +13,8 @@ import { prisma } from "../../db/prisma.js";
  * franchise 1), and archived seasons hang off one of those leagues.
  */
 export function requireArchiveAccess(): RequestHandler {
-  return async (req: Request, res: Response, next: NextFunction) => {
+  // asyncHandler: Express 4 drops a rejected promise, which would hang the request.
+  return asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
     const user = req.user;
     if (!user) return res.status(401).json({ error: "Not signed in" });
     if (user.isAdmin) return next();
@@ -25,7 +27,7 @@ export function requireArchiveAccess(): RequestHandler {
     });
     if (!membership) return res.status(403).json({ error: "The archive is visible to league members only" });
     return next();
-  };
+  });
 }
 
 /**

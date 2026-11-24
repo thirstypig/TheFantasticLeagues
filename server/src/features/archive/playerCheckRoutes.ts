@@ -7,9 +7,10 @@
  *   DELETE /api/archive/player-check/:id/decision    undo
  *   GET    /api/archive/player-check/:id/search?q=   find someone who isn't a listed candidate
  *
- * Mounted inside the archive router, after its members-only guard, so every
- * route here already has a signed-in user who may see the archive. Rules live
- * in lib/archive/playerReview.ts.
+ * Mounted inside the archive router, after its members-only guard. On top of
+ * that, every route here needs player-check access (auditAccess.ts): a site
+ * admin, the commissioner (every name, final say), or an owner a site admin let
+ * in (his own franchise's names). Rules live in lib/archive/playerReview.ts.
  */
 import express from "express";
 import type { Prisma } from "@prisma/client";
@@ -27,26 +28,29 @@ import {
   type PlayerCheckDecisionBody, type PlayerCheckItem, type PlayerCheckItemResponse, type PlayerCheckResponse,
   type PlayerCheckSearchResponse, type PlayerCheckStatus,
 } from "../../../../shared/api/archivePlayerCheck.js";
-import { archiveSeasonScope } from "./archiveAccess.js";
+import { auditOf, requireAuditAccess, type AuditAccess } from "./auditAccess.js";
 import { lookupPlayerName, MIN_QUERY_LENGTH, searchCandidates } from "./services/playerSearchService.js";
 
 const router = express.Router();
 
-type Viewer = { id: number; isAdmin: boolean };
-
-/** A member sees and decides only the archive of a franchise he belongs to; an admin, all of it. */
-const seasonScope = archiveSeasonScope;
+router.use("/archive/player-check", requireAuditAccess());
 
 const withContext = {
   season: { select: { year: true } },
-  decidedBy: { select: { name: true, isAdmin: true } },
+  decidedBy: {
+    select: { name: true, isAdmin: true, franchiseMemberships: { where: { archiveAudit: "ALL" }, select: { id: true } } },
+  },
 } satisfies Prisma.HistoricalPlayerMatchInclude;
 type Row = Prisma.HistoricalPlayerMatchGetPayload<{ include: typeof withContext }>;
 
 const detailOf = (row: Row) => row.detail as unknown as ReviewDetail;
 
-/** A decision whose maker is gone is treated as the commissioner's, so nobody else can quietly change it. */
-const decidedByAdmin = (row: Row) => (row.decidedBy ? row.decidedBy.isAdmin : true);
+/**
+ * Was this decision made by someone with final say (a site admin, or the member
+ * set to ALL)? One whose maker is gone counts as final, so nobody can quietly change it.
+ */
+const decidedByFinal = (row: Row) =>
+  row.decidedBy ? row.decidedBy.isAdmin || row.decidedBy.franchiseMemberships.length > 0 : true;
 
 /** Verified names are settled and never reach the page; every query here filters them out. */
 function listedStatus(row: Row): PlayerCheckStatus {
@@ -54,7 +58,7 @@ function listedStatus(row: Row): PlayerCheckStatus {
   return row.status;
 }
 
-function toItem(row: Row, teamName: string, viewer: Viewer): PlayerCheckItem {
+function toItem(row: Row, teamName: string, audit: AuditAccess): PlayerCheckItem {
   const detail = detailOf(row);
   return {
     id: row.id,
@@ -78,7 +82,7 @@ function toItem(row: Row, teamName: string, viewer: Viewer): PlayerCheckItem {
           name: row.mlbName,
           byName: row.decidedBy?.name ?? null,
           at: row.decidedAt ? row.decidedAt.toISOString() : null,
-          locked: !canChangeDecision(viewer, { decision: row.decision, decidedByAdmin: decidedByAdmin(row) }),
+          locked: !canChangeDecision(audit, { decision: row.decision, decidedByFinal: decidedByFinal(row) }),
         }
       : null,
   };
@@ -92,27 +96,27 @@ async function teamNameFor(row: Row): Promise<string> {
   return team?.name ?? row.teamCode;
 }
 
-/** The row, if it is on the player check (not verified) and the viewer may see it. */
-async function findRow(idParam: string, viewer: Viewer): Promise<Row | null> {
+/** The row, if it is on the player check (not verified) and the viewer may decide it. */
+async function findRow(idParam: string, audit: AuditAccess): Promise<Row | null> {
   const id = Number(idParam);
   if (!Number.isInteger(id) || id <= 0) return null;
   return prisma.historicalPlayerMatch.findFirst({
-    where: { id, season: seasonScope(viewer), status: { not: "VERIFIED" } },
+    where: { AND: [audit.where, { id, status: { not: "VERIFIED" } }] },
     include: withContext,
   });
 }
 
 router.get("/archive/player-check", asyncHandler(async (req, res) => {
-  const viewer: Viewer = req.user!;
-  const scope = seasonScope(viewer);
+  const viewer = req.user!;
+  const audit = auditOf(res);
   const [seasons, counts, rows] = await Promise.all([
     prisma.historicalSeason.findMany({
-      where: { ...scope, playerMatches: { some: {} } },
+      where: { playerMatches: { some: audit.where } },
       select: { id: true, year: true, teams: { select: { code: true, name: true } } },
       orderBy: { year: "desc" },
     }),
-    prisma.historicalPlayerMatch.groupBy({ by: ["seasonId", "status"], where: { season: scope }, _count: { _all: true } }),
-    prisma.historicalPlayerMatch.findMany({ where: { season: scope, status: { not: "VERIFIED" } }, include: withContext }),
+    prisma.historicalPlayerMatch.groupBy({ by: ["seasonId", "status"], where: audit.where, _count: { _all: true } }),
+    prisma.historicalPlayerMatch.findMany({ where: { AND: [audit.where, { status: { not: "VERIFIED" } }] }, include: withContext }),
   ]);
 
   const teamNames = new Map<string, string>();
@@ -128,11 +132,11 @@ router.get("/archive/player-check", asyncHandler(async (req, res) => {
     counts.find((c) => c.seasonId === seasonId && c.status === status)?._count._all ?? 0;
 
   const items = rows
-    .map((row) => toItem(row, teamNames.get(`${row.seasonId}|${row.teamCode}`) ?? row.teamCode, viewer))
+    .map((row) => toItem(row, teamNames.get(`${row.seasonId}|${row.teamCode}`) ?? row.teamCode, audit))
     .sort((a, b) => a.year - b.year || a.teamName.localeCompare(b.teamName) || (a.names[0] ?? "").localeCompare(b.names[0] ?? "") || a.id - b.id);
 
   const body: PlayerCheckResponse = {
-    viewer: { isAdmin: viewer.isAdmin },
+    viewer: { isAdmin: viewer.isAdmin, final: audit.final, level: audit.level, teamCodes: audit.teamCodes },
     seasons: seasons.map((s) => ({
       year: s.year,
       verified: count(s.id, "VERIFIED"),
@@ -151,11 +155,12 @@ router.get("/archive/player-check", asyncHandler(async (req, res) => {
 const LOCKED = "The commissioner already decided this one.";
 
 router.put("/archive/player-check/:id/decision", validateBody(PlayerCheckDecisionBodySchema), asyncHandler(async (req, res) => {
-  const viewer: Viewer = req.user!;
+  const viewer = req.user!;
+  const audit = auditOf(res);
   const body = req.body as PlayerCheckDecisionBody;
-  const row = await findRow(req.params.id, viewer);
+  const row = await findRow(req.params.id, audit);
   if (!row) return res.status(404).json({ error: "That name isn't on the player check." });
-  if (!canChangeDecision(viewer, { decision: row.decision, decidedByAdmin: decidedByAdmin(row) })) {
+  if (!canChangeDecision(audit, { decision: row.decision, decidedByFinal: decidedByFinal(row) })) {
     return res.status(403).json({ error: LOCKED });
   }
 
@@ -196,19 +201,20 @@ router.put("/archive/player-check/:id/decision", validateBody(PlayerCheckDecisio
       previous: row.decision ? { decision: row.decision, mlbId: row.mlbId, name: row.mlbName } : null,
     },
   });
-  const reply: PlayerCheckItemResponse = { item: toItem(updated, await teamNameFor(updated), viewer) };
+  const reply: PlayerCheckItemResponse = { item: toItem(updated, await teamNameFor(updated), audit) };
   return res.json(reply);
 }));
 
 router.delete("/archive/player-check/:id/decision", asyncHandler(async (req, res) => {
-  const viewer: Viewer = req.user!;
-  const row = await findRow(req.params.id, viewer);
+  const viewer = req.user!;
+  const audit = auditOf(res);
+  const row = await findRow(req.params.id, audit);
   if (!row) return res.status(404).json({ error: "That name isn't on the player check." });
   if (!row.decision) {
-    const same: PlayerCheckItemResponse = { item: toItem(row, await teamNameFor(row), viewer) };
+    const same: PlayerCheckItemResponse = { item: toItem(row, await teamNameFor(row), audit) };
     return res.json(same);
   }
-  if (!canChangeDecision(viewer, { decision: row.decision, decidedByAdmin: decidedByAdmin(row) })) {
+  if (!canChangeDecision(audit, { decision: row.decision, decidedByFinal: decidedByFinal(row) })) {
     return res.status(403).json({ error: LOCKED });
   }
   const updated = await prisma.historicalPlayerMatch.update({
@@ -223,17 +229,17 @@ router.delete("/archive/player-check/:id/decision", asyncHandler(async (req, res
     resourceId: row.id,
     metadata: { key: row.key, previous: { decision: row.decision, mlbId: row.mlbId, name: row.mlbName } },
   });
-  const reply: PlayerCheckItemResponse = { item: toItem(updated, await teamNameFor(updated), viewer) };
+  const reply: PlayerCheckItemResponse = { item: toItem(updated, await teamNameFor(updated), audit) };
   return res.json(reply);
 }));
 
 router.get("/archive/player-check/:id/search", asyncHandler(async (req, res) => {
-  const viewer: Viewer = req.user!;
+  const audit = auditOf(res);
   const q = String(req.query.q ?? "").trim().slice(0, 60);
   if (q.replace(/[^\p{L}]/gu, "").length < MIN_QUERY_LENGTH) {
     return res.status(400).json({ error: `Type at least ${MIN_QUERY_LENGTH} letters of the name.` });
   }
-  const row = await findRow(req.params.id, viewer);
+  const row = await findRow(req.params.id, audit);
   if (!row) return res.status(404).json({ error: "That name isn't on the player check." });
   try {
     const result: PlayerCheckSearchResponse = await searchCandidates(q, {

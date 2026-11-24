@@ -19,6 +19,7 @@ vi.mock("../archiveAccess.js", () => ({
 }));
 vi.mock("../playerCheckRoutes.js", () => ({ playerCheckRouter: express.Router() }));
 vi.mock("../historyRoutes.js", () => ({ archiveHistoryRouter: express.Router() }));
+vi.mock("../auditAccessRoutes.js", () => ({ auditAccessRouter: express.Router() }));
 vi.mock("../services/trophyCaseService.js", () => ({
   computeTrophyCase: vi.fn().mockResolvedValue({ championships: [] }),
 }));

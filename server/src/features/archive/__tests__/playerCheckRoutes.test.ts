@@ -4,7 +4,8 @@ import supertest from "supertest";
 
 vi.mock("../../../db/prisma.js", () => ({
   prisma: {
-    franchiseMembership: { findFirst: vi.fn() },
+    franchiseMembership: { findFirst: vi.fn(), findMany: vi.fn() },
+    teamOwnership: { findMany: vi.fn() },
     historicalSeason: { findMany: vi.fn() },
     historicalTeam: { findUnique: vi.fn() },
     historicalPlayerMatch: { findMany: vi.fn(), groupBy: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
@@ -33,7 +34,8 @@ import { lookupPlayerName, searchCandidates } from "../services/playerSearchServ
 
 type Fn = ReturnType<typeof vi.fn>;
 const db = prisma as unknown as {
-  franchiseMembership: { findFirst: Fn };
+  franchiseMembership: { findFirst: Fn; findMany: Fn };
+  teamOwnership: { findMany: Fn };
   historicalSeason: { findMany: Fn };
   historicalTeam: { findUnique: Fn };
   historicalPlayerMatch: { findMany: Fn; groupBy: Fn; findFirst: Fn; update: Fn };
@@ -44,7 +46,12 @@ const lookup = lookupPlayerName as unknown as Fn;
 
 const ADMIN = { id: 1, isAdmin: true };
 const MEMBER = { id: 42, isAdmin: false };
-const MEMBER_SCOPE = { league: { franchise: { memberships: { some: { userId: 42 } } } } };
+const COMMISH = { id: 26, isAdmin: false };
+/** MEMBER is set to OWN_TEAM and owns MNB: he sees MNB's names in franchise 1, every year. */
+const MEMBER_SCOPE = { season: { league: { franchiseId: 1 } }, teamCode: { in: ["MNB"] } };
+const COMMISH_SCOPE = { season: { league: { franchiseId: 1 } } };
+const notVerified = (scope: object, extra: object = {}) => ({ AND: [scope, { ...extra, status: { not: "VERIFIED" } }] });
+const byFinal = { name: "Kent", isAdmin: false, franchiseMemberships: [{ id: 3 }] };
 
 function appAs(user: { id: number; isAdmin: boolean } | null) {
   const app = express();
@@ -86,9 +93,13 @@ function flaggedRow(over: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.resetAllMocks();
   db.franchiseMembership.findFirst.mockResolvedValue({ id: 7 }); // the viewer is an OGBA member
+  // Player-check access: COMMISH is set to ALL; everyone else to OWN_TEAM, owning MNB.
+  db.franchiseMembership.findMany.mockImplementation(async ({ where }: { where: { userId: number } }) =>
+    [{ franchiseId: 1, archiveAudit: where.userId === COMMISH.id ? "ALL" : "OWN_TEAM" }]);
+  db.teamOwnership.findMany.mockResolvedValue([{ team: { code: "MNB" } }]);
   db.historicalTeam.findUnique.mockResolvedValue({ name: "MoneyBall" });
   db.historicalPlayerMatch.update.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => ({
-    ...openRow(), ...data, decidedBy: data.decidedById ? { name: "Mike", isAdmin: false } : null,
+    ...openRow(), ...data, decidedBy: data.decidedById ? { name: "Mike", isAdmin: false, franchiseMemberships: [] } : null,
   }));
 });
 
@@ -106,28 +117,33 @@ describe("GET /api/archive/player-check", () => {
     ]);
     db.historicalPlayerMatch.findMany.mockResolvedValue([
       openRow({ id: 30, seasonId: 1, teamCode: "LDY", season: { year: 2025 }, names: ["T. Scott"] }),
-      flaggedRow({ decision: "EXCEPTION", decidedById: 1, decidedAt: new Date("2026-11-21T01:41:40.827Z"), decidedBy: { name: "James", isAdmin: true } }),
+      flaggedRow({ decision: "EXCEPTION", decidedById: 1, decidedAt: new Date("2026-11-21T01:41:40.827Z"), decidedBy: { name: "James", isAdmin: true, franchiseMemberships: [] } }),
       openRow(),
     ]);
   });
 
-  it("shows a member only the archive of a franchise he belongs to, and never the verified names", async () => {
-    await appAs(MEMBER).get("/api/archive/player-check").expect(200);
-    expect(db.historicalSeason.findMany.mock.calls[0][0].where).toEqual({ ...MEMBER_SCOPE, playerMatches: { some: {} } });
-    expect(db.historicalPlayerMatch.groupBy.mock.calls[0][0].where).toEqual({ season: MEMBER_SCOPE });
-    expect(db.historicalPlayerMatch.findMany.mock.calls[0][0].where).toEqual({ season: MEMBER_SCOPE, status: { not: "VERIFIED" } });
+  it("shows an owner only his own franchise's names, and never the verified names", async () => {
+    const res = await appAs(MEMBER).get("/api/archive/player-check").expect(200);
+    expect(db.teamOwnership.findMany).toHaveBeenCalledWith({
+      where: { userId: 42, team: { league: { franchiseId: 1 }, code: { not: null } } },
+      select: { team: { select: { code: true } } },
+    });
+    expect(db.historicalSeason.findMany.mock.calls[0][0].where).toEqual({ playerMatches: { some: MEMBER_SCOPE } });
+    expect(db.historicalPlayerMatch.groupBy.mock.calls[0][0].where).toEqual(MEMBER_SCOPE);
+    expect(db.historicalPlayerMatch.findMany.mock.calls[0][0].where).toEqual(notVerified(MEMBER_SCOPE));
+    expect(res.body.viewer).toEqual({ isAdmin: false, final: false, level: "OWN_TEAM", teamCodes: ["MNB"] });
   });
 
   it("shows an admin every archive", async () => {
     await appAs(ADMIN).get("/api/archive/player-check").expect(200);
-    expect(db.historicalPlayerMatch.findMany.mock.calls[0][0].where).toEqual({ season: {}, status: { not: "VERIFIED" } });
+    expect(db.historicalPlayerMatch.findMany.mock.calls[0][0].where).toEqual(notVerified({}));
     expect(db.franchiseMembership.findFirst).not.toHaveBeenCalled();
   });
 
   it("returns per-season counts, the teams by their current names, and the names oldest season first", async () => {
     const res = await appAs(ADMIN).get("/api/archive/player-check").expect(200);
     expect(PlayerCheckResponseSchema.parse(res.body)).toEqual(res.body); // the wire contract, nothing extra
-    expect(res.body.viewer).toEqual({ isAdmin: true });
+    expect(res.body.viewer).toEqual({ isAdmin: true, final: true, level: "ALL", teamCodes: null });
     expect(res.body.seasons).toEqual([
       { year: 2025, verified: 369, suggested: 0, flagged: 0, open: 0 },
       { year: 2004, verified: 267, suggested: 0, flagged: 1, open: 4 },
@@ -153,7 +169,7 @@ describe("GET /api/archive/player-check", () => {
 
   it("tells a member that the commissioner's decision is locked", async () => {
     const res = await appAs(MEMBER).get("/api/archive/player-check").expect(200);
-    expect(res.body.viewer).toEqual({ isAdmin: false });
+    expect(res.body.viewer).toEqual({ isAdmin: false, final: false, level: "OWN_TEAM", teamCodes: ["MNB"] });
     expect(res.body.items[0].decision.locked).toBe(true);
   });
 
@@ -173,7 +189,7 @@ describe("PUT /api/archive/player-check/:id/decision", () => {
     db.historicalPlayerMatch.findFirst.mockResolvedValue(openRow());
     const res = await appAs(MEMBER).put("/api/archive/player-check/10/decision").send({ decision: "PICK", mlbId: 124604 }).expect(200);
     // Scoped to the member's franchise, and to names still on the check (verified ones are a 404).
-    expect(db.historicalPlayerMatch.findFirst.mock.calls[0][0].where).toEqual({ id: 10, season: MEMBER_SCOPE, status: { not: "VERIFIED" } });
+    expect(db.historicalPlayerMatch.findFirst.mock.calls[0][0].where).toEqual(notVerified(MEMBER_SCOPE, { id: 10 }));
     const { where, data } = db.historicalPlayerMatch.update.mock.calls[0][0];
     expect(where).toEqual({ id: 10 });
     expect(data).toMatchObject({ decision: "PICK", decidedById: 42, mlbId: 124604, mlbName: "Jamey Wright" });
@@ -234,14 +250,14 @@ describe("PUT /api/archive/player-check/:id/decision", () => {
   });
 
   it("does not let a member change what the commissioner decided", async () => {
-    db.historicalPlayerMatch.findFirst.mockResolvedValue(openRow({ decision: "PICK", decidedById: 1, mlbId: 124605, mlbName: "Jaret Wright", decidedBy: { name: "James", isAdmin: true } }));
+    db.historicalPlayerMatch.findFirst.mockResolvedValue(openRow({ decision: "PICK", decidedById: 1, mlbId: 124605, mlbName: "Jaret Wright", decidedBy: { name: "James", isAdmin: true, franchiseMemberships: [] } }));
     const res = await appAs(MEMBER).put("/api/archive/player-check/10/decision").send({ decision: "PICK", mlbId: 124604 }).expect(403);
     expect(res.body.error).toMatch(/commissioner already decided/);
     expect(db.historicalPlayerMatch.update).not.toHaveBeenCalled();
   });
 
   it("lets a member revise another member's decision, and logs what it replaced", async () => {
-    db.historicalPlayerMatch.findFirst.mockResolvedValue(openRow({ decision: "NONE", decidedById: 50, decidedBy: { name: "Kurt", isAdmin: false } }));
+    db.historicalPlayerMatch.findFirst.mockResolvedValue(openRow({ decision: "NONE", decidedById: 50, decidedBy: { name: "Kurt", isAdmin: false, franchiseMemberships: [] } }));
     await appAs(MEMBER).put("/api/archive/player-check/10/decision").send({ decision: "PICK", mlbId: 124605 }).expect(200);
     expect(audit.mock.calls[0][0].metadata.previous).toEqual({ decision: "NONE", mlbId: null, name: null });
   });
@@ -269,7 +285,7 @@ describe("PUT /api/archive/player-check/:id/decision", () => {
 
 describe("DELETE /api/archive/player-check/:id/decision (undo)", () => {
   it("clears the decision and puts a flagged name back on its matched player", async () => {
-    db.historicalPlayerMatch.findFirst.mockResolvedValue(flaggedRow({ decision: "WRONG", decidedById: 1, mlbId: null, mlbName: null, decidedBy: { name: "James", isAdmin: true } }));
+    db.historicalPlayerMatch.findFirst.mockResolvedValue(flaggedRow({ decision: "WRONG", decidedById: 1, mlbId: null, mlbName: null, decidedBy: { name: "James", isAdmin: true, franchiseMemberships: [] } }));
     await appAs(ADMIN).delete("/api/archive/player-check/11/decision").expect(200);
     expect(db.historicalPlayerMatch.update.mock.calls[0][0]).toMatchObject({
       where: { id: 11 },
@@ -282,7 +298,7 @@ describe("DELETE /api/archive/player-check/:id/decision (undo)", () => {
   });
 
   it("puts an open name back to unknown", async () => {
-    db.historicalPlayerMatch.findFirst.mockResolvedValue(openRow({ decision: "PICK", decidedById: 42, mlbId: 124605, mlbName: "Jaret Wright", decidedBy: { name: "Mike", isAdmin: false } }));
+    db.historicalPlayerMatch.findFirst.mockResolvedValue(openRow({ decision: "PICK", decidedById: 42, mlbId: 124605, mlbName: "Jaret Wright", decidedBy: { name: "Mike", isAdmin: false, franchiseMemberships: [] } }));
     await appAs(MEMBER).delete("/api/archive/player-check/10/decision").expect(200);
     expect(db.historicalPlayerMatch.update.mock.calls[0][0].data).toEqual({ decision: null, decidedById: null, decidedAt: null, mlbId: null, mlbName: null });
   });
@@ -296,7 +312,7 @@ describe("DELETE /api/archive/player-check/:id/decision (undo)", () => {
   });
 
   it("does not let a member undo the commissioner's decision", async () => {
-    db.historicalPlayerMatch.findFirst.mockResolvedValue(openRow({ decision: "PICK", decidedById: 1, mlbId: 124605, mlbName: "Jaret Wright", decidedBy: { name: "James", isAdmin: true } }));
+    db.historicalPlayerMatch.findFirst.mockResolvedValue(openRow({ decision: "PICK", decidedById: 1, mlbId: 124605, mlbName: "Jaret Wright", decidedBy: { name: "James", isAdmin: true, franchiseMemberships: [] } }));
     await appAs(MEMBER).delete("/api/archive/player-check/10/decision").expect(403);
     expect(db.historicalPlayerMatch.update).not.toHaveBeenCalled();
   });
@@ -308,7 +324,7 @@ describe("GET /api/archive/player-check/:id/search", () => {
     search.mockResolvedValue({ candidates: wrights, more: false });
     const res = await appAs(MEMBER).get("/api/archive/player-check/10/search").query({ q: "  wright " }).expect(200);
     expect(search).toHaveBeenCalledWith("wright", { year: 2004, slots: ["P"], role: "P", keptFromSlot: "P" });
-    expect(db.historicalPlayerMatch.findFirst.mock.calls[0][0].where).toEqual({ id: 10, season: MEMBER_SCOPE, status: { not: "VERIFIED" } });
+    expect(db.historicalPlayerMatch.findFirst.mock.calls[0][0].where).toEqual(notVerified(MEMBER_SCOPE, { id: 10 }));
     expect(PlayerCheckSearchResponseSchema.parse(res.body)).toEqual(res.body);
     expect(res.body).toEqual({ candidates: wrights, more: false });
   });
@@ -331,5 +347,58 @@ describe("GET /api/archive/player-check/:id/search", () => {
     search.mockRejectedValue(new Error("MLB API circuit breaker open"));
     const res = await appAs(MEMBER).get("/api/archive/player-check/10/search").query({ q: "wright" }).expect(502);
     expect(res.body.error).toMatch(/player search/);
+  });
+});
+
+describe("who is let onto the player check", () => {
+  beforeEach(() => {
+    db.historicalSeason.findMany.mockResolvedValue([]);
+    db.historicalPlayerMatch.groupBy.mockResolvedValue([]);
+    db.historicalPlayerMatch.findMany.mockResolvedValue([]);
+  });
+
+  it("refuses a league member nobody gave access, before reading any names", async () => {
+    db.franchiseMembership.findMany.mockResolvedValue([]);
+    const res = await appAs(MEMBER).get("/api/archive/player-check").expect(403);
+    expect(res.body.error).toMatch(/turn on player-check access/);
+    await appAs(MEMBER).put("/api/archive/player-check/10/decision").send({ decision: "NONE" }).expect(403);
+    expect(db.franchiseMembership.findMany).toHaveBeenCalledWith({
+      where: { userId: 42, archiveAudit: { not: "NONE" } },
+      select: { franchiseId: true, archiveAudit: true },
+    });
+    expect(db.historicalPlayerMatch.findMany).not.toHaveBeenCalled();
+    expect(db.historicalPlayerMatch.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("gives an owner set to own-team who owns no team nothing, not everything", async () => {
+    db.teamOwnership.findMany.mockResolvedValue([]);
+    await appAs(MEMBER).get("/api/archive/player-check").expect(403);
+  });
+
+  it("shows the commissioner every name in his franchise, with final say", async () => {
+    const res = await appAs(COMMISH).get("/api/archive/player-check").expect(200);
+    expect(db.historicalPlayerMatch.findMany.mock.calls[0][0].where).toEqual(notVerified(COMMISH_SCOPE));
+    expect(db.teamOwnership.findMany).not.toHaveBeenCalled();
+    expect(res.body.viewer).toEqual({ isAdmin: false, final: true, level: "ALL", teamCodes: null });
+  });
+
+  it("lets the commissioner change what a site admin decided", async () => {
+    db.historicalPlayerMatch.findFirst.mockResolvedValue(openRow({ decision: "PICK", decidedById: 1, mlbId: 124605, mlbName: "Jaret Wright", decidedBy: { name: "James", isAdmin: true, franchiseMemberships: [] } }));
+    await appAs(COMMISH).put("/api/archive/player-check/10/decision").send({ decision: "NONE" }).expect(200);
+  });
+
+  it("locks the commissioner's decision against an owner", async () => {
+    db.historicalPlayerMatch.findFirst.mockResolvedValue(openRow({ decision: "PICK", decidedById: 26, mlbId: 124605, mlbName: "Jaret Wright", decidedBy: byFinal }));
+    await appAs(MEMBER).put("/api/archive/player-check/10/decision").send({ decision: "NONE" }).expect(403);
+    await appAs(MEMBER).delete("/api/archive/player-check/10/decision").expect(403);
+    expect(db.historicalPlayerMatch.update).not.toHaveBeenCalled();
+  });
+
+  it("asks only for the commissioner's ALL memberships when working out who decided", async () => {
+    db.historicalPlayerMatch.findFirst.mockResolvedValue(openRow());
+    await appAs(MEMBER).put("/api/archive/player-check/10/decision").send({ decision: "PICK", mlbId: 124604 }).expect(200);
+    expect(db.historicalPlayerMatch.findFirst.mock.calls[0][0].include.decidedBy).toEqual({
+      select: { name: true, isAdmin: true, franchiseMemberships: { where: { archiveAudit: "ALL" }, select: { id: true } } },
+    });
   });
 });
