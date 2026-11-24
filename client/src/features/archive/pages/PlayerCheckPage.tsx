@@ -1,10 +1,11 @@
 // Archive player check (/archive/player-check): every name on every archived
 // roster resolves to one MLB player. The matcher settles most of them; this
-// page lists the rest for a person to decide. Linked from the admin page, and
-// open to any league member the link is shared with — each decision carries
-// the name of who made it, and the commissioner's are final.
+// page lists the rest for a person to decide. Open to site admins and to the
+// owners a site admin lets in (/archive/player-check/access): the commissioner
+// sees every name with final say; an owner, only his own franchise's names.
+// Each decision carries the name of who made it.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import type { PlayerCheckDecisionBody, PlayerCheckItem, PlayerCheckResponse, PlayerCheckStatus } from "@shared/api/archivePlayerCheck";
 import { ApiError } from "../../../api/base";
 import { PlayerCheckCard } from "../components/PlayerCheckCard";
@@ -14,7 +15,7 @@ import "../playerCheck.css";
 
 type Load =
   | { state: "loading" }
-  | { state: "forbidden" }
+  | { state: "forbidden"; message: string }
   | { state: "error" }
   | { state: "ready"; data: PlayerCheckResponse };
 
@@ -42,7 +43,11 @@ export default function PlayerCheckPage() {
     let live = true;
     getPlayerCheck().then(
       (data) => live && setLoad({ state: "ready", data }),
-      (err) => live && setLoad({ state: err instanceof ApiError && err.status === 403 ? "forbidden" : "error" }),
+      (err) => live && setLoad(
+        err instanceof ApiError && err.status === 403
+          ? { state: "forbidden", message: err.serverMessage || "The player check is open to owners the commissioner has let in." }
+          : { state: "error" },
+      ),
     );
     return () => { live = false; };
   }, []);
@@ -76,7 +81,7 @@ export default function PlayerCheckPage() {
     return <div className="apc-page"><h1 className="apc-title">Archive player check</h1><div className="apc-card apc-skeleton" aria-busy="true"><div /><div /><div /></div></div>;
   }
   if (load.state === "forbidden") {
-    return <div className="apc-page"><h1 className="apc-title">Archive player check</h1><p className="apc-lede">The archive is open to league members only.</p></div>;
+    return <div className="apc-page"><h1 className="apc-title">Archive player check</h1><p className="apc-lede">{load.message}</p></div>;
   }
   if (load.state === "error") {
     return <div className="apc-page"><h1 className="apc-title">Archive player check</h1><p role="alert" className="apc-error">Couldn’t load the player check. Reload the page to try again.</p></div>;
@@ -109,9 +114,12 @@ export default function PlayerCheckPage() {
           {" "}{items.length === 0 ? "None need a decision." : `${items.length} need a decision: confirm the suggested player, pick another, or search for someone else.`}
         </p>
         <p className="apc-note" style={{ marginTop: 8 }}>
-          {viewer.isAdmin
-            ? "Any league member you send this page to can help. Each decision shows who made it, and nobody else can change yours."
-            : "Your decisions are saved under your name. The commissioner’s are final."}
+          {viewer.level === "OWN_TEAM"
+            ? `You’re checking the names on ${teams.map((t) => t.name).join(" and ") || "your team"}. Your decisions are saved under your name; the commissioner’s are final.`
+            : viewer.isAdmin
+              ? "Each decision shows who made it. Yours and the commissioner’s are final: nobody else can change them."
+              : "You have the commissioner’s final say: your decisions lock, and you can change anyone’s."}
+          {viewer.isAdmin && <>{" "}<Link to="/archive/player-check/access" className="apc-link">Choose who can help</Link></>}
         </p>
       </header>
 

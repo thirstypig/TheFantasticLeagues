@@ -4,6 +4,7 @@ import { asyncHandler } from '../../middleware/asyncHandler.js';
 import { canViewLeagueArchive, requireArchiveAccess } from './archiveAccess.js';
 import { playerCheckRouter } from './playerCheckRoutes.js';
 import { archiveHistoryRouter } from './historyRoutes.js';
+import { auditAccessRouter } from './auditAccessRoutes.js';
 import { computeTrophyCase } from './services/trophyCaseService.js';
 
 /** One person in the MLB Stats API people search. */
@@ -26,6 +27,8 @@ router.use('/archive', requireAuth, requireArchiveAccess());
 // HistoricalPlayerMatch).
 router.use(playerCheckRouter);
 router.use(archiveHistoryRouter);
+// /archive/audit-access… — who may help on the player check.
+router.use(auditAccessRouter);
 
 /**
  * GET /api/archive/search-mlb?query=

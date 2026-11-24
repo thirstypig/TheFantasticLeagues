@@ -58,7 +58,7 @@ export const picked = (item: PlayerCheckItem, c: { mlbId: number; name: string }
 
 export function response(items: PlayerCheckItem[], over: Partial<PlayerCheckResponse> = {}): PlayerCheckResponse {
   return PlayerCheckResponseSchema.parse({
-    viewer: { isAdmin: true },
+    viewer: { isAdmin: true, final: true, level: "ALL", teamCodes: null },
     seasons: [
       { year: 2005, verified: 248, suggested: 2, flagged: 1, open: 5 },
       { year: 2004, verified: 267, suggested: 3, flagged: 1, open: 4 },

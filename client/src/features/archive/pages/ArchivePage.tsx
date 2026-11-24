@@ -5,12 +5,14 @@
 //
 // URL: ?season=2012&team=DDG (or &tab=trophy), so a link lands on the same view.
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import type { ArchiveAuditLevel } from "@shared/api/archivePlayerCheck";
 import type { ArchiveRosterEntry, ArchiveSeasonListResponse, ArchiveSeasonResponse, ArchiveSeasonTeam } from "@shared/api/archiveSeason";
 import { ApiError } from "../../../api/base";
 import { useLeague } from "../../../contexts/LeagueContext";
 import TrophyCaseTab from "../components/TrophyCaseTab";
 import { getArchiveHistory, getArchiveSeason } from "../historyApi";
+import { getMyAuditAccess } from "../playerCheckApi";
 import { fmtPoints, ordinal, playerName, priceLabel, seasonGaps, shortDate } from "../lib/seasonView";
 import "../archive.css";
 
@@ -210,6 +212,14 @@ export default function ArchivePage() {
     return () => { live = false; };
   }, []);
 
+  // Owners a site admin let onto the player check get a link to it; everyone else sees nothing.
+  const [audit, setAudit] = useState<ArchiveAuditLevel | null>(null);
+  useEffect(() => {
+    let live = true;
+    getMyAuditAccess().then((me) => live && setAudit(me.level), () => { /* no link */ });
+    return () => { live = false; };
+  }, []);
+
   useEffect(() => {
     if (year == null) return;
     let live = true;
@@ -222,6 +232,13 @@ export default function ArchivePage() {
     <header>
       <h1 className="arc-title">Archive</h1>
       <p className="arc-lede">Every OGBA season from the commissioner’s workbooks, 2003–2025.</p>
+      {audit && (
+        <p className="arc-note" style={{ marginTop: 8 }}>
+          <Link to="/archive/player-check" className="arc-link">
+            {audit === "OWN_TEAM" ? "Help check your team’s player names" : "Check player names"}
+          </Link>
+        </p>
+      )}
     </header>
   );
 

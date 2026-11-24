@@ -234,15 +234,16 @@ export function decisionResolution(s: MatchState, input: DecisionInput): Resolve
 }
 
 /**
- * The commissioner's word is final: anyone with archive access may decide an
- * undecided name or revise another member's decision, but only an admin may
- * change a decision an admin made.
+ * The commissioner's word is final: anyone allowed on the player check may
+ * decide an undecided name or revise another helper's decision, but only
+ * someone with final say (a site admin, or the member set to ALL) may change a
+ * decision made by someone with final say.
  */
 export function canChangeDecision(
-  viewer: { isAdmin: boolean }, current: { decision: string | null; decidedByAdmin: boolean },
+  viewer: { final: boolean }, current: { decision: string | null; decidedByFinal: boolean },
 ): boolean {
-  if (viewer.isAdmin) return true;
-  return !(current.decision && current.decidedByAdmin);
+  if (viewer.final) return true;
+  return !(current.decision && current.decidedByFinal);
 }
 
 // ── Loader plan ────────────────────────────────────────────────────────────

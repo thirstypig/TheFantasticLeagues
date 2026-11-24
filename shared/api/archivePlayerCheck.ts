@@ -74,13 +74,25 @@ export const PlayerCheckItemSchema = z
   })
   .strict();
 
+export const ArchiveAuditLevelSchema = z.enum(["ALL", "OWN_TEAM"]);
+/** Per-member player-check access a site admin sets (FranchiseMembership.archiveAudit). */
+export const ArchiveAuditAccessSchema = z.enum(["NONE", "OWN_TEAM", "ALL"]);
+
 export const PlayerCheckSeasonSchema = z.object({
   year: z.number(), verified: z.number(), suggested: z.number(), flagged: z.number(), open: z.number(),
 });
 
 export const PlayerCheckResponseSchema = z
   .object({
-    viewer: z.object({ isAdmin: z.boolean() }),
+    viewer: z.object({
+      isAdmin: z.boolean(),
+      /** The viewer's decisions are final (site admin or commissioner). */
+      final: z.boolean(),
+      /** ALL: every team; OWN_TEAM: only teamCodes. */
+      level: ArchiveAuditLevelSchema,
+      /** The franchises an OWN_TEAM viewer may decide; null for ALL. */
+      teamCodes: z.array(z.string()).nullable(),
+    }),
     /** Newest first. */
     seasons: z.array(PlayerCheckSeasonSchema),
     /** Franchises that have a name to decide, by their current name. */
@@ -103,6 +115,32 @@ export const PlayerCheckSearchResponseSchema = z
   .object({ candidates: z.array(PlayerCheckCandidateSchema), /** More players matched than are shown. */ more: z.boolean() })
   .strict();
 
+/** GET /api/archive/audit-access/me — may the viewer help on the player check? (any member) */
+export const AuditAccessMeResponseSchema = z
+  .object({ level: ArchiveAuditLevelSchema.nullable(), teamCodes: z.array(z.string()).nullable() })
+  .strict();
+
+/** GET /api/archive/audit-access — every franchise member and his player-check access (site admin). */
+export const AuditAccessMemberSchema = z
+  .object({
+    membershipId: z.number(),
+    name: z.string(),
+    /** LeagueRole in the franchise: COMMISSIONER / OWNER / VIEWER. */
+    role: z.string(),
+    /** Codes of the teams he owns now: what OWN_TEAM lets him decide. */
+    teamCodes: z.array(z.string()),
+    access: ArchiveAuditAccessSchema,
+  })
+  .strict();
+export const AuditAccessListResponseSchema = z.object({ members: z.array(AuditAccessMemberSchema) }).strict();
+export const AuditAccessUpdateBodySchema = z.object({ access: ArchiveAuditAccessSchema }).strict();
+
+export type ArchiveAuditLevel = z.infer<typeof ArchiveAuditLevelSchema>;
+export type ArchiveAuditAccess = z.infer<typeof ArchiveAuditAccessSchema>;
+export type AuditAccessMeResponse = z.infer<typeof AuditAccessMeResponseSchema>;
+export type AuditAccessMember = z.infer<typeof AuditAccessMemberSchema>;
+export type AuditAccessListResponse = z.infer<typeof AuditAccessListResponseSchema>;
+export type AuditAccessUpdateBody = z.infer<typeof AuditAccessUpdateBodySchema>;
 export type SeasonLine = z.infer<typeof SeasonLineSchema>;
 export type SlotCheck = z.infer<typeof SlotCheckSchema>;
 export type PlayerCheckCandidate = z.infer<typeof PlayerCheckCandidateSchema>;

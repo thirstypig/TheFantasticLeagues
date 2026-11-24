@@ -4,14 +4,17 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import { ArchiveSeasonListResponseSchema, ArchiveSeasonResponseSchema, type ArchiveSeasonResponse } from "@shared/api/archiveSeason";
 
 vi.mock("../historyApi", () => ({ getArchiveHistory: vi.fn(), getArchiveSeason: vi.fn() }));
+vi.mock("../playerCheckApi", () => ({ getMyAuditAccess: vi.fn() }));
 vi.mock("../components/TrophyCaseTab", () => ({ default: ({ leagueId }: { leagueId: number }) => <div>Trophy case for league {leagueId}</div> }));
 vi.mock("../../../contexts/LeagueContext", () => ({ useLeague: () => ({ leagueId: 20 }) }));
 
 import { ApiError } from "../../../api/base";
 import * as api from "../historyApi";
 import ArchivePage from "../pages/ArchivePage";
+import * as checkApi from "../playerCheckApi";
 
 const m = vi.mocked(api);
+const check = vi.mocked(checkApi);
 
 const E = (slot: string, name: string, over: Partial<ArchiveSeasonResponse["rosters"][string]["draft"][number]> = {}) =>
   ({ slot, name, mlbId: null, mlbName: null, price: null, priceNote: null, keeper: false, ...over });
@@ -54,6 +57,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   m.getArchiveHistory.mockResolvedValue(history);
   m.getArchiveSeason.mockImplementation(async (y: number) => (y === 2003 ? s2003 : s2012));
+  check.getMyAuditAccess.mockResolvedValue({ level: null, teamCodes: null });
 });
 
 describe("the season view", () => {
@@ -166,5 +170,37 @@ describe("tabs and states", () => {
     m.getArchiveHistory.mockResolvedValue({ seasons: [] });
     renderAt();
     await waitFor(() => expect(screen.getByText("No seasons have been archived yet.")).toBeTruthy());
+  });
+});
+
+describe("player check link", () => {
+  beforeEach(() => {
+    m.getArchiveHistory.mockResolvedValue(history);
+    m.getArchiveSeason.mockResolvedValue(s2012);
+  });
+
+  it("invites an owner who was let in to check his own team's names", async () => {
+    check.getMyAuditAccess.mockResolvedValue({ level: "OWN_TEAM", teamCodes: ["DDG"] });
+    renderAt();
+    const link = await screen.findByRole("link", { name: "Help check your team’s player names" });
+    expect(link.getAttribute("href")).toBe("/archive/player-check");
+  });
+
+  it("offers the commissioner or an admin the whole check", async () => {
+    check.getMyAuditAccess.mockResolvedValue({ level: "ALL", teamCodes: null });
+    renderAt();
+    expect(await screen.findByRole("link", { name: "Check player names" })).toBeTruthy();
+  });
+
+  it("shows no link to a member nobody let in, or when the check can't be reached", async () => {
+    check.getMyAuditAccess.mockResolvedValue({ level: null, teamCodes: null });
+    const { unmount } = renderAt();
+    await waitFor(() => expect(check.getMyAuditAccess).toHaveBeenCalled());
+    expect(screen.queryByRole("link", { name: /player names/ })).toBeNull();
+    unmount();
+    check.getMyAuditAccess.mockRejectedValue(new Error("offline"));
+    renderAt();
+    await waitFor(() => expect(check.getMyAuditAccess).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole("link", { name: /player names/ })).toBeNull();
   });
 });

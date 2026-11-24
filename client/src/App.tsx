@@ -51,6 +51,7 @@ const AdminReports = React.lazy(() => import("./features/admin/pages/AdminReport
 const TodoPage = React.lazy(() => import("./features/admin/pages/TodoPage"));
 const ArchivePage = React.lazy(() => import("./features/archive/pages/ArchivePage"));
 const PlayerCheckPage = React.lazy(() => import("./features/archive/pages/PlayerCheckPage"));
+const PlayerCheckAccessPage = React.lazy(() => import("./features/archive/pages/PlayerCheckAccessPage"));
 const Auction = React.lazy(() => import("./features/auction/pages/Auction"));
 const AuctionResults = React.lazy(() => import("./features/auction/pages/AuctionResults"));
 const AuctionResultsReport = React.lazy(() => import("./features/auction/pages/AuctionResultsReport"));
@@ -264,6 +265,7 @@ export default function App() {
                     <Route path="/guide/faq" element={<GuideFaq />} />
                     <Route path="/archive" element={<ArchivePage />} />
                     <Route path="/archive/player-check" element={<ErrorBoundary name="archive-player-check"><PlayerCheckPage /></ErrorBoundary>} />
+                    <Route path="/archive/player-check/access" element={<ErrorBoundary name="archive-player-check-access"><PlayerCheckAccessPage /></ErrorBoundary>} />
                     <Route path="/period" element={<Navigate to="/season" replace />} />
                     <Route path="/leagues" element={<Navigate to="/" replace />} />
                     <Route path="/create-league" element={<CreateLeague />} />

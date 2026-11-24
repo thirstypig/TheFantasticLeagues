@@ -8,6 +8,7 @@
 .arc-title { margin: 0; font-family: var(--am-display); font-size: 24px; font-weight: 700; line-height: 1.2; }
 .arc-lede { margin: 4px 0 0; font-size: 15px; line-height: 1.4; color: var(--am-text-muted); }
 .arc-note { margin: 0; font-size: 15px; line-height: 1.4; color: var(--am-text-muted); }
+.arc-link { display: inline-flex; align-items: center; min-height: 44px; color: var(--am-accent); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 .arc-error { margin: 0; font-size: 15px; color: var(--am-negative); }
 .arc-card { background: var(--am-surface); border: 1px solid var(--am-border); border-radius: 6px; min-width: 0; }
 

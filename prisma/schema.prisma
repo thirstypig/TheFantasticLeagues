@@ -148,6 +148,10 @@ model FranchiseMembership {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
+  /// Archive player check: who may help decide names. Set by a site admin on
+  /// /archive/player-check/access.
+  archiveAudit ArchiveAuditAccess @default(NONE)
+
   franchise Franchise @relation(fields: [franchiseId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -1165,6 +1169,15 @@ enum HistoricalMatchStatus {
   SUGGESTED // several fit the name; exactly one is eligible for every slot
   FLAGGED // one fits the name, but he wasn't eligible for a slot he held
   OPEN // none fits, or the rules can't separate the ones that do
+}
+
+/// Player-check access for one franchise member. OWN_TEAM: the names on his own
+/// franchise's archived rosters (by the code of the team he owns now). ALL: every
+/// name, and his decisions are final like a site admin's (the commissioner).
+enum ArchiveAuditAccess {
+  NONE
+  OWN_TEAM
+  ALL
 }
 
 enum HistoricalMatchDecision {
