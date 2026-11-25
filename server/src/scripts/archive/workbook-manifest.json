@@ -1,5 +1,5 @@
 {
-  "_comment": "Which sheet of which workbook holds each part of each OGBA season. Files are the commissioner's workbooks in Drive folder 13FGp-nAjCUsidYRmRFs_hVriiGTtsWwI, referenced by Drive file id (download each to <dir>/<id>.<ext>). Chosen 2026-11-20 by checking which copy of each year actually has names in it; many copies are empty templates. 'periods' = roster sheets for P2..P7 in order (P1 is played by the draft roster). 'final' = the sheet holding the recorded period points, Total row and final rosters — usually the 'End of Season <year>' sheet at the front of the NEXT year's workbook. Owner names are NOT kept here (public repo); see the local owners file.",
+  "_comment": "Which sheet of which workbook holds each part of each OGBA season. Files are the commissioner's workbooks in Drive folder 13FGp-nAjCUsidYRmRFs_hVriiGTtsWwI, referenced by Drive file id (download each to <dir>/<id>.<ext>). Chosen 2026-11-20 by checking which copy of each year actually has names in it; many copies are empty templates. 'periods' = roster sheets for P2..P7 in order (P1 is played by the draft roster). 'final' = the sheet holding the recorded period points, Total row and final rosters \u2014 usually the 'End of Season <year>' sheet at the front of the NEXT year's workbook. Owner names are NOT kept here (public repo); see the local owners file.",
   "franchises": {
     "DMK": [
       "Diamond Kings",
@@ -461,11 +461,11 @@
     {
       "year": 2021,
       "draft": {
-        "file": "1s5tfv2ALF28Cdi6QoygyN7TU_73P7jH_.xls",
+        "file": "1bN2YyT_vHIVRcC9YC6MBm8n4o8ARMizG.xls",
         "sheet": "Draft"
       },
       "salaries": {
-        "file": "1s5tfv2ALF28Cdi6QoygyN7TU_73P7jH_.xls",
+        "file": "1bN2YyT_vHIVRcC9YC6MBm8n4o8ARMizG.xls",
         "sheet": "2021 Salaries"
       },
       "periods": [
@@ -476,24 +476,21 @@
         "Aug 08",
         "Sept 05"
       ],
-      "periodsFile": "1s5tfv2ALF28Cdi6QoygyN7TU_73P7jH_.xls",
+      "periodsFile": "1bN2YyT_vHIVRcC9YC6MBm8n4o8ARMizG.xls",
       "final": {
-        "file": "1S1lQXouBQFfIp5hCkVABABDz3_fR5RjB.xls",
-        "sheet": "End of Season 2021",
-        "slotLabelsFrom": {
-          "file": "1s5tfv2ALF28Cdi6QoygyN7TU_73P7jH_.xls",
-          "sheet": "Sept 05"
-        }
-      }
+        "file": "1bN2YyT_vHIVRcC9YC6MBm8n4o8ARMizG.xls",
+        "sheet": "End of Season"
+      },
+      "_note": "All from the 2021 workbook (the one members download). The earlier copy left P. Lopez (DDG IL2) off the Sept 05 sheet."
     },
     {
       "year": 2022,
       "draft": {
-        "file": "1S1lQXouBQFfIp5hCkVABABDz3_fR5RjB.xls",
+        "file": "1ty1Feuua8V_iJRCwfGAGeXdAexRy2qOT.xls",
         "sheet": "Draft"
       },
       "salaries": {
-        "file": "1S1lQXouBQFfIp5hCkVABABDz3_fR5RjB.xls",
+        "file": "1ty1Feuua8V_iJRCwfGAGeXdAexRy2qOT.xls",
         "sheet": "2022 Salaries"
       },
       "periods": [
@@ -504,11 +501,12 @@
         "Aug 07",
         "Sept 04"
       ],
-      "periodsFile": "1S1lQXouBQFfIp5hCkVABABDz3_fR5RjB.xls",
+      "periodsFile": "1ty1Feuua8V_iJRCwfGAGeXdAexRy2qOT.xls",
       "final": {
-        "file": "1_hNSR6YBzO_UVEW1cplolBi4ezOR_gpC.xls",
-        "sheet": "End of Season 2022"
-      }
+        "file": "1ty1Feuua8V_iJRCwfGAGeXdAexRy2qOT.xls",
+        "sheet": "End of Season"
+      },
+      "_note": "All from the 2022 workbook (the one members download). The 'End of Season 2022' copy at the front of the 2023 workbook already shows 4 offseason trades (8 players)."
     },
     {
       "year": 2023,
