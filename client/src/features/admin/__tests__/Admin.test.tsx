@@ -70,7 +70,7 @@ describe("Admin", () => {
   it("renders subtitle", async () => {
     vi.mocked(useAuth).mockReturnValue({ user: { isAdmin: true } } as any);
     renderPage();
-    expect(screen.getByText(/Ops command center/i)).toBeInTheDocument();
+    expect(screen.getByText(/Members, leagues, recent activity and site health/)).toBeInTheDocument();
   });
 
   it("fetches stats and errors on mount for admin users", async () => {

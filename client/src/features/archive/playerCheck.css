@@ -28,6 +28,11 @@
 .apc-seasons .is-todo { color: var(--am-negative); font-weight: 700; }
 .apc-year { min-height: 44px; padding: 0; border: 0; background: transparent; font: inherit; font-weight: inherit; color: var(--am-accent); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 
+.apc-next { align-self: flex-start; }
+.apc-anchor { scroll-margin-top: 72px; /* clear the sticky top bar */ }
+.apc-seasons tr.apc-finished td { text-align: left; }
+.apc-seasons tr.apc-finished .apc-year { font-weight: 600; }
+
 /* Filters */
 .apc-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; scroll-margin-top: 72px; /* clear the sticky top bar */ }
 .apc-field { min-height: 44px; padding: 0 12px; font: inherit; font-size: 17px; color: var(--am-text); background: var(--am-field); border: 1px solid var(--am-field-line); border-radius: 6px; }
@@ -109,6 +114,8 @@
 .apc-access-name { font-size: 17px; font-weight: 600; }
 .apc-access-status { font-size: 13px; color: var(--am-text-muted); min-height: 18px; }
 .apc-access-status.is-error { color: var(--am-negative); }
+.apc-access-status.is-saved { color: var(--am-positive); font-weight: 600; }
+.apc-back { display: inline-flex; align-items: center; min-height: 44px; font-size: 15px; }
 .apc-seg { display: inline-flex; border: 1px solid var(--am-field-line); border-radius: 6px; overflow: hidden; background: var(--am-field); }
 .apc-seg button { min-height: 44px; padding: 0 14px; border: 0; border-left: 1px solid var(--am-field-line); background: transparent; color: var(--am-text); font: inherit; font-size: 15px; cursor: pointer; }
 .apc-seg button:first-child { border-left: 0; }

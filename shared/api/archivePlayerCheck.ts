@@ -129,6 +129,8 @@ export const AuditAccessMemberSchema = z
     role: z.string(),
     /** Codes of the teams he owns now: what OWN_TEAM lets him decide. */
     teamCodes: z.array(z.string()),
+    /** Those teams' names, in the same order. */
+    teamNames: z.array(z.string()),
     access: ArchiveAuditAccessSchema,
   })
   .strict();

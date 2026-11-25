@@ -116,6 +116,59 @@ describe("what the page shows", () => {
   });
 });
 
+describe("getting through the list", () => {
+  it("jumps to the next undecided name under the current filters", async () => {
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    renderPage("/archive/player-check?season=2005");
+    fireEvent.click(await screen.findByRole("button", { name: "Decide the next name (3 left)" }));
+    await waitFor(() => expect(scroll).toHaveBeenCalled());
+    expect((scroll.mock.contexts.at(-1) as HTMLElement).id).toBe(`apc-item-${suggestedHawpe.id}`);
+    expect(screen.getByTestId("search").textContent).toBe("?season=2005");
+  });
+
+  it("when nothing under the filters is left, clears them and jumps to the next name anywhere", async () => {
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    m.getPlayerCheck.mockResolvedValue(response([picked(openWright, JARET), flaggedPujols]));
+    renderPage("/archive/player-check?status=OPEN");
+    fireEvent.click(await screen.findByRole("button", { name: "Decide the next name (1 left)" }));
+    await waitFor(() => expect(screen.getByTestId("search").textContent).toBe("?todo=1"));
+    await waitFor(() => expect((scroll.mock.contexts.at(-1) as HTMLElement | undefined)?.id).toBe(`apc-item-${flaggedPujols.id}`));
+  });
+
+  it("has no next-name button once every name is decided", async () => {
+    m.getPlayerCheck.mockResolvedValue(response([picked(openWright, JARET)]));
+    renderPage();
+    await screen.findByText("Archive player check");
+    await screen.findByText(/1 need a decision/);
+    expect(screen.queryByRole("button", { name: /Decide the next name/ })).toBeNull();
+  });
+
+  it("folds seasons with nothing left under one row, and shows them on tap", async () => {
+    m.getPlayerCheck.mockResolvedValue(response([openWright], {
+      seasons: [
+        { year: 2006, verified: 320, suggested: 0, flagged: 0, open: 0 },
+        { year: 2005, verified: 248, suggested: 2, flagged: 1, open: 5 },
+        { year: 2004, verified: 267, suggested: 3, flagged: 1, open: 4 },
+      ],
+    }));
+    renderPage();
+    const toggle = await screen.findByRole("button", { name: "Show 2 finished seasons" });
+    expect(screen.queryByRole("button", { name: "2006" })).toBeNull();
+    expect(screen.getByRole("button", { name: "2004" })).toBeTruthy();
+    fireEvent.click(toggle);
+    expect(screen.getByRole("button", { name: "2006" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Hide 2 finished seasons" }).getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("tells an owner the settled count is his team's", async () => {
+    m.getPlayerCheck.mockResolvedValue(response([openWright], { viewer: OWNER, teams: [{ code: "MNB", name: "MoneyBall" }] }));
+    renderPage();
+    expect(await screen.findByText(/Every name on the MoneyBall rosters, every year, matched to an MLB player\. 515 of your team’s names are settled\./)).toBeTruthy();
+  });
+});
+
 describe("when there is nothing to work on", () => {
   it("shows the server's reason on a 403 (not let in, or not a member), and shows no names", async () => {
     m.getPlayerCheck.mockRejectedValue(apiError(403, "Ask the commissioner to turn on player-check access for you."));

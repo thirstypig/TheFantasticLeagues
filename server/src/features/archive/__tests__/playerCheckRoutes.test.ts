@@ -98,7 +98,7 @@ beforeEach(() => {
   // Player-check access: COMMISH is set to ALL; everyone else to OWN_TEAM, owning MNB.
   db.franchiseMembership.findMany.mockImplementation(async ({ where }: { where: { userId: number } }) =>
     [{ franchiseId: 1, archiveAudit: where.userId === COMMISH.id ? "ALL" : "OWN_TEAM" }]);
-  db.teamOwnership.findMany.mockResolvedValue([{ team: { code: "MNB" } }]);
+  db.teamOwnership.findMany.mockResolvedValue([{ team: { code: "MNB", name: "MoneyBall" } }]);
   db.league.findFirst.mockResolvedValue({ id: 20 }); // the franchise's latest league (2026)
   db.historicalTeam.findUnique.mockResolvedValue({ name: "MoneyBall" });
   db.historicalPlayerMatch.update.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => ({
@@ -133,7 +133,7 @@ describe("GET /api/archive/player-check", () => {
     });
     expect(db.teamOwnership.findMany).toHaveBeenCalledWith({
       where: { userId: 42, team: { leagueId: 20, code: { not: null } } },
-      select: { team: { select: { code: true } } },
+      select: { team: { select: { code: true, name: true } } },
     });
     expect(db.historicalSeason.findMany.mock.calls[0][0].where).toEqual({ playerMatches: { some: MEMBER_SCOPE } });
     expect(db.historicalPlayerMatch.groupBy.mock.calls[0][0].where).toEqual(MEMBER_SCOPE);

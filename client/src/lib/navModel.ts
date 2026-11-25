@@ -140,7 +140,7 @@ export const ADMIN_SECTIONS: NavSection[] = [
   {
     title: "Archive",
     links: [
-      { to: "/archive/player-check", label: "Archive Player Check" },
+      { to: "/archive/player-check", label: "Player check" },
       { to: "/archive/player-check/access", label: "Who can help" },
     ],
   },

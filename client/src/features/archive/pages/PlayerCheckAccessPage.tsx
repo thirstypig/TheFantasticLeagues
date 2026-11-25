@@ -25,15 +25,24 @@ const CHOICES: { value: ArchiveAuditAccess; label: string }[] = [
 
 /** What the member can do with his current access, in a few words. */
 function describe(m: AuditAccessMember): string {
-  if (m.access === "ALL") return "Every name, final say";
-  if (m.access === "OWN_TEAM") return m.teamCodes.length ? `${m.teamCodes.join(", ")} names` : "Owns no team, so sees nothing";
-  return m.teamCodes.length ? `Owns ${m.teamCodes.join(", ")}` : "Owns no team";
+  const teams = m.teamNames.join(" and ");
+  if (m.access === "ALL") return `Every team's names, final say${teams ? ` · owns ${teams}` : ""}`;
+  if (m.access === "OWN_TEAM") return teams ? `Team: ${teams}` : "Owns no team, so sees nothing";
+  return teams ? `Owns ${teams}` : "Owns no team";
+}
+
+/** What just changed, said once after a save. */
+function savedNote(m: AuditAccessMember, access: ArchiveAuditAccess): string {
+  const first = m.name.split(" ")[0] || m.name;
+  if (access === "ALL") return `Saved ✓ ${first}'s decisions are now final and can replace owners'.`;
+  if (access === "OWN_TEAM") return `Saved ✓ ${first} can decide ${m.teamNames.join(" and ") || "their own team"}'s names.`;
+  return `Saved ✓ ${first} can no longer decide names.`;
 }
 
 export default function PlayerCheckAccessPage() {
   const [load, setLoad] = useState<Load>({ state: "loading" });
   const [saving, setSaving] = useState<ReadonlySet<number>>(new Set());
-  const [notes, setNotes] = useState<Record<number, { text: string; error?: boolean }>>({});
+  const [notes, setNotes] = useState<Record<number, { text: string; error?: boolean; saved?: boolean }>>({});
   const inFlight = useRef(new Set<number>());
 
   useEffect(() => {
@@ -55,7 +64,7 @@ export default function PlayerCheckAccessPage() {
       setLoad((l) => (l.state === "ready"
         ? { state: "ready", members: l.members.map((x) => (x.membershipId === m.membershipId ? { ...x, access } : x)) }
         : l));
-      setNotes((n) => ({ ...n, [m.membershipId]: { text: "Saved" } }));
+      setNotes((n) => ({ ...n, [m.membershipId]: { text: savedNote(m, access), saved: true } }));
     } catch (err) {
       const text = err instanceof ApiError && err.serverMessage ? err.serverMessage : "That didn’t save. Try again.";
       setNotes((n) => ({ ...n, [m.membershipId]: { text, error: true } }));
@@ -67,7 +76,7 @@ export default function PlayerCheckAccessPage() {
 
   const header = (
     <header>
-      <p className="apc-note"><Link to="/archive/player-check" className="apc-link">← Player check</Link></p>
+      <Link to="/archive/player-check" className="apc-link apc-back">← Player check</Link>
       <h1 className="apc-title" style={{ marginTop: 8 }}>Who can help</h1>
       <p className="apc-lede">
         Choose which owners can help decide archive names. <strong>Own team</strong>: the names on their own franchise’s
@@ -100,7 +109,7 @@ export default function PlayerCheckAccessPage() {
               <li key={m.membershipId}>
                 <div className="apc-access-who">
                   <span className="apc-access-name">{m.name}{m.role === "COMMISSIONER" ? " · commissioner" : ""}</span>
-                  <span className={`apc-access-status ${note?.error ? "is-error" : ""}`.trim()} aria-live="polite">
+                  <span className={`apc-access-status ${note?.error ? "is-error" : note?.saved ? "is-saved" : ""}`.trim()} aria-live="polite">
                     {note?.text ?? describe(m)}
                   </span>
                 </div>
