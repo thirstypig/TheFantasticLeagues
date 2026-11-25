@@ -106,6 +106,7 @@ import { useAuth } from "./auth/AuthProvider";
 import NotFound from "./pages/NotFound";
 import { RouteAnnouncer } from "./components/RouteAnnouncer";
 import { PlayerCardProvider } from "./components/shared/playerCard/PlayerCardProvider";
+import { TestPageGate } from "./components/TestPageGate";
 
 /**
  * Handles unauthenticated routing. If the URL has a Supabase auth hash
@@ -294,14 +295,10 @@ export default function App() {
                         consumes the existing /api/reports/:leagueId server
                         endpoint that survived the prior client-UI removal. */}
                     <Route path="/weekly-report" element={<WeeklyReport />} />
-                    {/* NBA Dashboard — Phase 2 multi-sport expansion. League hub page
-                        with standings, weekly matchups (category scoring), and
-                        category leaders. Uses Score Sheet tokens + sport-nba purple accent. */}
-                    <Route path="/nba" element={<NBADashboard />} />
-                    {/* NFL Dashboard — Phase 2 multi-sport expansion. League hub page
-                        with standings, this week's matchups, and top performers.
-                        Uses Score Sheet tokens + sport-nfl gold accent. */}
-                    <Route path="/nfl" element={<NFLDashboard />} />
+                    {/* NBA / NFL dashboards: TEST pages with mock data for the multi-sport
+                        work. Site admins only, under a "Test page" banner (TestPageGate). */}
+                    <Route path="/nba" element={<TestPageGate name="NBA"><NBADashboard /></TestPageGate>} />
+                    <Route path="/nfl" element={<TestPageGate name="NFL"><NFLDashboard /></TestPageGate>} />
                     {/* Static design preview for the PR2 Swap Mode UI
                         (admin-gated inside the page). Plan reference:
                         docs/plans/2026-04-29-yahoo-style-roster-moves-plan.md

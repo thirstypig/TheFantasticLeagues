@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   ACCOUNT_LINKS,
   ADMIN_LINKS,
+  ADMIN_SECTIONS,
   activeTabFor,
   buildLeagueSections,
   buildPrimaryTabs,
@@ -177,6 +178,23 @@ describe("ADMIN_LINKS", () => {
   it("has no duplicate targets", () => {
     const tos = ADMIN_LINKS.map((l) => l.to);
     expect(new Set(tos).size).toBe(tos.length);
+  });
+});
+
+describe("ADMIN_SECTIONS", () => {
+  it("keeps the NBA and NFL mock-ups apart, under Test pages", () => {
+    const tests = ADMIN_SECTIONS.find((s) => s.title.startsWith("Test pages"));
+    expect(tests?.links.map((l) => l.to)).toEqual(["/nba", "/nfl"]);
+    for (const s of ADMIN_SECTIONS.filter((x) => x !== tests)) {
+      expect(s.links.map((l) => l.to)).not.toContain("/nba");
+    }
+  });
+  it("groups the archive tools together", () => {
+    expect(ADMIN_SECTIONS.find((s) => s.title === "Archive")?.links.map((l) => l.to))
+      .toEqual(["/archive/player-check", "/archive/player-check/access"]);
+  });
+  it("is the same set of pages as ADMIN_LINKS", () => {
+    expect(ADMIN_SECTIONS.flatMap((s) => s.links)).toEqual(ADMIN_LINKS);
   });
 });
 

@@ -450,6 +450,6 @@ not summarize the diff. PRs land before session end whenever possible
 
 Roadmap: [`docs/product/roadmap.md`](docs/product/roadmap.md) · Docs map: [`docs/README-DOCS.md`](docs/README-DOCS.md)
 
-<sub>Generated 2026-11-24 by `npm run docs:refresh` — do not edit between the markers.</sub>
+<sub>Generated 2026-11-25 by `npm run docs:refresh` — do not edit between the markers.</sub>
 
 <!-- DOCS:STATUS:END -->

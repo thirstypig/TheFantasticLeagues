@@ -151,9 +151,12 @@ describe("one team", () => {
 describe("tabs and states", () => {
   it("shows the trophy case for the current league", async () => {
     renderAt();
-    fireEvent.click(await screen.findByRole("tab", { name: "Trophy case" }));
-    expect(screen.getByText("Trophy case for league 20")).toBeTruthy();
+    fireEvent.click(await screen.findByRole("link", { name: "Trophy case" }));
+    expect(await screen.findByText("Trophy case for league 20")).toBeTruthy();
     expect(search()).toBe("?tab=trophy");
+    expect(screen.getByRole("link", { name: "Trophy case" }).getAttribute("aria-current")).toBe("page");
+    // Back to the season keeps the year that was showing.
+    expect(screen.getByRole("link", { name: "Season" }).getAttribute("href")).toBe("/archive?season=2012");
   });
 
   it("says the archive is members-only on a 403", async () => {
@@ -173,35 +176,41 @@ describe("tabs and states", () => {
   });
 });
 
-describe("player check link", () => {
+describe("player check tab", () => {
   beforeEach(() => {
     m.getArchiveHistory.mockResolvedValue(history);
     m.getArchiveSeason.mockResolvedValue(s2012);
   });
 
-  it("invites an owner who was let in to check his own team's names", async () => {
+  it("shows a Player check tab to an owner who was let in, next to Season and Trophy case", async () => {
     check.getMyAuditAccess.mockResolvedValue({ level: "OWN_TEAM", teamCodes: ["DDG"] });
-    renderAt();
-    const link = await screen.findByRole("link", { name: "Help check your team’s player names" });
-    expect(link.getAttribute("href")).toBe("/archive/player-check");
+    renderAt("/archive?season=2012");
+    const tab = await screen.findByRole("link", { name: "Player check" });
+    expect(tab.getAttribute("href")).toBe("/archive/player-check");
+    const strip = screen.getByRole("navigation", { name: "Archive" });
+    expect(within(strip).getAllByRole("link").map((l) => l.textContent)).toEqual(["Season", "Trophy case", "Player check"]);
+    expect(within(strip).getByRole("link", { name: "Season" }).getAttribute("aria-current")).toBe("page");
+    expect(within(strip).getByRole("link", { name: "Season" }).getAttribute("href")).toBe("/archive?season=2012");
   });
 
-  it("offers the commissioner or an admin the whole check", async () => {
+  it("shows it to the commissioner or an admin too", async () => {
     check.getMyAuditAccess.mockResolvedValue({ level: "ALL", teamCodes: null });
     renderAt();
-    expect(await screen.findByRole("link", { name: "Check player names" })).toBeTruthy();
+    expect(await screen.findByRole("link", { name: "Player check" })).toBeTruthy();
   });
 
-  it("shows no link to a member nobody let in, or when the check can't be reached", async () => {
+  it("shows no Player check tab to a member nobody let in, or when the check can't be reached", async () => {
     check.getMyAuditAccess.mockResolvedValue({ level: null, teamCodes: null });
     const { unmount } = renderAt();
     await waitFor(() => expect(check.getMyAuditAccess).toHaveBeenCalled());
-    expect(screen.queryByRole("link", { name: /player names/ })).toBeNull();
+    await screen.findByRole("link", { name: "Trophy case" });
+    expect(screen.queryByRole("link", { name: "Player check" })).toBeNull();
     unmount();
     check.getMyAuditAccess.mockRejectedValue(new Error("offline"));
     renderAt();
     await waitFor(() => expect(check.getMyAuditAccess).toHaveBeenCalledTimes(2));
-    expect(screen.queryByRole("link", { name: /player names/ })).toBeNull();
+    await screen.findByRole("link", { name: "Trophy case" });
+    expect(screen.queryByRole("link", { name: "Player check" })).toBeNull();
   });
 });
 

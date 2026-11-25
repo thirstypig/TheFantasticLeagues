@@ -120,3 +120,6 @@
   .apc-seg { width: 100%; }
   .apc-seg button { flex: 1 1 0; padding: 0 8px; }
 }
+
+/* The Archive tab strip at the top of the player check keeps its own width. */
+.apc-page > .arc-tabs { align-self: flex-start; max-width: 100%; overflow-x: auto; }
