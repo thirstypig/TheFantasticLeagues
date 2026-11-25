@@ -56,7 +56,7 @@ beforeEach(() => {
 describe("GET /api/archive/audit-access/me", () => {
   it("tells an owner set to own-team which franchises he may check", async () => {
     db.franchiseMembership.findMany.mockResolvedValue([{ franchiseId: 1, archiveAudit: "OWN_TEAM" }]);
-    db.teamOwnership.findMany.mockResolvedValue([{ team: { code: "DDG" } }]);
+    db.teamOwnership.findMany.mockResolvedValue([{ team: { code: "DDG", name: "Dodger Dawgs" } }]);
     const res = await appAs(KURT).get("/api/archive/audit-access/me").expect(200);
     expect(AuditAccessMeResponseSchema.parse(res.body)).toEqual({ level: "OWN_TEAM", teamCodes: ["DDG"] });
   });
@@ -81,16 +81,16 @@ describe("GET /api/archive/audit-access (site admin)", () => {
       { id: 41, franchiseId: 1, userId: 25, role: "OWNER", archiveAudit: "NONE", user: { name: "", email: "a@x" } },
     ]);
     db.teamOwnership.findMany.mockImplementation(async ({ where }: { where: { userId: number } }) =>
-      (where.userId === 26 ? [{ team: { code: "DMK" } }, { team: { code: "DMK" } }] : []));
+      (where.userId === 26 ? [{ team: { code: "DMK", name: "Diamond Kings" } }, { team: { code: "DMK", name: "Diamond Kings" } }] : []));
     const res = await appAs(ADMIN).get("/api/archive/audit-access").expect(200);
     expect(db.franchiseMembership.findMany.mock.calls[0][0].where).toEqual({ franchise: HAS_ARCHIVE, user: { isAdmin: false } });
     expect(db.teamOwnership.findMany).toHaveBeenCalledWith({
       where: { userId: 26, team: { leagueId: 20, code: { not: null } } },
-      select: { team: { select: { code: true } } },
+      select: { team: { select: { code: true, name: true } } },
     });
     expect(AuditAccessListResponseSchema.parse(res.body).members).toEqual([
-      { membershipId: 41, name: "a@x", role: "OWNER", teamCodes: [], access: "NONE" },
-      { membershipId: 40, name: "Kent", role: "COMMISSIONER", teamCodes: ["DMK"], access: "ALL" },
+      { membershipId: 41, name: "a@x", role: "OWNER", teamCodes: [], teamNames: [], access: "NONE" },
+      { membershipId: 40, name: "Kent", role: "COMMISSIONER", teamCodes: ["DMK"], teamNames: ["Diamond Kings"], access: "ALL" },
     ]);
   });
 

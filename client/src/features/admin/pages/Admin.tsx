@@ -363,7 +363,7 @@ export default function Admin() {
         <Glass strong>
           <SectionLabel>✦ Admin</SectionLabel>
           <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
-            Ops command center.
+            Admin.
           </h1>
         </Glass>
         <Glass>
@@ -380,12 +380,12 @@ export default function Admin() {
       <Glass strong>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
           <div>
-            <SectionLabel>✦ Ops</SectionLabel>
+            <SectionLabel>✦ Admin</SectionLabel>
             <h1 style={{ fontFamily: "var(--am-display)", fontSize: 32, fontWeight: 300, color: "var(--am-text)", margin: 0, lineHeight: 1.1 }}>
               Admin Dashboard
             </h1>
             <div style={{ marginTop: 6, fontSize: 13, color: "var(--am-text-muted)" }}>
-              Ops command center — users, leagues, activity, and launch readiness.
+              Members, leagues, recent activity and site health.
               {stats?.generatedAt && <span style={{ marginLeft: 6, color: "var(--am-text-faint)" }}>· Updated {relativeTime(stats.generatedAt)}</span>}
             </div>
           </div>

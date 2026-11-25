@@ -129,7 +129,7 @@ function WorkbookButton({ year, workbook, label }: { year: number; workbook: Non
   };
   return (
     <>
-      <button type="button" className="arc-dl" onClick={go} disabled={state.busy} aria-label={`Download ${workbook.fileName}, the ${year} workbook`}>
+      <button type="button" className="arc-dl" onClick={go} disabled={state.busy} aria-label={`Download the ${year} workbook (Excel, ${kb(workbook.bytes)})`}>
         {state.busy ? "Downloading…" : label}
       </button>
       {state.error && <span role="alert" className="arc-error arc-dl-error">{state.error}</span>}
@@ -138,7 +138,7 @@ function WorkbookButton({ year, workbook, label }: { year: number; workbook: Non
 }
 
 /** Every season's original workbook, in one list. */
-function SourceWorkbooks({ seasons }: { seasons: ArchiveSeasonListItem[] }) {
+function SourceWorkbooks({ seasons, current }: { seasons: ArchiveSeasonListItem[]; current: number }) {
   const withFile = seasons.filter((s) => s.workbook);
   if (withFile.length === 0) return null;
   return (
@@ -147,9 +147,9 @@ function SourceWorkbooks({ seasons }: { seasons: ArchiveSeasonListItem[] }) {
       <p className="arc-note">The commissioner’s original spreadsheets, unedited: the source of truth this archive was read from.</p>
       <ul>
         {withFile.map((s) => (
-          <li key={s.year}>
+          <li key={s.year} className={s.year === current ? "is-current" : undefined} aria-current={s.year === current ? "true" : undefined}>
             <span className="arc-sources-year">{s.year}</span>
-            <span className="arc-sources-file">{s.workbook!.fileName} · {kb(s.workbook!.bytes)}</span>
+            <span className="arc-sources-file">Excel · {kb(s.workbook!.bytes)}</span>
             <WorkbookButton year={s.year} workbook={s.workbook!} label="Download" />
           </li>
         ))}
@@ -178,6 +178,13 @@ function SeasonView({ season, workbooks, openCode, setOpen }: { season: ArchiveS
           <strong>{champ.owner ?? champ.name}</strong>
           {champ.owner && <span className="arc-note">{champ.name} · {fmtPoints(champ.total)} points</span>}
         </div>
+      )}
+
+      {workbook && (
+        <p className="arc-note arc-source">
+          <span>Read from the commissioner’s {season.year} workbook, unedited (Excel, {kb(workbook.bytes)}).</span>
+          <WorkbookButton year={season.year} workbook={workbook} label="Download workbook" />
+        </p>
       )}
 
       <p className="arc-note arc-hint">Tap a team to see its draft, its moves at each meeting and its final roster.</p>
@@ -225,12 +232,6 @@ function SeasonView({ season, workbooks, openCode, setOpen }: { season: ArchiveS
         Rebuilt from the commissioner’s old workbooks, so some seasons are incomplete and may have mistakes.
         {gaps.length > 0 ? ` The ${season.year} workbook is missing ${gaps.length > 1 ? `${gaps.slice(0, -1).join(", ")} and ${gaps[gaps.length - 1]}` : gaps[0]}.` : ""}
       </p>
-      {workbook && (
-        <p className="arc-note arc-source">
-          <span>Source: <strong>{workbook.fileName}</strong> · {kb(workbook.bytes)}, the commissioner’s workbook, unedited.</span>
-          <WorkbookButton year={season.year} workbook={workbook} label="Download workbook" />
-        </p>
-      )}
 
       {open && (
         <div ref={detailRef} className="arc-card arc-detail" aria-live="polite">
@@ -238,7 +239,7 @@ function SeasonView({ season, workbooks, openCode, setOpen }: { season: ArchiveS
         </div>
       )}
 
-      <SourceWorkbooks seasons={workbooks} />
+      <SourceWorkbooks seasons={workbooks} current={season.year} />
     </>
   );
 }

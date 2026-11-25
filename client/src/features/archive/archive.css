@@ -94,6 +94,7 @@
 
 /* Source workbooks: the commissioner's original files, downloadable */
 .arc-source { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 13px; }
+.arc-source span { color: var(--am-text); }
 .arc-source strong { color: var(--am-text); font-weight: 600; overflow-wrap: anywhere; }
 .arc-dl { min-height: 44px; padding: 0 14px; border: 1px solid var(--am-field-line); border-radius: 6px; background: var(--am-chip); color: var(--am-text); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; white-space: nowrap; }
 .arc-dl:hover { background: var(--am-chip-strong); }
@@ -104,6 +105,8 @@
 .arc-sources > summary { min-height: 44px; display: flex; align-items: center; font-size: 15px; font-weight: 600; cursor: pointer; }
 .arc-sources > .arc-note { margin: 0 0 8px; font-size: 13px; }
 .arc-sources ul { list-style: none; margin: 0 0 12px; padding: 0; }
-.arc-sources li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 8px 0; border-top: 1px solid var(--am-border); }
+.arc-sources li { display: flex; align-items: center; gap: 12px; padding: 6px 0; border-top: 1px solid var(--am-border); }
+.arc-sources li.is-current .arc-sources-year { color: var(--am-accent); }
+.arc-sources li .arc-dl-error { flex-basis: auto; }
 .arc-sources-year { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 3em; }
 .arc-sources-file { flex: 1 1 12em; min-width: 0; font-size: 13px; color: var(--am-text-muted); overflow-wrap: anywhere; }

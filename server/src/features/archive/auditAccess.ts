@@ -87,6 +87,11 @@ export function hasFinalSay(access: AuditAccess, franchiseId: number | null): bo
  * take everyone's access away.
  */
 export async function currentTeamCodes(userId: number, franchiseId: number): Promise<string[]> {
+  return (await currentTeams(userId, franchiseId)).map((t) => t.code);
+}
+
+/** The teams (code and name) the user owns in the franchise's latest league that has owners, by code. */
+export async function currentTeams(userId: number, franchiseId: number): Promise<{ code: string; name: string }[]> {
   const latest = await prisma.league.findFirst({
     where: { franchiseId, teams: { some: { ownerships: { some: {} } } } },
     orderBy: [{ season: "desc" }, { id: "desc" }],
@@ -95,9 +100,10 @@ export async function currentTeamCodes(userId: number, franchiseId: number): Pro
   if (!latest) return [];
   const owned = await prisma.teamOwnership.findMany({
     where: { userId, team: { leagueId: latest.id, code: { not: null } } },
-    select: { team: { select: { code: true } } },
+    select: { team: { select: { code: true, name: true } } },
   });
-  return [...new Set(owned.map((o) => o.team.code!))].sort();
+  const byCode = new Map(owned.map((o) => [o.team.code!, o.team.name]));
+  return [...byCode].map(([code, name]) => ({ code, name })).sort((a, b) => a.code.localeCompare(b.code));
 }
 
 /** 403 unless the viewer has player-check access; puts it on res.locals.audit. Run after requireAuth. */

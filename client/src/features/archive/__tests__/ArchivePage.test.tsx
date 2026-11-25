@@ -215,12 +215,12 @@ describe("player check tab", () => {
 });
 
 describe("source workbooks", () => {
-  it("names the season's original workbook and downloads it on tap", async () => {
+  it("names the season's original workbook in plain words, and downloads it under its real file name", async () => {
     m.downloadWorkbook.mockResolvedValue(undefined);
     renderAt("/archive?season=2012");
-    expect(await screen.findByText("Fantasy_Baseball_2012.xls", { selector: "strong" })).toBeTruthy();
-    expect(screen.getByText(/116 KB, the commissioner’s workbook, unedited\./)).toBeTruthy();
-    fireEvent.click(screen.getAllByRole("button", { name: "Download Fantasy_Baseball_2012.xls, the 2012 workbook" })[0]);
+    expect(await screen.findByText("Read from the commissioner’s 2012 workbook, unedited (Excel, 116 KB).")).toBeTruthy();
+    expect(screen.queryByText(/Fantasy_Baseball_2012\.xls/)).toBeNull();
+    fireEvent.click(screen.getAllByRole("button", { name: "Download the 2012 workbook (Excel, 116 KB)" })[0]);
     expect(m.downloadWorkbook).toHaveBeenCalledWith(2012, "Fantasy_Baseball_2012.xls");
   });
 
@@ -236,8 +236,8 @@ describe("source workbooks", () => {
   it("lists every season that has a workbook in one place, and says nothing for a season without one", async () => {
     renderAt("/archive?season=2003");
     await waitFor(() => expect(screen.getByText("All source workbooks (1 season)")).toBeTruthy());
-    expect(screen.queryByText(/the commissioner’s workbook, unedited/)).toBeNull();
+    expect(screen.queryByText(/Read from the commissioner’s/)).toBeNull();
     const list = screen.getByText("All source workbooks (1 season)").closest("details")!;
-    expect(within(list).getByText("Fantasy_Baseball_2012.xls · 116 KB")).toBeTruthy();
+    expect(within(list).getByText("Excel · 116 KB")).toBeTruthy();
   });
 });

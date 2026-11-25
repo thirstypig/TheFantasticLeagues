@@ -14,9 +14,9 @@ const m = vi.mocked(api);
 // Wire-shaped: parsed by the shared schema so the fixture can't drift from the API.
 const members = AuditAccessListResponseSchema.parse({
   members: [
-    { membershipId: 40, name: "Kent Sakamoto", role: "COMMISSIONER", teamCodes: ["DMK"], access: "NONE" },
-    { membershipId: 41, name: "Kurt Sakamoto", role: "OWNER", teamCodes: ["DDG"], access: "OWN_TEAM" },
-    { membershipId: 42, name: "Olivia Cooper", role: "OWNER", teamCodes: [], access: "NONE" },
+    { membershipId: 40, name: "Pat Rivera", role: "COMMISSIONER", teamCodes: ["DMK"], teamNames: ["Diamond Kings"], access: "NONE" },
+    { membershipId: 41, name: "Sam Ortiz", role: "OWNER", teamCodes: ["DDG"], teamNames: ["Dodger Dawgs"], access: "OWN_TEAM" },
+    { membershipId: 42, name: "Lee Moreno", role: "OWNER", teamCodes: [], teamNames: [], access: "NONE" },
   ],
 }).members;
 
@@ -36,38 +36,38 @@ beforeEach(() => {
 describe("who can help", () => {
   it("lists each member with his current access checked and what it lets him do", async () => {
     renderPage();
-    await screen.findByText(/^Kent Sakamoto/);
-    expect(screen.getByText("Kent Sakamoto · commissioner")).toBeTruthy();
-    expect(choice("Kent Sakamoto", "Off").getAttribute("aria-checked")).toBe("true");
-    expect(choice("Kurt Sakamoto", "Own team").getAttribute("aria-checked")).toBe("true");
-    expect(within(row("Kurt Sakamoto")).getByText("DDG names")).toBeTruthy();
-    expect(within(row("Olivia Cooper")).getByText("Owns no team")).toBeTruthy();
+    await screen.findByText(/^Pat Rivera/);
+    expect(screen.getByText("Pat Rivera · commissioner")).toBeTruthy();
+    expect(choice("Pat Rivera", "Off").getAttribute("aria-checked")).toBe("true");
+    expect(choice("Sam Ortiz", "Own team").getAttribute("aria-checked")).toBe("true");
+    expect(within(row("Sam Ortiz")).getByText("Team: Dodger Dawgs")).toBeTruthy();
+    expect(within(row("Lee Moreno")).getByText("Owns no team")).toBeTruthy();
   });
 
   it("saves a choice as soon as it's tapped and says so", async () => {
     renderPage();
-    await screen.findByText(/^Kent Sakamoto/);
-    fireEvent.click(choice("Kent Sakamoto", "All teams"));
+    await screen.findByText(/^Pat Rivera/);
+    fireEvent.click(choice("Pat Rivera", "All teams"));
     expect(m.setAuditAccess).toHaveBeenCalledWith(40, "ALL");
-    await waitFor(() => expect(within(row("Kent Sakamoto")).getByText("Saved")).toBeTruthy());
-    expect(choice("Kent Sakamoto", "All teams").getAttribute("aria-checked")).toBe("true");
-    expect(choice("Kent Sakamoto", "Off").getAttribute("aria-checked")).toBe("false");
+    await waitFor(() => expect(within(row("Pat Rivera")).getByText("Saved ✓ Pat's decisions are now final and can replace owners'.")).toBeTruthy());
+    expect(choice("Pat Rivera", "All teams").getAttribute("aria-checked")).toBe("true");
+    expect(choice("Pat Rivera", "Off").getAttribute("aria-checked")).toBe("false");
   });
 
   it("does nothing when the current choice is tapped again", async () => {
     renderPage();
-    await screen.findByText(/^Kurt Sakamoto/);
-    fireEvent.click(choice("Kurt Sakamoto", "Own team"));
+    await screen.findByText(/^Sam Ortiz/);
+    fireEvent.click(choice("Sam Ortiz", "Own team"));
     expect(m.setAuditAccess).not.toHaveBeenCalled();
   });
 
   it("keeps the old choice and shows why when saving fails", async () => {
     m.setAuditAccess.mockRejectedValue(apiError(404, "No such member."));
     renderPage();
-    await screen.findByText(/^Kurt Sakamoto/);
-    fireEvent.click(choice("Kurt Sakamoto", "Off"));
-    await waitFor(() => expect(within(row("Kurt Sakamoto")).getByText("No such member.")).toBeTruthy());
-    expect(choice("Kurt Sakamoto", "Own team").getAttribute("aria-checked")).toBe("true");
+    await screen.findByText(/^Sam Ortiz/);
+    fireEvent.click(choice("Sam Ortiz", "Off"));
+    await waitFor(() => expect(within(row("Sam Ortiz")).getByText("No such member.")).toBeTruthy());
+    expect(choice("Sam Ortiz", "Own team").getAttribute("aria-checked")).toBe("true");
   });
 
   it("tells a non-admin he can't choose, without listing anyone", async () => {

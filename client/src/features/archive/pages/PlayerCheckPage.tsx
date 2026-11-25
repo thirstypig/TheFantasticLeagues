@@ -40,6 +40,16 @@ export default function PlayerCheckPage() {
   const [decidedThisVisit, setDecidedThisVisit] = useState<ReadonlySet<number>>(new Set());
   const inFlight = useRef(new Set<number>());
   const listTop = useRef<HTMLDivElement>(null);
+  const [showFinished, setShowFinished] = useState(false);
+  // The name "Decide the next name" asked for; scrolled to once it's on screen (after any filter change renders).
+  const [scrollTo, setScrollTo] = useState<number | null>(null);
+  useEffect(() => {
+    if (scrollTo === null) return;
+    const el = document.getElementById(`apc-item-${scrollTo}`);
+    if (!el) return;
+    el.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    setScrollTo(null);
+  });
 
   useEffect(() => {
     let live = true;
@@ -100,6 +110,17 @@ export default function PlayerCheckPage() {
   // Counts on the status buttons follow the season and team filters, not the status one.
   const inScope = filterItems(items, { ...filters, status: "" }, decidedThisVisit);
   const total = (pick: (r: (typeof rows)[number]) => number) => rows.reduce((sum, r) => sum + pick(r), 0);
+  // Seasons with nothing left fold under one row; the selected one always shows.
+  const finished = rows.filter((r) => r.todo === 0 && r.year !== filters.year);
+  const shownRows = showFinished ? rows : rows.filter((r) => !finished.includes(r));
+  // "Decide the next name": the first undecided name under the current filters, else anywhere.
+  const left = items.length - done;
+  const nextUp = visible.find((i) => !i.decision) ?? items.find((i) => !i.decision) ?? null;
+  const goNext = () => {
+    if (!nextUp) return;
+    if (!visible.includes(nextUp)) setFilters({ year: null, team: "", status: "", todoOnly: true });
+    setScrollTo(nextUp.id);
+  };
 
   if (seasons.length === 0) {
     return (
@@ -115,7 +136,9 @@ export default function PlayerCheckPage() {
       <header>
         <h1 className="apc-title">Archive player check</h1>
         <p className="apc-lede">
-          Every name on every archived roster, matched to an MLB player. {verified.toLocaleString("en-US")} are settled.
+          {viewer.level === "OWN_TEAM"
+            ? `Every name on the ${teams.map((t) => t.name).join(" and ") || "your team"} rosters, every year, matched to an MLB player. ${verified.toLocaleString("en-US")} of your team’s names are settled.`
+            : `Every name on every archived roster, matched to an MLB player. ${verified.toLocaleString("en-US")} are settled.`}
           {" "}{items.length === 0 ? "None need a decision." : `${items.length} need a decision: confirm the suggested player, pick another, or search for someone else.`}
         </p>
         <p className="apc-note" style={{ marginTop: 8 }}>
@@ -133,6 +156,12 @@ export default function PlayerCheckPage() {
         <span className="apc-bar" aria-hidden="true"><span style={{ width: `${items.length ? Math.round((done / items.length) * 100) : 100}%` }} /></span>
       </div>
 
+      {nextUp && (
+        <button type="button" className="apc-btn is-primary apc-next" onClick={goNext}>
+          Decide the next name ({left} left)
+        </button>
+      )}
+
       <div className="apc-card" style={{ overflowX: "auto" }}>
         <table className="apc-seasons">
           <thead>
@@ -146,7 +175,7 @@ export default function PlayerCheckPage() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => {
+            {shownRows.map((r) => {
               const selected = filters.year === r.year;
               const choose = () => {
                 setFilters({ ...filters, year: selected ? null : r.year });
@@ -166,6 +195,15 @@ export default function PlayerCheckPage() {
                 </tr>
               );
             })}
+            {finished.length > 0 && (
+              <tr className="apc-finished" onClick={() => setShowFinished((v) => !v)}>
+                <td colSpan={6}>
+                  <button type="button" className="apc-year" aria-expanded={showFinished} onClick={(e) => { e.stopPropagation(); setShowFinished((v) => !v); }}>
+                    {showFinished ? "Hide" : "Show"} {finished.length} finished {finished.length === 1 ? "season" : "seasons"}
+                  </button>
+                </td>
+              </tr>
+            )}
           </tbody>
           <tfoot>
             <tr>
@@ -208,7 +246,9 @@ export default function PlayerCheckPage() {
           <p className="apc-note">{items.length > 0 && done === items.length ? "Every name is decided." : "Nothing to check for this filter."}</p>
         )}
         {visible.map((item) => (
-          <PlayerCheckCard key={item.id} item={item} busy={busy.has(item.id)} error={errors[item.id] ?? null} onDecide={onDecide} onUndo={onUndo} />
+          <div key={item.id} id={`apc-item-${item.id}`} className="apc-anchor">
+            <PlayerCheckCard item={item} busy={busy.has(item.id)} error={errors[item.id] ?? null} onDecide={onDecide} onUndo={onUndo} />
+          </div>
         ))}
       </div>
 

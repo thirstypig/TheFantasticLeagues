@@ -17,7 +17,7 @@ import {
   AuditAccessUpdateBodySchema,
   type AuditAccessListResponse, type AuditAccessMeResponse, type AuditAccessMember, type AuditAccessUpdateBody,
 } from "../../../../shared/api/archivePlayerCheck.js";
-import { currentTeamCodes, resolveAuditAccess } from "./auditAccess.js";
+import { currentTeams, resolveAuditAccess } from "./auditAccess.js";
 
 const router = express.Router();
 
@@ -37,13 +37,17 @@ router.get("/archive/audit-access", requireAdmin, asyncHandler(async (_req, res)
     select: { id: true, franchiseId: true, userId: true, role: true, archiveAudit: true, user: { select: { name: true, email: true } } },
   });
   // The same "own team" rule the player check uses: teams owned in the franchise's latest league.
-  const members: AuditAccessMember[] = (await Promise.all(memberships.map(async (m) => ({
-    membershipId: m.id,
-    name: m.user.name || m.user.email,
-    role: m.role,
-    teamCodes: await currentTeamCodes(m.userId, m.franchiseId),
-    access: m.archiveAudit,
-  }))))
+  const members: AuditAccessMember[] = (await Promise.all(memberships.map(async (m) => {
+    const teams = await currentTeams(m.userId, m.franchiseId);
+    return {
+      membershipId: m.id,
+      name: m.user.name || m.user.email,
+      role: m.role,
+      teamCodes: teams.map((t) => t.code),
+      teamNames: teams.map((t) => t.name),
+      access: m.archiveAudit,
+    };
+  })))
     .sort((a, b) => a.name.localeCompare(b.name) || a.membershipId - b.membershipId);
   const body: AuditAccessListResponse = { members };
   res.json(body);

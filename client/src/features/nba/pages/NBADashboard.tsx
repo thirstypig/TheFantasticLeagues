@@ -91,7 +91,7 @@ export default function NBADashboard() {
         <div style={{ gridColumn: "span 12" }}>
           <Glass strong>
             <SectionLabel>NBA Dashboard</SectionLabel>
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginTop: "12px" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: "10px 16px", marginTop: "12px" }}>
               <div>
                 <h2 style={{ margin: 0, fontSize: 32, fontWeight: 800, letterSpacing: "-0.015em" }}>Hardwood Heroes</h2>
                 <p style={{ margin: "7px 0 0", fontSize: 15, color: "var(--am-text-muted)" }}>2026-27 NBA Season · Week 12 of 24</p>
