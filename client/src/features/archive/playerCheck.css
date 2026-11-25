@@ -130,3 +130,14 @@
 
 /* The Archive tab strip at the top of the player check keeps its own width. */
 .apc-page > .arc-tabs { align-self: flex-start; max-width: 100%; overflow-x: auto; }
+
+/* The explainer above the names: open until folded. */
+.apc-guide { padding: 0 16px; }
+.apc-guide > summary { min-height: 44px; display: flex; align-items: center; font-size: 17px; font-weight: 700; cursor: pointer; }
+.apc-guide section { padding: 4px 0 12px; border-top: 1px solid var(--am-border); }
+.apc-guide h2 { margin: 10px 0 6px; font-size: 15px; font-weight: 700; }
+.apc-guide p, .apc-guide li, .apc-guide dd { margin: 0 0 8px; font-size: 15px; line-height: 1.5; color: var(--am-text); max-width: 72ch; }
+.apc-guide ul { margin: 0; padding-left: 20px; }
+.apc-guide dl { margin: 0 0 8px; }
+.apc-guide dt { margin-top: 8px; font-size: 15px; font-weight: 700; }
+.apc-guide dd { margin-left: 0; }

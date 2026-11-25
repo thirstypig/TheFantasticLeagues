@@ -116,6 +116,61 @@ describe("what the page shows", () => {
   });
 });
 
+describe("the explainer", () => {
+  beforeEach(() => { try { window.localStorage.clear(); } catch { /* none */ } });
+  const guide = () => screen.getByText(/^How the player check works/).closest("details") as HTMLDetailsElement;
+
+  it("starts open above the names, saying why, what to decide and how, and what comes next", async () => {
+    renderPage();
+    await screen.findByText("How the player check works");
+    expect(guide().open).toBe(true);
+    for (const h of ["Why we’re doing this", "What you decide", "How to decide each kind of name", "Tips", "Who has the final say", "What happens next"]) {
+      expect(within(guide()).getByRole("heading", { name: h })).toBeTruthy();
+    }
+    expect(within(guide()).getByText(/The computer matched 515 names on its own/)).toBeTruthy();
+    // It sits above the first name.
+    expect(guide().compareDocumentPosition(cards()[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("remembers that the reader folded it", async () => {
+    const first = renderPage();
+    await screen.findByText("How the player check works");
+    guide().open = false;
+    fireEvent(guide(), new Event("toggle"));
+    await screen.findByText("How the player check works (read this first)");
+    first.unmount();
+    renderPage();
+    await screen.findByText("How the player check works (read this first)");
+    expect(guide().open).toBe(false);
+  });
+
+  it("folds itself and stays folded when the reader taps Got it", async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    const first = renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Got it, show the names" }));
+    expect(guide().open).toBe(false);
+    first.unmount();
+    renderPage();
+    await screen.findByText("How the player check works (read this first)");
+    expect(guide().open).toBe(false);
+  });
+
+  it("still opens when the browser won't store anything", async () => {
+    const get = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
+    renderPage();
+    await screen.findByText("How the player check works");
+    expect(guide().open).toBe(true);
+    get.mockRestore();
+  });
+
+  it("tells an owner he sees only his team, and that the commissioner's decisions are final", async () => {
+    m.getPlayerCheck.mockResolvedValue(response([openWright], { viewer: OWNER, teams: [{ code: "MNB", name: "MoneyBall" }] }));
+    renderPage();
+    await screen.findByText("How the player check works");
+    expect(within(guide()).getByText(/You see only the names on MoneyBall\. .*The commissioner’s decisions are final/)).toBeTruthy();
+  });
+});
+
 describe("getting through the list", () => {
   it("jumps to the next undecided name under the current filters", async () => {
     const scroll = vi.fn();

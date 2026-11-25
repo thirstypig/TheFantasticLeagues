@@ -10,6 +10,7 @@ import type { PlayerCheckDecisionBody, PlayerCheckItem, PlayerCheckResponse, Pla
 import { ApiError } from "../../../api/base";
 import { ArchiveTabs } from "../components/ArchiveTabs";
 import { PlayerCheckCard } from "../components/PlayerCheckCard";
+import { PlayerCheckGuide } from "../components/PlayerCheckGuide";
 import { filterItems, filtersToParams, parseFilters, seasonRows, STATUS_LABEL, type CheckFilters } from "../lib/playerCheck";
 import { decidePlayer, getPlayerCheck, undoPlayerDecision } from "../playerCheckApi";
 import "../archive.css";
@@ -151,6 +152,8 @@ export default function PlayerCheckPage() {
         </p>
       </header>
 
+      <PlayerCheckGuide settled={verified} ownTeam={viewer.level === "OWN_TEAM" ? teams.map((t) => t.name).join(" and ") || "your team" : null} />
+
       <div className="apc-progress" aria-live="polite">
         <span><strong>{done}</strong> of {items.length} decided</span>
         <span className="apc-bar" aria-hidden="true"><span style={{ width: `${items.length ? Math.round((done / items.length) * 100) : 100}%` }} /></span>
@@ -252,22 +255,6 @@ export default function PlayerCheckPage() {
         ))}
       </div>
 
-      <footer className="apc-note">
-        <p style={{ margin: "0 0 8px" }}>
-          <strong>Suggested player.</strong> Among the candidates who qualify for the most slots, the one with the most plate
-          appearances (hitter slots) or innings (pitcher slots) that season. “Close call” means the runner-up played at least 85% as much.
-        </p>
-        <p style={{ margin: "0 0 8px" }}>
-          <strong>Flagged</strong>: the name fits one MLB player, but he didn’t qualify for a slot he held.{" "}
-          <strong>Suggested</strong>: several players fit, and exactly one qualifies for every slot.{" "}
-          <strong>Open</strong>: more than one player fits, or none does.
-        </p>
-        <p style={{ margin: 0 }}>
-          <strong>Qualifying for a slot.</strong> 3 games at the position that season, or 20 the season before. DH needs 10 games at DH.
-          The pre-2022 R slot is the rookie spot. An injured-list slot takes anyone, and a kept player keeps last season’s slot.
-          Games are full-season totals.
-        </p>
-      </footer>
     </div>
   );
 }
