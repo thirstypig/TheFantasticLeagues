@@ -97,50 +97,71 @@ describe("what the page shows", () => {
     expect(within(card("C. Hawpe")).getByText("Offered because: wrong first initial")).toBeTruthy();
   });
 
-  it("tells each kind of viewer what their decisions mean, and only an admin how to choose helpers", async () => {
+  it("says once, in the guide, whose decisions are final, worded for each kind of viewer; only an admin sees how to choose helpers", async () => {
+    const finalLines = () => screen.queryAllByText(/are final/);
     const { unmount } = renderPage();
-    expect(await screen.findByText(/Yours and the commissioner’s are final/)).toBeTruthy();
+    expect(await screen.findByText("Your decisions and the commissioner’s are final: nobody else can change them.")).toBeTruthy();
+    expect(finalLines()).toHaveLength(1);
     expect(screen.getByRole("link", { name: "Choose who can help" }).getAttribute("href")).toBe("/archive/player-check/access");
     unmount();
 
-    m.getPlayerCheck.mockResolvedValue(response([openWright], { viewer: OWNER }));
+    m.getPlayerCheck.mockResolvedValue(response([openWright], { viewer: OWNER, teams: [{ code: "MNB", name: "MoneyBall" }] }));
     const owner = renderPage();
-    expect(await screen.findByText(/You’re checking the names on .+\. Your decisions are saved under your name; the commissioner’s are final\./)).toBeTruthy();
+    expect(await screen.findByText("You see only the names on MoneyBall. The commissioner’s decisions are final and can replace yours.")).toBeTruthy();
+    expect(finalLines()).toHaveLength(1);
     expect(screen.queryByRole("link", { name: "Choose who can help" })).toBeNull();
     owner.unmount();
 
+    // The commissioner is told about his own decisions, not about "the commissioner".
     m.getPlayerCheck.mockResolvedValue(response([openWright], { viewer: { isAdmin: false, final: true, level: "ALL", teamCodes: null } }));
     renderPage();
-    expect(await screen.findByText(/You have the commissioner’s final say/)).toBeTruthy();
+    expect(await screen.findByText("Your decisions are final: nobody else can change them, and you can change anyone’s.")).toBeTruthy();
+    expect(screen.queryByText(/the commissioner’s/)).toBeNull();
     expect(screen.queryByRole("link", { name: "Choose who can help" })).toBeNull();
   });
 });
 
 describe("the explainer", () => {
   beforeEach(() => { try { window.localStorage.clear(); } catch { /* none */ } });
-  const guide = () => screen.getByText(/^How the player check works/).closest("details") as HTMLDetailsElement;
+  const guide = () => screen.getByText("How this works").closest("details") as HTMLDetailsElement;
 
-  it("starts open above the names, saying why, what to decide and how, and what comes next", async () => {
+  it("starts open above the names with the short version: why, the three rules, and Got it", async () => {
     renderPage();
-    await screen.findByText("How the player check works");
+    await screen.findByText("How this works");
     expect(guide().open).toBe(true);
-    for (const h of ["Why we’re doing this", "What you decide", "How to decide each kind of name", "Tips", "Who has the final say", "What happens next"]) {
-      expect(within(guide()).getByRole("heading", { name: h })).toBeTruthy();
-    }
-    expect(within(guide()).getByText(/The computer matched 515 names on its own/)).toBeTruthy();
+    expect(within(guide()).getByText(/The computer settled 515 names on its own/)).toBeTruthy();
+    expect(within(guide()).getByText("Pick the player who was on that team that season.")).toBeTruthy();
+    expect(within(guide()).getByText("Not sure? Leave it.")).toBeTruthy();
+    expect(within(guide()).getByRole("button", { name: "Got it, show the names" })).toBeTruthy();
+    // The detail waits behind its own button.
+    expect(within(guide()).queryByRole("heading")).toBeNull();
     // It sits above the first name.
     expect(guide().compareDocumentPosition(cards()[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it("shows the full detail on More detail, including that an Open card's pointer is only a hint", async () => {
+    renderPage();
+    const more = await screen.findByRole("button", { name: "More detail" });
+    expect(more.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(more);
+    for (const h of ["What each card shows", "How to decide each kind of name", "Tips", "What happens next"]) {
+      expect(within(guide()).getByRole("heading", { name: h })).toBeTruthy();
+    }
+    expect(within(guide()).getByText(/We may still point to the player who played the most; treat that as a hint/)).toBeTruthy();
+    expect(within(guide()).getByText("Keep [player]: the league allowed it")).toBeTruthy();
+    expect(within(guide()).getByText(/check our totals against the workbook’s/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Less detail" }));
+    expect(within(guide()).queryByRole("heading")).toBeNull();
+  });
+
   it("remembers that the reader folded it", async () => {
     const first = renderPage();
-    await screen.findByText("How the player check works");
+    await screen.findByText("How this works");
     guide().open = false;
     fireEvent(guide(), new Event("toggle"));
-    await screen.findByText("How the player check works (read this first)");
     first.unmount();
     renderPage();
-    await screen.findByText("How the player check works (read this first)");
+    await screen.findByText("How this works");
     expect(guide().open).toBe(false);
   });
 
@@ -151,23 +172,16 @@ describe("the explainer", () => {
     expect(guide().open).toBe(false);
     first.unmount();
     renderPage();
-    await screen.findByText("How the player check works (read this first)");
+    await screen.findByText("How this works");
     expect(guide().open).toBe(false);
   });
 
   it("still opens when the browser won't store anything", async () => {
     const get = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("blocked"); });
     renderPage();
-    await screen.findByText("How the player check works");
+    await screen.findByText("How this works");
     expect(guide().open).toBe(true);
     get.mockRestore();
-  });
-
-  it("tells an owner he sees only his team, and that the commissioner's decisions are final", async () => {
-    m.getPlayerCheck.mockResolvedValue(response([openWright], { viewer: OWNER, teams: [{ code: "MNB", name: "MoneyBall" }] }));
-    renderPage();
-    await screen.findByText("How the player check works");
-    expect(within(guide()).getByText(/You see only the names on MoneyBall\. .*The commissioner’s decisions are final/)).toBeTruthy();
   });
 });
 
@@ -190,6 +204,27 @@ describe("getting through the list", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Decide the next name (1 left)" }));
     await waitFor(() => expect(screen.getByTestId("search").textContent).toBe("?todo=1"));
     await waitFor(() => expect((scroll.mock.contexts.at(-1) as HTMLElement | undefined)?.id).toBe(`apc-item-${flaggedPujols.id}`));
+  });
+
+  it("marks the name it jumped to with its place in the list, and goes on to the next or back to the seasons", async () => {
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Decide the next name (3 left)" }));
+    const here = await screen.findByRole("navigation", { name: "Your place in the list" });
+    expect(here.textContent).toMatch(/^Name 1 of 3 to decide/);
+    // The bar sits on the first name in the list (newest season first).
+    const first = cards()[0];
+    expect(here.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    fireEvent.click(within(here).getByRole("button", { name: "Skip to the next name" }));
+    expect((await screen.findByRole("navigation", { name: "Your place in the list" })).textContent).toMatch(/^Name 2 of 3/);
+    expect(screen.getAllByRole("navigation", { name: "Your place in the list" })).toHaveLength(1);
+
+    const table = screen.getByRole("table");
+    fireEvent.click(screen.getByRole("button", { name: "Back to seasons" }));
+    expect(scroll.mock.contexts.at(-1)).toBe(table.parentElement);
+    expect(screen.queryByRole("navigation", { name: "Your place in the list" })).toBeNull();
   });
 
   it("has no next-name button once every name is decided", async () => {

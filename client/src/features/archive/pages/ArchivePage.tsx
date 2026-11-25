@@ -202,7 +202,7 @@ function SeasonView({ season, workbooks, openCode, setOpen }: { season: ArchiveS
                   </th>
                 );
               })}
-              <th scope="col">Total</th>
+              <th className="arc-total" scope="col">Total</th>
             </tr>
           </thead>
           <tbody>

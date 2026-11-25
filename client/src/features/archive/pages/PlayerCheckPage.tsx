@@ -10,7 +10,7 @@ import type { PlayerCheckDecisionBody, PlayerCheckItem, PlayerCheckResponse, Pla
 import { ApiError } from "../../../api/base";
 import { ArchiveTabs } from "../components/ArchiveTabs";
 import { PlayerCheckCard } from "../components/PlayerCheckCard";
-import { PlayerCheckGuide } from "../components/PlayerCheckGuide";
+import { PlayerCheckGuide, type GuideReader } from "../components/PlayerCheckGuide";
 import { filterItems, filtersToParams, parseFilters, seasonRows, STATUS_LABEL, type CheckFilters } from "../lib/playerCheck";
 import { decidePlayer, getPlayerCheck, undoPlayerDecision } from "../playerCheckApi";
 import "../archive.css";
@@ -41,9 +41,12 @@ export default function PlayerCheckPage() {
   const [decidedThisVisit, setDecidedThisVisit] = useState<ReadonlySet<number>>(new Set());
   const inFlight = useRef(new Set<number>());
   const listTop = useRef<HTMLDivElement>(null);
+  const seasonsTable = useRef<HTMLDivElement>(null);
   const [showFinished, setShowFinished] = useState(false);
   // The name "Decide the next name" asked for; scrolled to once it's on screen (after any filter change renders).
   const [scrollTo, setScrollTo] = useState<number | null>(null);
+  // The name it last jumped to: that card carries a "Name 3 of 25" bar with Next name and Back to seasons.
+  const [current, setCurrent] = useState<number | null>(null);
   useEffect(() => {
     if (scrollTo === null) return;
     const el = document.getElementById(`apc-item-${scrollTo}`);
@@ -67,6 +70,7 @@ export default function PlayerCheckPage() {
 
   const setFilters = useCallback((next: CheckFilters) => {
     setDecidedThisVisit(new Set());
+    setCurrent(null);
     setParams(filtersToParams(next), { replace: true });
   }, [setParams]);
 
@@ -115,13 +119,28 @@ export default function PlayerCheckPage() {
   const finished = rows.filter((r) => r.todo === 0 && r.year !== filters.year);
   const shownRows = showFinished ? rows : rows.filter((r) => !finished.includes(r));
   // "Decide the next name": the first undecided name under the current filters, else anywhere.
+  // From the bar on a card, the next undecided one after it (wrapping round).
   const left = items.length - done;
-  const nextUp = visible.find((i) => !i.decision) ?? items.find((i) => !i.decision) ?? null;
-  const goNext = () => {
-    if (!nextUp) return;
-    if (!visible.includes(nextUp)) setFilters({ year: null, team: "", status: "", todoOnly: true });
-    setScrollTo(nextUp.id);
+  const nextAfter = (afterId: number | null): PlayerCheckItem | null => {
+    const pool = visible.some((i) => !i.decision) ? visible : items;
+    const at = afterId === null ? -1 : pool.findIndex((i) => i.id === afterId);
+    return pool.slice(at + 1).find((i) => !i.decision) ?? pool.find((i) => !i.decision && i.id !== afterId) ?? null;
   };
+  const nextUp = nextAfter(null);
+  const goNext = (afterId: number | null) => {
+    const target = nextAfter(afterId);
+    if (!target) { setCurrent(null); return; }
+    if (!visible.includes(target)) setFilters({ year: null, team: "", status: "", todoOnly: true });
+    setCurrent(target.id);
+    setScrollTo(target.id);
+  };
+  // Where the current name sits among the ones still to do (it counts while it's on screen, decided or not).
+  const queue = (visible.some((i) => !i.decision) ? visible : items).filter((i) => !i.decision || i.id === current);
+  const position = queue.findIndex((i) => i.id === current) + 1;
+  const backToSeasons = () => { setCurrent(null); seasonsTable.current?.scrollIntoView?.({ behavior: "smooth", block: "start" }); };
+  const reader: GuideReader = viewer.level === "OWN_TEAM"
+    ? { kind: "owner", team: teams.map((t) => t.name).join(" and ") || "your team" }
+    : viewer.isAdmin ? { kind: "admin" } : { kind: "commissioner" };
 
   if (seasons.length === 0) {
     return (
@@ -142,17 +161,12 @@ export default function PlayerCheckPage() {
             : `Every name on every archived roster, matched to an MLB player. ${verified.toLocaleString("en-US")} are settled.`}
           {" "}{items.length === 0 ? "None need a decision." : `${items.length} need a decision: confirm the suggested player, pick another, or search for someone else.`}
         </p>
-        <p className="apc-note" style={{ marginTop: 8 }}>
-          {viewer.level === "OWN_TEAM"
-            ? `You’re checking the names on ${teams.map((t) => t.name).join(" and ") || "your team"}. Your decisions are saved under your name; the commissioner’s are final.`
-            : viewer.isAdmin
-              ? "Each decision shows who made it. Yours and the commissioner’s are final: nobody else can change them."
-              : "You have the commissioner’s final say: your decisions lock, and you can change anyone’s."}
-          {viewer.isAdmin && <>{" "}<Link to="/archive/player-check/access" className="apc-link">Choose who can help</Link></>}
-        </p>
+        {viewer.isAdmin && (
+          <p className="apc-note" style={{ marginTop: 8 }}><Link to="/archive/player-check/access" className="apc-link">Choose who can help</Link></p>
+        )}
       </header>
 
-      <PlayerCheckGuide settled={verified} ownTeam={viewer.level === "OWN_TEAM" ? teams.map((t) => t.name).join(" and ") || "your team" : null} />
+      <PlayerCheckGuide settled={verified} reader={reader} />
 
       <div className="apc-progress" aria-live="polite">
         <span><strong>{done}</strong> of {items.length} decided</span>
@@ -160,12 +174,12 @@ export default function PlayerCheckPage() {
       </div>
 
       {nextUp && (
-        <button type="button" className="apc-btn is-primary apc-next" onClick={goNext}>
+        <button type="button" className="apc-btn is-primary apc-next" onClick={() => goNext(null)}>
           Decide the next name ({left} left)
         </button>
       )}
 
-      <div className="apc-card" style={{ overflowX: "auto" }}>
+      <div className="apc-card apc-anchor" style={{ overflowX: "auto" }} ref={seasonsTable}>
         <table className="apc-seasons">
           <thead>
             <tr>
@@ -250,6 +264,15 @@ export default function PlayerCheckPage() {
         )}
         {visible.map((item) => (
           <div key={item.id} id={`apc-item-${item.id}`} className="apc-anchor">
+            {item.id === current && position > 0 && (
+              <nav className="apc-here" aria-label="Your place in the list">
+                <span>Name <strong>{position}</strong> of {queue.length} to decide</span>
+                {left - (item.decision ? 0 : 1) > 0 && (
+                  <button type="button" className="apc-btn" onClick={() => goNext(item.id)}>{item.decision ? "Next name" : "Skip to the next name"}</button>
+                )}
+                <button type="button" className="apc-btn" onClick={backToSeasons}>Back to seasons</button>
+              </nav>
+            )}
             <PlayerCheckCard item={item} busy={busy.has(item.id)} error={errors[item.id] ?? null} onDecide={onDecide} onUndo={onUndo} />
           </div>
         ))}

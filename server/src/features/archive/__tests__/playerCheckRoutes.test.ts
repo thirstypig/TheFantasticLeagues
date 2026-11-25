@@ -156,28 +156,29 @@ describe("GET /api/archive/player-check", () => {
       { year: 2004, verified: 267, suggested: 0, flagged: 1, open: 4 },
     ]);
     expect(res.body.teams).toEqual([{ code: "LDY", name: "Los Doyers" }, { code: "MNB", name: "MoneyBall" }]);
-    expect(res.body.items.map((i: { id: number }) => i.id)).toEqual([11, 10, 30]);
+    expect(res.body.items.map((i: { id: number }) => i.id)).toEqual([30, 11, 10]);
     // The name the team used THAT season.
-    expect(res.body.items[0].teamName).toBe("NY Sock Exchange");
-    expect(res.body.items[2].teamName).toBe("Los Doyers");
+    expect(res.body.items[1].teamName).toBe("NY Sock Exchange");
+    expect(res.body.items[0].teamName).toBe("Los Doyers");
   });
 
   it("describes a flagged name by its matched player and a decided one by who decided it", async () => {
     const res = await appAs(ADMIN).get("/api/archive/player-check").expect(200);
-    expect(res.body.items[0]).toMatchObject({
+    const byId = (id: number) => res.body.items.find((i: { id: number }) => i.id === id);
+    expect(byId(11)).toMatchObject({
       id: 11, year: 2004, teamCode: "MNB", status: "FLAGGED", names: ["A. Pujols"], slots: ["3B"], seenIn: ["draft", "final"],
       match: { mlbId: 405395, name: "Albert Pujols", checks: [{ slot: "3B", eligible: false, reason: "not eligible at 3B" }] },
       candidates: [],
       decision: { decision: "EXCEPTION", mlbId: 405395, name: "Albert Pujols", byName: "James", at: "2026-11-21T01:41:40.827Z", locked: false },
     });
-    expect(res.body.items[1]).toMatchObject({ id: 10, status: "OPEN", match: null, decision: null, suggestion: { mlbId: 124605 } });
-    expect(res.body.items[1].candidates.map((c: { mlbId: number }) => c.mlbId)).toEqual([124605, 124604]);
+    expect(byId(10)).toMatchObject({ id: 10, status: "OPEN", match: null, decision: null, suggestion: { mlbId: 124605 } });
+    expect(byId(10).candidates.map((c: { mlbId: number }) => c.mlbId)).toEqual([124605, 124604]);
   });
 
   it("tells a member that the commissioner's decision is locked", async () => {
     const res = await appAs(MEMBER).get("/api/archive/player-check").expect(200);
     expect(res.body.viewer).toEqual({ isAdmin: false, final: false, level: "OWN_TEAM", teamCodes: ["MNB"] });
-    expect(res.body.items[0].decision.locked).toBe(true);
+    expect(res.body.items.find((i: { id: number }) => i.id === 11).decision.locked).toBe(true);
   });
 
   it("is closed to a signed-in user who is not a league member", async () => {

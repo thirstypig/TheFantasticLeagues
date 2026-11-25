@@ -97,7 +97,7 @@ export const PlayerCheckResponseSchema = z
     seasons: z.array(PlayerCheckSeasonSchema),
     /** Franchises that have a name to decide, by their current name. */
     teams: z.array(z.object({ code: z.string(), name: z.string() })),
-    /** Oldest season first. */
+    /** Newest season first, like `seasons`, so the list reads in the table's order. */
     items: z.array(PlayerCheckItemSchema),
   })
   .strict();
