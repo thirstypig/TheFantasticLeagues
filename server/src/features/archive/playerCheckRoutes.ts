@@ -142,7 +142,7 @@ router.get("/archive/player-check", asyncHandler(async (req, res) => {
 
   const items = rows
     .map((row) => toItem(row, teamNames.get(`${row.seasonId}|${row.teamCode}`) ?? row.teamCode, audit))
-    .sort((a, b) => a.year - b.year || a.teamName.localeCompare(b.teamName) || (a.names[0] ?? "").localeCompare(b.names[0] ?? "") || a.id - b.id);
+    .sort((a, b) => b.year - a.year || a.teamName.localeCompare(b.teamName) || (a.names[0] ?? "").localeCompare(b.names[0] ?? "") || a.id - b.id);
 
   const body: PlayerCheckResponse = {
     viewer: { isAdmin: viewer.isAdmin, final: audit.final, level: audit.level, teamCodes: audit.teamCodes },

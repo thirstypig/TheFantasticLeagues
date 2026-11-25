@@ -130,3 +130,27 @@
 
 /* The Archive tab strip at the top of the player check keeps its own width. */
 .apc-page > .arc-tabs { align-self: flex-start; max-width: 100%; overflow-x: auto; }
+
+/* The explainer above the names: open until folded. */
+.apc-guide { padding: 0 16px; }
+.apc-guide > summary { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 17px; font-weight: 700; cursor: pointer; list-style: none; }
+.apc-guide > summary::-webkit-details-marker { display: none; }
+/* A chevron that says the folded guide opens: points down when folded, up when open. */
+.apc-guide > summary::after { content: ""; flex: none; width: 9px; height: 9px; margin-right: 4px; border-right: 2px solid var(--am-text-muted); border-bottom: 2px solid var(--am-text-muted); transform: translateY(-3px) rotate(45deg); transition: transform 0.15s; }
+.apc-guide[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
+.apc-guide-short { padding: 0 0 14px; }
+.apc-guide-short ul { margin: 0 0 12px; }
+.apc-guide-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.apc-guide section { padding: 4px 0 12px; border-top: 1px solid var(--am-border); }
+.apc-guide h2 { margin: 10px 0 6px; font-size: 15px; font-weight: 700; }
+.apc-guide p, .apc-guide li, .apc-guide dd { margin: 0 0 8px; font-size: 15px; line-height: 1.5; color: var(--am-text); max-width: 72ch; }
+.apc-guide ul { margin: 0; padding-left: 20px; }
+.apc-guide dl { margin: 0 0 8px; }
+.apc-guide dt { margin-top: 8px; font-size: 15px; font-weight: 700; }
+.apc-guide dd { margin-left: 0; }
+
+/* The card "Decide the next name" jumped to: where it sits in the list, and the way on. */
+.apc-here { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 8px; padding: 8px 12px; font-size: 15px; background: var(--am-chip); border: 1px solid var(--am-border); border-radius: 6px; }
+.apc-here > span { margin-right: auto; }
+.apc-here .apc-btn { background: var(--am-surface); }
+@media (prefers-reduced-motion: reduce) { .apc-guide > summary::after { transition: none; } }

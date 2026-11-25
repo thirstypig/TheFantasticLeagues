@@ -34,6 +34,9 @@
 .arc-table .arc-rank { width: 32px; text-align: center; color: var(--am-text-muted); }
 .arc-table .arc-team { text-align: left; position: sticky; left: 0; z-index: 1; min-width: 150px; max-width: 220px; white-space: normal; }
 .arc-table .arc-total { font-weight: 700; }
+/* When the periods scroll sideways (phones), the owner stays on the left and Total on the right. */
+.arc-table:not(.arc-board) th.arc-total, .arc-table:not(.arc-board) td.arc-total { position: sticky; right: 0; z-index: 1; box-shadow: inset 1px 0 0 var(--am-border); }
+.arc-table th.arc-total { font-weight: 600; }
 .arc-table tbody tr { cursor: pointer; }
 .arc-table tbody tr:hover td, .arc-table tbody tr.is-open td { background: var(--am-chip); }
 .arc-teambtn { display: block; position: relative; width: 100%; min-height: 44px; padding: 4px 22px 4px 0; border: 0; background: transparent; font: inherit; text-align: left; color: var(--am-text); cursor: pointer; }
