@@ -139,6 +139,22 @@ describe("one team", () => {
     expect(within(screen.getByRole("region", { name: "End of season" })).getByText("Jason Kendall")).toBeTruthy();
   });
 
+  it("names the missing meeting for a season whose workbook lacks one sheet (2009), under the standings and in the team's moves", async () => {
+    m.getArchiveSeason.mockResolvedValue({ ...s2012, year: 2009 });
+    renderAt("/archive?season=2009&team=DDG");
+    await screen.findByRole("heading", { name: "Kurt Sakamoto" });
+    expect(screen.getByRole("note").textContent).toContain("no roster for period 1: the May 5 sheet already includes that meeting’s moves");
+    const moves = screen.getByRole("region", { name: "Moves at each meeting" });
+    expect(moves.textContent).toContain("Missing meeting: ");
+    expect(moves.textContent).toContain("show under “After the draft”");
+  });
+
+  it("says nothing about a missing meeting for a season with every sheet (2012)", async () => {
+    renderAt("/archive?team=DDG");
+    await screen.findByRole("heading", { name: "Kurt Sakamoto" });
+    expect(screen.queryByText(/Missing meeting/)).toBeNull();
+  });
+
   it("closes when tapped again", async () => {
     renderAt("/archive?team=DDG");
     await screen.findByRole("heading", { name: "Kurt Sakamoto" });

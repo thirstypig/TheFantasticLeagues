@@ -14,7 +14,7 @@ import TrophyCaseTab from "../components/TrophyCaseTab";
 import { ArchiveTabs } from "../components/ArchiveTabs";
 import { downloadWorkbook, getArchiveHistory, getArchiveSeason } from "../historyApi";
 import { getMyAuditAccess } from "../playerCheckApi";
-import { fmtPoints, ordinal, playerName, priceLabel, seasonGaps, shortDate } from "../lib/seasonView";
+import { MISSING_MEETING_NOTES, fmtPoints, ordinal, playerName, priceLabel, seasonGaps, shortDate } from "../lib/seasonView";
 import "../archive.css";
 
 type Load<T> = { state: "loading" } | { state: "forbidden" } | { state: "error" } | { state: "ready"; data: T };
@@ -90,6 +90,9 @@ function TeamDetail({ season, team }: { season: ArchiveSeasonResponse; team: Arc
         </section>
         <section className="arc-section" aria-label="Moves at each meeting">
           <h3>Moves at each meeting</h3>
+          {season.hasMoves && MISSING_MEETING_NOTES[season.year] && (
+            <p className="arc-note" style={{ fontSize: 13 }}><span className="arc-flag">Missing meeting: </span>{MISSING_MEETING_NOTES[season.year]}</p>
+          )}
           {!season.hasMoves ? (
             <p className="arc-note">The {season.year} workbook doesn’t have a roster for each meeting, so the moves aren’t known. Compare the draft and final rosters.</p>
           ) : moves.length === 0 ? (
@@ -231,6 +234,7 @@ function SeasonView({ season, workbooks, openCode, setOpen }: { season: ArchiveS
       <p className="arc-note arc-disclaimer" role="note">
         Rebuilt from the commissioner’s old workbooks, so some seasons are incomplete and may have mistakes.
         {gaps.length > 0 ? ` The ${season.year} workbook is missing ${gaps.length > 1 ? `${gaps.slice(0, -1).join(", ")} and ${gaps[gaps.length - 1]}` : gaps[0]}.` : ""}
+        {season.hasMoves && MISSING_MEETING_NOTES[season.year] ? ` ${MISSING_MEETING_NOTES[season.year]}` : ""}
       </p>
 
       {open && (

@@ -30,7 +30,7 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - Hardening: roster version guard, IL and keeper fixes, coverage floor, real-Postgres standings tests (#500–#523)
 
 ## In progress
-- Past seasons archive (2003–2025): data cleanup. 8,098 roster names in the player check, 244 still need a person to decide. Waiting on James to give the commissioner "All teams" access, and on the commissioner for two answers (2012 DDG total 394.5 vs 349.5; which 2008 final roster is right). Stats pull on hold until the names are decided; then re-score each season against the workbook points
+- Past seasons archive (2003–2025): data cleanup. 8,098 roster names in the player check, 244 still need a person to decide (the commissioner now has All teams access). Seasons with a missing or duplicated meeting sheet (2006, 2007, 2009, 2018, 2020) say so on the season page. Re-scoring is on hold until the rosters are complete
 
 ## Open bugs / known issues
 - None open. 2026 P4/P7 ±1 differences from OnRoto are OnRoto errors (FBST = MLB = Baseball-Reference)

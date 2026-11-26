@@ -48,3 +48,20 @@ export function seasonGaps(s: { periodCount: number; hasMoves: boolean; rosters:
   if (rosters.every((r) => r.final.length === 0)) out.push("the final rosters");
   return out;
 }
+
+/**
+ * Seasons whose workbook is missing a meeting's roster sheet, or holds one sheet twice, so
+ * some meeting's moves show under the wrong meeting or not at all. Found by counting the
+ * changes between consecutive sheets (a normal meeting has 20–50; the draft and the first
+ * sheet match): a meeting with almost none right after one with about twice as many. Every
+ * copy of these workbooks has the same gap, so it can't be fixed from the files. Seasons
+ * with no meeting sheets at all (2003–2005, 2015) get the general note instead.
+ * The archive holds OGBA only, so a note is keyed by year.
+ */
+export const MISSING_MEETING_NOTES: Record<number, string> = {
+  2006: "The Apr 30 sheet already seems to include most of that meeting’s moves, so they show under “After the draft” and the Apr 30 meeting shows only a few.",
+  2007: "The workbook has no roster for period 2: the May 20 sheet already includes that meeting’s moves. So the Apr 29 meeting shows the moves of both meetings, and the May 20 meeting almost none. The final roster is the same as the Aug 26 sheet, so moves made at the Aug 26 meeting aren’t known.",
+  2009: "The workbook has no roster for period 1: the May 5 sheet already includes that meeting’s moves. So the May 5 meeting’s moves show under “After the draft”, and period 1 shows period 2’s rosters.",
+  2018: "The workbook has no roster for period 1: the Apr 29 sheet already includes that meeting’s moves. So the Apr 29 meeting’s moves show under “After the draft”, and period 1 shows period 2’s rosters.",
+  2020: "The Sept 23 sheet is empty in every copy of the workbook, so the Aug 23 meeting’s moves show under the Sept 23 meeting.",
+};
