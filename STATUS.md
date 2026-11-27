@@ -1,6 +1,6 @@
 # STATUS
 
-**Last updated:** 2026-11-25
+**Last updated:** 2026-11-26
 
 ## One-line description
 The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with auctions, keepers and a commissioner. It replaces spreadsheets and OnRoto for the OGBA league.
@@ -22,7 +22,7 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - **Staging:** none hosted (a separate Supabase project used from a local server)
 
 ## Shipped (last 60 days)
-- Past seasons archive (#537–#557): 23 seasons, season pages, trophy case, player check (an Archive tab) with a guide and a next-name button (#559, #560); members download the commissioner's original workbook per season; admin picks who helps check names (off / own team / all teams); 2021–2022 rosters fixed from the source workbooks
+- Past seasons archive (#537–#557): 23 seasons, season pages, trophy case, player check (an Archive tab) with a guide and a next-name button (#559, #560); members download the commissioner's original workbook per season; admin picks who helps check names (off / own team / all teams); 2021–2022 rosters fixed from the source workbooks; the 5 seasons with a missing meeting roster (2006, 2007, 2009, 2018, 2020) say which meeting and tag it in each team's moves (#562)
 - NBA/NFL pages admin-only and marked as tests; admin page groups its hidden pages (#556)
 - 2026 season closed and audited; standings match MLB in all 7 periods (#470–#535)
 - Style Bible redesign, auction, live meeting with a clock (#473–#504)
@@ -30,7 +30,7 @@ The Fantastic Leagues (FBST): a web app for roto fantasy baseball leagues with a
 - Hardening: roster version guard, IL and keeper fixes, coverage floor, real-Postgres standings tests (#500–#523)
 
 ## In progress
-- Past seasons archive (2003–2025): data cleanup. 8,098 roster names in the player check, 244 still need a person to decide (the commissioner now has All teams access). Seasons with a missing or duplicated meeting sheet (2006, 2007, 2009, 2018, 2020) say so on the season page. Re-scoring is on hold until the rosters are complete
+- Past seasons archive (2003–2025): data cleanup. 8,098 roster names in the player check, 244 still need a person to decide (the commissioner now has All teams access). Re-scoring is on hold until the rosters are complete
 
 ## Open bugs / known issues
 - None open. 2026 P4/P7 ±1 differences from OnRoto are OnRoto errors (FBST = MLB = Baseball-Reference)
