@@ -57,11 +57,41 @@ export function seasonGaps(s: { periodCount: number; hasMoves: boolean; rosters:
  * copy of these workbooks has the same gap, so it can't be fixed from the files. Seasons
  * with no meeting sheets at all (2003–2005, 2015) get the general note instead.
  * The archive holds OGBA only, so a note is keyed by year.
+ *
+ * `season`: the full explanation, one point per problem, shown once above the standings.
+ * `team`: one line for the team's moves. `markers`: a tag on the meeting header, keyed by
+ * the moves' period (period 1 = "After the draft"; period k = the meeting before period k).
+ * Standings are unaffected: the points shown are the ones the workbook recorded.
  */
-export const MISSING_MEETING_NOTES: Record<number, string> = {
-  2006: "The Apr 30 sheet already seems to include most of that meeting’s moves, so they show under “After the draft” and the Apr 30 meeting shows only a few.",
-  2007: "The workbook has no roster for period 2: the May 20 sheet already includes that meeting’s moves. So the Apr 29 meeting shows the moves of both meetings, and the May 20 meeting almost none. The final roster is the same as the Aug 26 sheet, so moves made at the Aug 26 meeting aren’t known.",
-  2009: "The workbook has no roster for period 1: the May 5 sheet already includes that meeting’s moves. So the May 5 meeting’s moves show under “After the draft”, and period 1 shows period 2’s rosters.",
-  2018: "The workbook has no roster for period 1: the Apr 29 sheet already includes that meeting’s moves. So the Apr 29 meeting’s moves show under “After the draft”, and period 1 shows period 2’s rosters.",
-  2020: "The Sept 23 sheet is empty in every copy of the workbook, so the Aug 23 meeting’s moves show under the Sept 23 meeting.",
+export interface MissingMeetingNote { season: string[]; team: string; markers: Record<number, string> }
+
+export const MISSING_MEETING_NOTES: Record<number, MissingMeetingNote> = {
+  2006: {
+    season: ["The commissioner’s records for the Apr 30 meeting already include most of its moves, so they show under “After the draft”, and the Apr 30 meeting shows only a few."],
+    team: "Most Apr 30 meeting moves show under “After the draft”.",
+    markers: { 1: "includes most Apr 30 moves", 2: "most moves shown under After the draft" },
+  },
+  2007: {
+    season: [
+      "There’s no roster for period 2, so the Apr 29 meeting shows the moves of both the Apr 29 and May 20 meetings, and the May 20 meeting shows only a few.",
+      "Moves made at the Aug 26 meeting aren’t known: the final roster is the same as the Aug 26 one.",
+    ],
+    team: "Apr 29 also shows May 20’s moves; Aug 26 moves aren’t known.",
+    markers: { 2: "includes May 20 moves", 3: "most moves shown under Apr 29" },
+  },
+  2009: {
+    season: ["There’s no roster for period 1, so the May 5 meeting’s moves show under “After the draft”."],
+    team: "May 5 meeting moves show under “After the draft”.",
+    markers: { 1: "includes May 5 moves" },
+  },
+  2018: {
+    season: ["There’s no roster for period 1, so the Apr 29 meeting’s moves show under “After the draft”."],
+    team: "Apr 29 meeting moves show under “After the draft”.",
+    markers: { 1: "includes Apr 29 moves" },
+  },
+  2020: {
+    season: ["There’s no roster for period 2, so the Aug 2 meeting shows the moves of both the Aug 2 and Aug 23 meetings, and the Aug 23 meeting shows only one."],
+    team: "The Aug 2 meeting also shows Aug 23’s moves.",
+    markers: { 2: "includes Aug 23 moves", 3: "most moves shown under Aug 2" },
+  },
 };
