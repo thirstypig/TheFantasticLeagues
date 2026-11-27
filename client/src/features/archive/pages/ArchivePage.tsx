@@ -14,7 +14,7 @@ import TrophyCaseTab from "../components/TrophyCaseTab";
 import { ArchiveTabs } from "../components/ArchiveTabs";
 import { downloadWorkbook, getArchiveHistory, getArchiveSeason } from "../historyApi";
 import { getMyAuditAccess } from "../playerCheckApi";
-import { fmtPoints, ordinal, playerName, priceLabel, seasonGaps, shortDate } from "../lib/seasonView";
+import { MISSING_MEETING_NOTES, fmtPoints, ordinal, playerName, priceLabel, seasonGaps, shortDate } from "../lib/seasonView";
 import "../archive.css";
 
 type Load<T> = { state: "loading" } | { state: "forbidden" } | { state: "error" } | { state: "ready"; data: T };
@@ -62,6 +62,7 @@ function meetingLabel(period: number, meetingDate: string | null): string {
 }
 
 function TeamDetail({ season, team }: { season: ArchiveSeasonResponse; team: ArchiveSeasonTeam }) {
+  const missing = season.hasMoves ? MISSING_MEETING_NOTES[season.year] : undefined;
   const roster = season.rosters[team.code] ?? { draft: [], final: [] };
   const keeperLabel = season.keepersFromSheet ? "keeper" : "possible keeper";
   const keepers = roster.draft.filter((e) => e.keeper).length;
@@ -90,13 +91,17 @@ function TeamDetail({ season, team }: { season: ArchiveSeasonResponse; team: Arc
         </section>
         <section className="arc-section" aria-label="Moves at each meeting">
           <h3>Moves at each meeting</h3>
+          {missing && <p className="arc-note arc-callout"><span className="arc-flag">Missing meeting: </span>{missing.team}</p>}
           {!season.hasMoves ? (
             <p className="arc-note">The {season.year} workbook doesn’t have a roster for each meeting, so the moves aren’t known. Compare the draft and final rosters.</p>
           ) : moves.length === 0 ? (
             <p className="arc-note">No moves all season.</p>
           ) : moves.map((m) => (
             <div key={m.period} className="arc-meeting">
-              <strong>{meetingLabel(m.period, m.meetingDate)}</strong>
+              <strong>
+                {meetingLabel(m.period, m.meetingDate)}
+                {missing?.markers[m.period] && <span className="arc-marker"> · {missing.markers[m.period]}</span>}
+              </strong>
               {m.added.map((e, i) => <div key={`a${i}`} className="arc-add">+ <Player e={e} /> <span className="arc-price">{e.slot}</span></div>)}
               {m.dropped.map((e, i) => <div key={`d${i}`} className="arc-drop">− <Player e={e} /></div>)}
             </div>
@@ -232,6 +237,15 @@ function SeasonView({ season, workbooks, openCode, setOpen }: { season: ArchiveS
         Rebuilt from the commissioner’s old workbooks, so some seasons are incomplete and may have mistakes.
         {gaps.length > 0 ? ` The ${season.year} workbook is missing ${gaps.length > 1 ? `${gaps.slice(0, -1).join(", ")} and ${gaps[gaps.length - 1]}` : gaps[0]}.` : ""}
       </p>
+      {season.hasMoves && MISSING_MEETING_NOTES[season.year] && (
+        <div className="arc-note arc-callout" role="note" aria-label="Missing meeting">
+          <span className="arc-flag">Missing meeting: </span>
+          {MISSING_MEETING_NOTES[season.year].season.length === 1
+            ? MISSING_MEETING_NOTES[season.year].season[0]
+            : <ul>{MISSING_MEETING_NOTES[season.year].season.map((line) => <li key={line}>{line}</li>)}</ul>}
+          {" "}Standings totals are not affected: they are the points the commissioner recorded.
+        </div>
+      )}
 
       {open && (
         <div ref={detailRef} className="arc-card arc-detail" aria-live="polite">

@@ -50,6 +50,10 @@
 .arc-owner { display: block; font-size: 15px; font-weight: 700; }
 .arc-teamname { display: block; font-size: 13px; color: var(--am-text-muted); }
 .arc-flag { color: var(--am-negative); font-weight: 700; }
+.arc-callout { padding: 10px 12px; margin-bottom: 12px; border-left: 3px solid var(--am-warning); border-radius: 0 4px 4px 0; background: color-mix(in srgb, var(--am-warning) 10%, var(--am-surface)); color: var(--am-text); }
+.arc-callout ul { margin: 4px 0; padding-left: 20px; }
+.arc-callout li + li { margin-top: 4px; }
+.arc-marker { font-weight: 400; color: var(--am-warning); }
 
 /* One team */
 .arc-detail { padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; scroll-margin-top: 72px; }

@@ -139,6 +139,33 @@ describe("one team", () => {
     expect(within(screen.getByRole("region", { name: "End of season" })).getByText("Jason Kendall")).toBeTruthy();
   });
 
+  it("names the missing meeting for a season whose workbook lacks one sheet (2009), under the standings and in the team's moves", async () => {
+    m.getArchiveSeason.mockResolvedValue({ ...s2012, year: 2009 });
+    renderAt("/archive?season=2009&team=DDG");
+    await screen.findByRole("heading", { name: "Kurt Sakamoto" });
+    const callout = screen.getByRole("note", { name: "Missing meeting" });
+    expect(callout.textContent).toContain("no roster for period 1, so the May 5 meeting’s moves show under “After the draft”");
+    expect(callout.textContent).toContain("Standings totals are not affected");
+    const moves = screen.getByRole("region", { name: "Moves at each meeting" });
+    expect(moves.textContent).toContain("Missing meeting: May 5 meeting moves show under “After the draft”.");
+  });
+
+  it("tags the affected meeting's header and lists each problem of a season with two (2007)", async () => {
+    m.getArchiveSeason.mockResolvedValue({ ...s2012, year: 2007 });
+    renderAt("/archive?season=2007&team=DDG");
+    await screen.findByRole("heading", { name: "Kurt Sakamoto" });
+    const moves = screen.getByRole("region", { name: "Moves at each meeting" });
+    // The fixture's period-2 meeting (May 6) is the one 2007's note tags.
+    expect(moves.textContent).toContain("May 6 meeting · before period 2 · includes May 20 moves");
+    expect(within(screen.getByRole("note", { name: "Missing meeting" })).getAllByRole("listitem")).toHaveLength(2);
+  });
+
+  it("says nothing about a missing meeting for a season with every sheet (2012)", async () => {
+    renderAt("/archive?team=DDG");
+    await screen.findByRole("heading", { name: "Kurt Sakamoto" });
+    expect(screen.queryByText(/Missing meeting/)).toBeNull();
+  });
+
   it("closes when tapped again", async () => {
     renderAt("/archive?team=DDG");
     await screen.findByRole("heading", { name: "Kurt Sakamoto" });
